@@ -17,6 +17,7 @@
 ## Deployment Safety
 - Use canary for API changes affecting auth/payroll/arcade validation.
 - Promote to full rollout after 30-60 minutes of error-free monitoring.
+- For production validation with real users, run the 20-minute live-user test scope in `TESTING.md` before full promotion.
 
 ## Evidence
 Attach the following to the release record:
@@ -25,6 +26,7 @@ Attach the following to the release record:
 - Integration test summary
 - Rollback plan file path
 - Release gates evidence JSON artifact (`releases/evidence/latest-release-gates.json`)
+- Production live-user test decision, timestamp, owner, monitoring snapshot, and cleanup notes when the scope is used
 
 ## CI/CD Enforcement Map
 - App CI: `.github/workflows/app-ci.yml`
