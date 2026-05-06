@@ -1,7 +1,8 @@
 import { apiFetch, apiUrl } from '../common.js';
 
-const feedback = document.getElementById('authFeedback');
-const googleStudentBtn = document.getElementById('googleStudentBtn');
+const form = document.getElementById('loginForm');
+const feedback = document.getElementById('loginFeedback');
+const googleBtn = document.getElementById('googleBtn');
 
 const errorMessages = {
   account_not_found: 'No student account found for that Google address. Contact your administrator.',
@@ -22,8 +23,8 @@ function setFeedback(message) {
   }
 }
 
-if (googleStudentBtn) {
-  googleStudentBtn.href = apiUrl('/auth/google/student/start');
+if (googleBtn) {
+  googleBtn.href = apiUrl('/auth/google/student/start');
 }
 
 const params = new URLSearchParams(window.location.search);
@@ -31,6 +32,35 @@ const error = params.get('error');
 if (error) {
   setFeedback(errorMessages[error] || 'Student sign-in failed. Please try again.');
 }
+
+form?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  setFeedback('Signing in…');
+
+  const payload = Object.fromEntries(new FormData(form).entries());
+  const res = await apiFetch('/auth/login', { method: 'POST', body: payload });
+
+  if (res.ok) {
+    const body = await res.json().catch(() => ({}));
+    if (body.role && body.role !== 'STUDENT') {
+      setFeedback('This portal is for students only.');
+      return;
+    }
+    window.location.href = body.redirectTo || '/dashboard/';
+    return;
+  }
+
+  const body = await res.json().catch(() => ({}));
+  if (body.error === 'invalid_credentials') {
+    setFeedback('Incorrect email or password.');
+  } else if (body.error === 'rate_limited') {
+    setFeedback('Too many attempts. Please wait and try again.');
+  } else if (body.error === 'account_disabled') {
+    setFeedback('This student account is disabled. Contact your administrator.');
+  } else {
+    setFeedback('Sign-in failed. Please try again.');
+  }
+});
 
 (async () => {
   try {

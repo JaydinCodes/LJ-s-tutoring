@@ -87,7 +87,7 @@ describe('Auth + RBAC', () => {
     await app.close();
   });
 
-  it('requires MFA for admin password login', async () => {
+  it('allows admin password login without MFA', async () => {
     const app = await buildApp();
 
     const passwordHash = await hashPassword('correct-horse-battery-staple');
@@ -104,8 +104,12 @@ describe('Auth + RBAC', () => {
       payload: { email: res.rows[0].email, password: 'correct-horse-battery-staple' }
     });
 
-    expect(login.statusCode).toBe(403);
-    expect(login.json().error).toBe('admin_login_requires_mfa');
+    expect(login.statusCode).toBe(200);
+    expect(login.json().ok).toBe(true);
+    expect(login.json().role).toBe('ADMIN');
+    const cookies = login.headers['set-cookie'];
+    const cookieHeader = Array.isArray(cookies) ? cookies.join('; ') : String(cookies ?? '');
+    expect(cookieHeader).toContain('session=');
     await app.close();
   });
 

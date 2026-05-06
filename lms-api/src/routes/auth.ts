@@ -462,12 +462,6 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: 'invalid_credentials' });
     }
 
-    // Admin sign-in is intentionally 2-step (password + OTP).
-    // Block password-only sessions for admins to avoid bypassing MFA.
-    if (user.role === 'ADMIN') {
-      return reply.code(403).send({ error: 'admin_login_requires_mfa' });
-    }
-
     if (user.role === 'TUTOR' && !user.tutor_profile_id) {
       return reply.code(500).send({ error: 'tutor_profile_missing' });
     }
@@ -558,7 +552,6 @@ export async function authRoutes(app: FastifyInstance) {
   // ── Admin 2-step login ────────────────────────────────────────────────────
 
   const checkAdminLoginLimit = createWindowLimiter(15 * 60 * 1000, 10);
-  const checkAdminOtpLimit   = createWindowLimiter(5  * 60 * 1000, 5);
 
   app.post('/auth/admin/login', {
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } }
@@ -586,110 +579,28 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: 'invalid_credentials' });
     }
 
-    // Generate a 6-digit OTP
-    const otp       = String(crypto.randomInt(100000, 1000000));
-    const tokenHash = hashToken(otp);
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    // MFA removed: issue the full admin session JWT directly.
+    const jwt = await issueTrackedSessionJwt(app, {
+      userId: user.id,
+      role: 'ADMIN',
+    }, req);
 
-    await pool.query(
-      `insert into email_otp_tokens (user_id, token_hash, expires_at)
-       values ($1, $2, $3::timestamptz)`,
-      [user.id, tokenHash, expiresAt.toISOString()]
-    );
+    const csrfToken = setAuthCookies(reply, jwt);
+    reply.clearCookie('mfa_pending', clearAuthCookieOptions());
 
-    await sendOtpEmail({ to: email, code: otp });
-
-    // Issue a short-lived interim JWT — only valid for OTP verification
-    const interimJwt = await app.jwt.sign(
-      { userId: user.id, role: 'ADMIN', awaitingMfa: true },
-      { expiresIn: '5m' }
-    );
-
-    const isProd = process.env.NODE_ENV === 'production';
-    reply.setCookie('mfa_pending', interimJwt, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: isProd,
-      path: '/',
-      maxAge: 5 * 60,
-      ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {})
+    return reply.send({
+      ok: true,
+      token: jwt,
+      csrfToken,
+      role: 'ADMIN',
+      redirectTo: portalRedirectTarget('ADMIN', req)
     });
-
-    const payload: Record<string, unknown> = { ok: true, step: 'otp' };
-    if (process.env.NODE_ENV !== 'production') {
-      payload.debugMfaToken = interimJwt;
-    }
-    return reply.send(payload);
   });
 
   app.post('/auth/admin/verify-otp', {
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } }
   }, async (req, reply) => {
-    const parsed = AdminOtpSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
-    }
-
-    const ip = req.ip ?? 'unknown';
-    if (checkAdminOtpLimit(`ip:${ip}`)) {
-      return reply.code(429).send({ error: 'rate_limited' });
-    }
-
-    // Validate the interim JWT from the mfa_pending cookie.
-    // In non-production environments, allow a temporary header fallback
-    // to reduce local browser cookie policy friction during OTP testing.
-    const headerValue = req.headers['x-mfa-pending'];
-    const debugHeaderToken = process.env.NODE_ENV === 'production'
-      ? ''
-      : (Array.isArray(headerValue) ? String(headerValue[0] || '') : String(headerValue || ''));
-    const pendingToken = req.cookies?.mfa_pending || debugHeaderToken;
-    if (!pendingToken) {
-      return reply.code(401).send({ error: 'mfa_session_missing' });
-    }
-
-    let pendingPayload: { userId: string; role: string; awaitingMfa?: boolean };
-    try {
-      pendingPayload = await app.jwt.verify<{ userId: string; role: string; awaitingMfa?: boolean }>(pendingToken);
-    } catch {
-      return reply.code(401).send({ error: 'mfa_session_invalid' });
-    }
-
-    if (!pendingPayload.awaitingMfa || pendingPayload.role !== 'ADMIN') {
-      return reply.code(401).send({ error: 'mfa_session_invalid' });
-    }
-
-    // Verify the OTP
-    const tokenHash = hashToken(parsed.data.code);
-    const result = await pool.query(
-      `update email_otp_tokens
-       set used_at = now()
-       where token_hash = $1
-         and user_id    = $2
-         and used_at    is null
-         and expires_at >= now()
-       returning id`,
-      [tokenHash, pendingPayload.userId]
-    );
-
-    if (Number(result.rowCount ?? 0) === 0) {
-      return reply.code(401).send({ error: 'invalid_or_expired_code' });
-    }
-
-    // Issue the full session JWT
-    const jwt = await issueTrackedSessionJwt(app, {
-      userId: pendingPayload.userId,
-      role:   'ADMIN',
-    }, req);
-    const csrfToken = setAuthCookies(reply, jwt);
-
-    // Clear the interim cookie
-    reply.clearCookie('mfa_pending', clearAuthCookieOptions());
-
-    return reply.send({
-      ok: true,
-      csrfToken,
-      redirectTo: portalRedirectTarget('ADMIN', req)
-    });
+    return reply.code(410).send({ error: 'mfa_disabled' });
   });
 
   // ── Google OAuth callback (tutor sign-in) ────────────────────────────────
