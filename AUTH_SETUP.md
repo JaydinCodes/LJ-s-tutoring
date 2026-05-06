@@ -19,17 +19,17 @@ Project Odysseus student dashboard sign-in uses Google OAuth Authorization Code 
 Set these for local development:
 
 ```env
-PUBLIC_PO_API_BASE=http://localhost:3001
-PUBLIC_BASE_URL=http://localhost:3001
-STUDENT_PORTAL_URL=http://localhost:8081
-CORS_ORIGIN=http://localhost:8081,http://127.0.0.1:8081
+PUBLIC_PO_API_BASE=https://api.projectodysseus.live
+PUBLIC_BASE_URL=https://api.projectodysseus.live
+STUDENT_PORTAL_URL=https://student.projectodysseus.live
+CORS_ORIGIN=https://student.projectodysseus.live
 COOKIE_SECRET=replace_with_long_random_value
 JWT_SECRET=replace_with_long_random_value
 JWT_EXPIRES_IN=15m
 SESSION_MAX_AGE_SECONDS=900
 GOOGLE_CLIENT_ID=replace_with_google_client_id
 GOOGLE_CLIENT_SECRET=replace_with_google_client_secret
-GOOGLE_STUDENT_CALLBACK_URL=http://localhost:3001/auth/google/student/callback
+GOOGLE_STUDENT_CALLBACK_URL=https://api.projectodysseus.live/auth/google/student/callback
 ```
 
 Production additionally fails fast unless `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `PUBLIC_BASE_URL`, `STUDENT_PORTAL_URL`, and `GOOGLE_STUDENT_CALLBACK_URL` are present. Production URL values must use HTTPS.
