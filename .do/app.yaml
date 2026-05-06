@@ -129,4 +129,4 @@ static_sites:
     environment_slug: html
     envs:
       - key: PUBLIC_PO_API_BASE
-        value: ""
+        value: "https://api.projectodysseus.live"
