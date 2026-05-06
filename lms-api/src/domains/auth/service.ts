@@ -8,6 +8,7 @@ type UserRole = 'ADMIN' | 'TUTOR' | 'STUDENT';
 
 type AuthUserRow = {
   id: string;
+  email: string;
   role: UserRole;
   tutor_profile_id: string | null;
   student_id: string | null;
@@ -45,7 +46,8 @@ type VerifyErrorCode =
   | 'token_expired'
   | 'account_disabled'
   | 'tutor_profile_missing'
-  | 'student_profile_missing';
+  | 'student_profile_missing'
+  | 'student_google_required';
 
 type VerifyFailure = {
   ok: false;
@@ -221,7 +223,7 @@ export async function requestMagicLink(
   }
 
   const userRes = await client.query(
-    `select id, role, tutor_profile_id, student_id, is_active
+    `select id, email, role, tutor_profile_id, student_id, is_active
      from users
      where email = $1`,
     [email]
@@ -233,6 +235,9 @@ export async function requestMagicLink(
 
   const user = userRes.rows[0] as AuthUserRow;
   if (!user.is_active) {
+    return { ok: true };
+  }
+  if (user.role === 'STUDENT') {
     return { ok: true };
   }
 
@@ -341,14 +346,13 @@ export async function verifyMagicLink(
   if (!row.is_active) {
     return { ok: false, status: 403, error: 'account_disabled' };
   }
+  if (row.role === 'STUDENT') {
+    return { ok: false, status: 403, error: 'student_google_required' };
+  }
 
   if (row.role === 'TUTOR' && !row.tutor_profile_id) {
     return { ok: false, status: 500, error: 'tutor_profile_missing' };
   }
-  if (row.role === 'STUDENT' && !row.student_id) {
-    return { ok: false, status: 500, error: 'student_profile_missing' };
-  }
-
   const risk = await computeRiskScore(client, row.user_id, ip, context);
 
   await writeAuthEvent(client, {

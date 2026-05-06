@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { pool } from '../src/db/pool.js';
 import { resetDb } from './helpers/db.js';
-import { createAdmin, createStudent, createTutor, issueMagicToken, loginWithMagicToken } from './helpers/factories.js';
+import { createAdmin, createStudent, createTutor, issueMagicToken, loginAsTestUser, loginWithMagicToken } from './helpers/factories.js';
 
 describe('Community RBAC', () => {
   beforeEach(async () => {
@@ -26,13 +26,13 @@ describe('Community RBAC', () => {
     const studentUserRes = await pool.query(
       `insert into users (email, role, student_id)
        values ($1, 'STUDENT', $2)
-       returning id`,
+       returning id, email`,
       ['student-community-rbac@test.local', student.id]
     );
 
     const adminAuth = await loginWithMagicToken(app, await issueMagicToken(admin.id));
     const tutorAuth = await loginWithMagicToken(app, await issueMagicToken(tutorUser.id));
-    const studentAuth = await loginWithMagicToken(app, await issueMagicToken(studentUserRes.rows[0].id as string));
+    const studentAuth = await loginAsTestUser(app, { email: studentUserRes.rows[0].email as string, role: 'STUDENT' });
 
     const questionByAdmin = await app.inject({
       method: 'POST',

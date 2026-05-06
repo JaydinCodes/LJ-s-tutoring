@@ -8,6 +8,11 @@ export type AuthUser = {
   role: Role;
   tutorId?: string;
   studentId?: string;
+  profile?: {
+    email?: string;
+    name?: string;
+    picture?: string;
+  };
 };
 
 export type ImpersonationContext = {

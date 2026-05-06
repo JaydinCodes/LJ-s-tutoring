@@ -21,7 +21,58 @@ import { phase3Routes } from './routes/phase3.js';
 import { assistantRoutes } from './routes/assistant.js';
 import { odieCareersRoutes } from './routes/odie-careers.js';
 
+const kGenerateCallbackUriParams = Symbol.for('fastify-oauth2.generate-callback-uri-params');
+
+function requiredProductionEnv(name: string) {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`${name} is required in production`);
+  }
+  return value;
+}
+
+function assertHttpsUrl(name: string, value: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`${name} must be a valid URL`);
+  }
+  if (parsed.protocol !== 'https:') {
+    throw new Error(`${name} must use https in production`);
+  }
+}
+
+function validateProductionAuthEnv() {
+  if (process.env.NODE_ENV !== 'production') return;
+
+  const sessionSecret = process.env.JWT_SECRET?.trim() || process.env.COOKIE_SECRET?.trim();
+  if (!sessionSecret) {
+    throw new Error('JWT_SECRET or COOKIE_SECRET is required in production');
+  }
+
+  requiredProductionEnv('GOOGLE_CLIENT_ID');
+  requiredProductionEnv('GOOGLE_CLIENT_SECRET');
+  for (const name of ['PUBLIC_BASE_URL', 'STUDENT_PORTAL_URL', 'GOOGLE_STUDENT_CALLBACK_URL']) {
+    assertHttpsUrl(name, requiredProductionEnv(name));
+  }
+}
+
+function oauthCookieOptions() {
+  const isProd = process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: isProd,
+    path: '/',
+    maxAge: 10 * 60,
+    ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {})
+  };
+}
+
 export async function buildApp() {
+  validateProductionAuthEnv();
+
   const logger = process.env.NODE_ENV === 'test'
     ? { level: process.env.LOG_LEVEL ?? 'info', stream: process.stdout }
     : true;
@@ -171,28 +222,49 @@ export async function buildApp() {
 
   // Google OAuth — only active when credentials are configured
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    const googleAuth = {
+      ...oauth2.GOOGLE_CONFIGURATION,
+      [kGenerateCallbackUriParams]: (
+        callbackUriParams: Record<string, unknown>,
+        _requestObject: unknown,
+        _scope: unknown,
+        state: string
+      ) => ({
+        ...callbackUriParams,
+        nonce: state,
+        prompt: 'select_account'
+      })
+    };
     const googleCredentials = {
       credentials: {
         client: {
           id: process.env.GOOGLE_CLIENT_ID,
           secret: process.env.GOOGLE_CLIENT_SECRET
         },
-        auth: oauth2.GOOGLE_CONFIGURATION
+        auth: googleAuth
       }
     };
     await app.register(oauth2, {
       name: 'googleOAuth2',
-      scope: ['profile', 'email'],
+      scope: ['openid', 'profile', 'email'],
       ...googleCredentials,
       startRedirectPath: '/auth/google/start',
-      callbackUri: process.env.GOOGLE_CALLBACK_URL ?? 'http://localhost:3001/auth/google/callback'
+      callbackUri: process.env.GOOGLE_CALLBACK_URL ?? 'http://localhost:3001/auth/google/callback',
+      pkce: 'S256',
+      cookie: oauthCookieOptions(),
+      redirectStateCookieName: 'google_oauth_state',
+      verifierCookieName: 'google_oauth_pkce'
     });
     await app.register(oauth2, {
       name: 'googleStudentOAuth2',
-      scope: ['profile', 'email'],
+      scope: ['openid', 'profile', 'email'],
       ...googleCredentials,
       startRedirectPath: '/auth/google/student/start',
-      callbackUri: process.env.GOOGLE_STUDENT_CALLBACK_URL ?? 'http://localhost:3001/auth/google/student/callback'
+      callbackUri: process.env.GOOGLE_STUDENT_CALLBACK_URL ?? 'http://localhost:3001/auth/google/student/callback',
+      pkce: 'S256',
+      cookie: oauthCookieOptions(),
+      redirectStateCookieName: 'google_student_oauth_state',
+      verifierCookieName: 'google_student_oauth_pkce'
     });
   }
 

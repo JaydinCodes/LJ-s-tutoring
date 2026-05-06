@@ -116,11 +116,54 @@
       justify-self: start;
     }
 
+    .student-session {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-left: 0.5rem;
+      min-width: 0;
+    }
+
+    .student-session[hidden] {
+      display: none;
+    }
+
+    .student-avatar {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      flex: 0 0 auto;
+    }
+
+    .student-name {
+      max-width: 12rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--brand-dark);
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .student-logout {
+      padding: 0.55rem 0.85rem;
+      box-shadow: none;
+      font-size: 0.84rem;
+    }
+
     @media (max-width: 860px) {
       .home-hero-grid,
       .growth-layout,
       .corner-grid {
         grid-template-columns: 1fr;
+      }
+
+      .student-session {
+        width: 100%;
+        justify-content: center;
+        margin-left: 0;
       }
     }
   </style>
@@ -135,6 +178,11 @@
           <a class="nav-link" data-nav="reports" href="/reports/">Reports</a>
           <a class="nav-link" data-nav="community" href="/dashboard/community/">Community</a>
           <a class="nav-link" data-nav="career" href="/dashboard/career/">Careers</a>
+        </div>
+        <div id="studentSession" class="student-session" hidden>
+          <img id="studentAvatar" class="student-avatar" src="" alt="">
+          <span id="studentName" class="student-name"></span>
+          <button id="studentLogout" class="button secondary student-logout" type="button">Sign out</button>
         </div>
       </div>
     </nav>

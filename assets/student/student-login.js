@@ -1,72 +1,48 @@
 import { apiFetch, apiUrl } from '../common.js';
 
-const stepEmail    = document.getElementById('stepEmail');
-const stepSent     = document.getElementById('stepSent');
-const magicForm    = document.getElementById('magicForm');
-const magicFeedback = document.getElementById('magicFeedback');
-const sentMessage  = document.getElementById('sentMessage');
-const resendBtn    = document.getElementById('resendBtn');
-const resendFeedback = document.getElementById('resendFeedback');
+const feedback = document.getElementById('authFeedback');
 const googleStudentBtn = document.getElementById('googleStudentBtn');
 
-let lastEmail = '';
+const errorMessages = {
+  account_not_found: 'No student account found for that Google address. Contact your administrator.',
+  wrong_role: 'That Google account is linked to another portal.',
+  account_disabled: 'This student account is disabled. Contact your administrator.',
+  google_domain_not_allowed: 'Use the Google account approved for Project Odysseus.',
+  google_email_not_verified: 'Google has not verified that email address.',
+  google_id_token_missing: 'Google sign-in did not return the required identity token. Please try again.',
+  google_id_token_invalid: 'Google sign-in could not be verified. Please try again.',
+  google_nonce_invalid: 'Google sign-in expired. Please start again.',
+  oauth_callback_failed: 'Google sign-in could not be completed. Please try again.',
+  google_oauth_not_configured: 'Google sign-in is not available yet. Contact your administrator.',
+};
+
+function setFeedback(message) {
+  if (feedback) {
+    feedback.textContent = message || '';
+  }
+}
 
 if (googleStudentBtn) {
   googleStudentBtn.href = apiUrl('/auth/google/student/start');
-
-  const params = new URLSearchParams(window.location.search);
-  const error = params.get('error');
-  if (error === 'account_not_found') {
-    magicFeedback.textContent = 'No student account found for that Google address. Contact your administrator.';
-  } else if (error === 'wrong_role') {
-    magicFeedback.textContent = 'That Google account is linked to another portal.';
-  }
 }
 
-async function requestLink(email, feedbackEl) {
-  const res = await apiFetch('/auth/request-link', {
-    method: 'POST',
-    body: { email },
-  });
-  const body = await res.json().catch(() => ({}));
-  // API always returns ok:true to prevent email enumeration
-  if (!res.ok) {
-    feedbackEl.textContent = 'Something went wrong. Please try again.';
-    return null;
-  }
-  return body;
+const params = new URLSearchParams(window.location.search);
+const error = params.get('error');
+if (error) {
+  setFeedback(errorMessages[error] || 'Student sign-in failed. Please try again.');
 }
 
-magicForm?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  magicFeedback.textContent = 'Sending link…';
-  lastEmail = magicForm.querySelector('#email').value.trim();
-
-  const result = await requestLink(lastEmail, magicFeedback);
-  if (!result) {
-    return;
+(async () => {
+  try {
+    const res = await apiFetch('/auth/session');
+    if (!res.ok) {
+      return;
+    }
+    const data = await res.json().catch(() => ({}));
+    if (data?.user?.role === 'STUDENT') {
+      window.location.replace('/dashboard/');
+    }
+  } catch {
+    // Signed-out users stay on the Google sign-in page.
   }
-
-  magicFeedback.textContent = '';
-  sentMessage.textContent = `We sent a sign-in link to ${lastEmail}. Click the link to sign in.`;
-  if (result.debugMagicLink) {
-    sentMessage.textContent = 'Local dev mode: open this sign-in link to continue.';
-    const devLink = document.createElement('a');
-    devLink.className = 'button';
-    devLink.href = result.debugMagicLink;
-    devLink.textContent = 'Open sign-in link';
-    sentMessage.after(devLink);
-  }
-  stepEmail.hidden = true;
-  stepSent.hidden = false;
-});
-
-resendBtn?.addEventListener('click', async () => {
-  resendFeedback.textContent = 'Sending again…';
-  resendBtn.disabled = true;
-  const result = await requestLink(lastEmail, resendFeedback);
-  resendBtn.disabled = false;
-  if (result) {
-    resendFeedback.textContent = 'Sent! Check your inbox.';
-  }
-});
+})();
