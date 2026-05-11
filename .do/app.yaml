@@ -1,5 +1,6 @@
 name: project-odysseus
 region: fra
+
 domains:
   - domain: projectodysseus.live
     type: PRIMARY
@@ -9,9 +10,128 @@ domains:
     type: ALIAS
   - domain: student.projectodysseus.live
     type: ALIAS
+  - domain: api.projectodysseus.live
+    type: ALIAS
+
+envs:
+  - key: PUBLIC_PO_API_BASE
+    scope: RUN_AND_BUILD_TIME
+    value: https://api.projectodysseus.live
+  - key: PUBLIC_BASE_URL
+    scope: RUN_AND_BUILD_TIME
+    value: https://api.projectodysseus.live
+  - key: NODE_ENV
+    scope: RUN_AND_BUILD_TIME
+    value: production
+  - key: ADMIN_PORTAL_URL
+    scope: RUN_AND_BUILD_TIME
+    value: https://admin.projectodysseus.live/admin
+  - key: TUTOR_PORTAL_URL
+    scope: RUN_AND_BUILD_TIME
+    value: https://tutor.projectodysseus.live/tutor
+  - key: STUDENT_PORTAL_URL
+    scope: RUN_AND_BUILD_TIME
+    value: https://student.projectodysseus.live
+  - key: TRUST_PROXY
+    scope: RUN_AND_BUILD_TIME
+    value: "1"
+  - key: PORT
+    scope: RUN_AND_BUILD_TIME
+    value: "3001"
+  - key: CORS_ORIGIN
+    scope: RUN_AND_BUILD_TIME
+    value: https://projectodysseus.live,https://www.projectodysseus.live,https://admin.projectodysseus.live,https://tutor.projectodysseus.live,https://student.projectodysseus.live
+  - key: COOKIE_DOMAIN
+    scope: RUN_AND_BUILD_TIME
+    value: .projectodysseus.live
+  - key: GOOGLE_CALLBACK_URL
+    scope: RUN_AND_BUILD_TIME
+    value: https://api.projectodysseus.live/auth/google/callback
+  - key: GOOGLE_STUDENT_CALLBACK_URL
+    scope: RUN_AND_BUILD_TIME
+    value: https://api.projectodysseus.live/auth/google/student/callback
+  - key: JWT_EXPIRES_IN
+    scope: RUN_AND_BUILD_TIME
+    value: 15m
+  - key: ODIE_CAREERS_DEV_BYPASS
+    scope: RUN_AND_BUILD_TIME
+    value: "false"
+  - key: ASSISTANT_ENABLED
+    scope: RUN_AND_BUILD_TIME
+    value: "true"
+  - key: ODIE_ALLOW_ACCESS_KEY_FALLBACK
+    scope: RUN_AND_BUILD_TIME
+    value: "false"
+  - key: DEFAULT_MODEL
+    scope: RUN_AND_BUILD_TIME
+    value: google/gemma-4-26b-a4b-it:free
+  - key: MAX_TOKENS
+    scope: RUN_AND_BUILD_TIME
+    value: "1024"
+  - key: TEMPERATURE
+    scope: RUN_AND_BUILD_TIME
+    value: "0.4"
+  - key: EMAIL_FROM
+    scope: RUN_AND_BUILD_TIME
+    value: projectodysseus.maths@gmail.com
+  - key: DATABASE_URL
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+    value: ${DATABASE_URL}
+  - key: POSTGRES_PASSWORD
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+    value: ${POSTGRES_PASSWORD}
+  - key: COOKIE_SECRET
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+    value: ${COOKIE_SECRET}
+  - key: JWT_SECRET
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+    value: ${JWT_SECRET}
+  - key: ADMIN_BOOTSTRAP_TOKEN
+    scope: RUN_AND_BUILD_TIME
+    value: change_me
+  - key: GOOGLE_CLIENT_ID
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+    value: ${GOOGLE_CLIENT_ID}
+  - key: GOOGLE_CLIENT_SECRET
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+    value: ${GOOGLE_CLIENT_SECRET}
+  - key: OPENROUTER_API_KEY
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+    value: ${OPENROUTER_API_KEY}
+  - key: EMAIL_PROVIDER_KEY
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+    value: ${EMAIL_PROVIDER_KEY}
+  - key: API_DEPLOY_COMMAND
+    scope: RUN_AND_BUILD_TIME
+    value: production
+  - key: ODIE_ACCESS_KEYS
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+    value: ${ODIE_ACCESS_KEYS}
+  - key: GATEWAY_SHARED_KEY
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+    value: ${GATEWAY_SHARED_KEY}
 
 ingress:
   rules:
+    - match:
+        authority:
+          exact: api.projectodysseus.live
+        path:
+          prefix: /
+      component:
+        name: lms-api
+        preserve_path_prefix: true
+
     - match:
         authority:
           exact: admin.projectodysseus.live
@@ -86,6 +206,14 @@ ingress:
         preserve_path_prefix: true
     - match:
         authority:
+          exact: student.projectodysseus.live
+        path:
+          prefix: /reports
+      component:
+        name: website
+        preserve_path_prefix: true
+    - match:
+        authority:
           exact: admin.projectodysseus.live
         path:
           prefix: /
@@ -117,6 +245,20 @@ ingress:
       component:
         name: website
 
+services:
+  - name: lms-api
+    github:
+      repo: JustTryingToDoBetter/LJ-s-tutoring
+      branch: main
+      deploy_on_push: true
+    source_dir: lms-api
+    dockerfile_path: Dockerfile
+    http_port: 3001
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    health_check:
+      http_path: /health
+
 static_sites:
   - name: website
     build_command: npm ci && npm run build
@@ -129,4 +271,8 @@ static_sites:
     environment_slug: html
     envs:
       - key: PUBLIC_PO_API_BASE
-        value: "https://api.projectodysseus.live"
+        scope: BUILD_TIME
+        value: https://api.projectodysseus.live
+      - key: ASSISTANT_ENABLED
+        scope: BUILD_TIME
+        value: "true"
