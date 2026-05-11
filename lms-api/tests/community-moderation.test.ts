@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { pool } from '../src/db/pool.js';
 import { resetDb } from './helpers/db.js';
-import { createStudent, createTutor, issueMagicToken, loginWithMagicToken } from './helpers/factories.js';
+import { createStudent, createTutor, issueMagicToken, loginAsTestUser, loginWithMagicToken } from './helpers/factories.js';
 
 describe('Community moderation endpoints', () => {
   beforeEach(async () => {
@@ -27,19 +27,19 @@ describe('Community moderation endpoints', () => {
     const studentAUser = await pool.query(
       `insert into users (email, role, student_id)
        values ($1, 'STUDENT', $2)
-       returning id`,
+       returning id, email`,
       ['student-a-community-mod@test.local', studentA.id]
     );
     const studentBUser = await pool.query(
       `insert into users (email, role, student_id)
        values ($1, 'STUDENT', $2)
-       returning id`,
+       returning id, email`,
       ['student-b-community-mod@test.local', studentB.id]
     );
 
     const tutorAuth = await loginWithMagicToken(app, await issueMagicToken(tutorUser.id));
-    const studentAAuth = await loginWithMagicToken(app, await issueMagicToken(studentAUser.rows[0].id as string));
-    const studentBAuth = await loginWithMagicToken(app, await issueMagicToken(studentBUser.rows[0].id as string));
+    const studentAAuth = await loginAsTestUser(app, { email: studentAUser.rows[0].email as string, role: 'STUDENT' });
+    const studentBAuth = await loginAsTestUser(app, { email: studentBUser.rows[0].email as string, role: 'STUDENT' });
 
     const questionRes = await app.inject({
       method: 'POST',

@@ -1,6 +1,6 @@
 // Auth guard for student dashboard pages.
 // Redirects to student login if not authenticated as STUDENT.
-(async function () {
+(function () {
   function resolveApiBase() {
     const raw = String(window.__PO_API_BASE__ || '').replace(/\/$/, '');
     const host = window.location.hostname;
@@ -31,16 +31,24 @@
   }
 
   const API_BASE = resolveApiBase();
-  try {
-    const res = await fetch(`${API_BASE}/auth/session`, { credentials: 'include' });
-    if (!res.ok) {
-      throw new Error('unauthenticated');
+  document.documentElement.dataset.studentAuth = 'checking';
+
+  window.__PO_STUDENT_AUTH__ = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/session`, { credentials: 'include' });
+      if (!res.ok) {
+        throw new Error('unauthenticated');
+      }
+      const data = await res.json();
+      if (!data?.user || data.user.role !== 'STUDENT') {
+        throw new Error('wrong_role');
+      }
+      document.documentElement.dataset.studentAuth = 'signed-in';
+      return data;
+    } catch (err) {
+      document.documentElement.dataset.studentAuth = 'signed-out';
+      window.location.replace('/dashboard/login.html');
+      throw err;
     }
-    const data = await res.json();
-    if (!data?.user || data.user.role !== 'STUDENT') {
-      throw new Error('wrong_role');
-    }
-  } catch {
-    window.location.replace('/dashboard/login.html');
-  }
+  })();
 }());

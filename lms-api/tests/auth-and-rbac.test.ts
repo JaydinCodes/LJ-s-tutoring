@@ -10,6 +10,7 @@ import {
   createStudentUser,
   createTutor,
   issueMagicToken,
+  loginAsTestUser,
   loginWithMagicToken
 } from './helpers/factories.js';
 
@@ -131,7 +132,7 @@ describe('Auth + RBAC', () => {
     await app.close();
   });
 
-  it('requires MFA for admin password login', async () => {
+  it('allows admin password login without MFA', async () => {
     const app = await buildApp();
 
     const passwordHash = await hashPassword('correct-horse-battery-staple');
@@ -148,8 +149,12 @@ describe('Auth + RBAC', () => {
       payload: { email: res.rows[0].email, password: 'correct-horse-battery-staple' }
     });
 
-    expect(login.statusCode).toBe(403);
-    expect(login.json().error).toBe('admin_login_requires_mfa');
+    expect(login.statusCode).toBe(200);
+    expect(login.json().ok).toBe(true);
+    expect(login.json().role).toBe('ADMIN');
+    const cookies = login.headers['set-cookie'];
+    const cookieHeader = Array.isArray(cookies) ? cookies.join('; ') : String(cookies ?? '');
+    expect(cookieHeader).toContain('session=');
     await app.close();
   });
 
@@ -314,6 +319,56 @@ describe('Auth + RBAC', () => {
     await app.close();
   });
 
+  it('blocks unauthenticated student dashboard API access', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/dashboard'
+    });
+
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it('allows protected dashboard access for an authenticated student session', async () => {
+    const app = await buildApp();
+    const auth = await loginAsTestUser(app, { email: 'student-dashboard@test.local', role: 'STUDENT' });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/dashboard',
+      headers: auth.headers
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().thisWeek).toBeTruthy();
+    await app.close();
+  });
+
+  it('rejects expired student sessions', async () => {
+    const app = await buildApp();
+    const { user } = await createStudentUser({
+      email: 'student-expired@example.com',
+      fullName: 'Student Expired',
+      grade: '10'
+    });
+
+    const expired = await app.jwt.sign({
+      userId: user.id,
+      role: 'STUDENT',
+      studentId: user.student_id,
+    }, { expiresIn: '-10s' });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/dashboard',
+      headers: { cookie: `session=${expired}` }
+    });
+
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
   it('rate limits magic link requests', async () => {
     const app = await buildApp();
     const admin = await createAdmin('admin@example.com');
@@ -329,6 +384,25 @@ describe('Auth + RBAC', () => {
     }
 
     expect(status).toBe(429);
+    await app.close();
+  });
+
+  it('does not allow student dashboard sessions from magic links', async () => {
+    const app = await buildApp();
+    const { user } = await createStudentUser({
+      email: 'student-magic-disabled@example.com',
+      fullName: 'Student Magic Disabled',
+      grade: '10'
+    });
+
+    const token = await issueMagicToken(user.id);
+    const res = await app.inject({
+      method: 'GET',
+      url: `/auth/verify?token=${token}`
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error).toBe('student_google_required');
     await app.close();
   });
 
@@ -379,13 +453,14 @@ describe('Auth + RBAC', () => {
     });
 
     (app as any).googleOAuth2 = {
-      getAccessTokenFromAuthorizationCodeFlow: async () => ({ token: { access_token: 'test-access-token' } })
+      getAccessTokenFromAuthorizationCodeFlow: async () => ({ token: { id_token: 'test-id-token' } })
     };
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = (async () => ({
-      ok: true,
-      json: async () => ({ id: 'google-tutor-1', email: user.email, verified_email: true })
-    })) as any;
+    (app as any).verifyGoogleIdToken = async () => ({
+      id: 'google-tutor-1',
+      email: user.email,
+      emailVerified: true,
+      name: 'Tutor One'
+    });
 
     try {
       const res = await app.inject({
@@ -400,7 +475,6 @@ describe('Auth + RBAC', () => {
       const linked = await pool.query('select google_id from users where id = $1', [user.id]);
       expect(linked.rows[0].google_id).toBe('google-tutor-1');
     } finally {
-      globalThis.fetch = originalFetch;
       await app.close();
     }
   });
@@ -414,13 +488,15 @@ describe('Auth + RBAC', () => {
     });
 
     (app as any).googleStudentOAuth2 = {
-      getAccessTokenFromAuthorizationCodeFlow: async () => ({ token: { access_token: 'test-access-token' } })
+      getAccessTokenFromAuthorizationCodeFlow: async () => ({ token: { id_token: 'test-id-token' } })
     };
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = (async () => ({
-      ok: true,
-      json: async () => ({ id: 'google-student-1', email: user.email, verified_email: true })
-    })) as any;
+    (app as any).verifyGoogleIdToken = async () => ({
+      id: 'google-student-1',
+      email: user.email,
+      emailVerified: true,
+      name: 'Student One',
+      picture: 'https://lh3.googleusercontent.com/a/student'
+    });
 
     try {
       const res = await app.inject({
@@ -431,22 +507,48 @@ describe('Auth + RBAC', () => {
       expect(res.statusCode).toBe(302);
       expect(res.headers.location).toBe('/dashboard/');
       expect(String(res.headers['set-cookie'])).toContain('session=');
+      const sessionCookie = String(res.headers['set-cookie']);
+      const sessionMatch = sessionCookie.match(/session=([^;]+)/);
+      expect(sessionMatch?.[1]).toBeTruthy();
+      const session = await app.inject({
+        method: 'GET',
+        url: '/auth/session',
+        headers: { cookie: `session=${sessionMatch?.[1]}` }
+      });
+      expect(session.json().user.profile.email).toBe(user.email);
+      expect(session.json().user.profile.picture).toContain('googleusercontent.com');
     } finally {
-      globalThis.fetch = originalFetch;
       await app.close();
     }
+  });
+
+  it('redirects student Google callbacks with invalid ID tokens back to login', async () => {
+    const app = await buildApp();
+    (app as any).googleStudentOAuth2 = {
+      getAccessTokenFromAuthorizationCodeFlow: async () => ({ token: { id_token: 'invalid-id-token' } })
+    };
+    (app as any).verifyGoogleIdToken = async () => {
+      throw new Error('google_id_token_invalid');
+    };
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/auth/google/student/callback?code=test'
+    });
+
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('/dashboard/login.html?error=google_id_token_invalid');
+    await app.close();
   });
 
   it('rejects Google OAuth profiles without a verified email', async () => {
     const app = await buildApp();
     (app as any).googleOAuth2 = {
-      getAccessTokenFromAuthorizationCodeFlow: async () => ({ token: { access_token: 'test-access-token' } })
+      getAccessTokenFromAuthorizationCodeFlow: async () => ({ token: { id_token: 'test-id-token' } })
     };
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = (async () => ({
-      ok: true,
-      json: async () => ({ id: 'google-tutor-2', email: 'tutor@example.com', verified_email: false })
-    })) as any;
+    (app as any).verifyGoogleIdToken = async () => {
+      throw new Error('google_email_not_verified');
+    };
 
     try {
       const res = await app.inject({
@@ -457,7 +559,6 @@ describe('Auth + RBAC', () => {
       expect(res.statusCode).toBe(403);
       expect(res.json().error).toBe('google_email_not_verified');
     } finally {
-      globalThis.fetch = originalFetch;
       await app.close();
     }
   });

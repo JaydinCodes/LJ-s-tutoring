@@ -10,6 +10,11 @@ type JwtPayload = {
   role: 'ADMIN' | 'TUTOR' | 'STUDENT';
   tutorId?: string;
   studentId?: string;
+  profile?: {
+    email?: string;
+    name?: string;
+    picture?: string;
+  };
 };
 
 type ImpersonationPayload = {
@@ -151,6 +156,7 @@ export const authPlugin = fp(async function authPlugin(app: FastifyInstance) {
         role: decoded.role,
         tutorId: decoded.tutorId,
         studentId: decoded.studentId,
+        profile: decoded.profile,
       };
       req.user = user;
     } catch {

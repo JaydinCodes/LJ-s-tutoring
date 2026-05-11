@@ -1,4 +1,4 @@
-import { loadJson, renderList, renderLoading, renderError, renderEmpty, setActiveNav, setText } from '/assets/common.js';
+import { apiFetch, loadJson, renderList, renderLoading, renderError, renderEmpty, setActiveNav, setText } from '/assets/common.js';
 import { track } from '/assets/analytics.js';
 
 setActiveNav('dashboard');
@@ -93,6 +93,54 @@ function setupReflection() {
   save?.addEventListener('click', persist);
 }
 
+async function waitForStudentAuth() {
+  if (!window.__PO_STUDENT_AUTH__) {
+    return null;
+  }
+  try {
+    return await window.__PO_STUDENT_AUTH__;
+  } catch {
+    return null;
+  }
+}
+
+function setupStudentSession(authState) {
+  const user = authState?.user;
+  const profile = user?.profile || {};
+  const shell = document.getElementById('studentSession');
+  const avatar = document.getElementById('studentAvatar');
+  const name = document.getElementById('studentName');
+  const logout = document.getElementById('studentLogout');
+
+  if (!shell || !user) {
+    return;
+  }
+
+  const displayName = profile.name || profile.email || 'Student';
+  if (name) {
+    name.textContent = displayName;
+    name.title = displayName;
+  }
+  if (avatar) {
+    if (profile.picture) {
+      avatar.src = profile.picture;
+      avatar.hidden = false;
+    } else {
+      avatar.hidden = true;
+    }
+  }
+  shell.hidden = false;
+
+  logout?.addEventListener('click', async () => {
+    logout.disabled = true;
+    try {
+      await apiFetch('/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.replace('/dashboard/login.html');
+    }
+  });
+}
+
 function updateWeeklyRhythm(data) {
   const label = document.getElementById('weeklyRhythmLabel');
   const bar = document.getElementById('weeklyRhythmBar');
@@ -112,6 +160,12 @@ updateTodayDate();
 setupReflection();
 
 (async () => {
+  const authState = await waitForStudentAuth();
+  if (!authState) {
+    return;
+  }
+  setupStudentSession(authState);
+
   const upcoming = document.getElementById('upcomingSession');
   const snapshot = document.getElementById('progressSnapshot');
   renderLoading(upcoming, 'Loading your next session...');

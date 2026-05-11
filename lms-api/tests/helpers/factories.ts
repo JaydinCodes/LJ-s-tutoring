@@ -175,6 +175,20 @@ export async function loginWithMagicToken(app: any, token: string) {
     url: `/auth/verify?token=${token}`
   });
 
+  return authFromResponse(res);
+}
+
+export async function loginAsTestUser(app: any, input: { email: string; role: 'ADMIN' | 'TUTOR' | 'STUDENT' }) {
+  const res = await app.inject({
+    method: 'POST',
+    url: '/test/login-as',
+    payload: input
+  });
+
+  return authFromResponse(res);
+}
+
+function authFromResponse(res: any) {
   const cookieHeader = res.headers['set-cookie'];
   const rawCookies = Array.isArray(cookieHeader)
     ? cookieHeader

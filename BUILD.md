@@ -53,8 +53,8 @@ If your API component must build from repository root, use `npm run build:api` a
 
 Routing note:
 
-- The app spec in `.do/app.yaml` uses component routes: `website` serves `/` and `api` serves `/api`.
-- The static site sets `PUBLIC_PO_API_BASE=/api` so browser calls land on the API prefix.
+- The app spec in `.do/app.yaml` uses component routes for the static `website` and the API.
+- The static site sets `PUBLIC_PO_API_BASE=https://api.projectodysseus.live` so browser calls land on the API subdomain.
 - Without this route setup, API endpoints can return static-site 404 pages.
 
 ### GitHub Deploy Workflow Inputs

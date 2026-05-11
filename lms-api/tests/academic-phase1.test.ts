@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { pool } from '../src/db/pool.js';
 import { resetDb } from './helpers/db.js';
-import { createAssignment, createStudent, createTutor, issueMagicToken, loginWithMagicToken } from './helpers/factories.js';
+import { createAssignment, createStudent, createTutor, issueMagicToken, loginAsTestUser, loginWithMagicToken } from './helpers/factories.js';
 
 describe('Academic OS Phase 1', () => {
   beforeEach(async () => {
@@ -20,12 +20,11 @@ describe('Academic OS Phase 1', () => {
     const userRes = await pool.query(
       `insert into users (email, role, student_id)
        values ($1, 'STUDENT', $2)
-       returning id`,
+       returning id, email`,
       ['student-streak@test.local', student.id]
     );
 
-    const token = await issueMagicToken(userRes.rows[0].id as string);
-    const auth = await loginWithMagicToken(app, token);
+    const auth = await loginAsTestUser(app, { email: userRes.rows[0].email as string, role: 'STUDENT' });
 
     const first = await app.inject({
       method: 'POST',
@@ -84,14 +83,13 @@ describe('Academic OS Phase 1', () => {
     const studentUserRes = await pool.query(
       `insert into users (email, role, student_id)
        values ($1, 'STUDENT', $2)
-       returning id`,
+       returning id, email`,
       ['student-report@test.local', student.id]
     );
 
     const tutorToken = await issueMagicToken(tutorUser.id);
     const tutorAuth = await loginWithMagicToken(app, tutorToken);
-    const studentToken = await issueMagicToken(studentUserRes.rows[0].id as string);
-    const studentAuth = await loginWithMagicToken(app, studentToken);
+    const studentAuth = await loginAsTestUser(app, { email: studentUserRes.rows[0].email as string, role: 'STUDENT' });
 
     const generated = await app.inject({
       method: 'POST',

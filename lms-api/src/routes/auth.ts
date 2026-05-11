@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { OAuth2Namespace } from '@fastify/oauth2';
+import { OAuth2Client } from 'google-auth-library';
 import crypto from 'node:crypto';
 
 // Augment FastifyInstance so TypeScript knows about googleOAuth2 when the plugin is registered
@@ -7,6 +8,11 @@ declare module 'fastify' {
   interface FastifyInstance {
     googleOAuth2?: OAuth2Namespace;
     googleStudentOAuth2?: OAuth2Namespace;
+    verifyGoogleIdToken?: (input: {
+      idToken: string;
+      audience: string;
+      nonce?: string;
+    }) => Promise<GoogleVerifiedProfile>;
   }
 }
 import { pool } from '../db/pool.js';
@@ -15,6 +21,35 @@ import { LoginSchema, MagicLinkRequestSchema, RegisterAdminSchema, AdminLoginSch
 import { sendOtpEmail } from '../lib/email.js';
 import { safeAuditMeta, writeAuditLog } from '../lib/audit.js';
 import { findUserByEmail, requestMagicLink, verifyMagicLink } from '../domains/auth/service.js';
+
+type UserRole = 'ADMIN' | 'TUTOR' | 'STUDENT';
+
+type SessionProfile = {
+  email?: string;
+  name?: string;
+  picture?: string;
+};
+
+type SessionJwtPayload = {
+  userId: string;
+  role: UserRole;
+  tutorId?: string;
+  studentId?: string;
+  profile?: SessionProfile;
+};
+
+type GoogleVerifiedProfile = {
+  id: string;
+  email: string;
+  emailVerified: boolean;
+  name?: string;
+  picture?: string;
+  givenName?: string;
+  familyName?: string;
+  hd?: string;
+};
+
+const googleOAuthVerifier = new OAuth2Client();
 
 function setPrivateNoStore(reply: any) {
   reply.header('Cache-Control', 'private, no-store, max-age=0');
@@ -25,6 +60,27 @@ function cookieDomain() {
   return process.env.COOKIE_DOMAIN || undefined;
 }
 
+function durationToSeconds(value: string | undefined) {
+  if (!value) return null;
+  const trimmed = value.trim().toLowerCase();
+  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+  const match = trimmed.match(/^(\d+)(s|m|h|d)$/);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  const unit = match[2];
+  if (unit === 's') return amount;
+  if (unit === 'm') return amount * 60;
+  if (unit === 'h') return amount * 60 * 60;
+  if (unit === 'd') return amount * 60 * 60 * 24;
+  return null;
+}
+
+function sessionCookieMaxAgeSeconds() {
+  const explicit = durationToSeconds(process.env.SESSION_MAX_AGE_SECONDS);
+  const fromJwt = durationToSeconds(process.env.JWT_EXPIRES_IN);
+  return Math.max(60, explicit ?? fromJwt ?? 15 * 60);
+}
+
 function sessionCookieOptions() {
   const isProd = process.env.NODE_ENV === 'production';
   return {
@@ -32,7 +88,7 @@ function sessionCookieOptions() {
     sameSite: 'lax' as const,
     secure: isProd,
     path: '/',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: sessionCookieMaxAgeSeconds(),
     ...(cookieDomain() ? { domain: cookieDomain() } : {})
   };
 }
@@ -69,6 +125,91 @@ function sessionExpiryFromJwt(app: FastifyInstance, jwtToken: string): string | 
   return new Date(decoded.exp * 1000).toISOString();
 }
 
+function getRequestHeader(req: any, name: string): string {
+  const raw = req?.headers?.[name.toLowerCase()] ?? req?.headers?.[name];
+  if (Array.isArray(raw)) return String(raw[0] ?? '');
+  if (typeof raw === 'string') return raw;
+  return '';
+}
+
+async function writeAuthAuditSafe(
+  req: any,
+  entry: {
+    actorUserId?: string | null;
+    actorRole?: UserRole | null;
+    action: string;
+    entityId?: string | null;
+    meta?: Record<string, unknown> | null;
+  }
+) {
+  try {
+    await writeAuditLog(pool, {
+      actorUserId: entry.actorUserId ?? null,
+      actorRole: entry.actorRole ?? null,
+      action: entry.action,
+      entityType: 'auth',
+      entityId: entry.entityId ?? entry.actorUserId ?? null,
+      meta: safeAuditMeta(entry.meta ?? null),
+      ip: req?.ip ?? null,
+      userAgent: getRequestHeader(req, 'user-agent') || null,
+      correlationId: req?.id ?? null
+    });
+  } catch (err) {
+    req?.log?.error?.(err, 'auth_audit_write_failed');
+  }
+}
+
+async function verifyGoogleIdToken(
+  app: FastifyInstance,
+  input: { idToken: string; nonce?: string }
+): Promise<GoogleVerifiedProfile> {
+  const audience = process.env.GOOGLE_CLIENT_ID;
+  if (!audience && !app.verifyGoogleIdToken) {
+    throw new Error('google_oauth_not_configured');
+  }
+
+  const verifier = app.verifyGoogleIdToken ?? (async ({ idToken, audience, nonce }) => {
+    const ticket = await googleOAuthVerifier.verifyIdToken({ idToken, audience });
+    const payload = ticket.getPayload();
+    if (!payload) {
+      throw new Error('google_id_token_invalid');
+    }
+
+    const issuer = String(payload.iss ?? '');
+    if (issuer !== 'https://accounts.google.com' && issuer !== 'accounts.google.com') {
+      throw new Error('google_issuer_invalid');
+    }
+    if (payload.aud !== audience) {
+      throw new Error('google_audience_invalid');
+    }
+    if (!payload.exp || payload.exp * 1000 <= Date.now()) {
+      throw new Error('google_token_expired');
+    }
+    if (nonce && payload.nonce !== nonce) {
+      throw new Error('google_nonce_invalid');
+    }
+    if (!payload.sub || !payload.email) {
+      throw new Error('google_profile_incomplete');
+    }
+    if (payload.email_verified !== true) {
+      throw new Error('google_email_not_verified');
+    }
+
+    return {
+      id: payload.sub,
+      email: payload.email,
+      emailVerified: true,
+      name: payload.name,
+      picture: payload.picture,
+      givenName: payload.given_name,
+      familyName: payload.family_name,
+      hd: payload.hd
+    };
+  });
+
+  return verifier({ idToken: input.idToken, audience: audience ?? 'test-google-client-id', nonce: input.nonce });
+}
+
 async function trackSession(
   app: FastifyInstance,
   jwtToken: string,
@@ -98,11 +239,23 @@ async function trackSession(
 
 async function issueTrackedSessionJwt(
   app: FastifyInstance,
-  payload: { userId: string; role: 'ADMIN' | 'TUTOR' | 'STUDENT'; tutorId?: string; studentId?: string },
+  payload: SessionJwtPayload,
   req?: { ip?: string; headers?: Record<string, unknown> }
 ) {
   const jwtToken = await app.jwt.sign(payload);
   await trackSession(app, jwtToken, payload.userId, req);
+  await writeAuthAuditSafe(req, {
+    actorUserId: payload.userId,
+    actorRole: payload.role,
+    action: 'auth.session.created',
+    entityId: payload.userId,
+    meta: {
+      role: payload.role,
+      tutorId: payload.tutorId ?? null,
+      studentId: payload.studentId ?? null,
+      expiresAt: sessionExpiryFromJwt(app, jwtToken)
+    }
+  });
   return jwtToken;
 }
 
@@ -168,17 +321,10 @@ export async function authRoutes(app: FastifyInstance) {
   const checkVerifyLimit = createWindowLimiter(60 * 1000, 5);
   const checkLoginLimit = createWindowLimiter(10 * 60 * 1000, 10);
 
-  const getHeaderValue = (req: any, name: string): string => {
-    const raw = req.headers?.[name];
-    if (Array.isArray(raw)) return String(raw[0] ?? '');
-    if (typeof raw === 'string') return raw;
-    return '';
-  };
-
   const getCountryCode = (req: any) => {
-    const raw = getHeaderValue(req, 'cf-ipcountry')
-      || getHeaderValue(req, 'x-vercel-ip-country')
-      || getHeaderValue(req, 'x-country-code');
+    const raw = getRequestHeader(req, 'cf-ipcountry')
+      || getRequestHeader(req, 'x-vercel-ip-country')
+      || getRequestHeader(req, 'x-country-code');
     if (!raw) return null;
     const normalized = raw.trim().toUpperCase();
     if (!normalized || normalized === 'XX' || normalized === 'UNKNOWN') return null;
@@ -215,8 +361,8 @@ export async function authRoutes(app: FastifyInstance) {
   const handleVerify = async (token: string | undefined, req: any, reply: any) => {
     const result = await verifyMagicLink(pool, { token }, {
       ip: req.ip,
-      userAgent: getHeaderValue(req, 'user-agent') || undefined,
-      acceptLanguage: getHeaderValue(req, 'accept-language') || undefined,
+      userAgent: getRequestHeader(req, 'user-agent') || undefined,
+      acceptLanguage: getRequestHeader(req, 'accept-language') || undefined,
       countryCode: getCountryCode(req),
       correlationId: req.id
     }, {
@@ -316,12 +462,6 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: 'invalid_credentials' });
     }
 
-    // Admin sign-in is intentionally 2-step (password + OTP).
-    // Block password-only sessions for admins to avoid bypassing MFA.
-    if (user.role === 'ADMIN') {
-      return reply.code(403).send({ error: 'admin_login_requires_mfa' });
-    }
-
     if (user.role === 'TUTOR' && !user.tutor_profile_id) {
       return reply.code(500).send({ error: 'tutor_profile_missing' });
     }
@@ -367,6 +507,12 @@ export async function authRoutes(app: FastifyInstance) {
             [decoded.userId, sessionHash, sessionExpiryFromJwt(app, token)]
           );
         }
+        await writeAuthAuditSafe(req, {
+          actorUserId: decoded.userId,
+          action: 'auth.logout',
+          entityId: decoded.userId,
+          meta: { revoked: true }
+        });
       } catch {
         // Best effort revocation; cookie clearing still proceeds.
       }
@@ -388,6 +534,13 @@ export async function authRoutes(app: FastifyInstance) {
        where user_id = $1 and revoked_at is null`,
       [req.user.userId]
     );
+    await writeAuthAuditSafe(req, {
+      actorUserId: req.user.userId,
+      actorRole: req.user.role,
+      action: 'auth.logout_all',
+      entityId: req.user.userId,
+      meta: { role: req.user.role }
+    });
 
     reply.clearCookie('session', clearAuthCookieOptions());
     reply.clearCookie('csrf', clearAuthCookieOptions());
@@ -399,7 +552,6 @@ export async function authRoutes(app: FastifyInstance) {
   // ── Admin 2-step login ────────────────────────────────────────────────────
 
   const checkAdminLoginLimit = createWindowLimiter(15 * 60 * 1000, 10);
-  const checkAdminOtpLimit   = createWindowLimiter(5  * 60 * 1000, 5);
 
   app.post('/auth/admin/login', {
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } }
@@ -427,110 +579,28 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: 'invalid_credentials' });
     }
 
-    // Generate a 6-digit OTP
-    const otp       = String(crypto.randomInt(100000, 1000000));
-    const tokenHash = hashToken(otp);
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    // MFA removed: issue the full admin session JWT directly.
+    const jwt = await issueTrackedSessionJwt(app, {
+      userId: user.id,
+      role: 'ADMIN',
+    }, req);
 
-    await pool.query(
-      `insert into email_otp_tokens (user_id, token_hash, expires_at)
-       values ($1, $2, $3::timestamptz)`,
-      [user.id, tokenHash, expiresAt.toISOString()]
-    );
+    const csrfToken = setAuthCookies(reply, jwt);
+    reply.clearCookie('mfa_pending', clearAuthCookieOptions());
 
-    await sendOtpEmail({ to: email, code: otp });
-
-    // Issue a short-lived interim JWT — only valid for OTP verification
-    const interimJwt = await app.jwt.sign(
-      { userId: user.id, role: 'ADMIN', awaitingMfa: true },
-      { expiresIn: '5m' }
-    );
-
-    const isProd = process.env.NODE_ENV === 'production';
-    reply.setCookie('mfa_pending', interimJwt, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: isProd,
-      path: '/',
-      maxAge: 5 * 60,
-      ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {})
+    return reply.send({
+      ok: true,
+      token: jwt,
+      csrfToken,
+      role: 'ADMIN',
+      redirectTo: portalRedirectTarget('ADMIN', req)
     });
-
-    const payload: Record<string, unknown> = { ok: true, step: 'otp' };
-    if (process.env.NODE_ENV !== 'production') {
-      payload.debugMfaToken = interimJwt;
-    }
-    return reply.send(payload);
   });
 
   app.post('/auth/admin/verify-otp', {
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } }
   }, async (req, reply) => {
-    const parsed = AdminOtpSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
-    }
-
-    const ip = req.ip ?? 'unknown';
-    if (checkAdminOtpLimit(`ip:${ip}`)) {
-      return reply.code(429).send({ error: 'rate_limited' });
-    }
-
-    // Validate the interim JWT from the mfa_pending cookie.
-    // In non-production environments, allow a temporary header fallback
-    // to reduce local browser cookie policy friction during OTP testing.
-    const headerValue = req.headers['x-mfa-pending'];
-    const debugHeaderToken = process.env.NODE_ENV === 'production'
-      ? ''
-      : (Array.isArray(headerValue) ? String(headerValue[0] || '') : String(headerValue || ''));
-    const pendingToken = req.cookies?.mfa_pending || debugHeaderToken;
-    if (!pendingToken) {
-      return reply.code(401).send({ error: 'mfa_session_missing' });
-    }
-
-    let pendingPayload: { userId: string; role: string; awaitingMfa?: boolean };
-    try {
-      pendingPayload = await app.jwt.verify<{ userId: string; role: string; awaitingMfa?: boolean }>(pendingToken);
-    } catch {
-      return reply.code(401).send({ error: 'mfa_session_invalid' });
-    }
-
-    if (!pendingPayload.awaitingMfa || pendingPayload.role !== 'ADMIN') {
-      return reply.code(401).send({ error: 'mfa_session_invalid' });
-    }
-
-    // Verify the OTP
-    const tokenHash = hashToken(parsed.data.code);
-    const result = await pool.query(
-      `update email_otp_tokens
-       set used_at = now()
-       where token_hash = $1
-         and user_id    = $2
-         and used_at    is null
-         and expires_at >= now()
-       returning id`,
-      [tokenHash, pendingPayload.userId]
-    );
-
-    if (Number(result.rowCount ?? 0) === 0) {
-      return reply.code(401).send({ error: 'invalid_or_expired_code' });
-    }
-
-    // Issue the full session JWT
-    const jwt = await issueTrackedSessionJwt(app, {
-      userId: pendingPayload.userId,
-      role:   'ADMIN',
-    }, req);
-    const csrfToken = setAuthCookies(reply, jwt);
-
-    // Clear the interim cookie
-    reply.clearCookie('mfa_pending', clearAuthCookieOptions());
-
-    return reply.send({
-      ok: true,
-      csrfToken,
-      redirectTo: portalRedirectTarget('ADMIN', req)
-    });
+    return reply.code(410).send({ error: 'mfa_disabled' });
   });
 
   // ── Google OAuth callback (tutor sign-in) ────────────────────────────────
@@ -541,37 +611,48 @@ export async function authRoutes(app: FastifyInstance) {
     req: any,
     reply: any
   ) {
-    if (!oauthNamespace) {
-      return reply.code(501).send({ error: 'google_oauth_not_configured' });
-    }
-
-    let token: { access_token: string };
-    try {
-      const result = await oauthNamespace.getAccessTokenFromAuthorizationCodeFlow(req);
-      token = result.token as { access_token: string };
-    } catch {
-      return reply.code(400).send({ error: 'oauth_callback_failed' });
-    }
-
-    // Fetch the Google user profile
-    const profileRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${token.access_token}` }
-    });
-    if (!profileRes.ok) {
-      return reply.code(502).send({ error: 'google_profile_fetch_failed' });
-    }
-    const profile = await profileRes.json() as {
-      id?: string;
-      email?: string;
-      verified_email?: boolean;
-      hd?: string;
+    const fail = async (error: string, status = 400, meta: Record<string, unknown> = {}) => {
+      await writeAuthAuditSafe(req, {
+        action: 'auth.login.failed',
+        meta: { provider: 'google', requestedRole, error, ...meta }
+      });
+      if (requestedRole === 'STUDENT') {
+        return reply.redirect(`${portalLoginTarget(requestedRole)}?error=${encodeURIComponent(error)}`);
+      }
+      return reply.code(status).send({ error });
     };
 
-    if (!profile.id || !profile.email) {
-      return reply.code(400).send({ error: 'google_profile_incomplete' });
+    if (!oauthNamespace) {
+      return fail('google_oauth_not_configured', 501);
     }
-    if (profile.verified_email !== true) {
-      return reply.code(403).send({ error: 'google_email_not_verified' });
+
+    let token: { id_token?: string };
+    try {
+      const result = await oauthNamespace.getAccessTokenFromAuthorizationCodeFlow(req, reply);
+      token = result.token as { id_token?: string };
+    } catch {
+      return fail('oauth_callback_failed', 400);
+    }
+
+    if (!token.id_token) {
+      return fail('google_id_token_missing', 400);
+    }
+
+    let profile: GoogleVerifiedProfile;
+    try {
+      profile = await verifyGoogleIdToken(app, {
+        idToken: token.id_token,
+        nonce: (req.query as { state?: string } | undefined)?.state
+      });
+    } catch (err) {
+      const error = err instanceof Error && err.message ? err.message : 'google_id_token_invalid';
+      return fail(error, error === 'google_email_not_verified' ? 403 : 400);
+    }
+    if (!profile.id || !profile.email) {
+      return fail('google_profile_incomplete', 400);
+    }
+    if (profile.emailVerified !== true) {
+      return fail('google_email_not_verified', 403);
     }
 
     // Find user by google_id first, then fall back to email
@@ -581,11 +662,11 @@ export async function authRoutes(app: FastifyInstance) {
       const emailDomain = googleEmail.split('@')[1] ?? '';
       const hostedDomain = String(profile.hd ?? '').trim().toLowerCase();
       if (emailDomain !== allowedDomain || (hostedDomain && hostedDomain !== allowedDomain)) {
-        return reply.code(403).send({ error: 'google_domain_not_allowed' });
+        return fail('google_domain_not_allowed', 403, { emailDomain, hostedDomain });
       }
     }
     const userRes = await pool.query(
-      `select id, email, role, tutor_profile_id, student_id, is_active, google_id
+      `select id, email, role, tutor_profile_id, student_id, is_active, google_id, first_name, last_name
        from users
        where google_id = $1 or email = $2
        order by (google_id = $1) desc
@@ -596,6 +677,10 @@ export async function authRoutes(app: FastifyInstance) {
     if (Number(userRes.rowCount ?? 0) === 0) {
       // Users must be pre-registered: Google OAuth is sign-in only, not sign-up.
       const loginUrl = portalLoginTarget(requestedRole);
+      await writeAuthAuditSafe(req, {
+        action: 'auth.login.failed',
+        meta: { provider: 'google', requestedRole, error: 'account_not_found' }
+      });
       return reply.redirect(`${loginUrl}?error=account_not_found`);
     }
 
@@ -607,45 +692,76 @@ export async function authRoutes(app: FastifyInstance) {
       student_id: string | null;
       is_active: boolean;
       google_id: string | null;
+      first_name: string | null;
+      last_name: string | null;
     };
 
     if (!user.is_active) {
-      return reply.code(403).send({ error: 'account_disabled' });
+      return fail('account_disabled', 403, { userId: user.id });
     }
     if (user.role !== requestedRole) {
+      await writeAuthAuditSafe(req, {
+        actorUserId: user.id,
+        actorRole: user.role,
+        action: 'auth.login.failed',
+        entityId: user.id,
+        meta: { provider: 'google', requestedRole, actualRole: user.role, error: 'wrong_role' }
+      });
       return reply.redirect(`${portalLoginTarget(requestedRole)}?error=wrong_role`);
     }
     if (requestedRole === 'TUTOR' && !user.tutor_profile_id) {
-      return reply.code(500).send({ error: 'tutor_profile_missing' });
+      return fail('tutor_profile_missing', 500, { userId: user.id });
     }
     if (requestedRole === 'STUDENT' && !user.student_id) {
-      return reply.code(500).send({ error: 'student_profile_missing' });
+      return fail('student_profile_missing', 500, { userId: user.id });
     }
 
     // Link google_id on first Google sign-in via email match
     if (!user.google_id) {
       await pool.query(
-        `update users set google_id = $1 where id = $2`,
-        [profile.id, user.id]
+        `update users
+         set google_id = $1,
+             first_name = coalesce(first_name, $3),
+             last_name = coalesce(last_name, $4),
+             updated_at = now()
+         where id = $2`,
+        [profile.id, user.id, profile.givenName ?? null, profile.familyName ?? null]
       );
     }
 
+    const fallbackName = [user.first_name, user.last_name].filter(Boolean).join(' ') || undefined;
     const jwt = await issueTrackedSessionJwt(app, {
       userId: user.id,
       role: requestedRole,
       tutorId: user.tutor_profile_id ?? undefined,
-      studentId: user.student_id ?? undefined
+      studentId: user.student_id ?? undefined,
+      profile: {
+        email: googleEmail,
+        name: profile.name ?? fallbackName,
+        picture: profile.picture
+      }
     }, req);
     setAuthCookies(reply, jwt);
+    await writeAuthAuditSafe(req, {
+      actorUserId: user.id,
+      actorRole: requestedRole,
+      action: 'auth.login.success',
+      entityId: user.id,
+      meta: { provider: 'google', role: requestedRole, linkedGoogleId: !user.google_id }
+    });
 
     return reply.redirect(portalRedirectTarget(requestedRole, req));
   }
 
-  app.get('/auth/google/callback', async (req, reply) => {
+  app.get('/auth/google/callback', {
+    config: { rateLimit: { max: 20, timeWindow: '1 minute' } }
+  }, async (req, reply) => {
     return handleGoogleOAuthCallback('TUTOR', app.googleOAuth2, req, reply);
   });
 
-  app.get('/auth/google/student/callback', async (req, reply) => {
+  app.get('/auth/google/student/callback', {
+    config: { rateLimit: { max: 20, timeWindow: '1 minute' } }
+  }, async (req, reply) => {
     return handleGoogleOAuthCallback('STUDENT', app.googleStudentOAuth2, req, reply);
   });
 
@@ -659,6 +775,7 @@ export async function authRoutes(app: FastifyInstance) {
         role: req.user.role,
         tutorId: req.user.tutorId ?? null,
         studentId: req.user.studentId ?? null,
+        profile: req.user.profile ?? null,
       },
       impersonation: req.impersonation
         ? {

@@ -58,12 +58,50 @@ function renderQuickTools(target, tools) {
   });
 }
 
+function isLoopbackHost(hostname) {
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+function localDummyData() {
+  return {
+    todaySessions: [
+      { time: '15:00', studentName: 'Dev Student', status: 'Scheduled' },
+      { time: '16:15', studentName: 'Dev Student', status: 'Draft notes' },
+    ],
+    studentsNeedingAttention: [
+      { studentName: 'Dev Student', riskScore: 38, momentumScore: 76, reasons: ['Missed last homework', 'Streak down', 'Exam in 2 weeks'] },
+      { studentName: 'Alex Demo', riskScore: 62, momentumScore: 41, reasons: ['Low practice consistency', 'Needs algebra revision'] },
+    ],
+    quickTools: [
+      { label: 'Log a session', href: '/tutor/sessions.html' },
+      { label: 'View assignments', href: '/tutor/assignments.html' },
+      { label: 'Generate a report', href: '/tutor/reports/' },
+      { label: 'Review risk dashboard', href: '/tutor/risk/' },
+    ],
+  };
+}
+
 (async () => {
-  const data = await loadJson('/tutor/dashboard').catch(() => ({
-    todaySessions: [],
-    studentsNeedingAttention: [],
-    quickTools: [],
-  }));
+  const host = window.location.hostname;
+  const isLocal = isLoopbackHost(host);
+
+  let data;
+  try {
+    data = await loadJson('/tutor/dashboard');
+  } catch {
+    data = isLocal
+      ? localDummyData()
+      : { todaySessions: [], studentsNeedingAttention: [], quickTools: [] };
+  }
+
+  if (isLocal) {
+    const todayCount = Array.isArray(data?.todaySessions) ? data.todaySessions.length : 0;
+    const attentionCount = Array.isArray(data?.studentsNeedingAttention) ? data.studentsNeedingAttention.length : 0;
+    const toolCount = Array.isArray(data?.quickTools) ? data.quickTools.length : 0;
+    if (todayCount === 0 && attentionCount === 0 && toolCount === 0) {
+      data = localDummyData();
+    }
+  }
 
   const todaySessions = data.todaySessions || [];
   const attention = data.studentsNeedingAttention || [];

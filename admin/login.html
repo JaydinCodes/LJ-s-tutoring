@@ -12,10 +12,9 @@
   <main class="center-shell">
     <section class="panel auth-card">
 
-      <!-- Step 1: email + password -->
       <div id="stepPassword">
         <h1 class="page-title">Admin Sign in</h1>
-        <p class="page-subtitle">Enter your email and password to continue.</p>
+        <p class="page-subtitle">Enter your email and password to sign in.</p>
         <form id="passwordForm" class="stack-form">
           <div class="field">
             <label for="email">Email</label>
@@ -25,26 +24,10 @@
             <label for="password">Password</label>
             <input id="password" name="password" type="password" autocomplete="current-password" required>
           </div>
-          <button class="button" type="submit">Continue</button>
+          <button class="button" type="submit">Sign in</button>
           <p id="passwordFeedback" class="note" aria-live="polite"></p>
         </form>
       </div>
-
-      <!-- Step 2: OTP code (hidden until step 1 succeeds) -->
-      <div id="stepOtp" hidden>
-        <h1 class="page-title">Check your email</h1>
-        <p class="page-subtitle" id="otpSubtitle">We sent a 6-digit code to your email. Enter it below.</p>
-        <form id="otpForm" class="stack-form">
-          <div class="field">
-            <label for="otpCode">6-digit code</label>
-            <input id="otpCode" name="code" type="text" inputmode="numeric" pattern="\d{6}"
-                   maxlength="6" autocomplete="one-time-code" required placeholder="000000">
-          </div>
-          <button class="button" type="submit">Sign in</button>
-          <p id="otpFeedback" class="note" aria-live="polite"></p>
-        </form>
-      </div>
-
     </section>
   </main>
   <script src="/assets/portal-config.js"></script>
