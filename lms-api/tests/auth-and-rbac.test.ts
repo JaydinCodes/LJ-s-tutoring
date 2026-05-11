@@ -86,6 +86,51 @@ describe('Auth + RBAC', () => {
     await app.close();
   });
 
+  it('blocks students from tutor and admin endpoints', async () => {
+    const app = await buildApp();
+    const { user } = await createStudentUser({
+      email: 'student-rbac@example.com',
+      fullName: 'Student RBAC',
+      grade: '10'
+    });
+    const token = await issueMagicToken(user.id);
+    const auth = await loginWithMagicToken(app, token);
+
+    const tutorRes = await app.inject({
+      method: 'GET',
+      url: '/tutor/dashboard',
+      headers: auth.headers
+    });
+    expect(tutorRes.statusCode).toBe(403);
+
+    const adminRes = await app.inject({
+      method: 'GET',
+      url: '/admin/dashboard',
+      headers: auth.headers
+    });
+    expect(adminRes.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it('blocks tutors from student-only endpoints', async () => {
+    const app = await buildApp();
+    const { user } = await createTutor({
+      email: 'tutor-rbac@example.com',
+      fullName: 'Tutor RBAC',
+      defaultHourlyRate: 300
+    });
+    const token = await issueMagicToken(user.id);
+    const auth = await loginWithMagicToken(app, token);
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/dashboard',
+      headers: auth.headers
+    });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
   it('requires MFA for admin password login', async () => {
     const app = await buildApp();
 

@@ -1,4 +1,4 @@
-import { apiGet, apiPost, qs, formatMoney, setActiveNav, escapeHtml, renderSkeletonCards, renderStateCard } from '/assets/portal-shared.js';
+import { apiGet, apiPost, apiUrl, qs, formatMoney, setActiveNav, escapeHtml, renderSkeletonCards, renderStateCard } from '/assets/portal-shared.js';
 
 export async function initPayroll() {
   setActiveNav('payroll');
@@ -27,10 +27,21 @@ export async function initPayroll() {
   };
 
   if (adjustmentTutor) {
-    const tutors = await apiGet('/admin/tutors');
-    adjustmentTutor.innerHTML = tutors.tutors
-      .map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`)
-      .join('');
+    try {
+      const tutors = await apiGet('/admin/tutors');
+      adjustmentTutor.innerHTML = tutors.tutors?.length
+        ? tutors.tutors.map((t) => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join('')
+        : '<option value="">No active tutors</option>';
+    } catch (err) {
+      adjustmentTutor.innerHTML = '<option value="">Unable to load tutors</option>';
+      if (adjustmentList) {
+        renderStateCard(adjustmentList, {
+          variant: 'error',
+          title: 'Unable to load tutors',
+          description: err?.message || 'Try again in a moment.',
+        });
+      }
+    }
   }
 
   const loadAdjustments = async (weekStart) => {
@@ -56,7 +67,7 @@ export async function initPayroll() {
     }
   };
 
-  form.addEventListener('submit', async (event) => {
+  form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const weekStart = qs('#weekStart').value;
     renderSkeletonCards(list, 3);
@@ -118,7 +129,7 @@ export async function initPayroll() {
         },
       });
       if (csvStatus) {csvStatus.textContent = 'CSV ready. Downloading...';}
-      window.location.href = `/admin/jobs/${job.id}/download`;
+      window.location.href = apiUrl(`/admin/jobs/${job.id}/download`);
       if (csvStatus) {csvStatus.textContent = 'CSV download started.';}
     } catch (err) {
       if (csvStatus) {csvStatus.textContent = `CSV export failed: ${err.message}`;}
@@ -152,6 +163,6 @@ export async function initPayroll() {
     });
 
     const weekInput = qs('#adjustWeek');
-    weekInput.addEventListener('change', () => loadAdjustments(weekInput.value));
+    weekInput?.addEventListener('change', () => loadAdjustments(weekInput.value));
   }
 }

@@ -27,6 +27,10 @@ function resolveApiBase() {
 const API_BASE = resolveApiBase();
 const IMPERSONATION_META_KEY = 'impersonationMeta';
 
+export function apiUrl(path) {
+  return `${API_BASE}${path}`;
+}
+
 export function getImpersonationMeta() {
   const raw = localStorage.getItem(IMPERSONATION_META_KEY);
   if (!raw) {return null;}
@@ -67,7 +71,7 @@ async function request(path, options = {}) {
   if (impersonationMeta && !['GET', 'HEAD'].includes(method) && path.startsWith('/tutor/')) {
     throw new Error('impersonation_read_only');
   }
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(apiUrl(path), {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',

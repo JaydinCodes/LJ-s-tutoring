@@ -60,3 +60,44 @@ test('student reports page includes the student auth-guard', () => {
     'auth-guard must load after portal-config and before the page script',
   );
 });
+
+test('all protected portal pages load config, role guard, then page module', () => {
+  const protectedPages = [
+    { file: ['reports', 'index.html'], guard: 'student/auth-guard.js', module: 'student/reports.js' },
+    { file: ['dashboard', 'index.html'], guard: 'student/auth-guard.js', module: 'student/dashboard.js' },
+    { file: ['dashboard', 'community', 'index.html'], guard: 'student/auth-guard.js', module: 'student/community.js' },
+    { file: ['dashboard', 'career', 'index.html'], guard: 'student/auth-guard.js', module: 'student/career.js' },
+    { file: ['dashboard', 'career', 'readiness', 'index.html'], guard: 'student/auth-guard.js', module: 'student/career-readiness.js' },
+    { file: ['dashboard', 'career', 'eligibility', 'index.html'], guard: 'student/auth-guard.js', module: 'student/career-eligibility.js' },
+    { file: ['dashboard', 'career', 'paths', 'index.html'], guard: 'student/auth-guard.js', module: 'student/career-paths.js' },
+    { file: ['tutor', 'dashboard', 'index.html'], guard: 'tutor/auth-guard.js', module: 'tutor/dashboard.js' },
+    { file: ['tutor', 'reports', 'index.html'], guard: 'tutor/auth-guard.js', module: 'tutor/reports.js' },
+    { file: ['tutor', 'risk', 'index.html'], guard: 'tutor/auth-guard.js', module: 'tutor/risk.js' },
+    { file: ['tutor', 'sessions.html'], guard: 'tutor/auth-guard.js', module: 'tutor/sessions.js' },
+    { file: ['tutor', 'assignments.html'], guard: 'tutor/auth-guard.js', module: 'tutor/assignments.js' },
+    { file: ['admin', 'index.html'], guard: 'admin/auth-guard.js', module: 'admin/portal.js' },
+    { file: ['admin', 'tutors.html'], guard: 'admin/auth-guard.js', module: 'admin/portal.js' },
+    { file: ['admin', 'students.html'], guard: 'admin/auth-guard.js', module: 'admin/portal.js' },
+    { file: ['admin', 'assignments.html'], guard: 'admin/auth-guard.js', module: 'admin/portal.js' },
+    { file: ['admin', 'approvals.html'], guard: 'admin/auth-guard.js', module: 'admin/portal.js' },
+    { file: ['admin', 'payroll.html'], guard: 'admin/auth-guard.js', module: 'admin/portal.js' },
+    { file: ['admin', 'reconciliation.html'], guard: 'admin/auth-guard.js', module: 'admin/portal.js' },
+    { file: ['admin', 'audit.html'], guard: 'admin/auth-guard.js', module: 'admin/portal.js' },
+    { file: ['admin', 'privacy-requests.html'], guard: 'admin/auth-guard.js', module: 'admin/portal.js' },
+    { file: ['admin', 'retention.html'], guard: 'admin/auth-guard.js', module: 'admin/portal.js' },
+    { file: ['admin', 'ops-runbook.html'], guard: 'admin/auth-guard.js', module: 'admin/portal.js' },
+  ];
+
+  for (const page of protectedPages) {
+    const html = fs.readFileSync(path.resolve(__dirname, '..', '..', ...page.file), 'utf8');
+    const configIdx = html.indexOf('portal-config.js');
+    const guardIdx = html.indexOf(page.guard);
+    const moduleIdx = html.indexOf(page.module);
+    const label = page.file.join('/');
+
+    assert.ok(configIdx !== -1, `${label} must load portal-config.js`);
+    assert.ok(guardIdx !== -1, `${label} must load ${page.guard}`);
+    assert.ok(moduleIdx !== -1, `${label} must load ${page.module}`);
+    assert.ok(configIdx < guardIdx && guardIdx < moduleIdx, `${label} must load config, guard, then module`);
+  }
+});
