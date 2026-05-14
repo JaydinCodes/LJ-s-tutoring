@@ -1,6 +1,6 @@
-# Student Google Auth Setup
+# Google Auth Setup
 
-Project Odysseus student dashboard sign-in uses Google OAuth Authorization Code flow with PKCE. Student magic links are not accepted for student dashboard sessions.
+Project Odysseus admin, tutor, and student portal sign-in can use Google OAuth Authorization Code flow with PKCE. Student magic links are not accepted for student dashboard sessions.
 
 ## Google Cloud Console
 
@@ -9,9 +9,11 @@ Project Odysseus student dashboard sign-in uses Google OAuth Authorization Code 
 3. Create an OAuth 2.0 Client ID for a Web application.
 4. Add authorized redirect URIs:
    - Local student callback: `http://localhost:3001/auth/google/student/callback`
-   - Local tutor callback, if tutor Google sign-in is enabled: `http://localhost:3001/auth/google/callback`
+   - Local tutor callback: `http://localhost:3001/auth/google/callback`
+   - Local admin callback: `http://localhost:3001/auth/google/admin/callback`
    - Production student callback: `https://<api-host>/auth/google/student/callback`
-   - Production tutor callback, if used: `https://<api-host>/auth/google/callback`
+   - Production tutor callback: `https://<api-host>/auth/google/callback`
+   - Production admin callback: `https://<api-host>/auth/google/admin/callback`
 5. Copy the client ID and client secret into environment variables. Do not commit real secrets.
 
 ## Required Environment
@@ -29,7 +31,9 @@ JWT_EXPIRES_IN=15m
 SESSION_MAX_AGE_SECONDS=900
 GOOGLE_CLIENT_ID=replace_with_google_client_id
 GOOGLE_CLIENT_SECRET=replace_with_google_client_secret
+GOOGLE_CALLBACK_URL=https://api.projectodysseus.live/auth/google/callback
 GOOGLE_STUDENT_CALLBACK_URL=https://api.projectodysseus.live/auth/google/student/callback
+GOOGLE_ADMIN_CALLBACK_URL=https://api.projectodysseus.live/auth/google/admin/callback
 ```
 
 Production additionally fails fast unless `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `PUBLIC_BASE_URL`, `STUDENT_PORTAL_URL`, and `GOOGLE_STUDENT_CALLBACK_URL` are present. Production URL values must use HTTPS.

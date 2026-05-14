@@ -50,6 +50,9 @@ envs:
   - key: GOOGLE_STUDENT_CALLBACK_URL
     scope: RUN_AND_BUILD_TIME
     value: https://api.projectodysseus.live/auth/google/student/callback
+  - key: GOOGLE_ADMIN_CALLBACK_URL
+    scope: RUN_AND_BUILD_TIME
+    value: https://api.projectodysseus.live/auth/google/admin/callback
   - key: JWT_EXPIRES_IN
     scope: RUN_AND_BUILD_TIME
     value: 15m

@@ -266,6 +266,17 @@ export async function buildApp() {
       redirectStateCookieName: 'google_student_oauth_state',
       verifierCookieName: 'google_student_oauth_pkce'
     });
+    await app.register(oauth2, {
+      name: 'googleAdminOAuth2',
+      scope: ['openid', 'profile', 'email'],
+      ...googleCredentials,
+      startRedirectPath: '/auth/google/admin/start',
+      callbackUri: process.env.GOOGLE_ADMIN_CALLBACK_URL ?? 'http://localhost:3001/auth/google/admin/callback',
+      pkce: 'S256',
+      cookie: oauthCookieOptions(),
+      redirectStateCookieName: 'google_admin_oauth_state',
+      verifierCookieName: 'google_admin_oauth_pkce'
+    });
   }
 
   app.addHook('onResponse', async (req, reply) => {

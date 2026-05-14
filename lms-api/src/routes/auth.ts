@@ -8,6 +8,7 @@ declare module 'fastify' {
   interface FastifyInstance {
     googleOAuth2?: OAuth2Namespace;
     googleStudentOAuth2?: OAuth2Namespace;
+    googleAdminOAuth2?: OAuth2Namespace;
     verifyGoogleIdToken?: (input: {
       idToken: string;
       audience: string;
@@ -631,7 +632,7 @@ export async function authRoutes(app: FastifyInstance) {
   // ── Google OAuth callback (tutor sign-in) ────────────────────────────────
 
   async function handleGoogleOAuthCallback(
-    requestedRole: 'TUTOR' | 'STUDENT',
+    requestedRole: UserRole,
     oauthNamespace: OAuth2Namespace | undefined,
     req: any,
     reply: any
@@ -641,10 +642,7 @@ export async function authRoutes(app: FastifyInstance) {
         action: 'auth.login.failed',
         meta: { provider: 'google', requestedRole, error, ...meta }
       });
-      if (requestedRole === 'STUDENT') {
-        return reply.redirect(`${portalLoginTarget(requestedRole)}?error=${encodeURIComponent(error)}`);
-      }
-      return reply.code(status).send({ error });
+      return reply.redirect(status, `${portalLoginTarget(requestedRole)}?error=${encodeURIComponent(error)}`);
     };
 
     if (!oauthNamespace) {
@@ -788,6 +786,12 @@ export async function authRoutes(app: FastifyInstance) {
     config: { rateLimit: { max: 20, timeWindow: '1 minute' } }
   }, async (req, reply) => {
     return handleGoogleOAuthCallback('STUDENT', app.googleStudentOAuth2, req, reply);
+  });
+
+  app.get('/auth/google/admin/callback', {
+    config: { rateLimit: { max: 20, timeWindow: '1 minute' } }
+  }, async (req, reply) => {
+    return handleGoogleOAuthCallback('ADMIN', app.googleAdminOAuth2, req, reply);
   });
 
   app.get('/auth/session', {
