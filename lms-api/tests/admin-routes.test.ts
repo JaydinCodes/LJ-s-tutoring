@@ -88,6 +88,45 @@ describe('Admin routes', () => {
 
   // ─── Sessions ─────────────────────────────────────────────────────────────
 
+  describe('Students', () => {
+    it('creates a student profile with a linked login account', async () => {
+      const app = await buildApp();
+      const admin = await createAdmin();
+      const token = await issueMagicToken(admin.id);
+      const auth = await loginWithMagicToken(app, token);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/admin/students',
+        headers: auth.headers,
+        payload: {
+          email: 'new-student-login@example.com',
+          password: 'student-pass-123',
+          fullName: 'New Student',
+          grade: 'Grade 10',
+          active: true
+        }
+      });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.json().student).toMatchObject({
+        email: 'new-student-login@example.com',
+        full_name: 'New Student'
+      });
+
+      const userRes = await pool.query(
+        `select role, student_id, password_hash, is_active from users where email = $1`,
+        ['new-student-login@example.com']
+      );
+      expect(userRes.rowCount).toBe(1);
+      expect(userRes.rows[0]).toMatchObject({ role: 'STUDENT', is_active: true });
+      expect(userRes.rows[0].student_id).toBe(res.json().student.id);
+      expect(userRes.rows[0].password_hash).toBeTruthy();
+
+      await app.close();
+    });
+  });
+
   describe('Sessions', () => {
     it('approves a session via POST /admin/sessions/:id/approve', async () => {
       const app = await buildApp();

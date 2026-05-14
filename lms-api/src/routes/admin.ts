@@ -473,13 +473,22 @@ export async function adminRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
     }
+    const client = await pool.connect();
     try {
-      const student = await createStudent(pool, parsed.data);
+      await client.query('begin');
+      const student = await createStudent(client, parsed.data);
+      await client.query('commit');
       return reply.code(201).send({ student });
     } catch (err: any) {
+      await client.query('rollback').catch(() => undefined);
+      if (err?.code === '23505') {
+        return reply.code(409).send({ error: 'student_account_exists' });
+      }
       getErrorMonitor().captureException(err, { correlationId: req.id, userId: req.user?.userId, role: req.user?.role });
       req.log?.error?.(err);
       return reply.code(500).send({ error: 'internal_error' });
+    } finally {
+      client.release();
     }
   });
 

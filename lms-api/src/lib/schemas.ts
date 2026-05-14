@@ -92,11 +92,21 @@ export const UpdateTutorSchema = z.object({
 
 export const CreateStudentSchema = z.object({
   fullName: z.string().trim().min(1).max(120),
+  email: z.string().trim().email().max(254).optional(),
+  password: z.string().min(8).max(200).optional(),
   grade: z.string().trim().max(20).optional(),
   guardianName: z.string().trim().max(120).optional(),
   guardianPhone: z.string().trim().max(40).optional(),
   notes: z.string().trim().max(2000).optional(),
   active: z.boolean().optional().default(true),
+}).superRefine((value, ctx) => {
+  if (value.password && !value.email) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['email'],
+      message: 'Email is required when setting a password',
+    });
+  }
 });
 
 export const UpdateStudentSchema = z.object({

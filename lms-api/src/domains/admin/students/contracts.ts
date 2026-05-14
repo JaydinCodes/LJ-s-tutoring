@@ -7,6 +7,7 @@ export type UpdateStudentInput = z.infer<typeof UpdateStudentSchema>;
 export type StudentSummary = {
   id: string;
   full_name: string;
+  email: string | null;
   grade: string | null;
   guardian_name: string | null;
   guardian_phone: string | null;

@@ -560,6 +560,18 @@
           </div>
 
           <div class="field">
+            <label for="studentEmail">Student login email <span class="opt-tag">(optional)</span></label>
+            <input id="studentEmail" type="email" name="email" autocomplete="email"
+              placeholder="student@example.com">
+          </div>
+
+          <div class="field">
+            <label for="studentPassword">Temporary password <span class="opt-tag">(optional)</span></label>
+            <input id="studentPassword" type="password" name="password"
+              autocomplete="new-password" minlength="8" placeholder="Minimum 8 characters">
+          </div>
+
+          <div class="field">
             <label for="guardianName">Guardian name <span class="opt-tag">(optional)</span></label>
             <input id="guardianName" type="text" name="guardianName"
               autocomplete="off" placeholder="e.g. Kwame Osei">
@@ -584,6 +596,11 @@
               <input id="studentActive" type="checkbox" name="active" checked>
             </div>
           </div>
+
+          <p class="student-meta">
+            Only create a portal account after the learner or guardian has been told that Project Odysseus processes learner details,
+            tutor/session records, progress analytics, and account security data under the Privacy Notice and Terms.
+          </p>
 
           <button class="btn-submit" type="submit">Create Student</button>
         </form>

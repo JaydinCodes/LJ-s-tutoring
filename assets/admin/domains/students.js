@@ -39,7 +39,7 @@ export async function initStudents() {
     list.innerHTML = records
       .map((s) => `<div class="panel">
           <div><strong>${escapeHtml(s.full_name)}</strong> (${escapeHtml(s.grade || 'N/A')})</div>
-          <div class="note">${escapeHtml(s.guardian_name || 'No guardian')} | ${s.active ? 'Active' : 'Inactive'}</div>
+          <div class="note">${escapeHtml([s.email, s.guardian_name || 'No guardian'].filter(Boolean).join(' | '))} | ${s.active ? 'Active' : 'Inactive'}</div>
         </div>`)
       .join('');
   };
@@ -99,9 +99,27 @@ export async function initStudents() {
       return;
     }
     guardianPhone.setAttribute('aria-invalid', 'false');
+    const studentEmail = qs('#studentEmail');
+    const studentPassword = qs('#studentPassword');
+    if (studentPassword?.value && !studentEmail?.value.trim()) {
+      studentEmail.setAttribute('aria-invalid', 'true');
+      feedback.textContent = 'Student login email is required when setting a password.';
+      feedback.classList.add('error');
+      return;
+    }
+    studentEmail?.setAttribute('aria-invalid', 'false');
+    if (studentPassword?.value && studentPassword.value.length < 8) {
+      studentPassword.setAttribute('aria-invalid', 'true');
+      feedback.textContent = 'Temporary password must be at least 8 characters.';
+      feedback.classList.add('error');
+      return;
+    }
+    studentPassword?.setAttribute('aria-invalid', 'false');
 
     const payload = {
       fullName: qs('#studentName').value,
+      email: qs('#studentEmail')?.value || undefined,
+      password: qs('#studentPassword')?.value || undefined,
       grade: qs('#studentGrade').value || undefined,
       guardianName: qs('#guardianName').value || undefined,
       guardianPhone: qs('#guardianPhone').value || undefined,
@@ -115,7 +133,9 @@ export async function initStudents() {
       form.reset();
       await load();
     } catch (err) {
-      feedback.textContent = err?.message || 'Unable to create student.';
+      feedback.textContent = err?.message?.includes('student_account_exists')
+        ? 'A student account already exists for that email.'
+        : err?.message || 'Unable to create student.';
       feedback.classList.add('error');
     }
   });
