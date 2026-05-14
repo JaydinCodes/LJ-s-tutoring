@@ -38,14 +38,16 @@ form?.addEventListener('submit', async (e) => {
   setFeedback('Signing in…');
 
   const payload = Object.fromEntries(new FormData(form).entries());
-  const res = await apiFetch('/auth/login', { method: 'POST', body: payload });
+  let res;
+  try {
+    res = await apiFetch('/auth/student/login', { method: 'POST', body: payload });
+  } catch {
+    setFeedback('Sign-in service is unavailable. Please try again shortly.');
+    return;
+  }
 
   if (res.ok) {
     const body = await res.json().catch(() => ({}));
-    if (body.role && body.role !== 'STUDENT') {
-      setFeedback('This portal is for students only.');
-      return;
-    }
     window.location.href = body.redirectTo || '/dashboard/';
     return;
   }
@@ -57,6 +59,8 @@ form?.addEventListener('submit', async (e) => {
     setFeedback('Too many attempts. Please wait and try again.');
   } else if (body.error === 'account_disabled') {
     setFeedback('This student account is disabled. Contact your administrator.');
+  } else if (body.error === 'wrong_role') {
+    setFeedback('This portal is for students only.');
   } else {
     setFeedback('Sign-in failed. Please try again.');
   }

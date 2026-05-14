@@ -158,6 +158,65 @@ describe('Auth + RBAC', () => {
     await app.close();
   });
 
+  it('allows student password login and returns a persisted student session', async () => {
+    const app = await buildApp();
+
+    const student = await createStudent({ fullName: 'Password Student', grade: '10' });
+    const passwordHash = await hashPassword('correct-horse-battery-staple');
+    const userRes = await pool.query(
+      `insert into users (email, role, student_id, password_hash, is_active)
+       values ($1, 'STUDENT', $2, $3, true)
+       returning email`,
+      ['student-password@example.com', student.id, passwordHash]
+    );
+
+    const login = await app.inject({
+      method: 'POST',
+      url: '/auth/student/login',
+      payload: { email: userRes.rows[0].email, password: 'correct-horse-battery-staple' }
+    });
+
+    expect(login.statusCode).toBe(200);
+    expect(login.json().ok).toBe(true);
+    expect(login.json().role).toBe('STUDENT');
+    expect(login.json().redirectTo).toBe('/dashboard/');
+
+    const cookies = login.headers['set-cookie'];
+    const cookieHeader = Array.isArray(cookies) ? cookies.join('; ') : String(cookies ?? '');
+    expect(cookieHeader).toContain('session=');
+
+    const session = await app.inject({
+      method: 'GET',
+      url: '/auth/session',
+      headers: { cookie: cookieHeader }
+    });
+    expect(session.statusCode).toBe(200);
+    expect(session.json().user.role).toBe('STUDENT');
+    await app.close();
+  });
+
+  it('rejects non-student accounts on the student password endpoint without issuing a session', async () => {
+    const app = await buildApp();
+
+    const passwordHash = await hashPassword('correct-horse-battery-staple');
+    await pool.query(
+      `insert into users (email, role, password_hash, is_active)
+       values ($1, 'ADMIN', $2, true)`,
+      ['admin-on-student-login@example.com', passwordHash]
+    );
+
+    const login = await app.inject({
+      method: 'POST',
+      url: '/auth/student/login',
+      payload: { email: 'admin-on-student-login@example.com', password: 'correct-horse-battery-staple' }
+    });
+
+    expect(login.statusCode).toBe(403);
+    expect(login.json().error).toBe('wrong_role');
+    expect(String(login.headers['set-cookie'] ?? '')).not.toContain('session=');
+    await app.close();
+  });
+
   it('blocks tutors from other tutor sessions', async () => {
     const app = await buildApp();
 

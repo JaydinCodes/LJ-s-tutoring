@@ -426,14 +426,7 @@ export async function authRoutes(app: FastifyInstance) {
     return handleVerify(token, req, reply);
   });
 
-  app.post('/auth/login', {
-    config: {
-      rateLimit: {
-        max: 10,
-        timeWindow: '1 minute'
-      }
-    }
-  }, async (req, reply) => {
+  async function handlePasswordLogin(req: any, reply: any, expectedRole?: UserRole) {
     const parsed = LoginSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
@@ -455,6 +448,16 @@ export async function authRoutes(app: FastifyInstance) {
 
     if (!user.is_active) {
       return reply.code(403).send({ error: 'account_disabled' });
+    }
+    if (expectedRole && user.role !== expectedRole) {
+      await writeAuthAuditSafe(req, {
+        actorUserId: user.id,
+        actorRole: user.role,
+        action: 'auth.login.failed',
+        entityId: user.id,
+        meta: { provider: 'password', requestedRole: expectedRole, actualRole: user.role, error: 'wrong_role' }
+      });
+      return reply.code(403).send({ error: 'wrong_role' });
     }
 
     const passwordOk = await verifyPassword(user.password_hash, parsed.data.password);
@@ -484,6 +487,28 @@ export async function authRoutes(app: FastifyInstance) {
       role: user.role,
       redirectTo: portalRedirectTarget(user.role, req)
     });
+  }
+
+  app.post('/auth/login', {
+    config: {
+      rateLimit: {
+        max: 10,
+        timeWindow: '1 minute'
+      }
+    }
+  }, async (req, reply) => {
+    return handlePasswordLogin(req, reply);
+  });
+
+  app.post('/auth/student/login', {
+    config: {
+      rateLimit: {
+        max: 10,
+        timeWindow: '1 minute'
+      }
+    }
+  }, async (req, reply) => {
+    return handlePasswordLogin(req, reply, 'STUDENT');
   });
 
   app.post('/auth/logout', async (req, reply) => {
