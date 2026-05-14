@@ -8,17 +8,26 @@ export async function initStudents() {
 
   let studentsCache = [];
 
-  const toolbar = document.createElement('div');
-  toolbar.className = 'ds-toolbar';
-  toolbar.innerHTML = `
-    <input id="studentSearch" type="search" placeholder="Search by student or guardian" aria-label="Search students">
-    <select id="studentStatusFilter" aria-label="Filter students by status">
-      <option value="all">All students</option>
-      <option value="active">Active</option>
-      <option value="inactive">Inactive</option>
-    </select>
-  `;
-  list.parentElement?.insertBefore(toolbar, list);
+  let searchInput = qs('#filterSearch');
+  const gradeFilter = qs('#filterGrade');
+  let statusFilter = qs('#filterStatus');
+  const countBadge = qs('#studentCount');
+
+  if (!searchInput || !statusFilter) {
+    const toolbar = document.createElement('div');
+    toolbar.className = 'ds-toolbar';
+    toolbar.innerHTML = `
+      <input id="studentSearch" type="search" placeholder="Search by student, email, or guardian" aria-label="Search students">
+      <select id="studentStatusFilter" aria-label="Filter students by status">
+        <option value="all">All students</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    `;
+    list.parentElement?.insertBefore(toolbar, list);
+    searchInput = qs('#studentSearch');
+    statusFilter = qs('#studentStatusFilter');
+  }
 
   const feedback = document.createElement('p');
   feedback.id = 'studentFormFeedback';
@@ -27,7 +36,18 @@ export async function initStudents() {
   feedback.setAttribute('aria-live', 'polite');
   form.appendChild(feedback);
 
+  const initials = (name) => String(name || '?')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() || '')
+    .join('');
+
   const renderList = (records) => {
+    if (countBadge) {
+      const total = studentsCache.length;
+      countBadge.textContent = total === 1 ? '1 student' : `${total} students`;
+    }
     if (!records.length) {
       renderStateCard(list, {
         variant: 'empty',
@@ -37,22 +57,30 @@ export async function initStudents() {
       return;
     }
     list.innerHTML = records
-      .map((s) => `<div class="panel">
-          <div><strong>${escapeHtml(s.full_name)}</strong> (${escapeHtml(s.grade || 'N/A')})</div>
-          <div class="note">${escapeHtml([s.email, s.guardian_name || 'No guardian'].filter(Boolean).join(' | '))} | ${s.active ? 'Active' : 'Inactive'}</div>
+      .map((s) => `<div class="student-row">
+          <div class="student-avatar" aria-hidden="true">${escapeHtml(initials(s.full_name))}</div>
+          <div class="student-info">
+            <div class="student-name">${escapeHtml(s.full_name)}</div>
+            <div class="student-meta">${escapeHtml([s.grade || 'No grade', s.email, s.guardian_name || 'No guardian'].filter(Boolean).join(' | '))}</div>
+          </div>
+          <span class="status-badge ${s.active ? 'status-active' : 'status-inactive'}">${s.active ? 'Active' : 'Inactive'}</span>
         </div>`)
       .join('');
   };
 
   const applyFilters = () => {
-    const query = (qs('#studentSearch')?.value || '').trim().toLowerCase();
-    const status = qs('#studentStatusFilter')?.value || 'all';
+    const query = (searchInput?.value || '').trim().toLowerCase();
+    const grade = gradeFilter?.value || '';
+    const rawStatus = statusFilter?.value || 'all';
+    const status = rawStatus || 'all';
     const filtered = studentsCache.filter((student) => {
       const matchesSearch = !query
         || student.full_name?.toLowerCase().includes(query)
+        || student.email?.toLowerCase().includes(query)
         || student.guardian_name?.toLowerCase().includes(query);
+      const matchesGrade = !grade || student.grade === grade;
       const matchesStatus = status === 'all' || (status === 'active' ? student.active : !student.active);
-      return matchesSearch && matchesStatus;
+      return matchesSearch && matchesGrade && matchesStatus;
     });
     renderList(filtered);
   };
@@ -74,8 +102,9 @@ export async function initStudents() {
 
   await load();
 
-  qs('#studentSearch')?.addEventListener('input', applyFilters);
-  qs('#studentStatusFilter')?.addEventListener('change', applyFilters);
+  searchInput?.addEventListener('input', applyFilters);
+  gradeFilter?.addEventListener('change', applyFilters);
+  statusFilter?.addEventListener('change', applyFilters);
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
