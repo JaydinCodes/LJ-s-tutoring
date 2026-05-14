@@ -4,8 +4,8 @@ export async function initAssignments() {
   setActiveNav('assignments');
   const list = qs('#assignmentList');
   const form = qs('#assignmentForm');
-  const formError = qs('#assignmentFormError');
-  if (!list || !form) {return;}
+  const formError = qs('#assignmentFormError') || qs('#formError');
+  if (!list || !form || !formError) {return;}
 
   let assignmentsCache = [];
 
@@ -24,7 +24,7 @@ export async function initAssignments() {
     'Afrikaans Home Language',
   ];
 
-  const subjectList = qs('#capsSubjects');
+  const subjectList = qs('#capsSubjects') || qs('#subjectList');
   if (subjectList) {
     subjectList.innerHTML = capsSubjects
       .map((subject) => `<option value="${escapeHtml(subject)}"></option>`)
@@ -88,6 +88,12 @@ export async function initAssignments() {
 
   await load();
   qs('#assignmentSearch')?.addEventListener('input', applyFilter);
+  qs('#clearBtn')?.addEventListener('click', () => {
+    form.reset();
+    if (formError) {
+      formError.textContent = '';
+    }
+  });
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -100,7 +106,9 @@ export async function initAssignments() {
       subject: qs('#assignmentSubject').value,
       startDate: qs('#assignmentStart').value,
       endDate: qs('#assignmentEnd').value || null,
-      rateOverride: qs('#assignmentRate').value ? Number(qs('#assignmentRate').value) : null,
+      rateOverride: (qs('#assignmentRate') || qs('#rateOverride'))?.value
+        ? Number((qs('#assignmentRate') || qs('#rateOverride')).value)
+        : null,
       allowedDays,
       allowedTimeRanges: [
         { start: qs('#rangeStart').value, end: qs('#rangeEnd').value },

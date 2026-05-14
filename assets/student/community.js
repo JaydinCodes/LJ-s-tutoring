@@ -6,7 +6,7 @@ setActiveNav('community');
 let activeRoomId = null;
 
 function formatSubtitle(parts) {
-  return parts.filter(Boolean).join(' • ');
+  return parts.filter(Boolean).join(' | ');
 }
 
 function toText(value, fallback = '') {
@@ -27,7 +27,7 @@ function renderRoom(room) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'button secondary';
-  button.textContent = 'Open room';
+  button.textContent = activeRoomId === toText(room.id) ? 'Selected' : 'Open room';
   button.dataset.roomId = toText(room.id);
   button.addEventListener('click', async () => {
     activeRoomId = toText(room.id);
@@ -48,6 +48,7 @@ function renderRoom(room) {
 
   const wrapper = document.createElement('div');
   wrapper.className = 'list-item';
+  wrapper.dataset.active = String(activeRoomId === toText(room.id));
   wrapper.append(title, subtitle, button);
   return wrapper;
 }
@@ -57,6 +58,10 @@ async function loadRooms() {
   renderLoading(target, 'Loading study rooms…');
   try {
     const data = await loadJson('/community/rooms');
+    if (!data.items?.length) {
+      renderEmpty(target, 'No study rooms yet. Create a room for a subject you want to practise, and keep the discussion focused and respectful.');
+      return;
+    }
     renderList(target, data.items || [], renderRoom);
   } catch (_err) {
     renderError(target, 'Could not load study rooms.');
@@ -64,12 +69,17 @@ async function loadRooms() {
 }
 
 function renderMessage(message) {
-  return {
-    rows: [
-      { el: 'strong', text: toText(message.nickname || message.authorName, 'Member') },
-      { text: toText(message.content) },
-    ],
-  };
+  const item = document.createElement('div');
+  item.className = 'list-item';
+  const author = document.createElement('strong');
+  author.textContent = toText(message.nickname || message.authorName, 'Member');
+  const body = document.createElement('p');
+  body.textContent = toText(message.content);
+  const time = document.createElement('div');
+  time.className = 'note';
+  time.textContent = message.createdAt ? new Date(message.createdAt).toLocaleString('en-ZA') : 'Just now';
+  item.append(author, body, time);
+  return item;
 }
 
 async function loadMessages() {
@@ -81,6 +91,10 @@ async function loadMessages() {
   renderLoading(target, 'Loading messages…');
   try {
     const data = await loadJson(`/community/rooms/${encodeURIComponent(activeRoomId)}/messages`);
+    if (!data.items?.length) {
+      renderEmpty(target, 'No messages yet. Start with a clear question, a worked step, or a topic you want to revise.');
+      return;
+    }
     renderList(target, data.items || [], renderMessage);
   } catch (_err) {
     renderError(target, 'Could not load messages.');
@@ -101,6 +115,10 @@ async function loadChallenges() {
   renderLoading(target, 'Loading challenges…');
   try {
     const data = await loadJson('/community/challenges');
+    if (!data.items?.length) {
+      renderEmpty(target, 'No weekly challenges yet. Challenges will appear here when your learning team publishes a safe group task.');
+      return;
+    }
     renderList(target, data.items || [], renderChallenge);
   } catch (_err) {
     renderError(target, 'Could not load challenges.');
@@ -121,6 +139,10 @@ async function loadQuestions() {
   renderLoading(target, 'Loading peer Q&A…');
   try {
     const data = await loadJson('/community/questions');
+    if (!data.items?.length) {
+      renderEmpty(target, 'No peer questions yet. When Q&A is active, use it for specific learning questions and never share private personal details.');
+      return;
+    }
     renderList(target, data.items || [], renderQuestion);
   } catch (_err) {
     renderError(target, 'Could not load Q&A.');
@@ -142,7 +164,10 @@ document.getElementById('createRoomBtn')?.addEventListener('click', async () => 
 });
 
 document.getElementById('sendRoomMessageBtn')?.addEventListener('click', async () => {
-  if (!activeRoomId) {return;}
+  if (!activeRoomId) {
+    renderEmpty(document.getElementById('roomMessagesList'), 'Choose a study room before sending a message.');
+    return;
+  }
   const textarea = document.getElementById('roomMessageInput');
   const content = textarea.value.trim();
   if (!content) {return;}

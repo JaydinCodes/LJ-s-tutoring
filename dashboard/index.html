@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Montserrat:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/assets/portal.css">
   <style>
-    .home-hero-grid {
+    .learning-hero {
       display: grid;
       grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
       gap: 1rem;
@@ -18,14 +18,61 @@
       margin-bottom: 1rem;
     }
 
-    .home-welcome-card {
+    .hero-panel {
+      background: var(--hero-grad);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-panel::after {
+      content: "";
+      position: absolute;
+      width: 15rem;
+      height: 15rem;
+      right: -5rem;
+      top: -6rem;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(251, 191, 36, 0.22), transparent 68%);
+      animation: drift 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes drift {
+      from { transform: translate3d(0, 0, 0); }
+      to { transform: translate3d(-18px, 18px, 0); }
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
       display: grid;
-      gap: 1.25rem;
+      gap: 1rem;
       align-content: space-between;
     }
 
-    .home-welcome-card .page-title {
-      max-width: 15ch;
+    .hero-meta-row,
+    .dashboard-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: center;
+    }
+
+    .journey-orb {
+      width: 5.2rem;
+      height: 5.2rem;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: rgba(251, 191, 36, 0.16);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      font-size: 2rem;
+      box-shadow: inset 0 0 26px rgba(251, 191, 36, 0.16);
+      animation: pulseGlow 3.6s ease-in-out infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); box-shadow: inset 0 0 26px rgba(251, 191, 36, 0.16); }
+      50% { transform: scale(1.035); box-shadow: inset 0 0 38px rgba(251, 191, 36, 0.3); }
     }
 
     .home-action-row {
@@ -45,27 +92,110 @@
       resize: vertical;
     }
 
-    .dashboard-card.soft-accent {
-      border-color: rgba(245, 158, 11, 0.24);
-      background:
-        linear-gradient(160deg, rgba(251, 191, 36, 0.14), rgba(255, 255, 255, 0.96) 46%),
-        var(--panel);
+    .dashboard-section {
+      margin-top: 1rem;
     }
 
-    .growth-layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
+    .dashboard-section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
       gap: 1rem;
+      margin: 0 0 0.9rem;
+    }
+
+    .learning-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-6 { grid-column: span 6; }
+    .span-7 { grid-column: span 7; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: 1 / -1; }
+
+    .learning-card,
+    .assignment-card,
+    .result-card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--card-soft);
+      padding: 1rem;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .metric-card {
+      min-height: 8.4rem;
+    }
+
+    .metric-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
       align-items: start;
     }
 
-    .goal-card {
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: #f8fafc;
-      padding: 1rem;
+    .assignment-card[data-urgency="overdue"] {
+      border-color: rgba(220, 38, 38, 0.34);
+    }
+
+    .assignment-card[data-urgency="due_soon"] {
+      border-color: rgba(245, 158, 11, 0.44);
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .tiny-label {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .upload-box {
       display: grid;
-      gap: 1rem;
+      gap: 0.6rem;
+      padding: 0.85rem;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+    }
+
+    .comparison-chart {
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .band-row {
+      display: grid;
+      grid-template-columns: 5rem 1fr 3rem;
+      gap: 0.65rem;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .band-track {
+      height: 0.65rem;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.22);
+      overflow: hidden;
+    }
+
+    .band-track span {
+      display: block;
+      height: 100%;
+      background: var(--grad);
     }
 
     .goal-card h3 {
@@ -154,10 +284,22 @@
     }
 
     @media (max-width: 860px) {
-      .home-hero-grid,
-      .growth-layout,
+      .learning-hero,
       .corner-grid {
         grid-template-columns: 1fr;
+      }
+
+      .learning-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .span-4,
+      .span-5,
+      .span-6,
+      .span-7,
+      .span-8,
+      .span-12 {
+        grid-column: 1 / -1;
       }
 
       .student-session {
@@ -175,6 +317,8 @@
         <div class="brand"><span class="brand-badge">PO</span>Project Odysseus</div>
         <div class="nav-links">
           <a class="nav-link" data-nav="dashboard" href="/dashboard/">Dashboard</a>
+          <a class="nav-link" data-nav="assignments" href="/dashboard/assignments/">Assignments</a>
+          <a class="nav-link" data-nav="results" href="/dashboard/results/">Results</a>
           <a class="nav-link" data-nav="reports" href="/reports/">Reports</a>
           <a class="nav-link" data-nav="community" href="/dashboard/community/">Community</a>
           <a class="nav-link" data-nav="career" href="/dashboard/career/">Careers</a>
@@ -188,35 +332,21 @@
     </nav>
 
     <main class="portal-main">
-      <section class="home-hero-grid">
-        <article class="panel dashboard-card soft-accent home-welcome-card">
-          <div>
-            <p class="eyebrow" id="todayGreeting">Your learning home</p>
-            <h1 class="page-title">Settle in. Grow steadily.</h1>
-            <p class="page-subtitle">The work between tutoring sessions: notes, confidence, habits, questions, and small wins.</p>
-            <div class="home-action-row">
-              <a class="button" href="#todayPlan">See today's plan</a>
-              <a class="button secondary" href="#growthPlan">Check your growth</a>
+      <section class="learning-hero">
+        <article class="panel dashboard-card hero-panel">
+          <div class="hero-content">
+            <div class="hero-meta-row">
+              <div class="journey-orb" aria-hidden="true">⌁</div>
+              <div>
+                <p class="eyebrow" id="todayGreeting">Your learning home</p>
+                <h1 class="page-title" id="heroTitle">Settle in. Grow steadily.</h1>
+                <p class="page-subtitle" id="heroSubtitle">Your next step is loading.</p>
+              </div>
             </div>
-          </div>
-
-          <div class="metric-grid">
-            <article class="panel metric-card">
-              <span class="metric-label">XP</span>
-              <strong class="metric-value" id="metricXp">0</strong>
-            </article>
-            <article class="panel metric-card">
-              <span class="metric-label">Streak</span>
-              <strong class="metric-value" id="metricStreak">0 days</strong>
-            </article>
-            <article class="panel metric-card">
-              <span class="metric-label">This week</span>
-              <strong class="metric-value"><span id="metricMinutes">0</span>m</strong>
-            </article>
-            <article class="panel metric-card">
-              <span class="metric-label">Sessions</span>
-              <strong class="metric-value" id="metricSessions">0</strong>
-            </article>
+            <div class="home-action-row">
+              <a class="button" id="primaryNextAction" href="#assignmentsDue">See next step</a>
+              <a class="button secondary" href="#resultsZone">Review feedback</a>
+            </div>
           </div>
         </article>
 
@@ -240,7 +370,62 @@
         </aside>
       </section>
 
-      <section class="panel dashboard-card" id="growthPlan">
+      <section class="dashboard-section" aria-labelledby="progressTitle">
+        <div class="dashboard-section-head">
+          <div>
+            <h2 class="panel-title" id="progressTitle">Progress Compass</h2>
+            <p class="note">Quick signals that show your rhythm, effort, and momentum.</p>
+          </div>
+        </div>
+        <div class="learning-grid" id="metricGrid">
+          <article class="panel metric-card span-4"><div class="metric-top"><span class="metric-label">XP</span><span class="icon-pill">✦</span></div><strong class="metric-value" id="metricXp">0</strong><span class="note">Growth points earned</span></article>
+          <article class="panel metric-card span-4"><div class="metric-top"><span class="metric-label">Streak</span><span class="icon-pill">▲</span></div><strong class="metric-value" id="metricStreak">0 days</strong><span class="note">Consistency this season</span></article>
+          <article class="panel metric-card span-4"><div class="metric-top"><span class="metric-label">Study time</span><span class="icon-pill">◷</span></div><strong class="metric-value"><span id="metricMinutes">0</span>m</strong><span class="note">Focused minutes this week</span></article>
+          <article class="panel metric-card span-4"><div class="metric-top"><span class="metric-label">Sessions</span><span class="icon-pill">▤</span></div><strong class="metric-value" id="metricSessions">0</strong><span class="note">Attended this week</span></article>
+          <article class="panel metric-card span-4"><div class="metric-top"><span class="metric-label">Assignments due</span><span class="icon-pill">⇧</span></div><strong class="metric-value" id="metricAssignments">0</strong><span class="note" id="assignmentMetricHint">Loading tasks</span></article>
+          <article class="panel metric-card span-4"><div class="metric-top"><span class="metric-label">Average</span><span class="icon-pill">◫</span></div><strong class="metric-value" id="metricAverage">—</strong><span class="note" id="confidenceTrend">Awaiting marks</span></article>
+        </div>
+      </section>
+
+      <section class="dashboard-section" id="assignmentsDue" aria-labelledby="assignmentsTitle">
+        <div class="dashboard-section-head">
+          <div>
+            <h2 class="panel-title" id="assignmentsTitle">Assignments Due</h2>
+            <p class="note">Urgent work appears first. Uploads are confirmed before anything changes.</p>
+          </div>
+          <a class="button secondary" href="/dashboard/assignments/">Open assignments</a>
+        </div>
+        <div class="learning-grid">
+          <div class="span-8 list-compact" id="assignmentsList"></div>
+          <article class="panel dashboard-card span-4">
+            <h3 class="panel-title">Upload Guide</h3>
+            <p class="note">Accepted formats and file-size limits come from each assignment. You will see a success state once the backend confirms the submission.</p>
+            <div id="uploadHelp" class="empty-state"><strong>Waiting for assignment API</strong>Upload controls activate when due assignments are available from the learner assignment endpoint.</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="dashboard-section" id="resultsZone" aria-labelledby="resultsTitle">
+        <div class="dashboard-section-head">
+          <div>
+            <h2 class="panel-title" id="resultsTitle">Results &amp; Feedback</h2>
+            <p class="note">Marked work, tutor feedback, and growth-focused class comparison.</p>
+          </div>
+          <a class="button secondary" href="/dashboard/results/">Open results</a>
+        </div>
+        <div class="learning-grid">
+          <div class="span-7 list-compact" id="resultsList"></div>
+          <article class="panel dashboard-card span-5">
+            <div class="row-head">
+              <h3 class="panel-title">Class Comparison</h3>
+              <span class="badge subtle flat">Anonymous</span>
+            </div>
+            <div id="classComparison" class="comparison-chart"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel dashboard-card dashboard-section" id="growthPlan">
         <div class="row-head">
           <div>
             <h2 class="panel-title">My Growth Plan</h2>
@@ -248,14 +433,11 @@
           </div>
           <span class="badge subtle up">Personal path</span>
         </div>
-
-        <div class="growth-layout">
-          <article class="goal-card">
-            <div>
-              <p class="eyebrow">Current focus</p>
-              <h3 id="recommendedTitle">Build one strong study block</h3>
-              <p class="note" id="recommendedDescription">Choose one subject, work calmly, and leave a note for your next session.</p>
-            </div>
+        <div class="learning-grid">
+          <article class="learning-card span-5">
+            <p class="eyebrow">Current focus</p>
+            <h3 id="recommendedTitle">Build one strong study block</h3>
+            <p class="note" id="recommendedDescription">Choose one subject, work calmly, and leave a note for your next session.</p>
             <div>
               <div class="goal-progress-label">
                 <span>Weekly rhythm</span>
@@ -264,11 +446,11 @@
               <div class="progress-bar" aria-hidden="true"><span id="weeklyRhythmBar"></span></div>
             </div>
           </article>
-          <div id="progressSnapshot" class="list-compact"></div>
+          <div id="progressSnapshot" class="list-compact span-7"></div>
         </div>
       </section>
 
-      <section class="grid">
+      <section class="dashboard-section">
         <div class="corner-grid">
           <article class="corner-card">
             <div>

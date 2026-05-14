@@ -34,6 +34,7 @@ function resolveApiBase() {
 }
 
 const API_BASE = resolveApiBase();
+let themeInitialized = false;
 
 export function apiUrl(path) {
   return `${API_BASE}${path}`;
@@ -81,9 +82,55 @@ export async function apiFetch(path, options = {}) {
 }
 
 export function setActiveNav(page) {
+  initializeTheme();
   document.querySelectorAll('[data-nav]').forEach((link) => {
     link.dataset.active = String(link.dataset.nav === page);
   });
+}
+
+export function initializeTheme() {
+  if (themeInitialized) {return;}
+  themeInitialized = true;
+  const key = 'po_theme';
+  const root = document.documentElement;
+  const preferred = (() => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  })();
+  const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+  const initial = preferred || (systemDark ? 'dark' : 'light');
+  root.dataset.theme = initial;
+
+  const nav = document.querySelector('.portal-nav-inner');
+  if (!nav || document.getElementById('themeToggle')) {return;}
+  const button = document.createElement('button');
+  button.id = 'themeToggle';
+  button.className = 'theme-toggle';
+  button.type = 'button';
+  button.setAttribute('aria-label', 'Toggle dark mode');
+  const setButton = () => {
+    const dark = root.dataset.theme === 'dark';
+    button.innerHTML = `<span aria-hidden="true">${dark ? '☀' : '◐'}</span><span>${dark ? 'Light' : 'Dark'}</span>`;
+  };
+  setButton();
+  button.addEventListener('click', () => {
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    try {
+      localStorage.setItem(key, root.dataset.theme);
+    } catch {
+      /* local storage may be unavailable */
+    }
+    setButton();
+  });
+  const session = document.getElementById('studentSession');
+  if (session) {
+    nav.insertBefore(button, session);
+  } else {
+    nav.appendChild(button);
+  }
 }
 
 export function setText(selector, value) {

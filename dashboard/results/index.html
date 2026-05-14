@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Community | Project Odysseus</title>
+  <title>Results | Project Odysseus</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Montserrat:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/assets/portal.css">
 </head>
-<body data-page="community">
+<body data-page="results">
   <div class="portal-shell">
     <nav class="portal-nav">
       <div class="portal-nav-inner">
@@ -25,53 +25,29 @@
         </div>
       </div>
     </nav>
-
     <main class="portal-main">
       <section class="page-header">
-        <p class="eyebrow">Safe study harbour</p>
-        <h1 class="page-title">Community Hub</h1>
-        <p class="page-subtitle">Moderated study rooms, weekly challenges, and peer Q&amp;A designed for calm collaboration.</p>
+        <p class="eyebrow">Feedback compass</p>
+        <h1 class="page-title">Results</h1>
+        <p class="page-subtitle">Scores, feedback summaries, and privacy-safe class comparison.</p>
       </section>
-
       <section class="grid two">
+        <article class="panel dashboard-card">
+          <h2 class="panel-title">Marked work</h2>
+          <div id="resultsPageList" class="list-compact"></div>
+        </article>
         <article class="panel dashboard-card">
           <div class="row-head">
-            <h2 class="panel-title">Study Rooms</h2>
-            <button id="createRoomBtn" class="button" type="button">Create room</button>
+            <h2 class="panel-title">Group context</h2>
+            <span class="badge subtle flat">Anonymous</span>
           </div>
-          <div id="communityRoomsList" class="list-compact"></div>
-        </article>
-
-        <article class="panel dashboard-card">
-          <h2 class="panel-title">Room Chat</h2>
-          <p id="selectedRoomLabel" class="note">Join a room to view or post messages.</p>
-          <div id="roomMessagesList" class="list-compact"></div>
-          <div class="field">
-            <label for="roomMessageInput">Message</label>
-            <textarea id="roomMessageInput" rows="3" maxlength="2000" aria-label="Room message"></textarea>
-          </div>
-          <button id="sendRoomMessageBtn" class="button" type="button">Send message</button>
-        </article>
-      </section>
-
-      <section class="grid two">
-        <article class="panel dashboard-card">
-          <h2 class="panel-title">Weekly Challenges</h2>
-          <div id="challengeList" class="list-compact"></div>
-        </article>
-
-        <article class="panel dashboard-card">
-          <h2 class="panel-title">Peer Q&amp;A</h2>
-          <div id="questionList" class="list-compact"></div>
-          <button id="refreshQuestionsBtn" class="button secondary" type="button">Refresh Q&amp;A</button>
+          <div id="resultsComparison" class="list-compact"></div>
         </article>
       </section>
     </main>
   </div>
-
   <script src="/assets/portal-config.js"></script>
   <script src="/assets/student/auth-guard.js"></script>
-  <script src="/assets/analytics.js"></script>
-  <script type="module" src="/assets/student/community.js"></script>
+  <script type="module" src="/assets/student/results.js"></script>
 </body>
 </html>

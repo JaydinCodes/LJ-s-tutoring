@@ -53,7 +53,15 @@ function validateProductionAuthEnv() {
 
   requiredProductionEnv('GOOGLE_CLIENT_ID');
   requiredProductionEnv('GOOGLE_CLIENT_SECRET');
-  for (const name of ['PUBLIC_BASE_URL', 'STUDENT_PORTAL_URL', 'GOOGLE_STUDENT_CALLBACK_URL']) {
+  for (const name of [
+    'PUBLIC_BASE_URL',
+    'ADMIN_PORTAL_URL',
+    'TUTOR_PORTAL_URL',
+    'STUDENT_PORTAL_URL',
+    'GOOGLE_CALLBACK_URL',
+    'GOOGLE_STUDENT_CALLBACK_URL',
+    'GOOGLE_ADMIN_CALLBACK_URL'
+  ]) {
     assertHttpsUrl(name, requiredProductionEnv(name));
   }
 }

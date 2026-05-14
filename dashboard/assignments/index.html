@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assignments | Project Odysseus</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Montserrat:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/assets/portal.css">
+</head>
+<body data-page="assignments">
+  <div class="portal-shell">
+    <nav class="portal-nav">
+      <div class="portal-nav-inner">
+        <div class="brand"><span class="brand-badge">PO</span>Project Odysseus</div>
+        <div class="nav-links">
+          <a class="nav-link" data-nav="dashboard" href="/dashboard/">Dashboard</a>
+          <a class="nav-link" data-nav="assignments" href="/dashboard/assignments/">Assignments</a>
+          <a class="nav-link" data-nav="results" href="/dashboard/results/">Results</a>
+          <a class="nav-link" data-nav="reports" href="/reports/">Reports</a>
+          <a class="nav-link" data-nav="community" href="/dashboard/community/">Community</a>
+          <a class="nav-link" data-nav="career" href="/dashboard/career/">Careers</a>
+        </div>
+      </div>
+    </nav>
+    <main class="portal-main">
+      <section class="page-header">
+        <p class="eyebrow">Learning tasks</p>
+        <h1 class="page-title">Assignments</h1>
+        <p class="page-subtitle">Due work, submissions, upload status, and marked tasks.</p>
+      </section>
+      <section class="panel dashboard-card">
+        <div class="row-head">
+          <div>
+            <h2 class="panel-title">Due assignments</h2>
+            <p class="note">Overdue and due-soon work is sorted first.</p>
+          </div>
+          <select id="assignmentStatusFilter" aria-label="Filter assignments">
+            <option value="all">All statuses</option>
+            <option value="overdue">Overdue</option>
+            <option value="due_soon">Due soon</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="submitted">Submitted</option>
+            <option value="marked">Marked</option>
+          </select>
+        </div>
+        <div id="assignmentPageList" class="list-compact"></div>
+      </section>
+    </main>
+  </div>
+  <script src="/assets/portal-config.js"></script>
+  <script src="/assets/student/auth-guard.js"></script>
+  <script type="module" src="/assets/student/assignments.js"></script>
+</body>
+</html>

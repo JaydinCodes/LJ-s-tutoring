@@ -95,7 +95,8 @@ envs:
     value: ${JWT_SECRET}
   - key: ADMIN_BOOTSTRAP_TOKEN
     scope: RUN_AND_BUILD_TIME
-    value: change_me
+    type: SECRET
+    value: ${ADMIN_BOOTSTRAP_TOKEN}
   - key: GOOGLE_CLIENT_ID
     scope: RUN_AND_BUILD_TIME
     type: SECRET

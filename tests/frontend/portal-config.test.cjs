@@ -65,6 +65,8 @@ test('all protected portal pages load config, role guard, then page module', () 
   const protectedPages = [
     { file: ['reports', 'index.html'], guard: 'student/auth-guard.js', module: 'student/reports.js' },
     { file: ['dashboard', 'index.html'], guard: 'student/auth-guard.js', module: 'student/dashboard.js' },
+    { file: ['dashboard', 'assignments', 'index.html'], guard: 'student/auth-guard.js', module: 'student/assignments.js' },
+    { file: ['dashboard', 'results', 'index.html'], guard: 'student/auth-guard.js', module: 'student/results.js' },
     { file: ['dashboard', 'community', 'index.html'], guard: 'student/auth-guard.js', module: 'student/community.js' },
     { file: ['dashboard', 'career', 'index.html'], guard: 'student/auth-guard.js', module: 'student/career.js' },
     { file: ['dashboard', 'career', 'readiness', 'index.html'], guard: 'student/auth-guard.js', module: 'student/career-readiness.js' },

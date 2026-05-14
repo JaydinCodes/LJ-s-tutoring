@@ -1,11 +1,28 @@
-import { apiFetch, loadJson, renderList, renderLoading, renderError, renderEmpty, setActiveNav, setText } from '/assets/common.js';
+import { apiFetch, loadJson, renderList, renderLoading, renderError, setActiveNav, setText } from '/assets/common.js';
 import { track } from '/assets/analytics.js';
+import {
+  fetchClassStats,
+  fetchStudentAssignments,
+  fetchStudentResults,
+  sortAssignmentsByUrgency,
+  uploadAssignmentSubmission,
+  validateSubmissionFile,
+} from '/assets/student/learning-api.js';
 
 setActiveNav('dashboard');
 
 function toText(value, fallback = '') {
   if (value === null || value === undefined) {return fallback;}
   return String(value);
+}
+
+function escapeHtml(value) {
+  return toText(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 function renderSession(session) {
@@ -22,6 +39,27 @@ function renderSession(session) {
   wrapper.className = 'list-item';
   wrapper.append(subject, when, mode);
   return wrapper;
+}
+
+function smartEmpty(target, title, detail, action) {
+  if (!target) {return;}
+  target.innerHTML = '';
+  const empty = document.createElement('div');
+  empty.className = 'empty-state';
+  const strong = document.createElement('strong');
+  strong.textContent = title;
+  const p = document.createElement('div');
+  p.textContent = detail;
+  empty.append(strong, p);
+  if (action) {
+    const link = document.createElement('a');
+    link.className = 'button secondary';
+    link.href = action.href;
+    link.textContent = action.label;
+    link.style.marginTop = '0.75rem';
+    empty.append(link);
+  }
+  target.append(empty);
 }
 
 function renderSnapshot(topic) {
@@ -44,6 +82,152 @@ function renderSnapshot(topic) {
   wrapper.className = 'list-item';
   wrapper.append(title, meta, bar);
   return wrapper;
+}
+
+function statusLabel(value) {
+  return String(value || 'upcoming').replace(/_/g, ' ');
+}
+
+function daysUntil(value) {
+  if (!value) {return null;}
+  const due = new Date(value);
+  if (Number.isNaN(due.getTime())) {return null;}
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  return Math.ceil((due - today) / 86400000);
+}
+
+function renderAssignmentCard(assignment, apiAvailable) {
+  const due = assignment.dueDate || assignment.due_date;
+  const status = String(assignment.status || '').toLowerCase() || (daysUntil(due) < 0 ? 'overdue' : 'upcoming');
+  const card = document.createElement('article');
+  card.className = 'assignment-card';
+  card.dataset.urgency = status;
+
+  const title = document.createElement('div');
+  title.className = 'status-row';
+  title.innerHTML = `<div><span class="tiny-label">${escapeHtml(assignment.subject || 'Assignment')}</span><h3 class="panel-title">${escapeHtml(assignment.title || assignment.topic || 'Learning task')}</h3></div><span class="badge subtle ${status === 'overdue' ? 'down' : status === 'submitted' || status === 'marked' ? 'up' : 'flat'}">${escapeHtml(statusLabel(status))}</span>`;
+
+  const meta = document.createElement('p');
+  meta.className = 'note';
+  const delta = daysUntil(due);
+  meta.textContent = [
+    assignment.topic,
+    due ? `Due ${new Date(due).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}` : 'No due date set',
+    delta === null ? '' : delta < 0 ? `${Math.abs(delta)} day${Math.abs(delta) === 1 ? '' : 's'} overdue` : delta === 0 ? 'Due today' : `${delta} day${delta === 1 ? '' : 's'} left`,
+  ].filter(Boolean).join(' • ');
+
+  const progress = document.createElement('div');
+  progress.className = 'progress-bar';
+  const fill = document.createElement('span');
+  fill.style.width = `${Math.max(8, Math.min(100, Number(assignment.progress || (status === 'submitted' ? 75 : status === 'marked' ? 100 : 35))))}%`;
+  progress.append(fill);
+
+  const upload = document.createElement('div');
+  upload.className = 'upload-box';
+  const file = document.createElement('input');
+  file.type = 'file';
+  file.disabled = !apiAvailable || status === 'marked';
+  file.setAttribute('aria-label', `Upload submission for ${toText(assignment.title, 'assignment')}`);
+  const hint = document.createElement('span');
+  hint.className = 'note';
+  const allowed = assignment.allowedFileTypes || assignment.allowed_file_types || ['PDF', 'DOCX', 'PNG', 'JPG'];
+  hint.textContent = apiAvailable
+    ? `Accepted: ${allowed.join(', ')}. Max ${assignment.maxFileSizeMB || assignment.max_file_size_mb || 20} MB.`
+    : 'Upload endpoint is not available yet. Your tutor/admin team needs to enable student submissions.';
+  const submit = document.createElement('button');
+  submit.className = 'button secondary';
+  submit.type = 'button';
+  submit.textContent = status === 'submitted' ? 'Resubmit' : 'Upload submission';
+  submit.disabled = file.disabled;
+  const state = document.createElement('span');
+  state.className = 'note';
+  state.setAttribute('aria-live', 'polite');
+  submit.addEventListener('click', async () => {
+    const selected = file.files?.[0];
+    const validation = validateSubmissionFile(selected, assignment);
+    if (validation) {
+      state.textContent = validation;
+      return;
+    }
+    submit.disabled = true;
+    state.textContent = 'Uploading...';
+    try {
+      await uploadAssignmentSubmission(assignment.id, selected, () => {});
+      state.textContent = 'Upload confirmed. Your assignment is submitted.';
+      track('assignment.submitted', { assignmentId: assignment.id });
+    } catch {
+      state.textContent = 'Upload failed. Please try again or contact your tutor.';
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  upload.append(file, hint, submit, state);
+  card.append(title, meta, progress, upload);
+  return card;
+}
+
+function renderResultCard(result) {
+  const card = document.createElement('article');
+  card.className = 'result-card';
+  const pct = result.percentage ?? (result.totalMarks ? Math.round((Number(result.score || 0) / Number(result.totalMarks)) * 100) : null);
+  const strengths = Array.isArray(result.strengths) ? result.strengths.join(', ') : result.strengths;
+  const improvements = Array.isArray(result.improvementAreas) ? result.improvementAreas.join(', ') : result.improvementAreas;
+  card.innerHTML = `
+    <div class="status-row">
+      <div><span class="tiny-label">${escapeHtml(result.subject || 'Result')}</span><h3 class="panel-title">${escapeHtml(result.title || 'Marked work')}</h3></div>
+      <strong class="metric-value">${pct === null || pct === undefined ? '—' : `${pct}%`}</strong>
+    </div>
+    <p class="note">${escapeHtml([result.topic, result.markedAt ? `Marked ${new Date(result.markedAt).toLocaleDateString('en-ZA')}` : '', result.score !== undefined && result.totalMarks ? `${result.score}/${result.totalMarks}` : ''].filter(Boolean).join(' • '))}</p>
+    <p>${escapeHtml(result.feedbackSummary || 'Feedback summary will appear here once your tutor marks the work.')}</p>
+    <p class="note"><strong>Strengths:</strong> ${escapeHtml(strengths || 'Awaiting feedback')}</p>
+    <p class="note"><strong>Next improvement:</strong> ${escapeHtml(improvements || 'Awaiting feedback')}</p>
+  `;
+  const btn = document.createElement('a');
+  btn.className = 'button secondary';
+  btn.href = result.reportId ? `/reports/?report=${encodeURIComponent(result.reportId)}` : '/reports/';
+  btn.textContent = 'View report';
+  card.append(btn);
+  return card;
+}
+
+function renderComparison(target, statsResult, results) {
+  if (!target) {return;}
+  target.innerHTML = '';
+  const stat = statsResult.items?.[0] || statsResult.payload?.stats?.[0] || null;
+  if (!statsResult.available) {
+    smartEmpty(target, 'Class comparison is waiting for API support.', 'When anonymised class statistics are available, this area will compare your score with the group average without exposing any learner names.');
+    return;
+  }
+  if (!stat) {
+    smartEmpty(target, 'No comparison yet.', 'Class comparison appears after an assignment is marked and enough anonymised group data exists to make the comparison fair.');
+    return;
+  }
+  const learner = Number(stat.learnerScore ?? stat.learner_score ?? results?.[0]?.percentage ?? 0);
+  const average = Number(stat.classAverage ?? stat.class_average ?? 0);
+  const high = Number(stat.highestScore ?? stat.highest_score ?? 0);
+  const percentile = stat.percentile ?? null;
+  const message = learner >= average
+    ? 'You are above the group average. Keep consolidating the method so it becomes reliable.'
+    : 'You are close to the next band. Revise the target topic and try three focused questions.';
+  const summary = document.createElement('p');
+  summary.textContent = message;
+  target.append(summary);
+  [
+    ['You', learner],
+    ['Average', average],
+    ['Highest', high],
+  ].forEach(([label, value]) => {
+    const row = document.createElement('div');
+    row.className = 'band-row';
+    row.innerHTML = `<span>${escapeHtml(label)}</span><div class="band-track"><span style="width:${Math.max(4, Math.min(100, value))}%"></span></div><strong>${Math.round(value)}%</strong>`;
+    target.append(row);
+  });
+  const band = document.createElement('div');
+  band.className = 'empty-state';
+  band.innerHTML = `<strong>${escapeHtml(percentile ? `Percentile ${percentile}` : 'Growth band')}</strong>${learner >= average ? 'You are in a strong working band.' : 'Support band does not mean stuck; it means your next practice step is clear.'}`;
+  target.append(band);
 }
 
 function updateTodayDate() {
@@ -170,10 +354,24 @@ setupReflection();
   const snapshot = document.getElementById('progressSnapshot');
   renderLoading(upcoming, 'Loading your next session...');
   renderLoading(snapshot, 'Loading progress snapshot...');
+  const assignmentsList = document.getElementById('assignmentsList');
+  const resultsList = document.getElementById('resultsList');
+  const comparison = document.getElementById('classComparison');
+  renderLoading(assignmentsList, 'Checking assignments due...');
+  renderLoading(resultsList, 'Loading marked results...');
+  renderLoading(comparison, 'Preparing anonymised comparison...');
 
   let data = null;
+  let assignmentsResult = { available: false, items: [] };
+  let resultsResult = { available: false, items: [] };
+  let statsResult = { available: false, items: [] };
   try {
-    data = await loadJson('/dashboard');
+    [data, assignmentsResult, resultsResult, statsResult] = await Promise.all([
+      loadJson('/dashboard'),
+      fetchStudentAssignments(),
+      fetchStudentResults(),
+      fetchClassStats(),
+    ]);
   } catch (_err) {
     renderError(upcoming, 'Could not load your dashboard.');
     renderError(snapshot, 'Could not load progress snapshot.');
@@ -186,15 +384,48 @@ setupReflection();
   setText('#metricStreak', `${data.streak?.current ?? 0} days`);
   setText('#metricMinutes', String(data.thisWeek?.minutesStudied ?? 0));
   setText('#metricSessions', String(data.thisWeek?.sessionsAttended ?? 0));
+  const sortedAssignments = sortAssignmentsByUrgency(assignmentsResult.items || []);
+  const openAssignments = sortedAssignments.filter((item) => !['submitted', 'marked'].includes(String(item.status || '').toLowerCase()));
+  setText('#metricAssignments', String(assignmentsResult.available ? openAssignments.length : 0));
+  setText('#assignmentMetricHint', assignmentsResult.available ? 'Open learner tasks' : 'API contract needed');
+  const resultItems = resultsResult.items || [];
+  const percentages = resultItems.map((item) => Number(item.percentage)).filter(Number.isFinite);
+  const average = percentages.length ? Math.round(percentages.reduce((a, b) => a + b, 0) / percentages.length) : null;
+  setText('#metricAverage', average === null ? '—' : `${average}%`);
+  setText('#confidenceTrend', data.predictiveScore ? `Momentum ${data.predictiveScore.momentumScore}/100` : 'Awaiting confidence data');
   setText('#recommendedTitle', data.recommendedNext?.title || 'Build one strong study block');
   setText('#recommendedDescription', data.recommendedNext?.description || 'Choose one subject, work calmly, and leave a note for your next session.');
+  setText('#heroTitle', data.recommendedNext?.title || 'Settle in. Grow steadily.');
+  setText('#heroSubtitle', data.recommendedNext?.description || 'Your next best step will appear here as sessions, assignments, and results build up.');
   updateWeeklyRhythm(data);
 
   if (data.today?.hasUpcoming && data.today.session) {
     renderList(upcoming, [data.today.session], renderSession);
   } else {
-    renderEmpty(upcoming, data.today?.emptyState?.title || 'No upcoming session today. Use the space to review, reflect, or prepare a question.');
+    smartEmpty(upcoming, data.today?.emptyState?.title || 'No session scheduled today.', 'Use this window to review one topic, upload any due work, or prepare a focused question for your tutor.');
   }
 
-  renderList(snapshot, data.progressSnapshot || [], renderSnapshot);
+  if (data.progressSnapshot?.length) {
+    renderList(snapshot, data.progressSnapshot || [], renderSnapshot);
+  } else {
+    smartEmpty(snapshot, 'No progress snapshot yet.', 'Once sessions are approved, your subject rhythm and topic minutes will appear here.');
+  }
+
+  if (!assignmentsResult.available) {
+    smartEmpty(assignmentsList, 'Assignments API not enabled yet.', 'When the learner assignment endpoint is available, due work will appear here with upload, submitted, and marked states.');
+  } else if (!sortedAssignments.length) {
+    smartEmpty(assignmentsList, 'No assignments due right now.', 'When your tutor gives you homework or a task, it will appear here with the due date and upload button.');
+  } else {
+    renderList(assignmentsList, sortedAssignments.slice(0, 4), (item) => renderAssignmentCard(item, assignmentsResult.available));
+  }
+
+  if (!resultsResult.available) {
+    smartEmpty(resultsList, 'Results API not enabled yet.', 'Marked assignments and tutor feedback will appear here once the results endpoint is available.');
+  } else if (!resultItems.length) {
+    smartEmpty(resultsList, 'No marked assignments yet.', 'Once your tutor marks your work, your scores, strengths, and improvement areas will appear here.');
+  } else {
+    renderList(resultsList, resultItems.slice(0, 3), renderResultCard);
+  }
+
+  renderComparison(comparison, statsResult, resultItems);
 })();

@@ -2,6 +2,105 @@ import { apiGet, apiPost, qs, renderStatus, formatMoney, setActiveNav, escapeHtm
 
 export async function initApprovals() {
   setActiveNav('approvals');
+  const pageContent = qs('#pageContent');
+  if (!qs('#approvalList') && pageContent) {
+    pageContent.innerHTML = `
+      <form id="filterForm" autocomplete="off" onsubmit="return false;">
+        <div class="form-grid">
+          <div class="field full-width">
+            <label for="searchInput">Search</label>
+            <input id="searchInput" type="search" placeholder="Tutor, student, or notes">
+          </div>
+          <div class="field">
+            <label for="statusFilter">Status</label>
+            <select id="statusFilter">
+              <option value="SUBMITTED">Submitted</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="DRAFT">Draft</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="pageSize">Page size</label>
+            <select id="pageSize">
+              <option value="10">10</option>
+              <option value="25" selected>25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="sortBy">Sort by</label>
+            <select id="sortBy">
+              <option value="date">Session date</option>
+              <option value="createdAt">Created at</option>
+              <option value="tutor">Tutor name</option>
+              <option value="student">Student name</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="sortOrder">Sort order</label>
+            <select id="sortOrder">
+              <option value="desc">Newest first</option>
+              <option value="asc">Oldest first</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fromDate">From date</label>
+            <input id="fromDate" type="date">
+          </div>
+          <div class="field">
+            <label for="toDate">To date</label>
+            <input id="toDate" type="date">
+          </div>
+        </div>
+        <div class="filter-actions">
+          <button type="button" class="btn btn-secondary" data-preset="this-week">This week</button>
+          <button type="button" class="btn btn-secondary" data-preset="last-week">Last week</button>
+          <button type="button" class="btn btn-gold" id="applyFilters">Apply filters</button>
+          <button type="button" class="btn btn-secondary" id="resetFilters">Reset</button>
+        </div>
+      </form>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-card-label">Selected</div>
+          <div class="summary-card-value" id="selectionSummary">0 sessions</div>
+          <div class="summary-card-meta" id="selectionMeta">0 minutes - R0.00</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">Submitted range</div>
+          <div class="summary-card-value" id="aggregateSummary">0 submitted</div>
+          <div class="summary-card-meta" id="aggregateMeta">0 minutes submitted</div>
+        </div>
+      </div>
+      <div class="bulk-actions">
+        <button type="button" class="btn btn-green" id="bulkApprove">Bulk approve</button>
+        <button type="button" class="btn btn-red" id="bulkReject">Bulk reject</button>
+        <span class="note" id="bulkResult" aria-live="polite"></span>
+      </div>
+      <div class="queue-pagination">
+        <span class="queue-page-label" id="pageMeta">Page 1 of 1 (0 total)</span>
+        <div class="queue-nav">
+          <button type="button" class="btn btn-secondary" id="prevPage">Prev</button>
+          <button type="button" class="btn btn-secondary" id="nextPage">Next</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="session-table" aria-label="Session approval queue">
+          <thead>
+            <tr>
+              <th style="width:36px;"><input type="checkbox" id="selectAll" aria-label="Select all sessions"></th>
+              <th>Session</th>
+              <th>Schedule</th>
+              <th>Notes</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="approvalList"></tbody>
+        </table>
+      </div>`;
+  }
   const list = qs('#approvalList');
   const selectAll = qs('#selectAll');
   const searchInput = qs('#searchInput');

@@ -17,26 +17,48 @@
         <div class="brand"><span class="brand-badge">PO</span>Project Odysseus</div>
         <div class="nav-links">
           <a class="nav-link" data-nav="dashboard" href="/dashboard/">Dashboard</a>
+          <a class="nav-link" data-nav="assignments" href="/dashboard/assignments/">Assignments</a>
+          <a class="nav-link" data-nav="results" href="/dashboard/results/">Results</a>
           <a class="nav-link" data-nav="reports" href="/reports/">Reports</a>
           <a class="nav-link" data-nav="community" href="/dashboard/community/">Community</a>
-          <a class="nav-link" data-nav="career" href="/dashboard/career/">Odie Careers</a>
+          <a class="nav-link" data-nav="career" href="/dashboard/career/">Careers</a>
         </div>
       </div>
     </nav>
     <main class="portal-main">
       <section class="page-header">
+        <p class="eyebrow">Weekly scrolls</p>
         <h1 class="page-title">Weekly Reports</h1>
-        <p class="page-subtitle">Recently generated learning reports linked to your learner profile.</p>
+        <p class="page-subtitle">A calm summary of attendance, topics, confidence, assignments, and the next best step.</p>
       </section>
-      <section class="panel dashboard-card">
+      <section class="grid two">
+        <article class="panel dashboard-card">
+          <div class="row-head">
+            <div>
+              <h2 class="panel-title">Generate a report</h2>
+              <p class="note">Reports need session, assignment, and progress data to become useful.</p>
+            </div>
+            <button id="generateReportBtn" class="button" type="button">Generate this week</button>
+          </div>
+          <div class="progress-bar" aria-hidden="true"><span id="reportGenerateProgress"></span></div>
+          <p id="generateReportStatus" class="note" aria-live="polite"></p>
+        </article>
+        <article class="panel dashboard-card">
+          <h2 class="panel-title">What appears here</h2>
+          <div class="list-compact">
+            <div class="list-item"><strong>Topics covered</strong><span class="note">Subjects and focus areas from approved sessions.</span></div>
+            <div class="list-item"><strong>Confidence summary</strong><span class="note">Momentum, risk, and recommended next action.</span></div>
+            <div class="list-item"><strong>Assignment highlights</strong><span class="note">Due work, marked results, and feedback patterns when available.</span></div>
+          </div>
+        </article>
+      </section>
+      <section class="panel dashboard-card dashboard-section">
         <div class="row-head">
-          <h2 class="panel-title">Generate a report</h2>
-          <button id="generateReportBtn" class="button" type="button">Generate this week's report</button>
+          <div>
+            <h2 class="panel-title">Report history</h2>
+            <p class="note">Open a report to view the date range, sessions, minutes, and summary.</p>
+          </div>
         </div>
-        <p id="generateReportStatus" class="note" aria-live="polite"></p>
-      </section>
-      <section class="panel dashboard-card">
-        <h2 class="panel-title">Your reports</h2>
         <div id="studentReportsList" class="list-compact"></div>
       </section>
     </main>

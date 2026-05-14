@@ -3,7 +3,6 @@ import {
   apiFetch,
   clearChildren,
   loadJson,
-  renderEmpty,
   renderError,
   renderList,
   renderLoading,
@@ -81,12 +80,15 @@ function renderReportRow(item, onOpen) {
   const header = document.createElement('div');
   header.className = 'report-header';
   const title = document.createElement('strong');
-  title.textContent = toText(item.student_name, 'Weekly report');
+  title.textContent = 'Weekly learning report';
   const range = document.createElement('div');
   range.textContent = `${toDateOnly(item.week_start)} → ${toDateOnly(item.week_end)}`;
   const created = document.createElement('div');
   created.textContent = `Created: ${formatCreatedAt(item.created_at)}`;
-  header.append(title, range, created);
+  const topics = document.createElement('div');
+  topics.className = 'note';
+  topics.textContent = 'Attendance, topic rhythm, confidence and assignment highlights.';
+  header.append(title, range, created, topics);
 
   const detail = buildDetailNode();
 
@@ -137,7 +139,7 @@ async function loadReports() {
     const data = await loadJson('/reports');
     const items = data.items || [];
     if (!items.length) {
-      renderEmpty(target, 'No weekly reports yet. Generate one below to get started.');
+      target.innerHTML = '<div class="empty-state"><strong>No reports generated yet.</strong>Reports become useful after sessions are approved and learning activity exists. Generate one when you want a weekly summary of attendance, topics, confidence, and assignment highlights.</div>';
       return;
     }
     renderList(target, items, (item) => renderReportRow(item));
@@ -152,9 +154,11 @@ function attachGenerateButton() {
   if (!btn) {return;}
   btn.addEventListener('click', async () => {
     btn.disabled = true;
+    const progress = document.getElementById('reportGenerateProgress');
     const prev = btn.textContent;
     btn.textContent = 'Generating…';
     if (status) {status.textContent = '';}
+    if (progress) {progress.style.width = '42%';}
     try {
       const res = await apiFetch('/reports/generate', { method: 'POST', body: {} });
       if (!res.ok) {
@@ -163,15 +167,17 @@ function attachGenerateButton() {
       const body = await res.json();
       track('report.generated', { reportId: body?.report?.id });
       if (status) {
-        status.textContent = 'Report generated successfully.';
+        status.textContent = 'Report generated successfully. It has been added to your history.';
         status.dataset.state = 'ok';
       }
+      if (progress) {progress.style.width = '100%';}
       await loadReports();
     } catch (_err) {
       if (status) {
-        status.textContent = 'Could not generate a report right now.';
+        status.textContent = 'Could not generate a report right now. You may need approved sessions or more learner activity first.';
         status.dataset.state = 'error';
       }
+      if (progress) {progress.style.width = '12%';}
     } finally {
       btn.textContent = prev;
       btn.disabled = false;
