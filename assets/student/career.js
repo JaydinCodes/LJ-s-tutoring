@@ -50,11 +50,13 @@ async function bootstrap() {
     }
 
     highlights.innerHTML = `
-      <div class="empty-state">
+      <div class="empty-state error-state">
         <strong>Odie Careers is temporarily unavailable.</strong>
         <p>${escapeHtml(error instanceof Error ? error.message : 'unknown_error')}</p>
+        <button class="button" type="button" id="odieRetryButton">Retry overview</button>
       </div>
     `;
+    document.getElementById('odieRetryButton')?.addEventListener('click', bootstrap);
   }
 }
 
