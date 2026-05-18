@@ -105,6 +105,7 @@ model User {
   weeklyReports                WeeklyReport[]           @relation("weekly_report_owner")
   generatedReports             WeeklyReport[]           @relation("weekly_report_creator")
   scoreSnapshots               StudentScoreSnapshot[]
+  learningAssignmentsCreated   LearningAssignment[]
   communityProfile             CommunityProfile?
   studyRoomMessages            StudyRoomMessage[]
   studyRoomMemberships         StudyRoomMember[]
@@ -298,6 +299,11 @@ model TutorProfile {
   status            String  @default("ACTIVE")
   qualificationBand String? @map("qualification_band")
   qualifiedSubjects Json?   @map("qualified_subjects_json")
+  approvalStatus    String  @default("approved") @map("approval_status")
+  approvalReviewedBy String? @map("approval_reviewed_by") @db.Uuid
+  approvalReviewedAt DateTime? @map("approval_reviewed_at")
+  approvalNote      String? @map("approval_note")
+  teachingPreferences Json @default("[]") @map("teaching_preferences_json")
 
   user                  User?
   assignments           Assignment[]
@@ -306,8 +312,74 @@ model TutorProfile {
   adjustments           Adjustment[]
   impersonationSessions ImpersonationSession[]
   tutorMap              TutorStudentMap[]
+  application           TutorApplication?
+  documents             TutorDocument[]
+  availabilitySlots     TutorAvailabilitySlot[]
+  learningAssignments   LearningAssignment[]
+  volunteerLogs         VolunteerLog[]
 
   @@map("tutor_profiles")
+}
+
+model TutorApplication {
+  id                      String   @id @default(uuid()) @db.Uuid
+  tutorId                 String   @unique @map("tutor_id") @db.Uuid
+  status                  String   @default("draft")
+  personalDetailsJson     Json     @default("{}") @map("personal_details_json")
+  subjectsJson            Json     @default("[]") @map("subjects_json")
+  gradesJson              Json     @default("[]") @map("grades_json")
+  teachingPreferencesJson Json     @default("[]") @map("teaching_preferences_json")
+  experience              String?
+  availabilityNotes       String?  @map("availability_notes")
+  submittedAt             DateTime? @map("submitted_at")
+  reviewedBy              String?  @map("reviewed_by") @db.Uuid
+  reviewedAt              DateTime? @map("reviewed_at")
+  reviewNote              String?  @map("review_note")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @default(now()) @map("updated_at")
+
+  tutor TutorProfile @relation(fields: [tutorId], references: [id])
+
+  @@map("tutor_applications")
+}
+
+model TutorDocument {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tutorId            String   @map("tutor_id") @db.Uuid
+  documentType       String   @map("document_type")
+  storageKey         String   @map("storage_key")
+  originalFilename   String   @map("original_filename")
+  mimeType           String   @map("mime_type")
+  fileSizeBytes      Int      @map("file_size_bytes")
+  uploadedAt         DateTime @default(now()) @map("uploaded_at")
+  verificationStatus String   @default("pending") @map("verification_status")
+  verifiedBy         String?  @map("verified_by") @db.Uuid
+  verifiedAt         DateTime? @map("verified_at")
+  notes              String?
+
+  tutor TutorProfile @relation(fields: [tutorId], references: [id])
+  volunteerEvidenceLogs VolunteerLog[]
+
+  @@index([tutorId, uploadedAt(sort: Desc)])
+  @@map("tutor_documents")
+}
+
+model TutorAvailabilitySlot {
+  id          String   @id @default(uuid()) @db.Uuid
+  tutorId     String   @map("tutor_id") @db.Uuid
+  dayOfWeek   Int      @map("day_of_week")
+  startTime   DateTime @map("start_time") @db.Time
+  endTime     DateTime @map("end_time") @db.Time
+  mode        String   @default("online")
+  notes       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @map("updated_at")
+
+  tutor TutorProfile @relation(fields: [tutorId], references: [id])
+
+  @@index([tutorId, dayOfWeek, startTime])
+  @@map("tutor_availability_slots")
 }
 
 model Student {
@@ -325,6 +397,7 @@ model Student {
   sessions    Session[]
   user        User?
   tutorMap    TutorStudentMap[]
+  learningAssignments LearningAssignment[]
 
   @@map("students")
 }
@@ -404,6 +477,7 @@ model Assignment {
   tutor    TutorProfile @relation(fields: [tutorId], references: [id])
   student  Student      @relation(fields: [studentId], references: [id])
   sessions Session[]
+  learningAssignments LearningAssignment[]
 
   @@index([tutorId, studentId])
   @@map("assignments")
@@ -421,6 +495,14 @@ model Session {
   mode            String
   location        String?
   notes           String?
+  attendanceStatus String?       @map("attendance_status")
+  topicsCovered  String?         @map("topics_covered")
+  learnerStruggles String?       @map("learner_struggles")
+  homeworkAssigned String?       @map("homework_assigned")
+  tutorPrivateNotes String?      @map("tutor_private_notes")
+  studentSummary String?         @map("student_summary")
+  reportReviewNote String?       @map("report_review_note")
+  payoutOverride Boolean         @default(false) @map("payout_override")
   syncKey         String?       @map("sync_key")
   status          SessionStatus @default(DRAFT)
   createdAt       DateTime      @default(now()) @map("created_at")
@@ -495,6 +577,74 @@ model InvoiceLine {
   @@index([sessionId])
   @@index([adjustmentId])
   @@map("invoice_lines")
+}
+
+model LearningAssignment {
+  id                   String   @id @default(uuid()) @db.Uuid
+  tutorId              String   @map("tutor_id") @db.Uuid
+  studentId            String   @map("student_id") @db.Uuid
+  teachingAssignmentId String?  @map("teaching_assignment_id") @db.Uuid
+  subject              String
+  title                String
+  instructions         String?
+  dueDate              DateTime? @map("due_date") @db.Date
+  status               String   @default("assigned")
+  createdByUserId      String   @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @default(now()) @map("updated_at")
+
+  tutor TutorProfile @relation(fields: [tutorId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+  teachingAssignment Assignment? @relation(fields: [teachingAssignmentId], references: [id])
+  createdBy User @relation(fields: [createdByUserId], references: [id])
+
+  @@index([tutorId, createdAt(sort: Desc)])
+  @@index([studentId, dueDate, createdAt(sort: Desc)])
+  @@map("learning_assignments")
+}
+
+model VolunteerEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  title           String
+  description     String?
+  eventDate       DateTime? @map("event_date") @db.Date
+  startTime       DateTime? @map("start_time") @db.Time
+  endTime         DateTime? @map("end_time") @db.Time
+  location        String?
+  mode            String   @default("in-person")
+  status          String   @default("planned")
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @map("updated_at")
+
+  logs VolunteerLog[]
+
+  @@map("volunteer_events")
+}
+
+model VolunteerLog {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tutorId            String   @map("tutor_id") @db.Uuid
+  eventId            String?  @map("event_id") @db.Uuid
+  status             String   @default("signed_up")
+  hours              Decimal? @db.Decimal(8, 2)
+  volunteeredOn      DateTime? @map("volunteered_on") @db.Date
+  notes              String?
+  evidenceDocumentId String?  @map("evidence_document_id") @db.Uuid
+  submittedAt        DateTime? @map("submitted_at")
+  verifiedBy         String?  @map("verified_by") @db.Uuid
+  verifiedAt         DateTime? @map("verified_at")
+  adminNote          String?  @map("admin_note")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @default(now()) @map("updated_at")
+
+  tutor TutorProfile @relation(fields: [tutorId], references: [id])
+  event VolunteerEvent? @relation(fields: [eventId], references: [id])
+  evidenceDocument TutorDocument? @relation(fields: [evidenceDocumentId], references: [id])
+
+  @@index([tutorId, createdAt(sort: Desc)])
+  @@index([eventId])
+  @@map("volunteer_logs")
 }
 
 model PrivacyRequest {

@@ -20,6 +20,9 @@ export type TutorSummary = {
   status?: string;
   qualification_band?: string | null;
   qualified_subjects_json?: unknown;
+  approval_status?: string;
+  approval_reviewed_at?: string | null;
+  approval_note?: string | null;
   email?: string | null;
 };
 

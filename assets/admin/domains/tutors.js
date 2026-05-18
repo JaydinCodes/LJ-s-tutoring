@@ -21,6 +21,15 @@ export async function initTutors() {
   `;
   list.parentElement?.insertBefore(toolbar, list);
 
+  const applicationsPanel = document.createElement('section');
+  applicationsPanel.className = 'panel';
+  applicationsPanel.innerHTML = `
+    <div class="panel-header"><h2 class="panel-title">Tutor applications</h2></div>
+    <div class="panel-body"><div id="tutorApplicationsList" class="list-compact"></div></div>
+  `;
+  list.closest('.panel')?.after(applicationsPanel);
+  const applicationsList = qs('#tutorApplicationsList');
+
   const normalizeSubjects = (raw) => {
     if (!raw) {return [];}
     if (Array.isArray(raw)) {return raw;}
@@ -47,7 +56,7 @@ export async function initTutors() {
     list.innerHTML = items
       .map((t) => `<div class="panel">
           <div><strong>${escapeHtml(t.full_name)}</strong> (${escapeHtml(t.email || 'no email')})</div>
-          <div class="note">${formatMoney(t.default_hourly_rate)} | ${t.active ? 'Active' : 'Inactive'} | ${escapeHtml(t.status || 'UNKNOWN')}</div>
+          <div class="note">${formatMoney(t.default_hourly_rate)} | ${t.active ? 'Active' : 'Inactive'} | ${escapeHtml(t.status || 'UNKNOWN')} | Approval: ${escapeHtml(t.approval_status || 'approved')}</div>
           <div class="note">${escapeHtml(t.qualification_band || 'n/a')} | ${escapeHtml(normalizeSubjects(t.qualified_subjects_json).join(', ') || 'No subjects')}</div>
           <div class="split" style="margin-top:10px;">
             <button class="button secondary" data-impersonate="${t.id}" data-name="${escapeHtml(t.full_name)}">View as tutor (read-only)</button>
@@ -77,10 +86,46 @@ export async function initTutors() {
       const data = await apiGet('/admin/tutors');
       tutorsCache = Array.isArray(data.tutors) ? data.tutors : [];
       applyFilter();
+      await loadApplications();
     } catch {
       renderStateCard(list, {
         variant: 'error',
         title: 'Unable to load tutors',
+        description: 'Refresh and try again.',
+      });
+    }
+  };
+
+  const loadApplications = async () => {
+    if (!applicationsList) {return;}
+    try {
+      const data = await apiGet('/admin/tutor-applications');
+      const applications = Array.isArray(data.applications) ? data.applications : [];
+      if (!applications.length) {
+        renderStateCard(applicationsList, {
+          variant: 'empty',
+          title: 'No tutor applications',
+          description: 'Submitted applications will appear here for review.',
+        });
+        return;
+      }
+      applicationsList.innerHTML = applications.map((application) => `
+        <div class="panel">
+          <div><strong>${escapeHtml(application.full_name || 'Tutor')}</strong> (${escapeHtml(application.email || 'no email')})</div>
+          <div class="note">Status: ${escapeHtml(application.status || 'draft')} | Subjects: ${escapeHtml((application.subjects_json || []).join(', '))} | Grades: ${escapeHtml((application.grades_json || []).join(', '))}</div>
+          <div class="note">${escapeHtml(application.experience || 'No experience summary')}</div>
+          <div class="split" style="margin-top:10px;">
+            <button class="button secondary" data-application-decision="${application.id}" data-status="under_review">Review</button>
+            <button class="button" data-application-decision="${application.id}" data-status="approved">Approve</button>
+            <button class="button secondary" data-application-decision="${application.id}" data-status="changes_requested">Request changes</button>
+            <button class="button secondary" data-application-decision="${application.id}" data-status="rejected">Reject</button>
+          </div>
+        </div>
+      `).join('');
+    } catch {
+      renderStateCard(applicationsList, {
+        variant: 'error',
+        title: 'Unable to load applications',
         description: 'Refresh and try again.',
       });
     }
@@ -134,6 +179,22 @@ export async function initTutors() {
         impersonationId: res.impersonationId,
       });
       window.location.href = '/tutor/index.html';
+    } finally {
+      target.disabled = false;
+    }
+  });
+
+  applicationsList?.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!target?.dataset?.applicationDecision) {return;}
+    target.disabled = true;
+    try {
+      await apiPost(`/admin/tutor-applications/${target.dataset.applicationDecision}/decision`, {
+        status: target.dataset.status,
+        note: target.dataset.status === 'approved' ? 'Approved from admin tutor console.' : 'Reviewed from admin tutor console.',
+      });
+      await loadApplications();
+      await load();
     } finally {
       target.disabled = false;
     }

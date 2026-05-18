@@ -22,7 +22,7 @@ export async function createTutor(
       `insert into tutor_profiles
        (full_name, phone, default_hourly_rate, active, status, qualification_band, qualified_subjects_json)
        values ($1, $2, $3, $4, $5, $6, $7::jsonb)
-       returning id, full_name, phone, default_hourly_rate, active, status, qualification_band, qualified_subjects_json`,
+       returning id, full_name, phone, default_hourly_rate, active, status, qualification_band, qualified_subjects_json, approval_status`,
       [
         input.fullName,
         input.phone ?? null,
@@ -69,7 +69,7 @@ export async function listTutors(
 
   const res = await client.query(
     `select t.id, t.full_name, t.phone, t.default_hourly_rate, t.active, t.status,
-            t.qualification_band, t.qualified_subjects_json, u.email
+            t.qualification_band, t.qualified_subjects_json, t.approval_status, t.approval_reviewed_at, t.approval_note, u.email
      from tutor_profiles t
      left join users u on u.tutor_profile_id = t.id
      ${where}
@@ -118,7 +118,7 @@ export async function updateTutor(
          qualification_band = $6,
          qualified_subjects_json = $7::jsonb
      where id = $8
-     returning id, full_name, phone, default_hourly_rate, active, status, qualification_band, qualified_subjects_json`,
+     returning id, full_name, phone, default_hourly_rate, active, status, qualification_band, qualified_subjects_json, approval_status`,
     [
       input.fullName ?? current.full_name,
       input.phone ?? current.phone,

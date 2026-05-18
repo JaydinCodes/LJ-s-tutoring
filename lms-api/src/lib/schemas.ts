@@ -75,8 +75,8 @@ export const CreateTutorSchema = z.object({
   phone: z.string().trim().max(40).optional(),
   defaultHourlyRate: z.number().min(0).max(10000),
   active: z.boolean().optional().default(true),
-  qualificationBand: QualificationBandSchema,
-  qualifiedSubjects: z.array(z.string().trim().min(1).max(120)).min(1),
+  qualificationBand: QualificationBandSchema.optional().default('BOTH'),
+  qualifiedSubjects: z.array(z.string().trim().min(1).max(120)).min(1).optional().default(['Mathematics']),
   status: TutorStatusSchema.optional().default('INVITED'),
 });
 
@@ -205,6 +205,86 @@ export const AdminSessionsQuerySchema = DateRangeQuerySchema.extend({
 
 export const TutorSessionsQuerySchema = DateRangeQuerySchema.extend({
   status: SessionStatusSchema.optional(),
+});
+
+const StringArraySchema = z.array(z.string().trim().min(1).max(120)).max(40);
+
+export const TutorApplicationSchema = z.object({
+  personalDetails: z.record(z.unknown()).optional().default({}),
+  subjects: StringArraySchema.default([]),
+  grades: StringArraySchema.default([]),
+  teachingPreferences: StringArraySchema.default([]),
+  experience: z.string().trim().max(5000).optional().nullable(),
+  availabilityNotes: z.string().trim().max(3000).optional().nullable(),
+});
+
+export const TutorApplicationDecisionSchema = z.object({
+  status: z.enum(['under_review', 'approved', 'rejected', 'changes_requested']),
+  note: z.string().trim().max(2000).optional().nullable(),
+});
+
+export const TutorDocumentUploadSchema = z.object({
+  documentType: z.enum(['identity', 'cv', 'qualification', 'additional']),
+  originalFilename: z.string().trim().min(1).max(180),
+  mimeType: z.enum(['application/pdf', 'image/jpeg', 'image/png']),
+  contentBase64: z.string().min(1),
+});
+
+export const TutorDocumentVerifySchema = z.object({
+  status: z.enum(['accepted', 'rejected']),
+  notes: z.string().trim().max(2000).optional().nullable(),
+});
+
+export const TutorAvailabilitySchema = z.object({
+  slots: z.array(z.object({
+    dayOfWeek: z.number().int().min(0).max(6),
+    startTime: TimeString,
+    endTime: TimeString,
+    mode: z.string().trim().min(1).max(40).default('online'),
+    notes: z.string().trim().max(500).optional().nullable(),
+  })).max(42),
+});
+
+export const SessionReportSchema = z.object({
+  attendanceStatus: z.enum(['present', 'absent', 'late', 'excused']).optional().nullable(),
+  topicsCovered: z.string().trim().max(3000).optional().nullable(),
+  learnerStruggles: z.string().trim().max(3000).optional().nullable(),
+  homeworkAssigned: z.string().trim().max(3000).optional().nullable(),
+  tutorPrivateNotes: z.string().trim().max(3000).optional().nullable(),
+  studentSummary: z.string().trim().max(3000).optional().nullable(),
+});
+
+export const LearningAssignmentCreateSchema = z.object({
+  assignmentId: z.string().uuid().optional().nullable(),
+  studentId: z.string().uuid(),
+  subject: z.string().trim().min(1).max(120),
+  title: z.string().trim().min(1).max(180),
+  instructions: z.string().trim().max(5000).optional().nullable(),
+  dueDate: DateString.optional().nullable(),
+});
+
+export const VolunteerEventSchema = z.object({
+  title: z.string().trim().min(1).max(180),
+  description: z.string().trim().max(3000).optional().nullable(),
+  eventDate: DateString.optional().nullable(),
+  startTime: TimeString.optional().nullable(),
+  endTime: TimeString.optional().nullable(),
+  location: z.string().trim().max(180).optional().nullable(),
+  mode: z.string().trim().min(1).max(40).default('in-person'),
+  status: z.enum(['planned', 'cancelled', 'completed']).optional().default('planned'),
+});
+
+export const VolunteerLogSchema = z.object({
+  eventId: z.string().uuid().optional().nullable(),
+  hours: z.number().min(0).max(1000).optional().nullable(),
+  volunteeredOn: DateString.optional().nullable(),
+  notes: z.string().trim().max(3000).optional().nullable(),
+  evidenceDocumentId: z.string().uuid().optional().nullable(),
+});
+
+export const VolunteerLogVerifySchema = z.object({
+  status: z.enum(['verified', 'rejected']),
+  adminNote: z.string().trim().max(2000).optional().nullable(),
 });
 
 export const WeekStartParamSchema = z.object({

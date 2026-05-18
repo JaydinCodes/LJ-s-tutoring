@@ -272,6 +272,36 @@ export async function academicRoutes(app: FastifyInstance) {
       [studentId]
     );
 
+    const assignedTutorsRes = await pool.query(
+      `select distinct t.id, t.full_name, a.subject, t.qualified_subjects_json, t.qualification_band
+       from assignments a
+       join tutor_profiles t on t.id = a.tutor_id
+       where a.student_id = $1 and a.active = true and t.approval_status = 'approved'
+       order by t.full_name asc, a.subject asc`,
+      [studentId]
+    );
+
+    const learningAssignmentsRes = await pool.query(
+      `select id, subject, title, instructions, due_date, status, created_at
+       from learning_assignments
+       where student_id = $1 and status <> 'cancelled'
+       order by coalesce(due_date, created_at::date) asc
+       limit 8`,
+      [studentId]
+    );
+
+    const sessionSummariesRes = await pool.query(
+      `select s.id, s.date, a.subject, s.student_summary, s.homework_assigned
+       from sessions s
+       join assignments a on a.id = s.assignment_id
+       where s.student_id = $1
+         and s.status = 'APPROVED'
+         and (s.student_summary is not null or s.homework_assigned is not null)
+       order by s.date desc
+       limit 5`,
+      [studentId]
+    );
+
     const topics = topicRes.rows.map((row) => {
       const sessions = Number(row.sessions || 0);
       const minutes = Number(row.minutes || 0);
@@ -389,6 +419,9 @@ export async function academicRoutes(app: FastifyInstance) {
         xp: Number(streak.xp || 0),
       },
       progressSnapshot: topics,
+      assignedTutors: assignedTutorsRes.rows,
+      learningAssignments: learningAssignmentsRes.rows,
+      sessionSummaries: sessionSummariesRes.rows,
       recommendedNext: scoreDrivenRecommendation
         ? {
             title: scoreDrivenRecommendation.label,
@@ -404,6 +437,39 @@ export async function academicRoutes(app: FastifyInstance) {
       req.log?.error?.(err);
       return reply.code(500).send({ error: 'internal_error' });
     }
+  });
+
+  app.get('/student/learning-assignments', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    const res = await pool.query(
+      `select la.id, la.subject, la.title, la.instructions, la.due_date, la.status, la.created_at,
+              t.full_name as tutor_name
+       from learning_assignments la
+       join tutor_profiles t on t.id = la.tutor_id
+       where la.student_id = $1 and la.status <> 'cancelled'
+       order by coalesce(la.due_date, la.created_at::date) asc, la.created_at desc`,
+      [studentId]
+    );
+    return reply.send({ assignments: res.rows, items: res.rows });
+  });
+
+  app.get('/student/tutors', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    const res = await pool.query(
+      `select distinct t.id, t.full_name, a.subject, t.qualified_subjects_json, t.qualification_band
+       from assignments a
+       join tutor_profiles t on t.id = a.tutor_id
+       where a.student_id = $1 and a.active = true and t.approval_status = 'approved'
+       order by t.full_name asc, a.subject asc`,
+      [studentId]
+    );
+    return reply.send({ tutors: res.rows });
   });
 
   app.get('/tutor/dashboard', {
@@ -423,6 +489,30 @@ export async function academicRoutes(app: FastifyInstance) {
        where s.tutor_id = $1 and s.date = $2::date
        order by s.start_time asc`,
       [tutorId, today]
+    );
+
+    const profileRes = await pool.query(
+      `select t.approval_status, t.approval_note, ta.status as application_status
+       from tutor_profiles t
+       left join tutor_applications ta on ta.tutor_id = t.id
+       where t.id = $1`,
+      [tutorId]
+    );
+
+    const perfRes = await pool.query(
+      `select count(s.id) filter (where s.status = 'APPROVED')::int as sessions_completed,
+              count(s.id) filter (where s.status in ('SUBMITTED','APPROVED','REJECTED'))::int as reports_submitted,
+              count(s.id)::int as sessions_total,
+              count(distinct a.student_id)::int as assigned_learners,
+              coalesce(sum(vl.hours) filter (where vl.status = 'verified'), 0)::numeric as verified_volunteer_hours,
+              count(s.id) filter (where s.status = 'DRAFT' and s.date < current_date)::int as missing_reports
+       from tutor_profiles t
+       left join assignments a on a.tutor_id = t.id and a.active = true
+       left join sessions s on s.tutor_id = t.id
+       left join volunteer_logs vl on vl.tutor_id = t.id
+       where t.id = $1
+       group by t.id`,
+      [tutorId]
     );
 
     const attentionRes = await pool.query(
@@ -498,10 +588,24 @@ export async function academicRoutes(app: FastifyInstance) {
           { label: 'Assign practice', href: '/tutor/assignments.html' }
         ]
       })),
+      approval: profileRes.rows[0] ?? { approval_status: 'draft' },
+      performance: {
+        sessionsCompleted: Number(perfRes.rows[0]?.sessions_completed || 0),
+        reportsSubmitted: Number(perfRes.rows[0]?.reports_submitted || 0),
+        reportSubmissionRate: Number(perfRes.rows[0]?.sessions_total || 0) > 0
+          ? Math.round((Number(perfRes.rows[0]?.reports_submitted || 0) / Number(perfRes.rows[0]?.sessions_total || 0)) * 100)
+          : 0,
+        assignedLearners: Number(perfRes.rows[0]?.assigned_learners || 0),
+        verifiedVolunteerHours: Number(perfRes.rows[0]?.verified_volunteer_hours || 0),
+        missingReports: Number(perfRes.rows[0]?.missing_reports || 0)
+      },
       studentsNeedingAttention,
       quickTools: [
+        { id: 'application', label: 'Update application', href: '/tutor/dashboard/#application' },
+        { id: 'availability', label: 'Manage availability', href: '/tutor/dashboard/#availability' },
         { id: 'assign_practice', label: 'Assign practice', href: '/tutor/assignments.html' },
         { id: 'session_notes', label: 'Add session notes', href: '/tutor/sessions.html' },
+        { id: 'volunteer_hours', label: 'Volunteer hours', href: '/tutor/dashboard/#volunteer' },
         { id: 'message_student', label: 'Message student', href: '/tutor/index.html' },
       ]
     });

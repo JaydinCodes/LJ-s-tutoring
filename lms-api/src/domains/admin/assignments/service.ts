@@ -12,7 +12,7 @@ import {
 export async function createAssignment(client: DbClient, input: CreateAssignmentInput) {
   const [tutorRes, studentRes] = await Promise.all([
     client.query(
-      `select id, active, status, qualification_band, qualified_subjects_json
+      `select id, active, status, approval_status, qualification_band, qualified_subjects_json
        from tutor_profiles where id = $1`,
       [input.tutorId]
     ),
@@ -23,7 +23,7 @@ export async function createAssignment(client: DbClient, input: CreateAssignment
   if (studentRes.rowCount === 0) return { error: 'student_not_found' } as const;
 
   const tutor = tutorRes.rows[0];
-  if (!tutor.active || tutor.status !== 'ACTIVE') return { error: 'tutor_not_active' } as const;
+  if (!tutor.active || tutor.status !== 'ACTIVE' || tutor.approval_status !== 'approved') return { error: 'tutor_not_active' } as const;
   const grade = parseGrade(studentRes.rows[0]?.grade);
   if (!grade) return { error: 'student_grade_missing' } as const;
 
@@ -41,6 +41,19 @@ export async function createAssignment(client: DbClient, input: CreateAssignment
   }
   if (!isTutorQualifiedForSubject(input.subject, tutorSubjects as string[])) {
     return { error: 'tutor_not_qualified' } as const;
+  }
+
+  const availabilityRes = await client.query(
+    `select day_of_week, start_time, end_time
+     from tutor_availability_slots
+     where tutor_id = $1 and active = true`,
+    [input.tutorId]
+  );
+  const warnings: string[] = [];
+  if (availabilityRes.rowCount && input.allowedDays.length) {
+    const availableDays = new Set(availabilityRes.rows.map((row: any) => Number(row.day_of_week)));
+    const outsideDays = input.allowedDays.filter((day) => !availableDays.has(day));
+    if (outsideDays.length) warnings.push('assignment_outside_tutor_availability');
   }
 
   const res = await client.query(
@@ -61,7 +74,7 @@ export async function createAssignment(client: DbClient, input: CreateAssignment
     ]
   );
 
-  return { assignment: res.rows[0] } as const;
+  return { assignment: res.rows[0], warnings } as const;
 }
 
 export async function listAssignments(
@@ -123,7 +136,7 @@ export async function updateAssignment(client: DbClient, assignmentId: string, i
 
   const [tutorRes, studentRes] = await Promise.all([
     client.query(
-      `select id, active, status, qualification_band, qualified_subjects_json
+      `select id, active, status, approval_status, qualification_band, qualified_subjects_json
        from tutor_profiles where id = $1`,
       [current.tutor_id]
     ),
@@ -134,7 +147,7 @@ export async function updateAssignment(client: DbClient, assignmentId: string, i
   if (studentRes.rowCount === 0) return { error: 'student_not_found' } as const;
 
   const tutor = tutorRes.rows[0];
-  if (!tutor.active || tutor.status !== 'ACTIVE') return { error: 'tutor_not_active' } as const;
+  if (!tutor.active || tutor.status !== 'ACTIVE' || tutor.approval_status !== 'approved') return { error: 'tutor_not_active' } as const;
 
   const grade = parseGrade(studentRes.rows[0]?.grade);
   if (!grade) return { error: 'student_grade_missing' } as const;

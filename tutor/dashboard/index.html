@@ -93,6 +93,10 @@
               <span class="metric-label">Tools</span>
               <strong class="metric-value" id="tutorMetricTools">0</strong>
             </article>
+            <article class="panel metric-card">
+              <span class="metric-label">Report rate</span>
+              <strong class="metric-value" id="tutorMetricReportRate">0%</strong>
+            </article>
           </div>
         </article>
 
@@ -115,6 +119,68 @@
         <article class="panel dashboard-card">
           <h2 class="panel-title">Students needing attention</h2>
           <div id="tutorAttentionList" class="list-compact"></div>
+        </article>
+      </section>
+
+      <section class="grid two" style="margin-top:1rem;">
+        <article class="panel dashboard-card" id="application">
+          <h2 class="panel-title">Approval status</h2>
+          <div id="approvalStatusCard" class="list-compact"></div>
+          <form id="applicationForm" class="stack" style="margin-top:1rem;">
+            <input id="applicationSubjects" name="subjects" placeholder="Subjects, comma separated">
+            <input id="applicationGrades" name="grades" placeholder="Grades, comma separated">
+            <input id="applicationPreferences" name="preferences" placeholder="Preferences, e.g. online, in-person">
+            <textarea id="applicationExperience" name="experience" placeholder="Experience"></textarea>
+            <textarea id="applicationAvailability" name="availability" placeholder="Availability notes"></textarea>
+            <div class="tutor-actions">
+              <button class="button" type="submit">Save application</button>
+              <button class="button secondary" type="button" id="submitApplication">Submit</button>
+            </div>
+            <p id="applicationFeedback" class="form-feedback"></p>
+          </form>
+        </article>
+
+        <article class="panel dashboard-card">
+          <h2 class="panel-title">Documents</h2>
+          <div id="documentList" class="list-compact"></div>
+          <form id="documentForm" class="stack" style="margin-top:1rem;">
+            <select id="documentType" aria-label="Document type">
+              <option value="identity">ID document</option>
+              <option value="cv">CV</option>
+              <option value="qualification">Qualification</option>
+              <option value="additional">Additional</option>
+            </select>
+            <input id="documentFile" type="file" accept="application/pdf,image/png,image/jpeg">
+            <button class="button secondary" type="submit">Upload document</button>
+            <p id="documentFeedback" class="form-feedback"></p>
+          </form>
+        </article>
+      </section>
+
+      <section class="grid two" style="margin-top:1rem;">
+        <article class="panel dashboard-card" id="availability">
+          <h2 class="panel-title">Availability</h2>
+          <div id="availabilityList" class="list-compact"></div>
+          <form id="availabilityForm" class="stack" style="margin-top:1rem;">
+            <input id="availabilityDay" type="number" min="0" max="6" placeholder="Day 0-6">
+            <input id="availabilityStart" type="time">
+            <input id="availabilityEnd" type="time">
+            <input id="availabilityMode" placeholder="Mode" value="online">
+            <button class="button secondary" type="submit">Replace availability with slot</button>
+            <p id="availabilityFeedback" class="form-feedback"></p>
+          </form>
+        </article>
+
+        <article class="panel dashboard-card" id="volunteer">
+          <h2 class="panel-title">Volunteer hours</h2>
+          <div id="volunteerList" class="list-compact"></div>
+          <form id="volunteerForm" class="stack" style="margin-top:1rem;">
+            <input id="volunteerHours" type="number" step="0.25" min="0" placeholder="Hours">
+            <input id="volunteerDate" type="date">
+            <textarea id="volunteerNotes" placeholder="Notes or impact"></textarea>
+            <button class="button secondary" type="submit">Submit hours</button>
+            <p id="volunteerFeedback" class="form-feedback"></p>
+          </form>
         </article>
       </section>
     </main>

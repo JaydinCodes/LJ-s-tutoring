@@ -53,7 +53,11 @@ import {
   WeekStartParamSchema,
   UpdateAssignmentSchema,
   UpdateStudentSchema,
-  UpdateTutorSchema
+  UpdateTutorSchema,
+  TutorApplicationDecisionSchema,
+  TutorDocumentVerifySchema,
+  VolunteerEventSchema,
+  VolunteerLogVerifySchema
 } from '../lib/schemas.js';
 import { requireAuth, requireRole } from '../lib/rbac.js';
 import { getPayPeriodRange, getPayPeriodStart } from '../lib/pay-periods.js';
@@ -490,6 +494,148 @@ export async function adminRoutes(app: FastifyInstance) {
     } finally {
       client.release();
     }
+  });
+
+  app.get('/admin/tutor-applications', async (_req, reply) => {
+    try {
+      const res = await pool.query(
+        `select ta.*, t.full_name, u.email, reviewer.email as reviewed_by_email
+         from tutor_applications ta
+         join tutor_profiles t on t.id = ta.tutor_id
+         left join users u on u.tutor_profile_id = t.id
+         left join users reviewer on reviewer.id = ta.reviewed_by
+         order by ta.updated_at desc`
+      );
+      return reply.send({ applications: res.rows, items: res.rows });
+    } catch (err: any) {
+      getErrorMonitor().captureException(err, { correlationId: _req.id, userId: _req.user?.userId, role: _req.user?.role });
+      _req.log?.error?.(err);
+      return reply.code(500).send({ error: 'internal_error' });
+    }
+  });
+
+  app.get('/admin/tutors/:id/application', async (req, reply) => {
+    const tutorId = (req.params as { id: string }).id;
+    try {
+      const [application, documents, availability] = await Promise.all([
+        pool.query(
+          `select ta.*, t.full_name, t.approval_status, t.approval_reviewed_at, t.approval_note
+           from tutor_profiles t
+           left join tutor_applications ta on ta.tutor_id = t.id
+           where t.id = $1`,
+          [tutorId]
+        ),
+        pool.query(
+          `select id, document_type, original_filename, mime_type, file_size_bytes, uploaded_at,
+                  verification_status, verified_by, verified_at, notes
+           from tutor_documents where tutor_id = $1 order by uploaded_at desc`,
+          [tutorId]
+        ),
+        pool.query(
+          `select id, day_of_week, start_time, end_time, mode, notes, active
+           from tutor_availability_slots where tutor_id = $1 order by day_of_week asc, start_time asc`,
+          [tutorId]
+        )
+      ]);
+      if (Number(application.rowCount || 0) === 0) return reply.code(404).send({ error: 'tutor_not_found' });
+      return reply.send({ application: application.rows[0], documents: documents.rows, availability: availability.rows });
+    } catch (err: any) {
+      getErrorMonitor().captureException(err, { correlationId: req.id, userId: req.user?.userId, role: req.user?.role });
+      req.log?.error?.(err);
+      return reply.code(500).send({ error: 'internal_error' });
+    }
+  });
+
+  app.post('/admin/tutor-applications/:id/decision', async (req, reply) => {
+    const params = IdParamSchema.safeParse(req.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_request', details: params.error.flatten() });
+    const parsed = TutorApplicationDecisionSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const adminId = req.user!.userId;
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      const appRes = await client.query(
+        `update tutor_applications
+         set status = $1, reviewed_by = $2, reviewed_at = now(), review_note = $3, updated_at = now()
+         where id = $4
+         returning *`,
+        [parsed.data.status, adminId, parsed.data.note ?? null, params.data.id]
+      );
+      if (Number(appRes.rowCount || 0) === 0) {
+        await client.query('rollback');
+        return reply.code(404).send({ error: 'application_not_found' });
+      }
+      const application = appRes.rows[0];
+      if (parsed.data.status === 'approved') {
+        await client.query(
+          `update tutor_profiles
+           set approval_status = 'approved',
+               approval_reviewed_by = $1,
+               approval_reviewed_at = now(),
+               approval_note = $2,
+               qualification_band = coalesce(qualification_band, 'BOTH'),
+               qualified_subjects_json = $3::jsonb,
+               teaching_preferences_json = $4::jsonb,
+               status = 'ACTIVE',
+               active = true
+           where id = $5`,
+          [
+            adminId,
+            parsed.data.note ?? null,
+            JSON.stringify(application.subjects_json ?? []),
+            JSON.stringify(application.teaching_preferences_json ?? []),
+            application.tutor_id
+          ]
+        );
+      } else {
+        await client.query(
+          `update tutor_profiles
+           set approval_status = $1,
+               approval_reviewed_by = $2,
+               approval_reviewed_at = now(),
+               approval_note = $3
+           where id = $4`,
+          [parsed.data.status, adminId, parsed.data.note ?? null, application.tutor_id]
+        );
+      }
+      await logAuditSafe(client, {
+        actorUserId: adminId,
+        actorRole: 'ADMIN',
+        action: 'tutor_application.decision',
+        entityType: 'tutor_application',
+        entityId: params.data.id,
+        meta: safeAuditMeta({ status: parsed.data.status, tutorId: application.tutor_id }),
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] as string | undefined,
+        correlationId: req.id,
+      });
+      await client.query('commit');
+      return reply.send({ application });
+    } catch (err: any) {
+      await client.query('rollback').catch(() => undefined);
+      getErrorMonitor().captureException(err, { correlationId: req.id, userId: req.user?.userId, role: req.user?.role });
+      req.log?.error?.(err);
+      return reply.code(500).send({ error: 'internal_error' });
+    } finally {
+      client.release();
+    }
+  });
+
+  app.patch('/admin/tutor-documents/:id', async (req, reply) => {
+    const params = IdParamSchema.safeParse(req.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_request', details: params.error.flatten() });
+    const parsed = TutorDocumentVerifySchema.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const res = await pool.query(
+      `update tutor_documents
+       set verification_status = $1, notes = $2, verified_by = $3, verified_at = now()
+       where id = $4
+       returning id, tutor_id, document_type, verification_status, verified_at, notes`,
+      [parsed.data.status, parsed.data.notes ?? null, req.user!.userId, params.data.id]
+    );
+    if (Number(res.rowCount || 0) === 0) return reply.code(404).send({ error: 'document_not_found' });
+    return reply.send({ document: res.rows[0] });
   });
 
   app.post('/admin/privacy-requests', async (req, reply) => {
@@ -1269,6 +1415,130 @@ export async function adminRoutes(app: FastifyInstance) {
     } finally {
       client.release();
     }
+  });
+
+  app.get('/admin/learning-assignments', async (_req, reply) => {
+    const res = await pool.query(
+      `select la.*, t.full_name as tutor_name, st.full_name as student_name
+       from learning_assignments la
+       join tutor_profiles t on t.id = la.tutor_id
+       join students st on st.id = la.student_id
+       order by la.created_at desc`
+    );
+    return reply.send({ assignments: res.rows, items: res.rows });
+  });
+
+  app.get('/admin/tutor-performance', async (_req, reply) => {
+    const res = await pool.query(
+      `select t.id as tutor_id, t.full_name,
+              count(distinct a.student_id)::int as assigned_learners,
+              count(distinct a.subject)::int as active_subjects,
+              count(s.id) filter (where s.status = 'APPROVED')::int as sessions_completed,
+              count(s.id) filter (where s.status in ('SUBMITTED','APPROVED','REJECTED'))::int as reports_submitted,
+              count(s.id)::int as sessions_total,
+              count(s.id) filter (where s.status = 'DRAFT' and s.date < current_date)::int as missing_reports,
+              coalesce(sum(vl.hours) filter (where vl.status = 'verified'), 0)::numeric as verified_volunteer_hours
+       from tutor_profiles t
+       left join assignments a on a.tutor_id = t.id and a.active = true
+       left join sessions s on s.tutor_id = t.id
+       left join volunteer_logs vl on vl.tutor_id = t.id
+       group by t.id, t.full_name
+       order by t.full_name asc`
+    );
+    return reply.send({
+      tutors: res.rows.map((row) => {
+        const total = Number(row.sessions_total || 0);
+        const submitted = Number(row.reports_submitted || 0);
+        return {
+          ...row,
+          report_submission_rate: total > 0 ? Math.round((submitted / total) * 100) : 0,
+          payout_ready_sessions: Number(row.sessions_completed || 0)
+        };
+      })
+    });
+  });
+
+  app.get('/admin/volunteer/events', async (_req, reply) => {
+    const res = await pool.query(`select * from volunteer_events order by event_date desc nulls last, created_at desc`);
+    return reply.send({ events: res.rows });
+  });
+
+  app.post('/admin/volunteer/events', async (req, reply) => {
+    const parsed = VolunteerEventSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const data = parsed.data;
+    const res = await pool.query(
+      `insert into volunteer_events
+       (title, description, event_date, start_time, end_time, location, mode, status, created_by_user_id)
+       values ($1, $2, $3::date, $4::time, $5::time, $6, $7, $8, $9)
+       returning *`,
+      [data.title, data.description ?? null, data.eventDate ?? null, data.startTime ?? null, data.endTime ?? null, data.location ?? null, data.mode, data.status, req.user!.userId]
+    );
+    return reply.code(201).send({ event: res.rows[0] });
+  });
+
+  app.get('/admin/volunteer/logs', async (_req, reply) => {
+    const res = await pool.query(
+      `select vl.*, t.full_name as tutor_name, ve.title as event_title
+       from volunteer_logs vl
+       join tutor_profiles t on t.id = vl.tutor_id
+       left join volunteer_events ve on ve.id = vl.event_id
+       order by vl.created_at desc`
+    );
+    return reply.send({ logs: res.rows });
+  });
+
+  app.get('/admin/volunteer/impact', async (_req, reply) => {
+    const res = await pool.query(
+      `select date_trunc('month', coalesce(vl.volunteered_on, vl.created_at::date))::date as month,
+              count(*) filter (where vl.status = 'verified')::int as verified_logs,
+              coalesce(sum(vl.hours) filter (where vl.status = 'verified'), 0)::numeric as verified_hours,
+              count(distinct vl.tutor_id) filter (where vl.status = 'verified')::int as active_tutors
+       from volunteer_logs vl
+       group by 1
+       order by 1 desc`
+    );
+    return reply.send({ months: res.rows });
+  });
+
+  app.get('/admin/volunteer/impact.csv', async (_req, reply) => {
+    const res = await pool.query(
+      `select date_trunc('month', coalesce(vl.volunteered_on, vl.created_at::date))::date as month,
+              count(*) filter (where vl.status = 'verified')::int as verified_logs,
+              coalesce(sum(vl.hours) filter (where vl.status = 'verified'), 0)::numeric as verified_hours,
+              count(distinct vl.tutor_id) filter (where vl.status = 'verified')::int as active_tutors
+       from volunteer_logs vl
+       group by 1
+       order by 1 desc`
+    );
+    const lines = ['month,verified_logs,verified_hours,active_tutors'];
+    for (const row of res.rows) {
+      lines.push([
+        toDateString(row.month),
+        row.verified_logs,
+        row.verified_hours,
+        row.active_tutors
+      ].join(','));
+    }
+    reply.header('Content-Type', 'text/csv');
+    reply.header('Content-Disposition', 'attachment; filename="volunteer-impact.csv"');
+    return reply.send(`${lines.join('\n')}\n`);
+  });
+
+  app.post('/admin/volunteer/logs/:id/verify', async (req, reply) => {
+    const params = IdParamSchema.safeParse(req.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_request', details: params.error.flatten() });
+    const parsed = VolunteerLogVerifySchema.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const res = await pool.query(
+      `update volunteer_logs
+       set status = $1, admin_note = $2, verified_by = $3, verified_at = now(), updated_at = now()
+       where id = $4 and status in ('submitted','signed_up','rejected')
+       returning *`,
+      [parsed.data.status, parsed.data.adminNote ?? null, req.user!.userId, params.data.id]
+    );
+    if (Number(res.rowCount || 0) === 0) return reply.code(404).send({ error: 'volunteer_log_not_found' });
+    return reply.send({ log: res.rows[0] });
   });
 
   app.post('/admin/sessions/bulk-reject', {

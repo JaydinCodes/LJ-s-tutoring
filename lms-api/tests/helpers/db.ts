@@ -33,6 +33,12 @@ export async function resetDb() {
         if to_regclass('public.community_profiles') is not null then execute 'delete from community_profiles'; end if;
         if to_regclass('public.study_activity_events') is not null then execute 'delete from study_activity_events'; end if;
         if to_regclass('public.study_streaks') is not null then execute 'delete from study_streaks'; end if;
+        if to_regclass('public.volunteer_logs') is not null then execute 'delete from volunteer_logs'; end if;
+        if to_regclass('public.volunteer_events') is not null then execute 'delete from volunteer_events'; end if;
+        if to_regclass('public.learning_assignments') is not null then execute 'delete from learning_assignments'; end if;
+        if to_regclass('public.tutor_availability_slots') is not null then execute 'delete from tutor_availability_slots'; end if;
+        if to_regclass('public.tutor_documents') is not null then execute 'delete from tutor_documents'; end if;
+        if to_regclass('public.tutor_applications') is not null then execute 'delete from tutor_applications'; end if;
         if to_regclass('public.tutor_student_map') is not null then execute 'delete from tutor_student_map'; end if;
         if to_regclass('public.sessions') is not null then execute 'delete from sessions'; end if;
         if to_regclass('public.assignments') is not null then execute 'delete from assignments'; end if;
