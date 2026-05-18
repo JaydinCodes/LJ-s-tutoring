@@ -10,240 +10,9 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Montserrat:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/assets/portal.css">
   <style>
-    .learning-hero {
-      display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
-      gap: 1rem;
-      align-items: stretch;
-      margin-bottom: 1rem;
-    }
-
-    .hero-panel {
-      background: var(--hero-grad);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hero-panel::after {
-      content: "";
-      position: absolute;
-      width: 15rem;
-      height: 15rem;
-      right: -5rem;
-      top: -6rem;
-      border-radius: 999px;
-      background: radial-gradient(circle, rgba(251, 191, 36, 0.22), transparent 68%);
-      animation: drift 8s ease-in-out infinite alternate;
-    }
-
-    @keyframes drift {
-      from { transform: translate3d(0, 0, 0); }
-      to { transform: translate3d(-18px, 18px, 0); }
-    }
-
-    .hero-content {
-      position: relative;
-      z-index: 1;
-      display: grid;
-      gap: 1rem;
-      align-content: space-between;
-    }
-
-    .hero-meta-row,
-    .dashboard-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.65rem;
-      align-items: center;
-    }
-
-    .journey-orb {
-      width: 5.2rem;
-      height: 5.2rem;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      background: rgba(251, 191, 36, 0.16);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      font-size: 2rem;
-      box-shadow: inset 0 0 26px rgba(251, 191, 36, 0.16);
-      animation: pulseGlow 3.6s ease-in-out infinite;
-    }
-
-    @keyframes pulseGlow {
-      0%, 100% { transform: scale(1); box-shadow: inset 0 0 26px rgba(251, 191, 36, 0.16); }
-      50% { transform: scale(1.035); box-shadow: inset 0 0 38px rgba(251, 191, 36, 0.3); }
-    }
-
-    .home-action-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      margin-top: 1rem;
-    }
-
-    .home-side-stack {
-      display: grid;
-      gap: 1rem;
-    }
-
     .reflection-box {
       min-height: 8rem;
       resize: vertical;
-    }
-
-    .dashboard-section {
-      margin-top: 1rem;
-    }
-
-    .dashboard-section-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: end;
-      gap: 1rem;
-      margin: 0 0 0.9rem;
-    }
-
-    .learning-grid {
-      display: grid;
-      grid-template-columns: repeat(12, minmax(0, 1fr));
-      gap: 1rem;
-    }
-
-    .span-4 { grid-column: span 4; }
-    .span-5 { grid-column: span 5; }
-    .span-6 { grid-column: span 6; }
-    .span-7 { grid-column: span 7; }
-    .span-8 { grid-column: span 8; }
-    .span-12 { grid-column: 1 / -1; }
-
-    .learning-card,
-    .assignment-card,
-    .result-card {
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: var(--card-soft);
-      padding: 1rem;
-      display: grid;
-      gap: 0.75rem;
-    }
-
-    .metric-card {
-      min-height: 8.4rem;
-    }
-
-    .metric-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 0.75rem;
-      align-items: start;
-    }
-
-    .assignment-card[data-urgency="overdue"] {
-      border-color: rgba(220, 38, 38, 0.34);
-    }
-
-    .assignment-card[data-urgency="due_soon"] {
-      border-color: rgba(245, 158, 11, 0.44);
-    }
-
-    .status-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-
-    .tiny-label {
-      color: var(--muted);
-      font-size: 0.82rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .upload-box {
-      display: grid;
-      gap: 0.6rem;
-      padding: 0.85rem;
-      border: 1px dashed var(--border);
-      border-radius: 14px;
-      background: var(--panel);
-    }
-
-    .comparison-chart {
-      display: grid;
-      gap: 0.65rem;
-    }
-
-    .band-row {
-      display: grid;
-      grid-template-columns: 5rem 1fr 3rem;
-      gap: 0.65rem;
-      align-items: center;
-      font-size: 0.9rem;
-    }
-
-    .band-track {
-      height: 0.65rem;
-      border-radius: 999px;
-      background: rgba(148, 163, 184, 0.22);
-      overflow: hidden;
-    }
-
-    .band-track span {
-      display: block;
-      height: 100%;
-      background: var(--grad);
-    }
-
-    .goal-card h3 {
-      margin: 0;
-      color: var(--brand-dark);
-      font-size: clamp(1.4rem, 3vw, 2rem);
-      line-height: 1.1;
-    }
-
-    .goal-progress-label {
-      display: flex;
-      justify-content: space-between;
-      gap: 1rem;
-      color: var(--muted);
-      font-size: 0.92rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .corner-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 1rem;
-    }
-
-    .corner-card {
-      display: grid;
-      gap: 0.9rem;
-      align-content: space-between;
-      min-height: 12rem;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: #f8fafc;
-      padding: 1rem;
-    }
-
-    .corner-card h3 {
-      margin: 0;
-      color: var(--brand-dark);
-      font-size: 1.05rem;
-    }
-
-    .corner-card p {
-      margin: 0;
-      color: var(--muted);
-    }
-
-    .corner-card .button {
-      justify-self: start;
     }
 
     .student-session {
@@ -284,24 +53,6 @@
     }
 
     @media (max-width: 860px) {
-      .learning-hero,
-      .corner-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .learning-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .span-4,
-      .span-5,
-      .span-6,
-      .span-7,
-      .span-8,
-      .span-12 {
-        grid-column: 1 / -1;
-      }
-
       .student-session {
         width: 100%;
         justify-content: center;
@@ -332,40 +83,56 @@
     </nav>
 
     <main class="portal-main">
-      <section class="learning-hero">
-        <article class="panel dashboard-card hero-panel">
-          <div class="hero-content">
-            <div class="hero-meta-row">
-              <div class="journey-orb" aria-hidden="true">⌁</div>
-              <div>
-                <p class="eyebrow" id="todayGreeting">Your learning home</p>
-                <h1 class="page-title" id="heroTitle">Settle in. Grow steadily.</h1>
-                <p class="page-subtitle" id="heroSubtitle">Your next step is loading.</p>
-              </div>
+      <section class="dashboard-hero">
+        <article class="panel hero-panel">
+          <div class="hero-header">
+            <div>
+              <p class="eyebrow" id="todayGreeting">Good morning</p>
+              <h1 class="page-title" id="heroTitle">Today's next step</h1>
+              <p class="page-subtitle" id="heroSubtitle">Your next action is loading.</p>
             </div>
-            <div class="home-action-row">
-              <a class="button" id="primaryNextAction" href="#assignmentsDue">See next step</a>
-              <a class="button secondary" href="#resultsZone">Review feedback</a>
+            <div class="hero-motif" aria-hidden="true"><span>⌁</span></div>
+          </div>
+          <div class="hero-kpis">
+            <div class="kpi-chip">
+              <span class="metric-label">Next session</span>
+              <strong id="heroNextSession">Loading...</strong>
+              <span class="note" id="heroSessionMeta">Waiting for schedule</span>
             </div>
+            <div class="kpi-chip">
+              <span class="metric-label">Due soon</span>
+              <strong id="heroDueCount">0</strong>
+              <span class="note" id="heroDueMeta">Assignments in queue</span>
+            </div>
+            <div class="kpi-chip">
+              <span class="metric-label">Momentum</span>
+              <strong id="heroMomentum">—</strong>
+              <span class="note" id="heroMomentumMeta">Weekly rhythm</span>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <a class="button" id="primaryNextAction" href="#assignmentsDue">See next step</a>
+            <a class="button secondary" id="secondaryAction" href="#resultsZone">Review feedback</a>
           </div>
         </article>
 
-        <aside class="home-side-stack" id="todayPlan">
-          <section class="panel dashboard-card">
+        <aside class="hero-side" id="todayPlan">
+          <section class="panel">
             <div class="row-head">
               <div>
                 <h2 class="panel-title">Today</h2>
                 <p class="note" id="todayDate">Loading today's date...</p>
               </div>
-              <span class="badge subtle flat">Steady pace</span>
+              <span class="badge subtle flat" id="todayPace">Steady pace</span>
             </div>
             <div id="upcomingSession" class="list-compact"></div>
           </section>
 
-          <section class="panel dashboard-card">
-            <h2 class="panel-title">Before you start</h2>
+          <section class="panel">
+            <h2 class="panel-title">Reflection note</h2>
             <p class="note">Write one thing you want to understand better today.</p>
             <textarea class="reflection-box" id="reflectionInput" placeholder="Today I want to get clearer on..."></textarea>
+            <button class="button secondary" type="button" id="saveReflection">Save reflection</button>
           </section>
         </aside>
       </section>
@@ -374,16 +141,40 @@
         <div class="dashboard-section-head">
           <div>
             <h2 class="panel-title" id="progressTitle">Progress Compass</h2>
-            <p class="note">Quick signals that show your rhythm, effort, and momentum.</p>
+            <p class="section-note">Quick signals that show your rhythm, effort, and momentum.</p>
           </div>
         </div>
-        <div class="learning-grid" id="metricGrid">
-          <article class="panel metric-card span-4"><div class="metric-top"><span class="metric-label">XP</span><span class="icon-pill">✦</span></div><strong class="metric-value" id="metricXp">0</strong><span class="note">Growth points earned</span></article>
-          <article class="panel metric-card span-4"><div class="metric-top"><span class="metric-label">Streak</span><span class="icon-pill">▲</span></div><strong class="metric-value" id="metricStreak">0 days</strong><span class="note">Consistency this season</span></article>
-          <article class="panel metric-card span-4"><div class="metric-top"><span class="metric-label">Study time</span><span class="icon-pill">◷</span></div><strong class="metric-value"><span id="metricMinutes">0</span>m</strong><span class="note">Focused minutes this week</span></article>
-          <article class="panel metric-card span-4"><div class="metric-top"><span class="metric-label">Sessions</span><span class="icon-pill">▤</span></div><strong class="metric-value" id="metricSessions">0</strong><span class="note">Attended this week</span></article>
-          <article class="panel metric-card span-4"><div class="metric-top"><span class="metric-label">Assignments due</span><span class="icon-pill">⇧</span></div><strong class="metric-value" id="metricAssignments">0</strong><span class="note" id="assignmentMetricHint">Loading tasks</span></article>
-          <article class="panel metric-card span-4"><div class="metric-top"><span class="metric-label">Average</span><span class="icon-pill">◫</span></div><strong class="metric-value" id="metricAverage">—</strong><span class="note" id="confidenceTrend">Awaiting marks</span></article>
+        <div class="metric-grid" id="metricGrid">
+          <article class="metric-card">
+            <div class="metric-top"><span class="metric-label">XP</span><span class="icon-pill">✦</span></div>
+            <strong class="metric-value" id="metricXp">0</strong>
+            <span class="note">Growth points earned</span>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span class="metric-label">Streak</span><span class="icon-pill">▲</span></div>
+            <strong class="metric-value" id="metricStreak">0 days</strong>
+            <span class="note">Consistency this season</span>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span class="metric-label">Study time</span><span class="icon-pill">◷</span></div>
+            <strong class="metric-value"><span id="metricMinutes">0</span>m</strong>
+            <span class="note">Focused minutes this week</span>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span class="metric-label">Sessions</span><span class="icon-pill">▤</span></div>
+            <strong class="metric-value" id="metricSessions">0</strong>
+            <span class="note">Attended this week</span>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span class="metric-label">Assignments due</span><span class="icon-pill">⇧</span></div>
+            <strong class="metric-value" id="metricAssignments">0</strong>
+            <span class="note" id="assignmentMetricHint">Loading tasks</span>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span class="metric-label">Average</span><span class="icon-pill">◫</span></div>
+            <strong class="metric-value" id="metricAverage">—</strong>
+            <span class="note" id="confidenceTrend">Awaiting marks</span>
+          </article>
         </div>
       </section>
 
@@ -391,16 +182,19 @@
         <div class="dashboard-section-head">
           <div>
             <h2 class="panel-title" id="assignmentsTitle">Assignments Due</h2>
-            <p class="note">Urgent work appears first. Uploads are confirmed before anything changes.</p>
+            <p class="section-note">Urgent work appears first. Uploads are confirmed before anything changes.</p>
           </div>
           <a class="button secondary" href="/dashboard/assignments/">Open assignments</a>
         </div>
-        <div class="learning-grid">
-          <div class="span-8 list-compact" id="assignmentsList"></div>
-          <article class="panel dashboard-card span-4">
-            <h3 class="panel-title">Upload Guide</h3>
-            <p class="note">Accepted formats and file-size limits come from each assignment. You will see a success state once the backend confirms the submission.</p>
-            <div id="uploadHelp" class="empty-state"><strong>Waiting for assignment API</strong>Upload controls activate when due assignments are available from the learner assignment endpoint.</div>
+        <div class="grid two">
+          <div class="list-compact" id="assignmentsList"></div>
+          <article class="panel">
+            <h3 class="panel-title">Upload lane</h3>
+            <p class="note" id="uploadHint">Select an assignment to upload work and confirm submission.</p>
+            <div id="uploadHelp" class="empty-state">
+              <strong>Waiting for assignment API</strong>
+              Upload controls activate when due assignments are available from the learner assignment endpoint.
+            </div>
           </article>
         </div>
       </section>
@@ -409,15 +203,15 @@
         <div class="dashboard-section-head">
           <div>
             <h2 class="panel-title" id="resultsTitle">Results &amp; Feedback</h2>
-            <p class="note">Marked work, tutor feedback, and growth-focused class comparison.</p>
+            <p class="section-note">Marked work, tutor feedback, and growth-focused class comparison.</p>
           </div>
           <a class="button secondary" href="/dashboard/results/">Open results</a>
         </div>
-        <div class="learning-grid">
-          <div class="span-7 list-compact" id="resultsList"></div>
-          <article class="panel dashboard-card span-5">
+        <div class="grid two">
+          <div class="list-compact" id="resultsList"></div>
+          <article class="panel">
             <div class="row-head">
-              <h3 class="panel-title">Class Comparison</h3>
+              <h3 class="panel-title">Class comparison</h3>
               <span class="badge subtle flat">Anonymous</span>
             </div>
             <div id="classComparison" class="comparison-chart"></div>
@@ -425,51 +219,59 @@
         </div>
       </section>
 
-      <section class="panel dashboard-card dashboard-section" id="growthPlan">
-        <div class="row-head">
-          <div>
-            <h2 class="panel-title">My Growth Plan</h2>
-            <p class="note">Learning is more than marks. Track confidence, consistency, and the next small step.</p>
-          </div>
-          <span class="badge subtle up">Personal path</span>
-        </div>
-        <div class="learning-grid">
-          <article class="learning-card span-5">
-            <p class="eyebrow">Current focus</p>
-            <h3 id="recommendedTitle">Build one strong study block</h3>
-            <p class="note" id="recommendedDescription">Choose one subject, work calmly, and leave a note for your next session.</p>
+      <section class="dashboard-section" id="growthPlan">
+        <article class="panel">
+          <div class="row-head">
             <div>
-              <div class="goal-progress-label">
-                <span>Weekly rhythm</span>
-                <span id="weeklyRhythmLabel">Building</span>
-              </div>
-              <div class="progress-bar" aria-hidden="true"><span id="weeklyRhythmBar"></span></div>
+              <h2 class="panel-title">My Growth Plan</h2>
+              <p class="note">Learning is more than marks. Track confidence, consistency, and the next small step.</p>
             </div>
-          </article>
-          <div id="progressSnapshot" class="list-compact span-7"></div>
-        </div>
+            <span class="badge subtle up">Personal path</span>
+          </div>
+          <div class="grid two">
+            <div class="section-card">
+              <p class="eyebrow">Current focus</p>
+              <h3 id="recommendedTitle">Build one strong study block</h3>
+              <p class="note" id="recommendedDescription">Choose one subject, work calmly, and leave a note for your next session.</p>
+              <div>
+                <div class="goal-progress-label">
+                  <span>Weekly rhythm</span>
+                  <span id="weeklyRhythmLabel">Building</span>
+                </div>
+                <div class="progress-bar" aria-hidden="true"><span id="weeklyRhythmBar"></span></div>
+              </div>
+            </div>
+            <div id="progressSnapshot" class="list-compact"></div>
+          </div>
+        </article>
       </section>
 
       <section class="dashboard-section">
-        <div class="corner-grid">
-          <article class="corner-card">
+        <div class="dashboard-section-head">
+          <div>
+            <h2 class="panel-title">Daily learning tools</h2>
+            <p class="section-note">Small actions that keep momentum between sessions.</p>
+          </div>
+        </div>
+        <div class="feature-card-grid">
+          <article class="section-card">
             <div>
-              <h3>Study Notes</h3>
+              <h3>Study notes</h3>
               <p>Keep track of what clicked, what needs work, and what to ask your tutor next.</p>
             </div>
             <a class="button secondary" href="/reports/">Open reports</a>
           </article>
-          <article class="corner-card">
+          <article class="section-card">
             <div>
-              <h3>Confidence Check</h3>
-              <p>Use the reflection note to name what still feels fuzzy before the next session.</p>
+              <h3>Confidence check</h3>
+              <p>Name what still feels fuzzy so your next session focuses on the right gap.</p>
             </div>
-            <button class="button secondary" type="button" id="saveReflection">Save reflection</button>
+            <a class="button secondary" href="#growthPlan">Review growth plan</a>
           </article>
-          <article class="corner-card">
+          <article class="section-card">
             <div>
-              <h3>Community Room</h3>
-              <p>Learn alongside other students and keep momentum between sessions.</p>
+              <h3>Community room</h3>
+              <p>Stay steady with a calm study room and weekly challenges.</p>
             </div>
             <a class="button secondary" href="/dashboard/community/">Visit community</a>
           </article>

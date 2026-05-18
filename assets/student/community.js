@@ -4,6 +4,7 @@ import { track } from '/assets/analytics.js';
 
 setActiveNav('community');
 let activeRoomId = null;
+const sendButton = document.getElementById('sendRoomMessageBtn');
 
 function formatSubtitle(parts) {
   return parts.filter(Boolean).join(' | ');
@@ -34,6 +35,9 @@ function renderRoom(room) {
     const label = document.getElementById('selectedRoomLabel');
     if (label) {
       label.textContent = `Room: ${toText(room.subject, 'Selected room')}`;
+    }
+    if (sendButton) {
+      sendButton.disabled = false;
     }
     try {
       const res = await apiFetch(`/community/rooms/${encodeURIComponent(activeRoomId)}/join`, { method: 'POST' });
@@ -70,7 +74,7 @@ async function loadRooms() {
 
 function renderMessage(message) {
   const item = document.createElement('div');
-  item.className = 'list-item';
+  item.className = 'message-bubble';
   const author = document.createElement('strong');
   author.textContent = toText(message.nickname || message.authorName, 'Member');
   const body = document.createElement('p');
@@ -85,14 +89,21 @@ function renderMessage(message) {
 async function loadMessages() {
   const target = document.getElementById('roomMessagesList');
   if (!activeRoomId) {
-    renderEmpty(target, 'Select a room to see messages.');
+    renderEmpty(target, {
+      title: 'Select a room to see messages.',
+      detail: 'Choose a study room to join the discussion and keep progress steady.',
+    });
+    if (sendButton) {sendButton.disabled = true;}
     return;
   }
   renderLoading(target, 'Loading messages…');
   try {
     const data = await loadJson(`/community/rooms/${encodeURIComponent(activeRoomId)}/messages`);
     if (!data.items?.length) {
-      renderEmpty(target, 'No messages yet. Start with a clear question, a worked step, or a topic you want to revise.');
+      renderEmpty(target, {
+        title: 'No messages yet.',
+        detail: 'Start with a clear question, a worked step, or a topic you want to revise.',
+      });
       return;
     }
     renderList(target, data.items || [], renderMessage);
@@ -165,7 +176,10 @@ document.getElementById('createRoomBtn')?.addEventListener('click', async () => 
 
 document.getElementById('sendRoomMessageBtn')?.addEventListener('click', async () => {
   if (!activeRoomId) {
-    renderEmpty(document.getElementById('roomMessagesList'), 'Choose a study room before sending a message.');
+    renderEmpty(document.getElementById('roomMessagesList'), {
+      title: 'Choose a study room before sending a message.',
+      detail: 'Select a room to keep the conversation focused and safe.',
+    });
     return;
   }
   const textarea = document.getElementById('roomMessageInput');
@@ -186,3 +200,4 @@ document.getElementById('sendRoomMessageBtn')?.addEventListener('click', async (
 document.getElementById('refreshQuestionsBtn')?.addEventListener('click', loadQuestions);
 
 await Promise.all([loadRooms(), loadChallenges(), loadQuestions()]);
+if (sendButton) {sendButton.disabled = !activeRoomId;}

@@ -64,18 +64,33 @@ function renderReportDetail(detail, report) {
     makeDetailLine('Sessions attended', payload.sessionsAttended ?? 0),
     makeDetailLine('Minutes studied', payload.minutesStudied ?? 0),
   );
+  if (payload.assignmentsSubmitted !== undefined) {
+    summary.append(makeDetailLine('Assignments submitted', payload.assignmentsSubmitted));
+  }
+  if (payload.markedResults !== undefined) {
+    summary.append(makeDetailLine('Marked results', payload.markedResults));
+  }
+  if (payload.confidenceTrend) {
+    summary.append(makeDetailLine('Confidence trend', payload.confidenceTrend));
+  }
   if (payload.summary) {
     const note = document.createElement('p');
     note.className = 'report-detail-note';
     note.textContent = String(payload.summary);
     summary.appendChild(note);
   }
+  if (Array.isArray(payload.topicsCovered) && payload.topicsCovered.length) {
+    const topics = document.createElement('p');
+    topics.className = 'report-detail-note';
+    topics.textContent = `Topics: ${payload.topicsCovered.join(', ')}`;
+    summary.appendChild(topics);
+  }
   detail.appendChild(summary);
 }
 
 function renderReportRow(item, onOpen) {
   const wrapper = document.createElement('div');
-  wrapper.className = 'list-item report-item';
+  wrapper.className = 'report-card';
 
   const header = document.createElement('div');
   header.className = 'report-header';
@@ -126,6 +141,11 @@ function renderReportRow(item, onOpen) {
     }
   });
   actions.appendChild(viewBtn);
+  const openBtn = document.createElement('a');
+  openBtn.className = 'button secondary';
+  openBtn.href = `/reports/detail/?id=${encodeURIComponent(item.id)}`;
+  openBtn.textContent = 'Open report';
+  actions.appendChild(openBtn);
 
   wrapper.append(header, actions, detail);
   return wrapper;
@@ -139,7 +159,7 @@ async function loadReports() {
     const data = await loadJson('/reports');
     const items = data.items || [];
     if (!items.length) {
-      target.innerHTML = '<div class="empty-state"><strong>No reports generated yet.</strong>Reports become useful after sessions are approved and learning activity exists. Generate one when you want a weekly summary of attendance, topics, confidence, and assignment highlights.</div>';
+      target.innerHTML = '<div class="empty-state"><strong>No weekly reports yet.</strong>Reports are generated once you have session notes, assignments, or marked work. Use the button above to generate your first summary.</div>';
       return;
     }
     renderList(target, items, (item) => renderReportRow(item));

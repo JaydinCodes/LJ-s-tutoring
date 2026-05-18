@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Student Reports | Project Odysseus</title>
+  <title>Assignment Detail | Project Odysseus</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Montserrat:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/assets/portal.css">
 </head>
-<body data-page="reports">
+<body data-page="assignments">
   <div class="portal-shell">
     <nav class="portal-nav">
       <div class="portal-nav-inner">
@@ -25,47 +25,44 @@
         </div>
       </div>
     </nav>
+
     <main class="portal-main">
       <section class="page-header">
-        <p class="eyebrow">Weekly scrolls</p>
-        <h1 class="page-title">Weekly Reports</h1>
-        <p class="page-subtitle">A calm summary of attendance, topics, confidence, assignments, and the next best step.</p>
+        <p class="eyebrow">Assignment detail</p>
+        <h1 class="page-title" id="assignmentTitle">Assignment</h1>
+        <p class="page-subtitle" id="assignmentSubtitle">Loading assignment detail...</p>
       </section>
+
       <section class="grid two">
-        <article class="panel dashboard-card">
+        <article class="panel">
           <div class="row-head">
-            <div>
-              <h2 class="panel-title">Generate a weekly report</h2>
-              <p class="note">Reports become useful once sessions, assignments, and marked work are recorded.</p>
-            </div>
-            <button id="generateReportBtn" class="button" type="button">Generate this week</button>
+            <h2 class="panel-title">Assignment overview</h2>
           </div>
-          <div class="progress-bar" aria-hidden="true"><span id="reportGenerateProgress"></span></div>
-          <p id="generateReportStatus" class="note" aria-live="polite"></p>
+          <div id="assignmentOverview" class="list-compact"></div>
         </article>
-        <article class="panel dashboard-card">
-          <h2 class="panel-title">What appears here</h2>
-          <div class="list-compact">
-            <div class="list-item"><strong>Topics covered</strong><span class="note">Subjects and focus areas from approved sessions.</span></div>
-            <div class="list-item"><strong>Confidence summary</strong><span class="note">Momentum, risk, and recommended next action.</span></div>
-            <div class="list-item"><strong>Assignment highlights</strong><span class="note">Due work, marked results, and feedback patterns when available.</span></div>
+        <article class="panel">
+          <div class="row-head">
+            <h2 class="panel-title">Submission upload</h2>
+          </div>
+          <div id="assignmentUploadDetail" class="empty-state">
+            <strong>Select an assignment to upload.</strong>
+            This panel confirms file uploads once the assignment API is enabled.
           </div>
         </article>
       </section>
+
       <section class="panel dashboard-card dashboard-section">
         <div class="row-head">
-          <div>
-            <h2 class="panel-title">Report history</h2>
-            <p class="note">Open a report to view the date range, sessions, minutes, and summary.</p>
-          </div>
+          <h2 class="panel-title">Submission history</h2>
         </div>
-        <div id="studentReportsList" class="list-compact"></div>
+        <div id="submissionHistory" class="list-compact"></div>
       </section>
     </main>
   </div>
+
   <script src="/assets/portal-config.js"></script>
   <script src="/assets/student/auth-guard.js"></script>
   <script src="/assets/analytics.js"></script>
-  <script type="module" src="/assets/student/reports.js"></script>
+  <script type="module" src="/assets/student/assignment-detail.js"></script>
 </body>
 </html>

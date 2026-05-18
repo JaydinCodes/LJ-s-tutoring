@@ -29,24 +29,38 @@
       <section class="page-header">
         <p class="eyebrow">Learning tasks</p>
         <h1 class="page-title">Assignments</h1>
-        <p class="page-subtitle">Due work, submissions, upload status, and marked tasks.</p>
+        <p class="page-subtitle">Due work, submissions, and clear upload confirmation.</p>
       </section>
-      <section class="panel dashboard-card">
-        <div class="row-head">
-          <div>
-            <h2 class="panel-title">Due assignments</h2>
-            <p class="note">Overdue and due-soon work is sorted first.</p>
+      <section class="grid two">
+        <article class="panel">
+          <div class="row-head">
+            <div>
+              <h2 class="panel-title">Due assignments</h2>
+              <p class="note">Overdue and due-soon work is sorted first.</p>
+            </div>
+            <select id="assignmentStatusFilter" aria-label="Filter assignments">
+              <option value="all">All statuses</option>
+              <option value="overdue">Overdue</option>
+              <option value="due_soon">Due soon</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="submitted">Submitted</option>
+              <option value="marked">Marked</option>
+            </select>
           </div>
-          <select id="assignmentStatusFilter" aria-label="Filter assignments">
-            <option value="all">All statuses</option>
-            <option value="overdue">Overdue</option>
-            <option value="due_soon">Due soon</option>
-            <option value="upcoming">Upcoming</option>
-            <option value="submitted">Submitted</option>
-            <option value="marked">Marked</option>
-          </select>
-        </div>
-        <div id="assignmentPageList" class="list-compact"></div>
+          <div id="assignmentPageList" class="list-compact"></div>
+        </article>
+        <article class="panel">
+          <div class="row-head">
+            <div>
+              <h2 class="panel-title">Assignment upload</h2>
+              <p class="note">Select an assignment to upload, confirm, and track status.</p>
+            </div>
+          </div>
+          <div id="assignmentUploadPanel" class="empty-state">
+            <strong>No assignment selected yet.</strong>
+            Choose a task on the left to see upload details and submission status.
+          </div>
+        </article>
       </section>
     </main>
   </div>

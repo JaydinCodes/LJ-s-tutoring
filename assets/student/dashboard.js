@@ -98,25 +98,55 @@ function daysUntil(value) {
   return Math.ceil((due - today) / 86400000);
 }
 
+function resolveAssignmentStatus(assignment) {
+  const due = assignment.dueDate || assignment.due_date;
+  const raw = String(assignment.status || '').toLowerCase();
+  if (['submitted', 'marked', 'returned_for_revision'].includes(raw)) {
+    return raw;
+  }
+  const delta = daysUntil(due);
+  if (delta === null) {return raw || 'upcoming';}
+  if (delta < 0) {return 'overdue';}
+  if (delta <= 2) {return 'due_soon';}
+  return 'upcoming';
+}
+
+function statusPillClass(status) {
+  if (status === 'due_soon') {return 'due-soon';}
+  if (status === 'overdue') {return 'overdue';}
+  if (status === 'submitted' || status === 'marked') {return 'submitted';}
+  return '';
+}
+
 function renderAssignmentCard(assignment, apiAvailable) {
   const due = assignment.dueDate || assignment.due_date;
-  const status = String(assignment.status || '').toLowerCase() || (daysUntil(due) < 0 ? 'overdue' : 'upcoming');
+  const status = resolveAssignmentStatus(assignment);
   const card = document.createElement('article');
   card.className = 'assignment-card';
   card.dataset.urgency = status;
 
-  const title = document.createElement('div');
-  title.className = 'status-row';
-  title.innerHTML = `<div><span class="tiny-label">${escapeHtml(assignment.subject || 'Assignment')}</span><h3 class="panel-title">${escapeHtml(assignment.title || assignment.topic || 'Learning task')}</h3></div><span class="badge subtle ${status === 'overdue' ? 'down' : status === 'submitted' || status === 'marked' ? 'up' : 'flat'}">${escapeHtml(statusLabel(status))}</span>`;
+  const header = document.createElement('div');
+  header.className = 'status-row';
+  header.innerHTML = `
+    <div>
+      <span class="tiny-label">${escapeHtml(assignment.subject || 'Assignment')}</span>
+      <h3 class="panel-title">${escapeHtml(assignment.title || assignment.topic || 'Learning task')}</h3>
+    </div>
+    <span class="status-pill ${statusPillClass(status)}">${escapeHtml(statusLabel(status))}</span>
+  `;
 
-  const meta = document.createElement('p');
-  meta.className = 'note';
+  const meta = document.createElement('div');
+  meta.className = 'assignment-meta';
   const delta = daysUntil(due);
-  meta.textContent = [
-    assignment.topic,
-    due ? `Due ${new Date(due).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}` : 'No due date set',
-    delta === null ? '' : delta < 0 ? `${Math.abs(delta)} day${Math.abs(delta) === 1 ? '' : 's'} overdue` : delta === 0 ? 'Due today' : `${delta} day${delta === 1 ? '' : 's'} left`,
-  ].filter(Boolean).join(' • ');
+  const dueLabel = due ? new Date(due).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }) : 'No due date';
+  const urgencyLabel = delta === null
+    ? ''
+    : delta < 0
+      ? `${Math.abs(delta)} day${Math.abs(delta) === 1 ? '' : 's'} overdue`
+      : delta === 0
+        ? 'Due today'
+        : `${delta} day${delta === 1 ? '' : 's'} left`;
+  meta.textContent = [assignment.topic, `Due ${dueLabel}`, urgencyLabel].filter(Boolean).join(' • ');
 
   const progress = document.createElement('div');
   progress.className = 'progress-bar';
@@ -125,7 +155,7 @@ function renderAssignmentCard(assignment, apiAvailable) {
   progress.append(fill);
 
   const upload = document.createElement('div');
-  upload.className = 'upload-box';
+  upload.className = 'upload-panel';
   const file = document.createElement('input');
   file.type = 'file';
   file.disabled = !apiAvailable || status === 'marked';
@@ -136,16 +166,57 @@ function renderAssignmentCard(assignment, apiAvailable) {
   hint.textContent = apiAvailable
     ? `Accepted: ${allowed.join(', ')}. Max ${assignment.maxFileSizeMB || assignment.max_file_size_mb || 20} MB.`
     : 'Upload endpoint is not available yet. Your tutor/admin team needs to enable student submissions.';
+
+  const progressWrap = document.createElement('div');
+  progressWrap.className = 'upload-progress';
+  const progressFill = document.createElement('span');
+  progressWrap.append(progressFill);
+
+  const state = document.createElement('span');
+  state.className = 'note';
+  state.setAttribute('aria-live', 'polite');
+  if (assignment.submittedAt || assignment.submitted_at) {
+    const submittedAt = new Date(assignment.submittedAt || assignment.submitted_at);
+    state.textContent = `Submitted ${submittedAt.toLocaleString('en-ZA')}`;
+  }
+
+  let queuedFile = null;
+  const selectFile = (fileInput) => {
+    queuedFile = fileInput;
+    if (queuedFile) {
+      state.textContent = `Selected: ${queuedFile.name}`;
+    }
+  };
+
+  file.addEventListener('change', () => selectFile(file.files?.[0]));
+  upload.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    upload.classList.add('drag-active');
+  });
+  upload.addEventListener('dragleave', () => upload.classList.remove('drag-active'));
+  upload.addEventListener('drop', (event) => {
+    event.preventDefault();
+    upload.classList.remove('drag-active');
+    const dropped = event.dataTransfer?.files?.[0];
+    if (dropped) {
+      selectFile(dropped);
+    }
+  });
+
+  const actions = document.createElement('div');
+  actions.className = 'assignment-actions';
   const submit = document.createElement('button');
   submit.className = 'button secondary';
   submit.type = 'button';
   submit.textContent = status === 'submitted' ? 'Resubmit' : 'Upload submission';
   submit.disabled = file.disabled;
-  const state = document.createElement('span');
-  state.className = 'note';
-  state.setAttribute('aria-live', 'polite');
+  const detail = document.createElement('a');
+  detail.className = 'button secondary';
+  detail.href = `/dashboard/assignments/detail/?id=${encodeURIComponent(assignment.id)}`;
+  detail.textContent = 'View details';
+
   submit.addEventListener('click', async () => {
-    const selected = file.files?.[0];
+    const selected = queuedFile || file.files?.[0];
     const validation = validateSubmissionFile(selected, assignment);
     if (validation) {
       state.textContent = validation;
@@ -153,8 +224,11 @@ function renderAssignmentCard(assignment, apiAvailable) {
     }
     submit.disabled = true;
     state.textContent = 'Uploading...';
+    progressFill.style.width = '8%';
     try {
-      await uploadAssignmentSubmission(assignment.id, selected, () => {});
+      await uploadAssignmentSubmission(assignment.id, selected, (pct) => {
+        progressFill.style.width = `${Math.max(8, Math.min(100, pct))}%`;
+      });
       state.textContent = 'Upload confirmed. Your assignment is submitted.';
       track('assignment.submitted', { assignmentId: assignment.id });
     } catch {
@@ -163,8 +237,11 @@ function renderAssignmentCard(assignment, apiAvailable) {
       submit.disabled = false;
     }
   });
-  upload.append(file, hint, submit, state);
-  card.append(title, meta, progress, upload);
+
+  actions.append(submit, detail);
+  upload.append(file, hint, progressWrap, actions, state);
+
+  card.append(header, meta, progress, upload);
   return card;
 }
 
@@ -176,19 +253,29 @@ function renderResultCard(result) {
   const improvements = Array.isArray(result.improvementAreas) ? result.improvementAreas.join(', ') : result.improvementAreas;
   card.innerHTML = `
     <div class="status-row">
-      <div><span class="tiny-label">${escapeHtml(result.subject || 'Result')}</span><h3 class="panel-title">${escapeHtml(result.title || 'Marked work')}</h3></div>
-      <strong class="metric-value">${pct === null || pct === undefined ? '—' : `${pct}%`}</strong>
+      <div>
+        <span class="tiny-label">${escapeHtml(result.subject || 'Result')}</span>
+        <h3 class="panel-title">${escapeHtml(result.title || 'Marked work')}</h3>
+      </div>
+      <strong class="result-score">${pct === null || pct === undefined ? '—' : `${pct}%`}</strong>
     </div>
-    <p class="note">${escapeHtml([result.topic, result.markedAt ? `Marked ${new Date(result.markedAt).toLocaleDateString('en-ZA')}` : '', result.score !== undefined && result.totalMarks ? `${result.score}/${result.totalMarks}` : ''].filter(Boolean).join(' • '))}</p>
+    <div class="result-meta">${escapeHtml([result.topic, result.markedAt ? `Marked ${new Date(result.markedAt).toLocaleDateString('en-ZA')}` : '', result.score !== undefined && result.totalMarks ? `${result.score}/${result.totalMarks}` : ''].filter(Boolean).join(' • '))}</div>
     <p>${escapeHtml(result.feedbackSummary || 'Feedback summary will appear here once your tutor marks the work.')}</p>
     <p class="note"><strong>Strengths:</strong> ${escapeHtml(strengths || 'Awaiting feedback')}</p>
     <p class="note"><strong>Next improvement:</strong> ${escapeHtml(improvements || 'Awaiting feedback')}</p>
   `;
-  const btn = document.createElement('a');
-  btn.className = 'button secondary';
-  btn.href = result.reportId ? `/reports/?report=${encodeURIComponent(result.reportId)}` : '/reports/';
-  btn.textContent = 'View report';
-  card.append(btn);
+  const actions = document.createElement('div');
+  actions.className = 'result-actions';
+  const detail = document.createElement('a');
+  detail.className = 'button secondary';
+  detail.href = `/dashboard/results/detail/?id=${encodeURIComponent(result.id)}`;
+  detail.textContent = 'View details';
+  const report = document.createElement('a');
+  report.className = 'button secondary';
+  report.href = result.reportId ? `/reports/detail/?id=${encodeURIComponent(result.reportId)}` : '/reports/';
+  report.textContent = 'Open report';
+  actions.append(detail, report);
+  card.append(actions);
   return card;
 }
 
@@ -207,23 +294,48 @@ function renderComparison(target, statsResult, results) {
   const learner = Number(stat.learnerScore ?? stat.learner_score ?? results?.[0]?.percentage ?? 0);
   const average = Number(stat.classAverage ?? stat.class_average ?? 0);
   const high = Number(stat.highestScore ?? stat.highest_score ?? 0);
+  const low = Number(stat.lowestScore ?? stat.lowest_score ?? 0);
   const percentile = stat.percentile ?? null;
   const message = learner >= average
     ? 'You are above the group average. Keep consolidating the method so it becomes reliable.'
     : 'You are close to the next band. Revise the target topic and try three focused questions.';
+
   const summary = document.createElement('p');
   summary.textContent = message;
   target.append(summary);
+
+  const highlights = document.createElement('div');
+  highlights.className = 'comparison-chart';
   [
     ['You', learner],
     ['Average', average],
     ['Highest', high],
-  ].forEach(([label, value]) => {
+    ['Lowest', low],
+  ].filter((item) => !Number.isNaN(item[1])).forEach(([label, value]) => {
     const row = document.createElement('div');
     row.className = 'band-row';
     row.innerHTML = `<span>${escapeHtml(label)}</span><div class="band-track"><span style="width:${Math.max(4, Math.min(100, value))}%"></span></div><strong>${Math.round(value)}%</strong>`;
-    target.append(row);
+    highlights.append(row);
   });
+  target.append(highlights);
+
+  const distribution = Array.isArray(stat.distribution) ? stat.distribution : null;
+  const bands = Array.isArray(stat.bands) ? stat.bands : null;
+  if (distribution && distribution.length) {
+    const maxValue = Math.max(...distribution.map((value) => Number(value || 0)), 1);
+    const dist = document.createElement('div');
+    dist.className = 'distribution';
+    distribution.forEach((value, index) => {
+      const row = document.createElement('div');
+      row.className = 'distribution-row';
+      const label = bands?.[index]?.label || `Band ${index + 1}`;
+      const pct = Math.round((Number(value || 0) / maxValue) * 100);
+      row.innerHTML = `<span>${escapeHtml(label)}</span><div class="distribution-bar"><span style="width:${pct}%"></span></div><strong>${Number(value || 0)}</strong>`;
+      dist.append(row);
+    });
+    target.append(dist);
+  }
+
   const band = document.createElement('div');
   band.className = 'empty-state';
   band.innerHTML = `<strong>${escapeHtml(percentile ? `Percentile ${percentile}` : 'Growth band')}</strong>${learner >= average ? 'You are in a strong working band.' : 'Support band does not mean stuck; it means your next practice step is clear.'}`;
@@ -340,6 +452,91 @@ function updateWeeklyRhythm(data) {
   }
 }
 
+function updateHeroKpis(data, assignments) {
+  const nextSession = document.getElementById('heroNextSession');
+  const sessionMeta = document.getElementById('heroSessionMeta');
+  const dueCount = document.getElementById('heroDueCount');
+  const dueMeta = document.getElementById('heroDueMeta');
+  const momentum = document.getElementById('heroMomentum');
+  const momentumMeta = document.getElementById('heroMomentumMeta');
+
+  if (data.today?.hasUpcoming && data.today.session && nextSession && sessionMeta) {
+    nextSession.textContent = `${data.today.session.subject || 'Session'} · ${data.today.session.startTime || ''}`.trim();
+    sessionMeta.textContent = data.today.session.mode ? `Mode: ${data.today.session.mode}` : 'Upcoming session confirmed';
+  } else if (nextSession && sessionMeta) {
+    nextSession.textContent = 'No session scheduled';
+    sessionMeta.textContent = 'Use the time to review a topic or upload work.';
+  }
+
+  const dueSoon = assignments.filter((item) => ['overdue', 'due_soon'].includes(resolveAssignmentStatus(item)));
+  if (dueCount && dueMeta) {
+    dueCount.textContent = String(dueSoon.length);
+    dueMeta.textContent = dueSoon.length ? 'Assignments need attention' : 'No urgent work today';
+  }
+
+  if (momentum && momentumMeta) {
+    if (data.predictiveScore?.momentumScore !== undefined) {
+      momentum.textContent = `${data.predictiveScore.momentumScore}/100`;
+      momentumMeta.textContent = 'Momentum score';
+    } else {
+      momentum.textContent = `${data.thisWeek?.minutesStudied ?? 0}m`;
+      momentumMeta.textContent = 'Focused minutes this week';
+    }
+  }
+}
+
+function updatePrimaryAction(assignments, results) {
+  const primary = document.getElementById('primaryNextAction');
+  const secondary = document.getElementById('secondaryAction');
+  if (!primary || !secondary) {return;}
+
+  const overdue = assignments.find((item) => resolveAssignmentStatus(item) === 'overdue');
+  const dueSoon = assignments.find((item) => resolveAssignmentStatus(item) === 'due_soon');
+  const latestResult = results?.[0];
+
+  if (overdue) {
+    primary.textContent = 'Upload overdue work';
+    primary.href = `/dashboard/assignments/detail/?id=${encodeURIComponent(overdue.id)}`;
+    secondary.textContent = 'Open assignments';
+    secondary.href = '/dashboard/assignments/';
+    return;
+  }
+  if (dueSoon) {
+    primary.textContent = 'Upload due work';
+    primary.href = `/dashboard/assignments/detail/?id=${encodeURIComponent(dueSoon.id)}`;
+    secondary.textContent = 'Open assignments';
+    secondary.href = '/dashboard/assignments/';
+    return;
+  }
+  if (latestResult) {
+    primary.textContent = 'Review latest result';
+    primary.href = `/dashboard/results/detail/?id=${encodeURIComponent(latestResult.id)}`;
+    secondary.textContent = 'Open results';
+    secondary.href = '/dashboard/results/';
+    return;
+  }
+  primary.textContent = 'Open weekly plan';
+  primary.href = '#growthPlan';
+  secondary.textContent = 'Open assignments';
+  secondary.href = '/dashboard/assignments/';
+}
+
+function updateUploadGuide(target, assignmentsResult, assignments) {
+  if (!target) {return;}
+  if (!assignmentsResult.available) {
+    target.innerHTML = '<strong>Waiting for assignment API</strong>Upload controls activate when due assignments are available from the learner assignment endpoint.';
+    return;
+  }
+  if (!assignments.length) {
+    target.innerHTML = '<strong>No uploads needed right now</strong>When your tutor assigns work, this panel will guide you through upload and confirmation.';
+    return;
+  }
+  const focus = assignments[0];
+  const due = focus.dueDate || focus.due_date;
+  const dueLabel = due ? new Date(due).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }) : 'No due date';
+  target.innerHTML = `<strong>${escapeHtml(focus.title || focus.topic || 'Next assignment')}</strong>${escapeHtml([focus.subject, `Due ${dueLabel}`].filter(Boolean).join(' • '))}<div class="note">Use the upload controls to confirm submission and keep your tutor updated.</div>`;
+}
+
 updateTodayDate();
 setupReflection();
 
@@ -387,7 +584,7 @@ setupReflection();
   const sortedAssignments = sortAssignmentsByUrgency(assignmentsResult.items || []);
   const openAssignments = sortedAssignments.filter((item) => !['submitted', 'marked'].includes(String(item.status || '').toLowerCase()));
   setText('#metricAssignments', String(assignmentsResult.available ? openAssignments.length : 0));
-  setText('#assignmentMetricHint', assignmentsResult.available ? 'Open learner tasks' : 'API contract needed');
+  setText('#assignmentMetricHint', assignmentsResult.available ? 'Open learner tasks' : 'Assignment API needed');
   const resultItems = resultsResult.items || [];
   const percentages = resultItems.map((item) => Number(item.percentage)).filter(Number.isFinite);
   const average = percentages.length ? Math.round(percentages.reduce((a, b) => a + b, 0) / percentages.length) : null;
@@ -395,9 +592,18 @@ setupReflection();
   setText('#confidenceTrend', data.predictiveScore ? `Momentum ${data.predictiveScore.momentumScore}/100` : 'Awaiting confidence data');
   setText('#recommendedTitle', data.recommendedNext?.title || 'Build one strong study block');
   setText('#recommendedDescription', data.recommendedNext?.description || 'Choose one subject, work calmly, and leave a note for your next session.');
-  setText('#heroTitle', data.recommendedNext?.title || 'Settle in. Grow steadily.');
+  setText('#heroTitle', data.recommendedNext?.title || "Today's next step");
   setText('#heroSubtitle', data.recommendedNext?.description || 'Your next best step will appear here as sessions, assignments, and results build up.');
   updateWeeklyRhythm(data);
+  updateHeroKpis(data, sortedAssignments);
+  updatePrimaryAction(sortedAssignments, resultItems);
+  updateUploadGuide(document.getElementById('uploadHelp'), assignmentsResult, sortedAssignments);
+
+  const todayPace = document.getElementById('todayPace');
+  if (todayPace) {
+    const minutes = Number(data.thisWeek?.minutesStudied ?? 0);
+    todayPace.textContent = minutes >= 150 ? 'On pace' : minutes >= 60 ? 'Building' : 'Starting';
+  }
 
   if (data.today?.hasUpcoming && data.today.session) {
     renderList(upcoming, [data.today.session], renderSession);

@@ -39,18 +39,20 @@
             <h2 class="panel-title">Study Rooms</h2>
             <button id="createRoomBtn" class="button" type="button">Create room</button>
           </div>
+          <p class="note">Join a focused room to keep the discussion calm and on-topic.</p>
           <div id="communityRoomsList" class="list-compact"></div>
         </article>
 
         <article class="panel dashboard-card">
           <h2 class="panel-title">Room Chat</h2>
           <p id="selectedRoomLabel" class="note">Join a room to view or post messages.</p>
+          <p class="note" id="roomModerationNote">Moderated space. Keep messages focused and never share personal details.</p>
           <div id="roomMessagesList" class="list-compact"></div>
           <div class="field">
             <label for="roomMessageInput">Message</label>
             <textarea id="roomMessageInput" rows="3" maxlength="2000" aria-label="Room message"></textarea>
           </div>
-          <button id="sendRoomMessageBtn" class="button" type="button">Send message</button>
+          <button id="sendRoomMessageBtn" class="button" type="button" disabled>Send message</button>
         </article>
       </section>
 

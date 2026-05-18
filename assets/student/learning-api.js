@@ -1,4 +1,4 @@
-import { apiFetch, loadJson } from '/assets/common.js';
+import { apiFetch, apiUrl, loadJson } from '/assets/common.js';
 
 function normalizeArrayPayload(payload, keys) {
   for (const key of keys) {
@@ -20,16 +20,62 @@ async function optionalJson(path, keys) {
   }
 }
 
+async function optionalItem(path, keys = []) {
+  try {
+    const payload = await loadJson(path);
+    for (const key of keys) {
+      if (payload && payload[key]) {
+        return { available: true, item: payload[key], payload };
+      }
+    }
+    return { available: true, item: payload, payload };
+  } catch (err) {
+    if (err?.status === 404 || err?.status === 501) {
+      return { available: false, item: null, error: err };
+    }
+    throw err;
+  }
+}
+
 export async function fetchStudentAssignments() {
   return optionalJson('/student/assignments', ['assignments', 'items']);
+}
+
+export async function fetchStudentAssignmentDetail(assignmentId) {
+  if (!assignmentId) {
+    return { available: false, item: null };
+  }
+  return optionalItem(`/student/assignments/${encodeURIComponent(assignmentId)}`, ['assignment', 'item']);
+}
+
+export async function fetchStudentAssignmentSubmissions(assignmentId) {
+  if (!assignmentId) {
+    return { available: false, items: [] };
+  }
+  return optionalJson(`/student/assignments/${encodeURIComponent(assignmentId)}/submissions`, ['submissions', 'items']);
 }
 
 export async function fetchStudentResults() {
   return optionalJson('/student/results', ['results', 'items']);
 }
 
-export async function fetchClassStats() {
-  return optionalJson('/student/class-stats', ['stats', 'items']);
+export async function fetchStudentResultDetail(resultId) {
+  if (!resultId) {
+    return { available: false, item: null };
+  }
+  return optionalItem(`/student/results/${encodeURIComponent(resultId)}`, ['result', 'item']);
+}
+
+export async function fetchClassStats(assignmentId) {
+  const suffix = assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : '';
+  return optionalJson(`/student/class-stats${suffix}`, ['stats', 'items']);
+}
+
+export async function fetchReportDetail(reportId) {
+  if (!reportId) {
+    return { available: false, item: null };
+  }
+  return optionalItem(`/reports/${encodeURIComponent(reportId)}`, ['report']);
 }
 
 export function sortAssignmentsByUrgency(assignments) {
@@ -65,6 +111,34 @@ export function validateSubmissionFile(file, assignment = {}) {
 export async function uploadAssignmentSubmission(assignmentId, file, onProgress) {
   const form = new FormData();
   form.set('file', file);
+
+  if (typeof onProgress === 'function' && typeof XMLHttpRequest !== 'undefined') {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', apiUrl(`/student/assignments/${encodeURIComponent(assignmentId)}/submissions`));
+      xhr.withCredentials = true;
+      xhr.upload.addEventListener('progress', (event) => {
+        if (!event.lengthComputable) {return;}
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress(percent);
+      });
+      xhr.addEventListener('load', () => {
+        onProgress(100);
+        if (xhr.status < 200 || xhr.status >= 300) {
+          reject(new Error(`upload_failed:${xhr.status}`));
+          return;
+        }
+        try {
+          resolve(xhr.responseText ? JSON.parse(xhr.responseText) : {});
+        } catch {
+          resolve({});
+        }
+      });
+      xhr.addEventListener('error', () => reject(new Error('upload_failed')));
+      xhr.send(form);
+    });
+  }
+
   const res = await apiFetch(`/student/assignments/${encodeURIComponent(assignmentId)}/submissions`, {
     method: 'POST',
     body: form,

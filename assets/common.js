@@ -147,11 +147,40 @@ export function clearChildren(node) {
   }
 }
 
-export function renderEmpty(target, text) {
+export function renderEmpty(target, text, detail, action) {
   clearChildren(target);
   const empty = document.createElement('div');
   empty.className = 'empty-state';
-  empty.textContent = String(text ?? '');
+
+  if (typeof text === 'string' && detail === undefined && action === undefined) {
+    empty.textContent = String(text ?? '');
+    target.appendChild(empty);
+    return;
+  }
+
+  const payload = typeof text === 'object' && text !== null ? text : { title: text, detail, action };
+  const title = payload?.title ?? '';
+  const description = payload?.detail ?? '';
+
+  if (title) {
+    const strong = document.createElement('strong');
+    strong.textContent = String(title);
+    empty.appendChild(strong);
+  }
+  if (description) {
+    const p = document.createElement('div');
+    p.textContent = String(description);
+    empty.appendChild(p);
+  }
+  if (payload?.action?.label && payload?.action?.href) {
+    const link = document.createElement('a');
+    link.className = 'button secondary';
+    link.href = payload.action.href;
+    link.textContent = payload.action.label;
+    link.style.marginTop = '0.75rem';
+    empty.appendChild(link);
+  }
+
   target.appendChild(empty);
 }
 
@@ -211,7 +240,10 @@ export function renderList(target, items, renderer) {
   if (!target) {return;}
   clearChildren(target);
   if (!items || items.length === 0) {
-    renderEmpty(target, 'No data available yet.');
+    renderEmpty(target, {
+      title: 'Nothing to show yet.',
+      detail: 'As your learning activity grows, new items will appear here.',
+    });
     return;
   }
   items.forEach((item, index) => {
