@@ -23,7 +23,15 @@ function escapeHtml(value) {
 }
 
 function empty(title, copy) {
-  list.innerHTML = `<div class="empty-state"><strong>${escapeHtml(title)}</strong>${escapeHtml(copy)}</div>`;
+  list.innerHTML = `<div class="empty-state"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(copy)}</span></div>`;
+}
+
+function badgeClassForStatus(value) {
+  const normalized = String(value || 'upcoming').toLowerCase();
+  if (normalized === 'overdue') {return 'down overdue';}
+  if (normalized === 'submitted' || normalized === 'marked') {return 'up submitted';}
+  if (normalized === 'due_soon') {return 'flat due-soon';}
+  return 'flat';
 }
 
 function render() {
@@ -54,7 +62,7 @@ function render() {
           <strong>${escapeHtml(assignment.title || assignment.topic || 'Assignment')}</strong>
           <div class="note">${escapeHtml(meta)}</div>
         </div>
-        <span class="badge subtle flat">${escapeHtml(String(assignment.status || 'upcoming').replace(/_/g, ' '))}</span>
+        <span class="badge subtle ${badgeClassForStatus(assignment.status)}">${escapeHtml(String(assignment.status || 'upcoming').replace(/_/g, ' '))}</span>
       </div>
       <div class="progress-bar"><span style="width:${Math.max(8, Math.min(100, Number(assignment.progress || 35)))}%"></span></div>
       <div class="upload-box">
