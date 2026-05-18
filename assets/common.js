@@ -248,7 +248,7 @@ export function renderLoading(target, text) {
   const loading = document.createElement('div');
   loading.className = 'empty-state loading-state';
   loading.setAttribute('aria-busy', 'true');
-  loading.textContent = String(text ?? 'Loading…');
+  loading.setAttribute('aria-label', String(text ?? 'Loading…'));
   target.appendChild(loading);
 }
 

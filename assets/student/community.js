@@ -15,14 +15,29 @@ function toText(value, fallback = '') {
 }
 
 function renderRoom(room) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'list-item room-card';
+  wrapper.dataset.active = String(activeRoomId === toText(room.id));
+
+  const header = document.createElement('div');
+  header.className = 'row-head';
+
+  const copy = document.createElement('div');
+  const label = document.createElement('span');
+  label.className = 'tiny-label';
+  label.textContent = toText(room.grade, 'Mixed grade');
   const title = document.createElement('strong');
   title.textContent = toText(room.subject, 'Study room');
+  copy.append(label, title);
+
+  const badge = document.createElement('span');
+  badge.className = 'badge subtle flat';
+  badge.textContent = `${Number(room.memberCount || 0)} learners`;
+  header.append(copy, badge);
 
   const subtitle = document.createElement('div');
-  subtitle.textContent = formatSubtitle([
-    toText(room.grade, 'Mixed grade'),
-    `${Number(room.memberCount || 0)} members`,
-  ]);
+  subtitle.className = 'note';
+  subtitle.textContent = 'A moderated space for focused questions, worked steps, and calm revision.';
 
   const button = document.createElement('button');
   button.type = 'button';
@@ -46,10 +61,7 @@ function renderRoom(room) {
     await loadMessages();
   });
 
-  const wrapper = document.createElement('div');
-  wrapper.className = 'list-item';
-  wrapper.dataset.active = String(activeRoomId === toText(room.id));
-  wrapper.append(title, subtitle, button);
+  wrapper.append(header, subtitle, button);
   return wrapper;
 }
 

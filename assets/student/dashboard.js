@@ -107,7 +107,7 @@ function renderAssignmentCard(assignment, apiAvailable) {
 
   const title = document.createElement('div');
   title.className = 'status-row';
-  title.innerHTML = `<div><span class="tiny-label">${escapeHtml(assignment.subject || 'Assignment')}</span><h3 class="panel-title">${escapeHtml(assignment.title || assignment.topic || 'Learning task')}</h3></div><span class="badge subtle ${status === 'overdue' ? 'down' : status === 'submitted' || status === 'marked' ? 'up' : 'flat'}">${escapeHtml(statusLabel(status))}</span>`;
+  title.innerHTML = `<div><span class="tiny-label">${escapeHtml(assignment.subject || 'Assignment')}</span><h3 class="panel-title">${escapeHtml(assignment.title || assignment.topic || 'Learning task')}</h3></div><span class="badge subtle ${status === 'overdue' ? 'down overdue' : status === 'submitted' || status === 'marked' ? 'up submitted' : 'flat due-soon'}">${escapeHtml(statusLabel(status))}</span>`;
 
   const meta = document.createElement('p');
   meta.className = 'note';
