@@ -36,6 +36,36 @@ export async function initStudents() {
   feedback.setAttribute('aria-live', 'polite');
   form.appendChild(feedback);
 
+  if (!qs('#studentSchool')) {
+    const notesField = qs('#studentNotes')?.closest('.field') || qs('#studentNotes')?.parentElement;
+    const extra = document.createElement('div');
+    extra.innerHTML = `
+      <div class="field">
+        <label for="studentSchool">School <span class="opt-tag">(optional)</span></label>
+        <input id="studentSchool" type="text" name="school" placeholder="School or learning centre">
+      </div>
+      <div class="field">
+        <label for="studentSubjects">Subjects <span class="opt-tag">(comma separated)</span></label>
+        <input id="studentSubjects" type="text" name="subjects" placeholder="Mathematics, Physical Sciences">
+      </div>
+      <div class="field">
+        <label for="guardianRelationship">Guardian relationship <span class="opt-tag">(optional)</span></label>
+        <input id="guardianRelationship" type="text" name="guardianRelationship" placeholder="Parent, aunt, caregiver">
+      </div>
+      <div class="field">
+        <label for="guardianEmail">Guardian email <span class="opt-tag">(optional)</span></label>
+        <input id="guardianEmail" type="email" name="guardianEmail" placeholder="guardian@example.com">
+      </div>
+      <div class="field">
+        <label for="partnerAffiliation">Partner / school / NGO <span class="opt-tag">(optional)</span></label>
+        <input id="partnerAffiliation" type="text" name="partnerAffiliation" placeholder="ProVision, school, or NGO">
+      </div>
+    `;
+    while (extra.firstElementChild) {
+      form.insertBefore(extra.firstElementChild, notesField || feedback);
+    }
+  }
+
   const initials = (name) => String(name || '?')
     .trim()
     .split(/\s+/)
@@ -61,7 +91,8 @@ export async function initStudents() {
           <div class="student-avatar" aria-hidden="true">${escapeHtml(initials(s.full_name))}</div>
           <div class="student-info">
             <div class="student-name">${escapeHtml(s.full_name)}</div>
-            <div class="student-meta">${escapeHtml([s.grade || 'No grade', s.email, s.guardian_name || 'No guardian'].filter(Boolean).join(' | '))}</div>
+            <div class="student-meta">${escapeHtml([s.grade || 'No grade', s.school || 'No school', s.email, s.guardian_name || 'No guardian'].filter(Boolean).join(' | '))}</div>
+            <div class="student-meta">${escapeHtml([Array.isArray(s.subjects_json) ? s.subjects_json.join(', ') : '', s.partner_affiliation].filter(Boolean).join(' | '))}</div>
           </div>
           <span class="status-badge ${s.active ? 'status-active' : 'status-inactive'}">${s.active ? 'Active' : 'Inactive'}</span>
         </div>`)
@@ -150,8 +181,13 @@ export async function initStudents() {
       email: qs('#studentEmail')?.value || undefined,
       password: qs('#studentPassword')?.value || undefined,
       grade: qs('#studentGrade').value || undefined,
+      school: qs('#studentSchool')?.value || undefined,
+      subjects: (qs('#studentSubjects')?.value || '').split(',').map((item) => item.trim()).filter(Boolean),
       guardianName: qs('#guardianName').value || undefined,
+      guardianRelationship: qs('#guardianRelationship')?.value || undefined,
       guardianPhone: qs('#guardianPhone').value || undefined,
+      guardianEmail: qs('#guardianEmail')?.value || undefined,
+      partnerAffiliation: qs('#partnerAffiliation')?.value || undefined,
       notes: qs('#studentNotes').value || undefined,
       active: qs('#studentActive').checked,
     };

@@ -298,20 +298,40 @@ export async function tutorRoutes(app: FastifyInstance) {
     const { page, pageSize, offset, limit } = parsePagination(req.query as any, { pageSize: 200 });
     try {
       const res = await pool.query(
-        `select s.id, s.full_name, s.grade, s.active,
+        `select s.id, s.full_name, s.grade, s.school, s.subjects_json, s.partner_affiliation, s.active,
                 string_agg(distinct a.subject, ', ' order by a.subject) as subjects,
                 max(sess.date) as latest_session_date,
                 max(sess.status) filter (where sess.date = latest.latest_date) as latest_attendance_status,
-                count(distinct la.id) filter (where la.status = 'assigned')::int as open_assignments
+                count(distinct la.id) filter (where la.status = 'assigned')::int as open_assignments,
+                latest_score.risk_score,
+                latest_score.momentum_score,
+                baseline.percentage as baseline_percentage,
+                baseline.subject as baseline_subject
          from assignments a
          join students s on s.id = a.student_id
+         left join users u on u.student_id = s.id
          left join lateral (
            select max(date) as latest_date from sessions where tutor_id = a.tutor_id and student_id = s.id
          ) latest on true
+         left join lateral (
+           select risk_score, momentum_score
+           from student_score_snapshots sss
+           where sss.user_id = u.id
+           order by score_date desc
+           limit 1
+         ) latest_score on true
+         left join lateral (
+           select percentage, subject
+           from baseline_assessments ba
+           where ba.student_id = s.id
+           order by completed_at desc
+           limit 1
+         ) baseline on true
          left join sessions sess on sess.tutor_id = a.tutor_id and sess.student_id = s.id
          left join learning_assignments la on la.tutor_id = a.tutor_id and la.student_id = s.id
          where a.tutor_id = $1 and a.active = true and s.active = true
-         group by s.id, s.full_name, s.grade, s.active
+         group by s.id, s.full_name, s.grade, s.school, s.subjects_json, s.partner_affiliation, s.active,
+                  latest_score.risk_score, latest_score.momentum_score, baseline.percentage, baseline.subject
          order by s.full_name asc
          limit $2 offset $3`,
         [tutorId, limit, offset]

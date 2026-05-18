@@ -84,6 +84,50 @@ function renderSnapshot(topic) {
   return wrapper;
 }
 
+function renderRows(rows) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'list-item';
+  rows.filter((row) => row !== null && row !== undefined && row !== '').forEach((row, index) => {
+    const el = document.createElement(index === 0 ? 'strong' : 'div');
+    el.textContent = String(row);
+    wrapper.appendChild(el);
+  });
+  return wrapper;
+}
+
+function renderSingleCard(target, rows, emptyTitle, emptyDetail) {
+  if (!target) {return;}
+  if (!rows || rows.length === 0) {
+    smartEmpty(target, emptyTitle, emptyDetail);
+    return;
+  }
+  renderList(target, [rows], renderRows);
+}
+
+function formatDate(value) {
+  if (!value) {return '';}
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {return String(value).slice(0, 10);}
+  return date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function renderGoal(goal) {
+  const progress = goal.target_value ? Math.round((Number(goal.current_value || 0) / Number(goal.target_value)) * 100) : null;
+  return renderRows([
+    goal.title,
+    [goal.category, goal.subject, goal.due_date ? `Due ${formatDate(goal.due_date)}` : '', goal.status].filter(Boolean).join(' - '),
+    progress === null ? (goal.description || 'Goal progress will update as your tutor/admin records progress.') : `${Math.max(0, Math.min(100, progress))}% progress`,
+  ]);
+}
+
+function renderAttendance(item) {
+  return renderRows([
+    `${item.subject || 'Session'} - ${String(item.attendance_status || item.status || '').replace(/_/g, ' ')}`,
+    `${formatDate(item.date)} ${String(item.start_time || '').slice(0, 5)}`.trim(),
+    item.tutor_name ? `Tutor: ${item.tutor_name}` : '',
+  ]);
+}
+
 function statusLabel(value) {
   return String(value || 'upcoming').replace(/_/g, ' ');
 }
@@ -398,6 +442,81 @@ setupReflection();
   setText('#heroTitle', data.recommendedNext?.title || 'Settle in. Grow steadily.');
   setText('#heroSubtitle', data.recommendedNext?.description || 'Your next best step will appear here as sessions, assignments, and results build up.');
   updateWeeklyRhythm(data);
+
+  const profile = data.profile || {};
+  const profileCompletion = profile.completion?.required?.length
+    ? Math.round((Number(profile.completion.completed || 0) / profile.completion.required.length) * 100)
+    : 0;
+  renderSingleCard(document.getElementById('profileCard'), [
+    profile.name || 'Learner',
+    [profile.grade, profile.school].filter(Boolean).join(' - '),
+    profile.guardian?.name ? `Guardian: ${profile.guardian.name}${profile.guardian.relationship ? ` (${profile.guardian.relationship})` : ''}` : 'Guardian not recorded',
+    profile.guardian?.contactStatus === 'available_through_admin' ? 'Guardian contact available through admin' : 'Guardian contact not recorded',
+    profile.partnerAffiliation ? `Partner: ${profile.partnerAffiliation}` : '',
+    `Profile completion: ${profileCompletion}%`,
+  ], 'Profile is not available yet.', 'Ask admin to complete your learner profile.');
+
+  const academicProfile = data.academicProfile || {};
+  const enrolledSubjects = academicProfile.enrolledSubjects || [];
+  const activeTutoringSubjects = academicProfile.activeTutoringSubjects || [];
+  renderSingleCard(document.getElementById('academicProfileCard'), [
+    academicProfile.grade || 'Grade not recorded',
+    academicProfile.school ? `School: ${academicProfile.school}` : 'School not recorded',
+    enrolledSubjects.length ? `Subjects: ${enrolledSubjects.join(', ')}` : 'Subjects not recorded',
+    activeTutoringSubjects.length ? `Tutoring: ${activeTutoringSubjects.join(', ')}` : 'No active tutoring subjects yet',
+  ], 'Academic profile is not available yet.', 'Admin manages grade, school, and subject records.');
+
+  const tutorTarget = document.getElementById('assignedTutorList');
+  if (Array.isArray(data.assignedTutors) && data.assignedTutors.length) {
+    renderList(tutorTarget, data.assignedTutors, (tutor) => renderRows([
+      tutor.full_name || 'Tutor',
+      tutor.subject ? `Subject: ${tutor.subject}` : '',
+      tutor.qualification_band ? `Approved band: ${tutor.qualification_band}` : '',
+    ]));
+  } else {
+    smartEmpty(tutorTarget, 'No tutor assigned yet.', 'When admin assigns a tutor, their name and subject will appear here.');
+  }
+
+  const support = data.supportStatus;
+  renderSingleCard(document.getElementById('supportStatusCard'), support ? [
+    support.label,
+    support.explanation,
+    `Next action: ${support.recommendedAction}`,
+    data.predictiveScore ? `Momentum: ${data.predictiveScore.momentumScore}/100` : '',
+  ] : [], 'Support status is waiting for data.', 'Risk/support bands are calculated from learning signals once enough data exists.');
+
+  const baseline = data.baseline;
+  renderSingleCard(document.getElementById('baselineCard'), baseline ? [
+    `${baseline.subject} - ${Math.round(Number(baseline.percentage || 0))}%`,
+    [baseline.level_band, baseline.grade, baseline.completed_at ? `Completed ${formatDate(baseline.completed_at)}` : ''].filter(Boolean).join(' - '),
+    Array.isArray(baseline.recommended_next_steps_json) && baseline.recommended_next_steps_json.length
+      ? `Next: ${baseline.recommended_next_steps_json[0]}`
+      : 'Next steps will appear after review.',
+  ] : [], 'No baseline assessment yet.', 'Your baseline summary appears after admin records or uploads a diagnostic result.');
+
+  const latestReport = data.latestReport;
+  renderSingleCard(document.getElementById('latestReportCard'), latestReport ? [
+    `Week ${latestReport.weekStart} to ${latestReport.weekEnd}`,
+    `Generated ${formatDate(latestReport.createdAt)}`,
+    Array.isArray(latestReport.summary) && latestReport.summary.length ? latestReport.summary[0] : 'Open reports for the full weekly summary.',
+  ] : [], 'No progress report yet.', 'Generate a weekly report once you have approved sessions and activity.');
+
+  const goalsTarget = document.getElementById('goalsList');
+  if (Array.isArray(data.goals) && data.goals.length) {
+    renderList(goalsTarget, data.goals, renderGoal);
+  } else {
+    smartEmpty(goalsTarget, 'No active goals yet.', 'Admin or your tutor can add academic, attendance, assignment, career, or support goals.');
+  }
+
+  const attendanceTarget = document.getElementById('attendanceList');
+  if (data.attendance?.items?.length) {
+    const rate = data.attendance.total > 0 ? Math.round((data.attendance.attended / data.attendance.total) * 100) : null;
+    const rateNode = renderRows([rate === null ? 'Attendance rate pending' : `Attendance rate: ${rate}%`]);
+    attendanceTarget.replaceChildren(rateNode);
+    data.attendance.items.slice(0, 6).forEach((item) => attendanceTarget.appendChild(renderAttendance(item)));
+  } else {
+    smartEmpty(attendanceTarget, 'No attendance history yet.', 'Approved sessions and submitted reports will build your attendance record.');
+  }
 
   if (data.today?.hasUpcoming && data.today.session) {
     renderList(upcoming, [data.today.session], renderSession);

@@ -54,6 +54,9 @@ import {
   UpdateAssignmentSchema,
   UpdateStudentSchema,
   UpdateTutorSchema,
+  BaselineAssessmentSchema,
+  LearningGoalSchema,
+  UpdateLearningGoalSchema,
   TutorApplicationDecisionSchema,
   TutorDocumentVerifySchema,
   VolunteerEventSchema,
@@ -69,6 +72,7 @@ import { PII_CLASSIFICATION_MAP } from '../lib/data-classification.js';
 import { parsePagination } from '../lib/pagination.js';
 import { enqueueJob, getJob } from '../lib/job-queue.js';
 import { getErrorMonitor } from '../lib/error-monitor.js';
+import { supportBandFromRiskScore } from '../lib/support-band.js';
 
 
 function toDateString(value: Date) {
@@ -278,17 +282,30 @@ export async function adminRoutes(app: FastifyInstance) {
       `update students
        set full_name = $1,
            grade = $2,
-           guardian_name = $3,
-           guardian_phone = $4,
-           notes = $5,
-           is_active = $6
-       where id = $7
-       returning id, full_name, grade, guardian_name, guardian_phone, notes, is_active as active`,
+           school = $3,
+           subjects_json = $4::jsonb,
+           guardian_name = $5,
+           guardian_relationship = $6,
+           guardian_phone = $7,
+           guardian_email = $8,
+           guardian_address = $9,
+           partner_affiliation = $10,
+           notes = $11,
+           is_active = $12
+       where id = $13
+       returning id, full_name, grade, school, subjects_json, guardian_name, guardian_relationship,
+                 guardian_phone, guardian_email, guardian_address, partner_affiliation, notes, is_active as active`,
       [
         payload.fullName ?? current.full_name,
         payload.grade ?? current.grade,
+        payload.school ?? current.school,
+        payload.subjects ? JSON.stringify(payload.subjects) : current.subjects_json,
         payload.guardianName ?? current.guardian_name,
+        payload.guardianRelationship ?? current.guardian_relationship,
         payload.guardianPhone ?? current.guardian_phone,
+        payload.guardianEmail ?? current.guardian_email,
+        payload.guardianAddress ?? current.guardian_address,
+        payload.partnerAffiliation ?? current.partner_affiliation,
         payload.notes ?? current.notes,
         payload.active ?? current.is_active,
         studentId
@@ -1415,6 +1432,244 @@ export async function adminRoutes(app: FastifyInstance) {
     } finally {
       client.release();
     }
+  });
+
+  app.get('/admin/students/:id/summary', async (req, reply) => {
+    const params = IdParamSchema.safeParse(req.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_request', details: params.error.flatten() });
+    try {
+      const [profileRes, baselineRes, goalsRes, attendanceRes, tutorRes] = await Promise.all([
+        pool.query(
+          `select s.*, u.email
+           from students s
+           left join users u on u.student_id = s.id
+           where s.id = $1`,
+          [params.data.id]
+        ),
+        pool.query(
+          `select * from baseline_assessments where student_id = $1 order by completed_at desc`,
+          [params.data.id]
+        ),
+        pool.query(
+          `select * from learning_goals where student_id = $1 order by created_at desc`,
+          [params.data.id]
+        ),
+        pool.query(
+          `select s.id, s.date, s.start_time, s.status, s.attendance_status, a.subject, t.full_name as tutor_name
+           from sessions s
+           join assignments a on a.id = s.assignment_id
+           join tutor_profiles t on t.id = s.tutor_id
+           where s.student_id = $1
+           order by s.date desc, s.start_time desc
+           limit 50`,
+          [params.data.id]
+        ),
+        pool.query(
+          `select a.id as assignment_id, a.subject, a.active, t.id as tutor_id, t.full_name as tutor_name
+           from assignments a
+           join tutor_profiles t on t.id = a.tutor_id
+           where a.student_id = $1
+           order by a.start_date desc`,
+          [params.data.id]
+        )
+      ]);
+      if (Number(profileRes.rowCount || 0) === 0) return reply.code(404).send({ error: 'student_not_found' });
+      return reply.send({
+        profile: profileRes.rows[0],
+        baselines: baselineRes.rows,
+        goals: goalsRes.rows,
+        attendance: attendanceRes.rows,
+        tutorAssignments: tutorRes.rows,
+      });
+    } catch (err: any) {
+      getErrorMonitor().captureException(err, { correlationId: req.id, userId: req.user?.userId, role: req.user?.role });
+      req.log?.error?.(err);
+      return reply.code(500).send({ error: 'internal_error' });
+    }
+  });
+
+  app.get('/admin/baseline-assessments', async (req, reply) => {
+    const query = req.query as { studentId?: string; subject?: string; grade?: string };
+    const params: any[] = [];
+    const filters: string[] = [];
+    if (query.studentId) {
+      params.push(query.studentId);
+      filters.push(`ba.student_id = $${params.length}`);
+    }
+    if (query.subject) {
+      params.push(query.subject);
+      filters.push(`ba.subject = $${params.length}`);
+    }
+    if (query.grade) {
+      params.push(query.grade);
+      filters.push(`ba.grade = $${params.length}`);
+    }
+    const where = filters.length ? `where ${filters.join(' and ')}` : '';
+    const res = await pool.query(
+      `select ba.*, s.full_name as student_name
+       from baseline_assessments ba
+       join students s on s.id = ba.student_id
+       ${where}
+       order by ba.completed_at desc
+       limit 200`,
+      params
+    );
+    return reply.send({ baselines: res.rows, items: res.rows });
+  });
+
+  app.post('/admin/baseline-assessments', async (req, reply) => {
+    const parsed = BaselineAssessmentSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const data = parsed.data;
+    const percentage = Math.round((data.score / data.total) * 10000) / 100;
+    const res = await pool.query(
+      `insert into baseline_assessments
+       (student_id, subject, grade, score, total, percentage, level_band, cognitive_breakdown_json,
+        topic_breakdown_json, recommended_next_steps_json, completed_at, created_by_user_id, source_type)
+       values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10::jsonb, $11::timestamptz, $12, $13)
+       returning *`,
+      [
+        data.studentId,
+        data.subject,
+        data.grade ?? null,
+        data.score,
+        data.total,
+        percentage,
+        data.levelBand ?? null,
+        JSON.stringify(data.cognitiveBreakdown),
+        JSON.stringify(data.topicBreakdown),
+        JSON.stringify(data.recommendedNextSteps),
+        data.completedAt ?? new Date().toISOString(),
+        req.user!.userId,
+        data.sourceType
+      ]
+    );
+    return reply.code(201).send({ baseline: res.rows[0] });
+  });
+
+  app.get('/admin/learning-goals', async (req, reply) => {
+    const query = req.query as { studentId?: string; status?: string };
+    const params: any[] = [];
+    const filters: string[] = [];
+    if (query.studentId) {
+      params.push(query.studentId);
+      filters.push(`lg.student_id = $${params.length}`);
+    }
+    if (query.status) {
+      params.push(query.status);
+      filters.push(`lg.status = $${params.length}`);
+    }
+    const where = filters.length ? `where ${filters.join(' and ')}` : '';
+    const res = await pool.query(
+      `select lg.*, s.full_name as student_name
+       from learning_goals lg
+       join students s on s.id = lg.student_id
+       ${where}
+       order by lg.created_at desc
+       limit 200`,
+      params
+    );
+    return reply.send({ goals: res.rows, items: res.rows });
+  });
+
+  app.get('/admin/student-risk', async (req, reply) => {
+    const query = req.query as { band?: string };
+    const res = await pool.query(
+      `select s.id as student_id, s.full_name, s.grade, s.school, s.partner_affiliation,
+              latest.risk_score, latest.momentum_score, latest.reasons_json, latest.score_date,
+              ba.percentage as baseline_percentage,
+              count(la.id) filter (where la.status = 'assigned')::int as open_assignments,
+              count(sess.id) filter (where sess.status = 'DRAFT' and sess.date < current_date)::int as missing_reports
+       from students s
+       left join users u on u.student_id = s.id
+       left join lateral (
+         select risk_score, momentum_score, reasons_json, score_date
+         from student_score_snapshots sss
+         where sss.user_id = u.id
+         order by score_date desc
+         limit 1
+       ) latest on true
+       left join lateral (
+         select percentage
+         from baseline_assessments
+         where student_id = s.id
+         order by completed_at desc
+         limit 1
+       ) ba on true
+       left join learning_assignments la on la.student_id = s.id
+       left join sessions sess on sess.student_id = s.id
+       group by s.id, s.full_name, s.grade, s.school, s.partner_affiliation,
+                latest.risk_score, latest.momentum_score, latest.reasons_json, latest.score_date, ba.percentage
+       order by latest.risk_score desc nulls last, s.full_name asc`
+    );
+    const learners = res.rows
+      .map((row) => ({
+        ...row,
+        supportStatus: supportBandFromRiskScore(row.risk_score == null ? null : Number(row.risk_score)),
+      }))
+      .filter((row) => !query.band || row.supportStatus.band === query.band);
+    return reply.send({ learners, items: learners });
+  });
+
+  app.post('/admin/learning-goals', async (req, reply) => {
+    const parsed = LearningGoalSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const data = parsed.data;
+    const res = await pool.query(
+      `insert into learning_goals
+       (student_id, title, description, category, subject, target_value, current_value, due_date,
+        status, created_by_user_id, visible_to_student, visible_to_tutor)
+       values ($1, $2, $3, $4, $5, $6, $7, $8::date, $9, $10, $11, $12)
+       returning *`,
+      [
+        data.studentId,
+        data.title,
+        data.description ?? null,
+        data.category,
+        data.subject ?? null,
+        data.targetValue ?? null,
+        data.currentValue ?? null,
+        data.dueDate ?? null,
+        data.status,
+        req.user!.userId,
+        data.visibleToStudent,
+        data.visibleToTutor
+      ]
+    );
+    return reply.code(201).send({ goal: res.rows[0] });
+  });
+
+  app.patch('/admin/learning-goals/:id', async (req, reply) => {
+    const params = IdParamSchema.safeParse(req.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_request', details: params.error.flatten() });
+    const parsed = UpdateLearningGoalSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const currentRes = await pool.query(`select * from learning_goals where id = $1`, [params.data.id]);
+    if (Number(currentRes.rowCount || 0) === 0) return reply.code(404).send({ error: 'goal_not_found' });
+    const current = currentRes.rows[0];
+    const data = parsed.data;
+    const res = await pool.query(
+      `update learning_goals
+       set title = $1, description = $2, category = $3, subject = $4, target_value = $5,
+           current_value = $6, due_date = $7::date, status = $8, visible_to_student = $9,
+           visible_to_tutor = $10, updated_at = now()
+       where id = $11
+       returning *`,
+      [
+        data.title ?? current.title,
+        data.description ?? current.description,
+        data.category ?? current.category,
+        data.subject ?? current.subject,
+        data.targetValue ?? current.target_value,
+        data.currentValue ?? current.current_value,
+        data.dueDate ?? current.due_date,
+        data.status ?? current.status,
+        data.visibleToStudent ?? current.visible_to_student,
+        data.visibleToTutor ?? current.visible_to_tutor,
+        params.data.id
+      ]
+    );
+    return reply.send({ goal: res.rows[0] });
   });
 
   app.get('/admin/learning-assignments', async (_req, reply) => {

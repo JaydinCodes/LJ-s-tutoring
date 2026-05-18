@@ -9,6 +9,7 @@ import {
   WeeklyReportsQuerySchema
 } from '../lib/schemas.js';
 import { parsePagination } from '../lib/pagination.js';
+import { supportBandFromRiskScore } from '../lib/support-band.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const BASE_DAILY_XP = 10;
@@ -100,6 +101,45 @@ async function ensureStreakRow(client: any, userId: string) {
      on conflict (user_id) do nothing`,
     [userId]
   );
+}
+
+function toPublicStudentProfile(row: any) {
+  const subjects = normalizeJson(row.subjects_json, []);
+  return {
+    id: row.id,
+    name: row.full_name,
+    grade: row.grade,
+    school: row.school,
+    subjects,
+    partnerAffiliation: row.partner_affiliation,
+    guardian: {
+      name: row.guardian_name,
+      relationship: row.guardian_relationship,
+      contactStatus: row.guardian_phone || row.guardian_email ? 'available_through_admin' : 'not_recorded',
+      emergencyContact: Boolean(row.guardian_phone || row.guardian_email),
+    },
+    completion: {
+      required: ['full_name', 'grade', 'school', 'subjects_json', 'guardian_name'],
+      completed: [
+        row.full_name,
+        row.grade,
+        row.school,
+        Array.isArray(subjects) && subjects.length ? subjects : null,
+        row.guardian_name,
+      ].filter(Boolean).length,
+    },
+  };
+}
+
+async function getStudentProfile(studentId: string) {
+  const res = await pool.query(
+    `select s.id, s.full_name, s.grade, s.school, s.subjects_json, s.guardian_name,
+            s.guardian_relationship, s.guardian_phone, s.guardian_email, s.partner_affiliation
+     from students s
+     where s.id = $1`,
+    [studentId]
+  );
+  return res.rows[0] ?? null;
 }
 
 async function buildWeeklyReportPayload(studentId: string, weekStart: string, weekEnd: string) {
@@ -227,10 +267,14 @@ export async function academicRoutes(app: FastifyInstance) {
     const { weekStart, weekEnd } = getWeekRange(now);
 
     try {
+    const profileRow = await getStudentProfile(studentId);
+    if (!profileRow) return reply.code(404).send({ error: 'student_not_found' });
+
     const upcomingRes = await pool.query(
-      `select s.id, s.date, s.start_time, s.mode, s.location, a.subject
+      `select s.id, s.date, s.start_time, s.mode, s.location, a.subject, t.full_name as tutor_name
        from sessions s
        join assignments a on a.id = s.assignment_id
+       join tutor_profiles t on t.id = s.tutor_id
        where s.student_id = $1
          and s.date >= $2::date
          and s.status in ('DRAFT', 'SUBMITTED', 'APPROVED')
@@ -302,6 +346,53 @@ export async function academicRoutes(app: FastifyInstance) {
       [studentId]
     );
 
+    const baselineRes = await pool.query(
+      `select id, subject, grade, score, total, percentage, level_band,
+              cognitive_breakdown_json, topic_breakdown_json, recommended_next_steps_json,
+              completed_at, source_type
+       from baseline_assessments
+       where student_id = $1
+       order by completed_at desc
+       limit 1`,
+      [studentId]
+    );
+
+    const goalsRes = await pool.query(
+      `select id, title, description, category, subject, target_value, current_value, due_date, status
+       from learning_goals
+       where student_id = $1 and visible_to_student = true and status <> 'cancelled'
+       order by case status when 'active' then 0 when 'paused' then 1 else 2 end,
+                due_date asc nulls last,
+                created_at desc
+       limit 8`,
+      [studentId]
+    );
+
+    const attendanceRes = await pool.query(
+      `select s.id, s.date, s.start_time, a.subject, t.full_name as tutor_name,
+              coalesce(s.attendance_status,
+                case when s.status = 'APPROVED' then 'present' when s.status = 'REJECTED' then 'missed' else 'scheduled' end
+              ) as attendance_status,
+              s.status
+       from sessions s
+       join assignments a on a.id = s.assignment_id
+       join tutor_profiles t on t.id = s.tutor_id
+       where s.student_id = $1
+       order by s.date desc, s.start_time desc
+       limit 10`,
+      [studentId]
+    );
+
+    const latestReportRes = await pool.query(
+      `select wr.id, wr.week_start, wr.week_end, wr.created_at, wr.payload_json
+       from weekly_reports wr
+       join users u on u.id = wr.user_id
+       where u.student_id = $1
+       order by wr.created_at desc
+       limit 1`,
+      [studentId]
+    );
+
     const topics = topicRes.rows.map((row) => {
       const sessions = Number(row.sessions || 0);
       const minutes = Number(row.minutes || 0);
@@ -357,6 +448,8 @@ export async function academicRoutes(app: FastifyInstance) {
         }
       : null;
 
+    const supportStatus = supportBandFromRiskScore(score?.riskScore);
+
     const careerGoals = careerRes.rows.map((row) => ({
       goalId: row.goal_id,
       alignmentScore: row.alignment_score == null ? null : Number(row.alignment_score),
@@ -371,6 +464,7 @@ export async function academicRoutes(app: FastifyInstance) {
             startTime: String(upcomingRes.rows[0].start_time).slice(0, 5),
             mode: upcomingRes.rows[0].mode,
             subject: upcomingRes.rows[0].subject,
+            tutorName: upcomingRes.rows[0].tutor_name,
             joinLink: upcomingRes.rows[0].mode === 'online' ? '/tutor/sessions.html' : null,
           }
         }
@@ -405,6 +499,7 @@ export async function academicRoutes(app: FastifyInstance) {
         : null;
 
     return reply.send({
+      profile: toPublicStudentProfile(profileRow),
       greeting: 'Welcome back, Jaydin — let’s keep the streak alive.',
       today: upcoming,
       thisWeek: {
@@ -420,6 +515,43 @@ export async function academicRoutes(app: FastifyInstance) {
       },
       progressSnapshot: topics,
       assignedTutors: assignedTutorsRes.rows,
+      academicProfile: {
+        grade: profileRow.grade,
+        school: profileRow.school,
+        enrolledSubjects: normalizeJson(profileRow.subjects_json, []),
+        activeTutoringSubjects: topicRes.rows.map((row) => row.subject),
+      },
+      baseline: baselineRes.rows[0]
+        ? {
+            ...baselineRes.rows[0],
+            score: Number(baselineRes.rows[0].score),
+            total: Number(baselineRes.rows[0].total),
+            percentage: Number(baselineRes.rows[0].percentage),
+            cognitive_breakdown_json: normalizeJson(baselineRes.rows[0].cognitive_breakdown_json, {}),
+            topic_breakdown_json: normalizeJson(baselineRes.rows[0].topic_breakdown_json, {}),
+            recommended_next_steps_json: normalizeJson(baselineRes.rows[0].recommended_next_steps_json, []),
+          }
+        : null,
+      supportStatus,
+      attendance: {
+        items: attendanceRes.rows,
+        attended: attendanceRes.rows.filter((row) => ['present', 'late'].includes(String(row.attendance_status))).length,
+        total: attendanceRes.rows.filter((row) => String(row.attendance_status) !== 'scheduled').length,
+      },
+      goals: goalsRes.rows.map((row) => ({
+        ...row,
+        target_value: row.target_value == null ? null : Number(row.target_value),
+        current_value: row.current_value == null ? null : Number(row.current_value),
+      })),
+      latestReport: latestReportRes.rows[0]
+        ? {
+            id: latestReportRes.rows[0].id,
+            weekStart: toDateOnly(new Date(latestReportRes.rows[0].week_start)),
+            weekEnd: toDateOnly(new Date(latestReportRes.rows[0].week_end)),
+            createdAt: latestReportRes.rows[0].created_at,
+            summary: normalizeJson(latestReportRes.rows[0].payload_json, {})?.tutorNotesSummary ?? [],
+          }
+        : null,
       learningAssignments: learningAssignmentsRes.rows,
       sessionSummaries: sessionSummariesRes.rows,
       recommendedNext: scoreDrivenRecommendation
@@ -439,7 +571,112 @@ export async function academicRoutes(app: FastifyInstance) {
     }
   });
 
+  app.get('/student/profile', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    const row = await getStudentProfile(studentId);
+    if (!row) return reply.code(404).send({ error: 'student_not_found' });
+    return reply.send({ profile: toPublicStudentProfile(row) });
+  });
+
+  app.get('/student/profile/:id', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const params = IdParamSchema.safeParse(req.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_request', details: params.error.flatten() });
+    const ownStudentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (ownStudentId !== params.data.id) return reply.code(403).send({ error: 'forbidden' });
+    const row = await getStudentProfile(params.data.id);
+    if (!row) return reply.code(404).send({ error: 'student_not_found' });
+    return reply.send({ profile: toPublicStudentProfile(row) });
+  });
+
+  app.get('/student/attendance', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    const res = await pool.query(
+      `select s.id, s.date, s.start_time, a.subject, t.full_name as tutor_name,
+              coalesce(s.attendance_status,
+                case when s.status = 'APPROVED' then 'present' when s.status = 'REJECTED' then 'missed' else 'scheduled' end
+              ) as attendance_status,
+              s.status
+       from sessions s
+       join assignments a on a.id = s.assignment_id
+       join tutor_profiles t on t.id = s.tutor_id
+       where s.student_id = $1
+       order by s.date desc, s.start_time desc
+       limit 50`,
+      [studentId]
+    );
+    return reply.send({ attendance: res.rows, items: res.rows });
+  });
+
+  app.get('/tutor/students/:id/summary', {
+    preHandler: [app.authenticate, requireAuth, requireTutor],
+  }, async (req, reply) => {
+    const params = IdParamSchema.safeParse(req.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_request', details: params.error.flatten() });
+    const allowed = await userCanAccessStudent(req.user!.userId, 'TUTOR', params.data.id, req.user!.tutorId);
+    if (!allowed) return reply.code(403).send({ error: 'forbidden' });
+
+    const profileRow = await getStudentProfile(params.data.id);
+    if (!profileRow) return reply.code(404).send({ error: 'student_not_found' });
+    const [baselineRes, goalsRes, scoreRes] = await Promise.all([
+      pool.query(
+        `select id, subject, grade, score, total, percentage, level_band, topic_breakdown_json,
+                recommended_next_steps_json, completed_at, source_type
+         from baseline_assessments where student_id = $1 order by completed_at desc limit 1`,
+        [params.data.id]
+      ),
+      pool.query(
+        `select id, title, description, category, subject, target_value, current_value, due_date, status
+         from learning_goals
+         where student_id = $1 and visible_to_tutor = true and status <> 'cancelled'
+         order by due_date asc nulls last, created_at desc limit 8`,
+        [params.data.id]
+      ),
+      pool.query(
+        `select risk_score, momentum_score, reasons_json
+         from student_score_snapshots sss
+         join users u on u.id = sss.user_id
+         where u.student_id = $1
+         order by score_date desc
+         limit 1`,
+        [params.data.id]
+      )
+    ]);
+    const riskScore = scoreRes.rows[0] ? Number(scoreRes.rows[0].risk_score || 0) : null;
+    return reply.send({
+      profile: toPublicStudentProfile(profileRow),
+      supportStatus: supportBandFromRiskScore(riskScore),
+      baseline: baselineRes.rows[0] ?? null,
+      goals: goalsRes.rows,
+      riskReasons: normalizeJson(scoreRes.rows[0]?.reasons_json, []),
+    });
+  });
+
   app.get('/student/learning-assignments', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    const res = await pool.query(
+      `select la.id, la.subject, la.title, la.instructions, la.due_date, la.status, la.created_at,
+              t.full_name as tutor_name
+       from learning_assignments la
+       join tutor_profiles t on t.id = la.tutor_id
+       where la.student_id = $1 and la.status <> 'cancelled'
+       order by coalesce(la.due_date, la.created_at::date) asc, la.created_at desc`,
+      [studentId]
+    );
+    return reply.send({ assignments: res.rows, items: res.rows });
+  });
+
+  app.get('/student/assignments', {
     preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
   }, async (req, reply) => {
     const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);

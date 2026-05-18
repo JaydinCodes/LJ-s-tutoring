@@ -95,8 +95,14 @@ export const CreateStudentSchema = z.object({
   email: z.string().trim().email().max(254).optional(),
   password: z.string().min(8).max(200).optional(),
   grade: z.string().trim().max(20).optional(),
+  school: z.string().trim().max(160).optional(),
+  subjects: z.array(z.string().trim().min(1).max(120)).max(30).optional().default([]),
   guardianName: z.string().trim().max(120).optional(),
+  guardianRelationship: z.string().trim().max(80).optional(),
   guardianPhone: z.string().trim().max(40).optional(),
+  guardianEmail: z.string().trim().email().max(254).optional(),
+  guardianAddress: z.string().trim().max(500).optional(),
+  partnerAffiliation: z.string().trim().max(160).optional(),
   notes: z.string().trim().max(2000).optional(),
   active: z.boolean().optional().default(true),
 }).superRefine((value, ctx) => {
@@ -112,11 +118,47 @@ export const CreateStudentSchema = z.object({
 export const UpdateStudentSchema = z.object({
   fullName: z.string().trim().min(1).max(120).optional(),
   grade: z.string().trim().max(20).optional().nullable(),
+  school: z.string().trim().max(160).optional().nullable(),
+  subjects: z.array(z.string().trim().min(1).max(120)).max(30).optional(),
   guardianName: z.string().trim().max(120).optional().nullable(),
+  guardianRelationship: z.string().trim().max(80).optional().nullable(),
   guardianPhone: z.string().trim().max(40).optional().nullable(),
+  guardianEmail: z.string().trim().email().max(254).optional().nullable(),
+  guardianAddress: z.string().trim().max(500).optional().nullable(),
+  partnerAffiliation: z.string().trim().max(160).optional().nullable(),
   notes: z.string().trim().max(2000).optional().nullable(),
   active: z.boolean().optional(),
 });
+
+export const BaselineAssessmentSchema = z.object({
+  studentId: z.string().uuid(),
+  subject: z.string().trim().min(1).max(120),
+  grade: z.string().trim().max(20).optional().nullable(),
+  score: z.number().min(0).max(100000),
+  total: z.number().positive().max(100000),
+  levelBand: z.string().trim().max(80).optional().nullable(),
+  cognitiveBreakdown: z.record(z.unknown()).optional().default({}),
+  topicBreakdown: z.record(z.unknown()).optional().default({}),
+  recommendedNextSteps: z.array(z.string().trim().min(1).max(240)).max(20).optional().default([]),
+  completedAt: z.string().datetime().optional(),
+  sourceType: z.enum(['manual', 'uploaded', 'generated', 'diagnostic']).optional().default('manual'),
+});
+
+export const LearningGoalSchema = z.object({
+  studentId: z.string().uuid(),
+  title: z.string().trim().min(1).max(180),
+  description: z.string().trim().max(2000).optional().nullable(),
+  category: z.enum(['academic', 'attendance', 'assignment', 'career', 'intervention']).optional().default('academic'),
+  subject: z.string().trim().max(120).optional().nullable(),
+  targetValue: z.number().max(100000).optional().nullable(),
+  currentValue: z.number().max(100000).optional().nullable(),
+  dueDate: DateString.optional().nullable(),
+  status: z.enum(['active', 'completed', 'paused', 'cancelled']).optional().default('active'),
+  visibleToStudent: z.boolean().optional().default(true),
+  visibleToTutor: z.boolean().optional().default(true),
+});
+
+export const UpdateLearningGoalSchema = LearningGoalSchema.omit({ studentId: true }).partial();
 
 export const AssignmentSchema = z.object({
   tutorId: z.string().uuid(),
