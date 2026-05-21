@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { z } from 'zod';
 import { pool } from '../db/pool.js';
 import { requireAuth, requireRole, requireTutor } from '../lib/rbac.js';
 import { getErrorMonitor } from '../lib/error-monitor.js';
@@ -252,6 +253,47 @@ async function buildWeeklyReportPayload(studentId: string, weekStart: string, we
 }
 
 export async function academicRoutes(app: FastifyInstance) {
+  const StudentOdieChatSchema = z.object({
+    message: z.string().trim().min(1).max(4000),
+    conversationId: z.string().uuid().optional(),
+    assignmentId: z.string().uuid().optional(),
+    subject: z.string().trim().min(1).max(120).optional(),
+    careerPathwayContext: z.string().trim().max(600).optional(),
+  });
+
+  app.post('/student/odie/chat', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const parsed = StudentOdieChatSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    const persona = 'You are Odie, the Project Odysseus AI tutoring assistant. You help learners understand schoolwork step by step without simply giving final answers too early. You are encouraging, clear, and practical. You adapt to the learner’s subject, grade, current assignment, recent performance, and weak areas when available. You use a Socratic tutoring style: ask guiding questions, explain concepts simply, and give worked examples when needed. You may help with study planning, revision, assignment understanding, and career pathways. You must not fabricate marks, assignment details, or results. If context is missing, say what information is needed.';
+    const context = [parsed.data.subject ? `Subject: ${parsed.data.subject}` : '', parsed.data.careerPathwayContext ? `Career context: ${parsed.data.careerPathwayContext}` : ''].filter(Boolean).join('\n');
+    return reply.send({
+      conversationId: parsed.data.conversationId ?? null,
+      message: `${persona}\n\nI can help with your question: "${parsed.data.message}".\n${context}`.slice(0, 1000),
+      source: 'mock_fallback',
+      studentId,
+    });
+  });
+
+  app.get('/student/results', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    const res = await pool.query(
+      `select id, subject, percentage, level_band, completed_at
+       from baseline_assessments
+       where student_id = $1
+       order by completed_at desc
+       limit 24`,
+      [studentId]
+    );
+    return reply.send({ results: res.rows, items: res.rows });
+  });
+
   app.get('/dashboard', {
     preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
   }, async (req, reply) => {
