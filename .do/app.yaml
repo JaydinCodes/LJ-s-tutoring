@@ -74,6 +74,12 @@ envs:
   - key: TEMPERATURE
     scope: RUN_AND_BUILD_TIME
     value: "0.4"
+  - key: GROQ_MODEL
+    scope: RUN_AND_BUILD_TIME
+    value: llama-3.1-8b-instant
+  - key: SUBMISSION_MAX_FILE_BYTES
+    scope: RUN_AND_BUILD_TIME
+    value: "10485760"
   - key: EMAIL_FROM
     scope: RUN_AND_BUILD_TIME
     value: projectodysseus.maths@gmail.com
@@ -109,6 +115,10 @@ envs:
     scope: RUN_AND_BUILD_TIME
     type: SECRET
     value: ${OPENROUTER_API_KEY}
+  - key: GROQ_API_KEY
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+    value: ${GROQ_API_KEY}
   - key: EMAIL_PROVIDER_KEY
     scope: RUN_AND_BUILD_TIME
     type: SECRET
