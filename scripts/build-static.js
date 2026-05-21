@@ -34,4 +34,12 @@ for (const target of copyTargets) {
   fs.cpSync(source, destination, { recursive: true });
 }
 
+const swPath = path.join(dist, 'sw.js');
+if (fs.existsSync(swPath)) {
+  const version = process.env.RELEASE_VERSION || process.env.GITHUB_SHA || String(Date.now());
+  const safeVersion = `po-v-${version}`.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80);
+  const sw = fs.readFileSync(swPath, 'utf8').replace('const VERSION = "po-v-dev";', `const VERSION = "${safeVersion}";`);
+  fs.writeFileSync(swPath, sw);
+}
+
 process.stdout.write('Static site copied to dist/.\n');

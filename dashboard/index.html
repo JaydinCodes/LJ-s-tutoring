@@ -473,29 +473,6 @@
         </div>
       </section>
 
-      <section class="dashboard-section" id="odieTutor" aria-labelledby="odieTitle">
-        <div class="dashboard-section-head">
-          <div>
-            <h2 class="panel-title" id="odieTitle">Odie Tutor</h2>
-            <p class="note">Ask for assignment help, weak-area explanations, study planning, or career pathway advice.</p>
-          </div>
-        </div>
-        <article class="panel dashboard-card">
-          <div id="odieMessages" class="list-compact" aria-live="polite"></div>
-          <div class="dashboard-toolbar" id="odiePromptChips">
-            <button class="button secondary" type="button" data-odie-prompt="Help me with this assignment">Help me with this assignment</button>
-            <button class="button secondary" type="button" data-odie-prompt="Explain my weak areas">Explain my weak areas</button>
-            <button class="button secondary" type="button" data-odie-prompt="Create a study plan">Create a study plan</button>
-            <button class="button secondary" type="button" data-odie-prompt="Career pathway advice">Career pathway advice</button>
-          </div>
-          <form class="dashboard-toolbar" id="odieForm">
-            <input id="odieInput" type="text" maxlength="4000" placeholder="Ask Odie a question" aria-label="Ask Odie a question">
-            <button class="button" type="submit">Send</button>
-          </form>
-          <p class="note" id="odieState" role="status"></p>
-        </article>
-      </section>
-
       <section class="dashboard-section" id="resultsZone" aria-labelledby="resultsTitle">
         <div class="dashboard-section-head">
           <div>
@@ -567,6 +544,27 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <button type="button" id="odie-btn" aria-expanded="false" aria-controls="odie-panel" aria-label="Chat with Odie, your AI tutor">
+    <span class="odie-btn-icon" aria-hidden="true">O</span>
+    <span class="odie-btn-label">Odie</span>
+  </button>
+
+  <div id="odie-panel" role="dialog" aria-modal="true" aria-label="Odie Tutor Chat">
+    <div class="odie-header">
+      <div class="odie-avatar" aria-hidden="true">O</div>
+      <div class="odie-header-info">
+        <div class="odie-header-name">Odie Tutor</div>
+        <div class="odie-header-sub">Online - learning support</div>
+      </div>
+      <button type="button" id="odie-close" aria-label="Close chat">&times;</button>
+    </div>
+    <div id="odie-messages" role="log" aria-live="polite" aria-label="Chat messages"></div>
+    <div class="odie-input-area">
+      <input type="text" id="odie-input" placeholder="Ask about assignments, weak areas, or study plans..." autocomplete="off" maxlength="4000" aria-label="Your message">
+      <button type="button" id="odie-send" aria-label="Send message">➤</button>
+    </div>
   </div>
 
   <script src="/assets/portal-config.js"></script>
