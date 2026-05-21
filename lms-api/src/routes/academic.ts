@@ -1,8 +1,15 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { z } from 'zod';
 import { pool } from '../db/pool.js';
 import { requireAuth, requireRole, requireTutor } from '../lib/rbac.js';
 import { getErrorMonitor } from '../lib/error-monitor.js';
+import { loadAssistantConfig } from '../domains/assistant/config.js';
+import { createAssistantService } from '../domains/assistant/service.js';
+import { createGroqProvider } from '../domains/assistant/providers/groq.js';
+import { createLmStudioProvider } from '../domains/assistant/providers/lmstudio.js';
+import { createOpenRouterProvider } from '../domains/assistant/providers/openrouter.js';
 import {
   IdParamSchema,
   StudyActivityEventSchema,
@@ -15,9 +22,39 @@ import { supportBandFromRiskScore } from '../lib/support-band.js';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const BASE_DAILY_XP = 10;
 const WEEK_BONUS_XP = 20;
+const SUBMISSION_MAX_BYTES = Number(process.env.SUBMISSION_MAX_FILE_BYTES ?? 10 * 1024 * 1024);
+const SUBMISSION_ALLOWED_MIME = new Set(['application/pdf', 'image/jpeg', 'image/png']);
+const SUBMISSION_ALLOWED_EXT = new Set(['.pdf', '.jpg', '.jpeg', '.png']);
+const ODIE_SYSTEM_PROMPT = 'You are Odie, the Project Odysseus AI tutoring assistant. You help learners understand schoolwork step by step without simply giving final answers too early. You are encouraging, clear, and practical. You adapt to the learner’s subject, grade, current assignment, recent performance, and weak areas when available. You use a Socratic tutoring style: ask guiding questions, explain concepts simply, and give worked examples when needed. You may help with study planning, revision, assignment understanding, and career pathways. You must not fabricate marks, assignment details, or results. If context is missing, say what information is needed.';
 
 function toDateOnly(value: Date) {
   return value.toISOString().slice(0, 10);
+}
+
+function safeFilename(value: string) {
+  const base = path.basename(value || 'submission').replace(/[^a-zA-Z0-9._-]/g, '_');
+  return base.slice(0, 160) || 'submission';
+}
+
+function publicUploadPath(key: string) {
+  return `/uploads/${key.replace(/\\/g, '/')}`;
+}
+
+async function ensureUploadDir(...parts: string[]) {
+  const dir = path.resolve(process.cwd(), 'uploads', ...parts);
+  await fs.mkdir(dir, { recursive: true });
+  return dir;
+}
+
+function normalizeTopicBreakdown(value: any) {
+  const parsed = normalizeJson(value, {});
+  if (Array.isArray(parsed)) return parsed;
+  if (!parsed || typeof parsed !== 'object') return [];
+  return Object.entries(parsed).map(([topic, raw]) => ({
+    topic,
+    score: typeof raw === 'number' ? raw : Number((raw as any)?.score ?? (raw as any)?.percentage ?? 0),
+    support: Number((raw as any)?.support ?? 0) || undefined,
+  }));
 }
 
 function getWeekRange(from = new Date()) {
@@ -253,6 +290,17 @@ async function buildWeeklyReportPayload(studentId: string, weekStart: string, we
 }
 
 export async function academicRoutes(app: FastifyInstance) {
+  const assistantConfig = loadAssistantConfig();
+  const assistantService = createAssistantService(
+    assistantConfig,
+    [
+      createLmStudioProvider(assistantConfig.lmStudioBaseUrl, assistantConfig.lmStudioModel),
+      createGroqProvider(assistantConfig.groqApiKey),
+      createOpenRouterProvider(assistantConfig.openRouterApiKey),
+    ],
+    app.log.child({ module: 'student-odie' }),
+  );
+
   const StudentOdieChatSchema = z.object({
     message: z.string().trim().min(1).max(4000),
     conversationId: z.string().uuid().optional(),
@@ -262,6 +310,118 @@ export async function academicRoutes(app: FastifyInstance) {
   });
 
   app.post('/student/odie/chat', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const parsed = StudentOdieChatSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      let conversationId = parsed.data.conversationId ?? null;
+      if (conversationId) {
+        const ownerRes = await client.query(
+          `select id from odie_conversations where id = $1 and student_id = $2`,
+          [conversationId, studentId]
+        );
+        if (Number(ownerRes.rowCount || 0) === 0) {
+          await client.query('ROLLBACK');
+          return reply.code(404).send({ error: 'conversation_not_found' });
+        }
+      } else {
+        const created = await client.query(
+          `insert into odie_conversations (student_id, subject, assignment_id)
+           values ($1, $2, $3)
+           returning id`,
+          [studentId, parsed.data.subject ?? null, parsed.data.assignmentId ?? null]
+        );
+        conversationId = created.rows[0].id;
+      }
+
+      const historyRes = await client.query(
+        `select role, content
+         from odie_messages
+         where conversation_id = $1 and student_id = $2
+         order by created_at desc
+         limit 12`,
+        [conversationId, studentId]
+      );
+      const history = historyRes.rows.reverse().map((row) => ({
+        role: row.role as 'user' | 'assistant',
+        content: String(row.content),
+      }));
+
+      const [profileRes, assignmentRes, baselineRes] = await Promise.all([
+        client.query(`select grade, subjects_json from students where id = $1`, [studentId]),
+        parsed.data.assignmentId
+          ? client.query(
+            `select id, title, subject, instructions, due_date, status
+             from learning_assignments
+             where id = $1 and student_id = $2 and status in ('published','submitted','reviewed')`,
+            [parsed.data.assignmentId, studentId]
+          )
+          : Promise.resolve({ rows: [] } as any),
+        client.query(
+          `select subject, percentage, level_band, topic_breakdown_json, recommended_next_steps_json, completed_at
+           from baseline_assessments
+           where student_id = $1
+           order by completed_at desc
+           limit 3`,
+          [studentId]
+        ),
+      ]);
+
+      await client.query(
+        `insert into odie_messages (conversation_id, student_id, role, content)
+         values ($1, $2, 'user', $3)`,
+        [conversationId, studentId, parsed.data.message]
+      );
+
+      const profile = profileRes.rows[0] ?? {};
+      const assignment = assignmentRes.rows[0] ?? null;
+      const context = [
+        `Learner grade: ${profile.grade ?? 'unknown'}`,
+        `Learner subjects: ${JSON.stringify(normalizeJson(profile.subjects_json, []))}`,
+        parsed.data.subject ? `Current subject: ${parsed.data.subject}` : '',
+        assignment ? `Current assignment: ${assignment.title}; subject: ${assignment.subject}; due: ${assignment.due_date ?? 'not set'}; instructions: ${assignment.instructions ?? 'none provided'}` : '',
+        baselineRes.rows.length ? `Recent results: ${JSON.stringify(baselineRes.rows.map((row) => ({
+          subject: row.subject,
+          percentage: Number(row.percentage),
+          levelBand: row.level_band,
+          weakAreas: normalizeTopicBreakdown(row.topic_breakdown_json).sort((a: any, b: any) => Number(a.score) - Number(b.score)).slice(0, 3),
+          nextSteps: normalizeJson(row.recommended_next_steps_json, []),
+        })))}` : 'No recent result context available.',
+        parsed.data.careerPathwayContext ? `Career pathway context: ${parsed.data.careerPathwayContext}` : '',
+      ].filter(Boolean).join('\n');
+
+      const result = await assistantService.chat({
+        message: `${context}\n\nLearner question: ${parsed.data.message}`,
+        history,
+        systemPrompt: ODIE_SYSTEM_PROMPT,
+        requestId: req.id,
+      });
+
+      await client.query(
+        `insert into odie_messages (conversation_id, student_id, role, content, metadata_json)
+         values ($1, $2, 'assistant', $3, $4::jsonb)`,
+        [conversationId, studentId, result.text, JSON.stringify(result.metadata)]
+      );
+      await client.query(`update odie_conversations set updated_at = now() where id = $1`, [conversationId]);
+      await client.query('COMMIT');
+      return reply.send({ conversationId, message: result.text, text: result.text, metadata: result.metadata });
+    } catch (err: any) {
+      await client.query('ROLLBACK');
+      getErrorMonitor().captureException(err, { correlationId: req.id, userId: req.user?.userId, role: req.user?.role });
+      req.log?.error?.(err);
+      return reply.code(err?.statusCode || 500).send({ error: err?.code || 'internal_error' });
+    } finally {
+      client.release();
+    }
+  });
+
+  app.post('/student/odie/chat-legacy-disabled', {
     preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
   }, async (req, reply) => {
     const parsed = StudentOdieChatSchema.safeParse(req.body ?? {});
@@ -284,14 +444,66 @@ export async function academicRoutes(app: FastifyInstance) {
     const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
     if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
     const res = await pool.query(
-      `select id, subject, percentage, level_band, completed_at
+      `select id, subject, grade, score, total, percentage, level_band,
+              topic_breakdown_json, cognitive_breakdown_json, recommended_next_steps_json,
+              completed_at, source_type
        from baseline_assessments
        where student_id = $1
        order by completed_at desc
        limit 24`,
       [studentId]
     );
-    return reply.send({ results: res.rows, items: res.rows });
+    const items = res.rows.map((row) => ({
+      id: row.id,
+      title: `${row.subject} result`,
+      subject: row.subject,
+      score: Number(row.score),
+      total: Number(row.total),
+      percentage: Number(row.percentage),
+      levelBand: row.level_band,
+      markedAt: row.completed_at,
+      completedAt: row.completed_at,
+      topicBreakdown: normalizeTopicBreakdown(row.topic_breakdown_json),
+      cognitiveBreakdown: normalizeJson(row.cognitive_breakdown_json, {}),
+      recommendedNextSteps: normalizeJson(row.recommended_next_steps_json, []),
+      feedbackSummary: row.level_band ? `Current band: ${row.level_band}` : 'Result recorded.',
+    }));
+    const weakAreas = items
+      .flatMap((item) => item.topicBreakdown.map((topic: any) => ({ ...topic, subject: item.subject })))
+      .filter((topic: any) => Number.isFinite(Number(topic.score)))
+      .sort((a: any, b: any) => Number(a.score) - Number(b.score))
+      .slice(0, 8);
+    return reply.send({ results: items, items, analytics: { weakAreas } });
+  });
+
+  app.get('/student/class-stats', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    const res = await pool.query(
+      `select latest.subject,
+              latest.percentage as learner_score,
+              class_stats.class_average,
+              class_stats.highest_score,
+              class_stats.sample_size
+       from lateral (
+         select subject, percentage
+         from baseline_assessments
+         where student_id = $1
+         order by completed_at desc
+         limit 1
+       ) latest
+       join lateral (
+         select round(avg(percentage)::numeric, 2) as class_average,
+                max(percentage) as highest_score,
+                count(*)::int as sample_size
+         from baseline_assessments
+         where subject = latest.subject
+       ) class_stats on true`,
+      [studentId]
+    );
+    return reply.send({ stats: res.rows, items: res.rows });
   });
 
   app.get('/dashboard', {
@@ -707,11 +919,23 @@ export async function academicRoutes(app: FastifyInstance) {
     const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
     if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
     const res = await pool.query(
-      `select la.id, la.subject, la.title, la.instructions, la.due_date, la.status, la.created_at,
-              t.full_name as tutor_name
+      `select la.id, la.subject, la.title, coalesce(la.description, la.instructions) as instructions,
+              la.due_date, la.status, la.created_at, la.published_at,
+              t.full_name as tutor_name,
+              sub.id as submission_id, sub.status as submission_status, sub.submitted_at,
+              sub.original_filename, sub.mime_type, sub.size_bytes,
+              10 as max_file_size_mb,
+              array['pdf','jpg','jpeg','png'] as allowed_file_types
        from learning_assignments la
        join tutor_profiles t on t.id = la.tutor_id
-       where la.student_id = $1 and la.status <> 'cancelled'
+       left join lateral (
+         select *
+         from assignment_submissions s
+         where s.assignment_id = la.id and s.student_id = $1
+         order by s.submitted_at desc
+         limit 1
+       ) sub on true
+       where la.student_id = $1 and la.status in ('published','submitted','reviewed')
        order by coalesce(la.due_date, la.created_at::date) asc, la.created_at desc`,
       [studentId]
     );
@@ -724,15 +948,79 @@ export async function academicRoutes(app: FastifyInstance) {
     const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
     if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
     const res = await pool.query(
-      `select la.id, la.subject, la.title, la.instructions, la.due_date, la.status, la.created_at,
-              t.full_name as tutor_name
+      `select la.id, la.subject, la.title, coalesce(la.description, la.instructions) as instructions,
+              la.due_date, la.status, la.created_at, la.published_at,
+              t.full_name as tutor_name,
+              sub.id as submission_id, sub.status as submission_status, sub.submitted_at,
+              sub.original_filename, sub.mime_type, sub.size_bytes,
+              10 as max_file_size_mb,
+              array['pdf','jpg','jpeg','png'] as allowed_file_types
        from learning_assignments la
        join tutor_profiles t on t.id = la.tutor_id
-       where la.student_id = $1 and la.status <> 'cancelled'
+       left join lateral (
+         select *
+         from assignment_submissions s
+         where s.assignment_id = la.id and s.student_id = $1
+         order by s.submitted_at desc
+         limit 1
+       ) sub on true
+       where la.student_id = $1 and la.status in ('published','submitted','reviewed')
        order by coalesce(la.due_date, la.created_at::date) asc, la.created_at desc`,
       [studentId]
     );
     return reply.send({ assignments: res.rows, items: res.rows });
+  });
+
+  app.post('/student/assignments/:id/submissions', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const params = IdParamSchema.safeParse(req.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_request', details: params.error.flatten() });
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+
+    const assignmentRes = await pool.query(
+      `select id, student_id, due_date, status
+       from learning_assignments
+       where id = $1 and student_id = $2 and status in ('published','submitted','reviewed')`,
+      [params.data.id, studentId]
+    );
+    if (Number(assignmentRes.rowCount || 0) === 0) return reply.code(404).send({ error: 'assignment_not_found' });
+
+    const file = await (req as any).file();
+    if (!file) return reply.code(400).send({ error: 'file_required' });
+    const originalFilename = safeFilename(file.filename);
+    const ext = path.extname(originalFilename).toLowerCase();
+    if (!SUBMISSION_ALLOWED_MIME.has(file.mimetype) || !SUBMISSION_ALLOWED_EXT.has(ext)) {
+      return reply.code(400).send({ error: 'unsupported_file_type' });
+    }
+    let buffer: Buffer;
+    try {
+      buffer = await file.toBuffer();
+    } catch (err: any) {
+      if (err?.code === 'FST_REQ_FILE_TOO_LARGE') {
+        return reply.code(413).send({ error: 'file_too_large', maxBytes: SUBMISSION_MAX_BYTES });
+      }
+      throw err;
+    }
+    if (buffer.length <= 0 || buffer.length > SUBMISSION_MAX_BYTES) {
+      return reply.code(413).send({ error: 'file_too_large', maxBytes: SUBMISSION_MAX_BYTES });
+    }
+
+    const dir = await ensureUploadDir('submissions', studentId, params.data.id);
+    const key = path.posix.join('submissions', studentId, params.data.id, `${Date.now()}-${originalFilename}`);
+    await fs.writeFile(path.join(dir, path.basename(key)), buffer, { flag: 'wx' });
+
+    const dueDate = assignmentRes.rows[0].due_date ? new Date(assignmentRes.rows[0].due_date) : null;
+    const status = dueDate && Date.now() > dueDate.getTime() + DAY_MS - 1 ? 'late' : 'submitted';
+    const res = await pool.query(
+      `insert into assignment_submissions
+       (assignment_id, student_id, file_key, file_url, original_filename, mime_type, size_bytes, status)
+       values ($1, $2, $3, $4, $5, $6, $7, $8)
+       returning *`,
+      [params.data.id, studentId, key, publicUploadPath(key), originalFilename, file.mimetype, buffer.length, status]
+    );
+    return reply.code(201).send({ submission: res.rows[0] });
   });
 
   app.get('/student/tutors', {

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Results Analytics | Admin Console</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/assets/portal.css">
+</head>
+<body data-page="results">
+  <div class="portal-shell">
+    <nav class="portal-nav">
+      <div class="portal-nav-inner">
+        <div class="brand"><span class="brand-badge">PO</span>Admin Console</div>
+        <div class="nav-links">
+          <a class="nav-link" data-nav="dashboard" href="/admin/index.html">Dashboard</a>
+          <a class="nav-link" data-nav="assignments" href="/admin/assignments.html">Assignments</a>
+          <a class="nav-link" data-nav="results" href="/admin/results.html">Results</a>
+          <a class="nav-link" data-nav="students" href="/admin/students.html">Students</a>
+        </div>
+      </div>
+    </nav>
+    <main class="portal-main">
+      <section class="page-header">
+        <p class="eyebrow">Class analytics</p>
+        <h1 class="page-title">Results Dashboard</h1>
+        <p class="page-subtitle">Class-wide performance, weak areas, score distribution, and student overview.</p>
+      </section>
+      <section class="grid two">
+        <article class="panel dashboard-card"><h2 class="panel-title">Summary</h2><div id="adminResultsSummary" class="list-compact"></div></article>
+        <article class="panel dashboard-card"><h2 class="panel-title">Score Distribution</h2><div id="adminScoreDistribution" class="list-compact"></div></article>
+        <article class="panel dashboard-card"><h2 class="panel-title">Trend</h2><div id="adminResultsTrend" class="list-compact"></div></article>
+        <article class="panel dashboard-card"><h2 class="panel-title">Weak Areas</h2><div id="adminWeakAreas" class="list-compact"></div></article>
+      </section>
+      <section class="panel dashboard-card">
+        <h2 class="panel-title">Student Performance Overview</h2>
+        <div id="adminStudentPerformance" class="list-compact"></div>
+      </section>
+      <section class="grid two">
+        <article class="panel dashboard-card"><h2 class="panel-title">Classification Report</h2><div id="adminClassificationReport" class="list-compact"></div></article>
+        <article class="panel dashboard-card"><h2 class="panel-title">Confusion Matrix</h2><div id="adminConfusionMatrix" class="list-compact"></div></article>
+      </section>
+    </main>
+  </div>
+  <script src="/assets/portal-config.js"></script>
+  <script src="/assets/admin/auth-guard.js"></script>
+  <script type="module" src="/assets/admin/domains/results.js"></script>
+</body>
+</html>

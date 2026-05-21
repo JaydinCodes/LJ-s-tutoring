@@ -473,6 +473,29 @@
         </div>
       </section>
 
+      <section class="dashboard-section" id="odieTutor" aria-labelledby="odieTitle">
+        <div class="dashboard-section-head">
+          <div>
+            <h2 class="panel-title" id="odieTitle">Odie Tutor</h2>
+            <p class="note">Ask for assignment help, weak-area explanations, study planning, or career pathway advice.</p>
+          </div>
+        </div>
+        <article class="panel dashboard-card">
+          <div id="odieMessages" class="list-compact" aria-live="polite"></div>
+          <div class="dashboard-toolbar" id="odiePromptChips">
+            <button class="button secondary" type="button" data-odie-prompt="Help me with this assignment">Help me with this assignment</button>
+            <button class="button secondary" type="button" data-odie-prompt="Explain my weak areas">Explain my weak areas</button>
+            <button class="button secondary" type="button" data-odie-prompt="Create a study plan">Create a study plan</button>
+            <button class="button secondary" type="button" data-odie-prompt="Career pathway advice">Career pathway advice</button>
+          </div>
+          <form class="dashboard-toolbar" id="odieForm">
+            <input id="odieInput" type="text" maxlength="4000" placeholder="Ask Odie a question" aria-label="Ask Odie a question">
+            <button class="button" type="submit">Send</button>
+          </form>
+          <p class="note" id="odieState" role="status"></p>
+        </article>
+      </section>
+
       <section class="dashboard-section" id="resultsZone" aria-labelledby="resultsTitle">
         <div class="dashboard-section-head">
           <div>

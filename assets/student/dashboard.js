@@ -144,7 +144,7 @@ function daysUntil(value) {
 
 function renderAssignmentCard(assignment, apiAvailable) {
   const due = assignment.dueDate || assignment.due_date;
-  const status = String(assignment.status || '').toLowerCase() || (daysUntil(due) < 0 ? 'overdue' : 'upcoming');
+  const status = String(assignment.submission_status || assignment.status || '').toLowerCase() || (daysUntil(due) < 0 ? 'overdue' : 'upcoming');
   const card = document.createElement('article');
   card.className = 'assignment-card';
   card.dataset.urgency = status;
@@ -176,14 +176,17 @@ function renderAssignmentCard(assignment, apiAvailable) {
   file.setAttribute('aria-label', `Upload submission for ${toText(assignment.title, 'assignment')}`);
   const hint = document.createElement('span');
   hint.className = 'note';
-  const allowed = assignment.allowedFileTypes || assignment.allowed_file_types || ['PDF', 'DOCX', 'PNG', 'JPG'];
+  const allowed = assignment.allowedFileTypes || assignment.allowed_file_types || ['PDF', 'PNG', 'JPG'];
   hint.textContent = apiAvailable
-    ? `Accepted: ${allowed.join(', ')}. Max ${assignment.maxFileSizeMB || assignment.max_file_size_mb || 20} MB.`
+    ? `Accepted: ${allowed.join(', ')}. Max ${assignment.maxFileSizeMB || assignment.max_file_size_mb || 10} MB.`
     : 'Upload endpoint is not available yet. Your tutor/admin team needs to enable student submissions.';
   const submit = document.createElement('button');
   submit.className = 'button secondary';
   submit.type = 'button';
-  submit.textContent = status === 'submitted' ? 'Resubmit' : 'Upload submission';
+  submit.textContent = assignment.submission_id ? 'Replace submission' : 'Upload submission';
+  if (assignment.original_filename) {
+    state.textContent = `Current file: ${assignment.original_filename}${assignment.submitted_at ? `, submitted ${formatDate(assignment.submitted_at)}` : ''}.`;
+  }
   submit.disabled = file.disabled;
   const state = document.createElement('span');
   state.className = 'note';
@@ -198,8 +201,8 @@ function renderAssignmentCard(assignment, apiAvailable) {
     submit.disabled = true;
     state.textContent = 'Uploading...';
     try {
-      await uploadAssignmentSubmission(assignment.id, selected, () => {});
-      state.textContent = 'Upload confirmed. Your assignment is submitted.';
+      const uploaded = await uploadAssignmentSubmission(assignment.id, selected, () => {});
+      state.textContent = `Upload confirmed${uploaded?.submission?.submitted_at ? ` at ${new Date(uploaded.submission.submitted_at).toLocaleString('en-ZA')}` : ''}.`;
       track('assignment.submitted', { assignmentId: assignment.id });
     } catch {
       state.textContent = 'Upload failed. Please try again or contact your tutor.';
@@ -234,6 +237,58 @@ function renderResultCard(result) {
   btn.textContent = 'View report';
   card.append(btn);
   return card;
+}
+
+function initOdiePanel() {
+  const form = document.getElementById('odieForm');
+  const input = document.getElementById('odieInput');
+  const messages = document.getElementById('odieMessages');
+  const state = document.getElementById('odieState');
+  if (!form || !input || !messages || !state) {return;}
+
+  let conversationId = null;
+  const addMessage = (role, text) => {
+    const item = document.createElement('div');
+    item.className = 'list-item';
+    const label = document.createElement('strong');
+    label.textContent = role === 'user' ? 'You' : 'Odie';
+    const body = document.createElement('div');
+    body.textContent = text;
+    item.append(label, body);
+    messages.append(item);
+  };
+
+  messages.innerHTML = '<div class="empty-state"><strong>Ask Odie anything about your learning.</strong><span>Odie uses your dashboard context when it is available and will say when something is missing.</span></div>';
+
+  async function send(message) {
+    const clean = String(message || '').trim();
+    if (!clean) {return;}
+    if (messages.querySelector('.empty-state')) {messages.innerHTML = '';}
+    addMessage('user', clean);
+    input.value = '';
+    state.textContent = 'Odie is thinking...';
+    try {
+      const res = await apiFetch('/student/odie/chat', {
+        method: 'POST',
+        body: { message: clean, conversationId },
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {throw new Error(payload?.error || 'odie_failed');}
+      conversationId = payload.conversationId || conversationId;
+      addMessage('assistant', payload.message || payload.text || 'I need a little more context before I can help.');
+      state.textContent = '';
+    } catch {
+      state.textContent = 'Odie is unavailable right now. Please try again later.';
+    }
+  }
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    send(input.value);
+  });
+  document.querySelectorAll('[data-odie-prompt]').forEach((button) => {
+    button.addEventListener('click', () => send(button.dataset.odiePrompt));
+  });
 }
 
 function renderComparison(target, statsResult, results) {
@@ -386,6 +441,7 @@ function updateWeeklyRhythm(data) {
 
 updateTodayDate();
 setupReflection();
+initOdiePanel();
 
 (async () => {
   const authState = await waitForStudentAuth();

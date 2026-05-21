@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import { pool } from '../db/pool.js';
 import {
   createTutor,
@@ -78,6 +79,21 @@ import { supportBandFromRiskScore } from '../lib/support-band.js';
 function toDateString(value: Date) {
   return value.toISOString().slice(0, 10);
 }
+
+const AdminLearningAssignmentSchema = z.object({
+  tutorId: z.string().uuid(),
+  studentId: z.string().uuid(),
+  subject: z.string().trim().min(1).max(120),
+  title: z.string().trim().min(1).max(180),
+  description: z.string().trim().max(5000).optional().nullable(),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  status: z.enum(['draft', 'published']).default('draft'),
+});
+
+const AdminLearningAssignmentPatchSchema = AdminLearningAssignmentSchema.partial().omit({
+  tutorId: true,
+  studentId: true,
+});
 
 export async function adminRoutes(app: FastifyInstance) {
   app.addHook('preHandler', app.authenticate);
@@ -1672,15 +1688,160 @@ export async function adminRoutes(app: FastifyInstance) {
     return reply.send({ goal: res.rows[0] });
   });
 
-  app.get('/admin/learning-assignments', async (_req, reply) => {
+  app.get('/admin/learning-assignments', async (req, reply) => {
+    const query = req.query as { subject?: string; sort?: string };
+    const params: any[] = [];
+    const filters: string[] = [];
+    if (query.subject) {
+      params.push(query.subject);
+      filters.push(`la.subject = $${params.length}`);
+    }
+    const where = filters.length ? `where ${filters.join(' and ')}` : '';
+    const order = query.sort === 'dueDate'
+      ? `coalesce(la.due_date, la.created_at::date) asc, la.created_at desc`
+      : `la.created_at desc`;
     const res = await pool.query(
-      `select la.*, t.full_name as tutor_name, st.full_name as student_name
+      `select la.*, t.full_name as tutor_name, st.full_name as student_name,
+              count(sub.id)::int as submission_count
        from learning_assignments la
        join tutor_profiles t on t.id = la.tutor_id
        join students st on st.id = la.student_id
-       order by la.created_at desc`
+       left join assignment_submissions sub on sub.assignment_id = la.id
+       ${where}
+       group by la.id, t.full_name, st.full_name
+       order by ${order}`,
+      params
     );
     return reply.send({ assignments: res.rows, items: res.rows });
+  });
+
+  app.post('/admin/learning-assignments', async (req, reply) => {
+    const parsed = AdminLearningAssignmentSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const data = parsed.data;
+    const activeLink = await pool.query(
+      `select id from assignments
+       where tutor_id = $1 and student_id = $2 and subject = $3 and active = true
+       order by start_date desc
+       limit 1`,
+      [data.tutorId, data.studentId, data.subject]
+    );
+    const res = await pool.query(
+      `insert into learning_assignments
+       (tutor_id, student_id, teaching_assignment_id, subject, title, description, instructions,
+        due_date, status, published_at, created_by_user_id, created_by_admin_id)
+       values ($1, $2, $3, $4, $5, $6, $6, $7::date, $8, case when $8 = 'published' then now() else null end, $9, $9)
+       returning *`,
+      [
+        data.tutorId,
+        data.studentId,
+        activeLink.rows[0]?.id ?? null,
+        data.subject,
+        data.title,
+        data.description ?? null,
+        data.dueDate ?? null,
+        data.status,
+        req.user!.userId,
+      ]
+    );
+    return reply.code(201).send({ assignment: res.rows[0] });
+  });
+
+  app.patch('/admin/learning-assignments/:id', async (req, reply) => {
+    const params = IdParamSchema.safeParse(req.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_request', details: params.error.flatten() });
+    const parsed = AdminLearningAssignmentPatchSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const currentRes = await pool.query(`select * from learning_assignments where id = $1`, [params.data.id]);
+    if (Number(currentRes.rowCount || 0) === 0) return reply.code(404).send({ error: 'assignment_not_found' });
+    const current = currentRes.rows[0];
+    const data = parsed.data;
+    const nextStatus = data.status ?? current.status;
+    const res = await pool.query(
+      `update learning_assignments
+       set subject = $1,
+           title = $2,
+           description = $3,
+           instructions = $3,
+           due_date = $4::date,
+           status = $5,
+           published_at = case
+             when $5 = 'published' and published_at is null then now()
+             when $5 = 'draft' then null
+             else published_at
+           end,
+           updated_at = now()
+       where id = $6
+       returning *`,
+      [
+        data.subject ?? current.subject,
+        data.title ?? current.title,
+        data.description ?? current.description ?? current.instructions,
+        data.dueDate ?? current.due_date,
+        nextStatus,
+        params.data.id,
+      ]
+    );
+    return reply.send({ assignment: res.rows[0] });
+  });
+
+  app.get('/admin/assignment-submissions', async (_req, reply) => {
+    const res = await pool.query(
+      `select sub.*, la.title as assignment_title, la.subject, st.full_name as student_name
+       from assignment_submissions sub
+       join learning_assignments la on la.id = sub.assignment_id
+       join students st on st.id = sub.student_id
+       order by sub.submitted_at desc
+       limit 300`
+    );
+    return reply.send({ submissions: res.rows, items: res.rows });
+  });
+
+  app.get('/admin/results/analytics', async (_req, reply) => {
+    const [summaryRes, distRes, trendRes, topicRes, studentRes] = await Promise.all([
+      pool.query(`select round(avg(percentage)::numeric, 2) as class_average, count(*)::int as results_count from baseline_assessments`),
+      pool.query(
+        `select width_bucket(percentage, 0, 100, 5) as bucket, count(*)::int as count
+         from baseline_assessments
+         group by bucket
+         order by bucket`
+      ),
+      pool.query(
+        `select date_trunc('month', completed_at)::date as period, round(avg(percentage)::numeric, 2) as average
+         from baseline_assessments
+         group by period
+         order by period`
+      ),
+      pool.query(
+        `select ba.topic, round(avg(ba.score)::numeric, 2) as average_score, count(*)::int as support
+         from baseline_assessments b
+         cross join lateral jsonb_each(b.topic_breakdown_json) as raw(topic, payload)
+         cross join lateral (
+           select raw.topic, coalesce((raw.payload ->> 'score')::numeric, (raw.payload ->> 'percentage')::numeric, null) as score
+         ) ba
+         where ba.score is not null
+         group by ba.topic
+         order by average_score asc
+         limit 12`
+      ),
+      pool.query(
+        `select s.id as student_id, s.full_name, round(avg(b.percentage)::numeric, 2) as average_score, count(b.id)::int as results_count
+         from students s
+         left join baseline_assessments b on b.student_id = s.id
+         group by s.id, s.full_name
+         order by average_score asc nulls last, s.full_name asc
+         limit 100`
+      ),
+    ]);
+    return reply.send({
+      summary: summaryRes.rows[0] ?? { class_average: null, results_count: 0 },
+      scoreDistribution: distRes.rows,
+      trend: trendRes.rows,
+      weakAreas: topicRes.rows,
+      students: studentRes.rows,
+      classificationReport: [],
+      confusionMatrix: [],
+    });
   });
 
   app.get('/admin/tutor-performance', async (_req, reply) => {

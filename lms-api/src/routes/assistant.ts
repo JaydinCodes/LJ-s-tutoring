@@ -4,6 +4,7 @@ import { loadAssistantConfig } from '../domains/assistant/config.js';
 import { createAssistantService } from '../domains/assistant/service.js';
 import { createOpenRouterProvider } from '../domains/assistant/providers/openrouter.js';
 import { createLmStudioProvider } from '../domains/assistant/providers/lmstudio.js';
+import { createGroqProvider } from '../domains/assistant/providers/groq.js';
 
 const HistoryMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
@@ -94,6 +95,7 @@ export async function assistantRoutes(app: FastifyInstance) {
     config,
     [
       createLmStudioProvider(config.lmStudioBaseUrl, config.lmStudioModel),
+      createGroqProvider(config.groqApiKey),
       createOpenRouterProvider(config.openRouterApiKey),
     ],
     app.log.child({ module: 'assistant' }),

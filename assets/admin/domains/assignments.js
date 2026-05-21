@@ -1,4 +1,4 @@
-import { apiGet, apiPost, qs, setActiveNav, escapeHtml, renderSkeletonCards, renderStateCard } from '/assets/portal-shared.js';
+import { apiGet, apiPatch, apiPost, qs, setActiveNav, escapeHtml, renderSkeletonCards, renderStateCard } from '/assets/portal-shared.js';
 
 export async function initAssignments() {
   setActiveNav('assignments');
@@ -43,6 +43,27 @@ export async function initAssignments() {
     .map((s) => `<option value="${s.id}">${escapeHtml(s.full_name)}</option>`)
     .join('');
 
+  const subjectField = qs('#assignmentSubject')?.closest('.field');
+  if (subjectField && !qs('#learningAssignmentTitle')) {
+    subjectField.insertAdjacentHTML('afterend', `
+      <div class="field form-col-full">
+        <label for="learningAssignmentTitle">Assignment title</label>
+        <input id="learningAssignmentTitle" placeholder="e.g. Algebra revision task" autocomplete="off">
+      </div>
+      <div class="field form-col-full">
+        <label for="learningAssignmentDescription">Instructions</label>
+        <textarea id="learningAssignmentDescription" rows="4" placeholder="What should the learner complete?"></textarea>
+      </div>
+      <div class="field">
+        <label for="learningAssignmentStatus">Visibility</label>
+        <select id="learningAssignmentStatus">
+          <option value="draft">Draft</option>
+          <option value="published">Published</option>
+        </select>
+      </div>
+    `);
+  }
+
   const renderList = (items) => {
     if (!items.length) {
       renderStateCard(list, {
@@ -54,10 +75,23 @@ export async function initAssignments() {
     }
     list.innerHTML = items
       .map((a) => `<div class="panel">
-          <div><strong>${escapeHtml(a.subject)}</strong> - ${escapeHtml(a.student_name)}</div>
-          <div class="note">Tutor: ${escapeHtml(a.tutor_name)} | ${escapeHtml(a.start_date)} to ${escapeHtml(a.end_date || 'open-ended')}</div>
+          <div><strong>${escapeHtml(a.title || a.subject)}</strong> - ${escapeHtml(a.student_name)}</div>
+          <div class="note">Tutor: ${escapeHtml(a.tutor_name)} | ${escapeHtml(a.subject)} | due ${escapeHtml(a.due_date || 'not set')} | ${escapeHtml(a.status || 'draft')} | submissions ${Number(a.submission_count || 0)}</div>
+          <div class="btn-row">
+            <button class="btn btn-secondary" type="button" data-publish="${escapeHtml(a.id)}">${a.status === 'published' ? 'Unpublish' : 'Publish'}</button>
+          </div>
         </div>`)
       .join('');
+    list.querySelectorAll('[data-publish]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const item = assignmentsCache.find((a) => a.id === button.dataset.publish);
+        if (!item) {return;}
+        await apiPatch(`/admin/learning-assignments/${encodeURIComponent(item.id)}`, {
+          status: item.status === 'published' ? 'draft' : 'published',
+        });
+        await load();
+      });
+    });
   };
 
   const applyFilter = () => {
@@ -74,7 +108,7 @@ export async function initAssignments() {
   const load = async () => {
     renderSkeletonCards(list, 3);
     try {
-      const data = await apiGet('/admin/assignments');
+      const data = await apiGet('/admin/learning-assignments?sort=dueDate');
       assignmentsCache = Array.isArray(data.assignments) ? data.assignments : [];
       applyFilter();
     } catch {
@@ -98,21 +132,14 @@ export async function initAssignments() {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     formError.textContent = '';
-    const allowedDays = Array.from(document.querySelectorAll('input[name="allowedDay"]:checked'))
-      .map((i) => Number(i.value));
     const payload = {
       tutorId: qs('#assignmentTutor').value,
       studentId: qs('#assignmentStudent').value,
       subject: qs('#assignmentSubject').value,
-      startDate: qs('#assignmentStart').value,
-      endDate: qs('#assignmentEnd').value || null,
-      rateOverride: (qs('#assignmentRate') || qs('#rateOverride'))?.value
-        ? Number((qs('#assignmentRate') || qs('#rateOverride')).value)
-        : null,
-      allowedDays,
-      allowedTimeRanges: [
-        { start: qs('#rangeStart').value, end: qs('#rangeEnd').value },
-      ],
+      title: qs('#learningAssignmentTitle')?.value || qs('#assignmentSubject').value,
+      description: qs('#learningAssignmentDescription')?.value || null,
+      dueDate: qs('#assignmentEnd').value || qs('#assignmentStart').value || null,
+      status: qs('#learningAssignmentStatus')?.value || 'draft',
     };
     if (!payload.subject?.trim()) {
       formError.textContent = 'Subject is required.';
@@ -120,14 +147,14 @@ export async function initAssignments() {
       return;
     }
     qs('#assignmentSubject')?.setAttribute('aria-invalid', 'false');
-    if (!payload.startDate) {
-      formError.textContent = 'Start date is required.';
-      qs('#assignmentStart')?.setAttribute('aria-invalid', 'true');
+    if (!payload.title?.trim()) {
+      formError.textContent = 'Assignment title is required.';
+      qs('#learningAssignmentTitle')?.setAttribute('aria-invalid', 'true');
       return;
     }
-    qs('#assignmentStart')?.setAttribute('aria-invalid', 'false');
+    qs('#learningAssignmentTitle')?.setAttribute('aria-invalid', 'false');
     try {
-      await apiPost('/admin/assignments', payload);
+      await apiPost('/admin/learning-assignments', payload);
       form.reset();
       formError.textContent = 'Assignment created successfully.';
       await load();

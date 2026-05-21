@@ -50,11 +50,13 @@ function render() {
     const card = document.createElement('article');
     card.className = 'list-item';
     const due = assignment.dueDate || assignment.due_date;
-    const allowed = assignment.allowedFileTypes || assignment.allowed_file_types || ['pdf', 'docx', 'png', 'jpg'];
+    const allowed = assignment.allowedFileTypes || assignment.allowed_file_types || ['pdf', 'png', 'jpg'];
+    const displayStatus = assignment.submission_status || assignment.status;
     const meta = [
       assignment.subject,
       assignment.topic,
       due ? `Due ${new Date(due).toLocaleDateString('en-ZA')}` : 'No due date',
+      assignment.submitted_at ? `Submitted ${new Date(assignment.submitted_at).toLocaleString('en-ZA')}` : '',
     ].filter(Boolean).join(' | ');
     card.innerHTML = `
       <div class="row-head">
@@ -62,14 +64,14 @@ function render() {
           <strong>${escapeHtml(assignment.title || assignment.topic || 'Assignment')}</strong>
           <div class="note">${escapeHtml(meta)}</div>
         </div>
-        <span class="badge subtle ${badgeClassForStatus(assignment.status)}">${escapeHtml(String(assignment.status || 'upcoming').replace(/_/g, ' '))}</span>
+        <span class="badge subtle ${badgeClassForStatus(displayStatus)}">${escapeHtml(String(displayStatus || 'upcoming').replace(/_/g, ' '))}</span>
       </div>
       <div class="progress-bar"><span style="width:${Math.max(8, Math.min(100, Number(assignment.progress || 35)))}%"></span></div>
       <div class="upload-box">
         <input type="file" aria-label="Upload submission">
         <span class="note">Accepted: ${escapeHtml(allowed.join(', '))}. Max ${escapeHtml(assignment.maxFileSizeMB || assignment.max_file_size_mb || 20)} MB.</span>
-        <button class="button secondary" type="button">Upload submission</button>
-        <span class="note" aria-live="polite"></span>
+        <button class="button secondary" type="button">${assignment.submission_id ? 'Replace submission' : 'Upload submission'}</button>
+        <span class="note" aria-live="polite">${assignment.original_filename ? `Current file: ${escapeHtml(assignment.original_filename)}` : ''}</span>
       </div>`;
     const file = card.querySelector('input[type="file"]');
     const btn = card.querySelector('button');
@@ -83,8 +85,9 @@ function render() {
       btn.disabled = true;
       state.textContent = 'Uploading...';
       try {
-        await uploadAssignmentSubmission(assignment.id, file.files[0]);
-        state.textContent = 'Upload confirmed. Your assignment is submitted.';
+        const uploaded = await uploadAssignmentSubmission(assignment.id, file.files[0]);
+        const submittedAt = uploaded?.submission?.submitted_at ? new Date(uploaded.submission.submitted_at).toLocaleString('en-ZA') : 'now';
+        state.textContent = `Upload confirmed. Submitted ${submittedAt}.`;
       } catch {
         state.textContent = 'Upload failed. Please try again.';
       } finally {

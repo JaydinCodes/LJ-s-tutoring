@@ -3,6 +3,7 @@ import helmet from '@fastify/helmet';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import oauth2, { type OAuth2Namespace } from '@fastify/oauth2';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -114,6 +115,12 @@ export async function buildApp() {
   await app.register(cookie, {
     secret: process.env.COOKIE_SECRET,
     hook: 'onRequest'
+  });
+  await app.register(multipart, {
+    limits: {
+      fileSize: Number(process.env.SUBMISSION_MAX_FILE_BYTES ?? 10 * 1024 * 1024),
+      files: 1,
+    },
   });
   const configuredOrigins = (process.env.CORS_ORIGIN ?? '')
     .split(',')

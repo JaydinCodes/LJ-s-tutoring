@@ -31,9 +31,14 @@ export function buildProviderPlan(config: AssistantConfig, providers: AssistantP
   const plans: ProviderPlan[] = [];
   const lmstudio = byName.get('lmstudio');
   const openrouter = byName.get('openrouter');
+  const groq = byName.get('groq');
 
   if (lmstudio?.isConfigured) {
     plans.push({ provider: lmstudio, model: config.lmStudioModel });
+  }
+
+  if (groq?.isConfigured) {
+    plans.push({ provider: groq, model: config.groqModel });
   }
 
   if (openrouter?.isConfigured) {

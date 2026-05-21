@@ -19,6 +19,11 @@ function empty(target, title, copy) {
   target.innerHTML = `<div class="empty-state"><strong>${escapeHtml(title)}</strong>${escapeHtml(copy)}</div>`;
 }
 
+function barRow(label, value) {
+  const width = Math.max(4, Math.min(100, Number(value || 0)));
+  return `<div class="band-row"><span>${escapeHtml(label)}</span><div class="band-track"><span style="width:${width}%"></span></div><strong>${Math.round(width)}%</strong></div>`;
+}
+
 function renderResults(result) {
   if (!result.available) {
     empty(list, 'Results API not enabled yet.', 'When /student/results is available, this page will show marked assignments, scores, strengths, and improvement areas.');
@@ -46,6 +51,12 @@ function renderResults(result) {
       <p class="note"><strong>Improve next:</strong> ${escapeHtml(improvementAreas || 'Awaiting feedback')}</p>
     </article>`;
   }).join('');
+  const trend = [...result.items].reverse().map((item) => barRow(item.subject || 'Result', item.percentage)).join('');
+  const weak = (result.payload?.analytics?.weakAreas || [])
+    .map((item) => barRow(`${item.subject || ''} ${item.topic || 'Topic'}`.trim(), item.score))
+    .join('');
+  list.insertAdjacentHTML('afterbegin', `<article class="list-item"><strong>Score trend</strong>${trend || '<span class="note">Trend appears after results are recorded.</span>'}</article>`);
+  list.insertAdjacentHTML('beforeend', `<article class="list-item"><strong>Weak areas</strong>${weak || '<span class="note">Weak-area breakdown appears when topic data is available.</span>'}</article>`);
 }
 
 function renderStats(result) {
