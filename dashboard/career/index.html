@@ -101,6 +101,28 @@
           </div>
         </article>
       </section>
+
+      <section class="panel dashboard-card">
+        <div class="row-head">
+          <div>
+            <h2 class="panel-title">Ask Odie About Careers</h2>
+            <p class="note">Use the same tutoring assistant for pathway advice, subject choices, APS gaps, and study planning.</p>
+          </div>
+          <span class="badge subtle flat">Career-aware</span>
+        </div>
+        <div id="odieMessages" class="list-compact" aria-live="polite"></div>
+        <div class="dashboard-toolbar" id="odiePromptChips">
+          <button class="button secondary" type="button" data-odie-prompt="Which careers fit my current subjects?">Subject fit</button>
+          <button class="button secondary" type="button" data-odie-prompt="Help me understand my APS gaps">APS gaps</button>
+          <button class="button secondary" type="button" data-odie-prompt="Create a study plan for my career goal">Career study plan</button>
+          <button class="button secondary" type="button" data-odie-prompt="What should I ask my tutor about my pathway?">Tutor questions</button>
+        </div>
+        <form class="dashboard-toolbar" id="odieForm">
+          <input id="odieInput" type="text" maxlength="4000" placeholder="Ask Odie about a career pathway" aria-label="Ask Odie about a career pathway">
+          <button class="button" type="submit">Send</button>
+        </form>
+        <p class="note" id="odieState" role="status"></p>
+      </section>
     </main>
   </div>
 

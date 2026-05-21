@@ -8,7 +8,7 @@ import {
   renderList,
   renderLoading,
 } from '/assets/common.js';
-import { track } from '/assets/analytics.js';
+import { track } from '/assets/analytics-module.js';
 
 const LIST_ID = 'tutorReportsList';
 

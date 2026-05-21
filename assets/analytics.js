@@ -3,8 +3,8 @@
  * Unified, fail-safe frontend telemetry bridge.
  *
  * Usage:
- *   <script src="/assets/analytics.js"></script>   // classic page script, exposes window.PO_ANALYTICS
- *   import { track } from '/assets/analytics.js';  // ES module: typed helper
+ *   <script src="/assets/analytics.js"></script>          // classic page script
+ *   import { track } from '/assets/analytics-module.js';  // ES module wrapper
  *
  * Config is driven by window.PO_ANALYTICS_CONFIG which is normally injected at
  * build time. Defaults keep the tracker a no-op so the page never breaks if a
@@ -109,13 +109,3 @@
     /* ignore */
   }
 })();
-
-// Re-export for ES module consumers. The IIFE above populates
-// globalThis.__PO_ANALYTICS_API__ so module-mode callers get the same impl.
-const __api = (typeof globalThis !== 'undefined' && globalThis.__PO_ANALYTICS_API__)
-  || { track: async () => ({ ok: false, reason: 'no_runtime' }), correlationId: () => '', readConfig: () => ({ enabled: false }) };
-
-export const track = __api.track;
-export const correlationId = __api.correlationId;
-export const readConfig = __api.readConfig;
-export default __api;

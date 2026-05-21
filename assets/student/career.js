@@ -1,4 +1,5 @@
 import { setActiveNav } from '/assets/common.js';
+import { initOdieAssistant } from '/assets/student/odie-assistant.js';
 import {
   escapeHtml,
   isUnauthorizedError,
@@ -8,6 +9,10 @@ import {
 } from '/assets/student/odie-careers.js';
 
 setActiveNav('career');
+initOdieAssistant({
+  defaultSubject: 'Career pathways',
+  careerPathwayContext: 'The learner is using the Odie Careers dashboard for South Africa-aware career exploration, APS/course eligibility, subject choices, and study planning.',
+});
 
 const careerCount = document.getElementById('careerCount');
 const courseCount = document.getElementById('courseCount');

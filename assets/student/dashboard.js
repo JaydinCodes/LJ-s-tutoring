@@ -1,5 +1,6 @@
 import { apiFetch, loadJson, renderList, renderLoading, renderError, setActiveNav, setText } from '/assets/common.js';
-import { track } from '/assets/analytics.js';
+import { track } from '/assets/analytics-module.js';
+import { initOdieAssistant } from '/assets/student/odie-assistant.js';
 import {
   fetchClassStats,
   fetchStudentAssignments,
@@ -239,58 +240,6 @@ function renderResultCard(result) {
   return card;
 }
 
-function initOdiePanel() {
-  const form = document.getElementById('odieForm');
-  const input = document.getElementById('odieInput');
-  const messages = document.getElementById('odieMessages');
-  const state = document.getElementById('odieState');
-  if (!form || !input || !messages || !state) {return;}
-
-  let conversationId = null;
-  const addMessage = (role, text) => {
-    const item = document.createElement('div');
-    item.className = 'list-item';
-    const label = document.createElement('strong');
-    label.textContent = role === 'user' ? 'You' : 'Odie';
-    const body = document.createElement('div');
-    body.textContent = text;
-    item.append(label, body);
-    messages.append(item);
-  };
-
-  messages.innerHTML = '<div class="empty-state"><strong>Ask Odie anything about your learning.</strong><span>Odie uses your dashboard context when it is available and will say when something is missing.</span></div>';
-
-  async function send(message) {
-    const clean = String(message || '').trim();
-    if (!clean) {return;}
-    if (messages.querySelector('.empty-state')) {messages.innerHTML = '';}
-    addMessage('user', clean);
-    input.value = '';
-    state.textContent = 'Odie is thinking...';
-    try {
-      const res = await apiFetch('/student/odie/chat', {
-        method: 'POST',
-        body: { message: clean, conversationId },
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {throw new Error(payload?.error || 'odie_failed');}
-      conversationId = payload.conversationId || conversationId;
-      addMessage('assistant', payload.message || payload.text || 'I need a little more context before I can help.');
-      state.textContent = '';
-    } catch {
-      state.textContent = 'Odie is unavailable right now. Please try again later.';
-    }
-  }
-
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    send(input.value);
-  });
-  document.querySelectorAll('[data-odie-prompt]').forEach((button) => {
-    button.addEventListener('click', () => send(button.dataset.odiePrompt));
-  });
-}
-
 function renderComparison(target, statsResult, results) {
   if (!target) {return;}
   target.innerHTML = '';
@@ -441,7 +390,7 @@ function updateWeeklyRhythm(data) {
 
 updateTodayDate();
 setupReflection();
-initOdiePanel();
+initOdieAssistant();
 
 (async () => {
   const authState = await waitForStudentAuth();

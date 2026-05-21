@@ -1,6 +1,6 @@
 
 import { apiFetch, loadJson, renderList, renderLoading, renderError, renderEmpty, setActiveNav } from '/assets/common.js';
-import { track } from '/assets/analytics.js';
+import { track } from '/assets/analytics-module.js';
 
 setActiveNav('community');
 let activeRoomId = null;
