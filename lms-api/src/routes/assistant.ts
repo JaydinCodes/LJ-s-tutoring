@@ -18,6 +18,18 @@ const ChatSchema = z.object({
   systemPrompt: z.string().trim().min(1).max(4000).optional(),
 });
 
+const PublicChatSchema = z.object({
+  message: z.string().trim().min(1).max(1200),
+  history: z.array(HistoryMessageSchema).max(8).optional().default([]),
+});
+
+const PUBLIC_ODIE_SYSTEM_PROMPT = [
+  'You are Odie, a friendly AI assistant for Project Odysseus, a premium Mathematics tutoring service based in Cape Town, South Africa.',
+  'You help students in Grades 8-12 and parents get quick answers about subjects, pricing, scheduling, and next steps.',
+  'Facts: 1-on-1 CAPS Mathematics tutoring for Grades 8-12; not Maths Literacy; sessions run Monday-Thursday 5pm-8pm with limited weekend slots; pricing is R180-R250 per hour; there is a money-back guarantee on the first session; WhatsApp +27 67 932 7754; email projectodysseus.maths@gmail.com.',
+  'Keep replies warm, concise, and practical. Do not invent information beyond these facts. For detailed learning help, suggest booking or contacting the tutors.',
+].join('\n');
+
 const DocumentSchema = z.object({
   documentText: z.string().trim().min(1).max(500000),
   userQuestion: z.string().trim().min(1).max(20000),
@@ -106,9 +118,40 @@ export async function assistantRoutes(app: FastifyInstance) {
     return reply.send({ enabled: true });
   });
 
+  app.post('/assistant/public-chat', {
+    config: {
+      rateLimit: {
+        max: 20,
+        timeWindow: '1 minute',
+      },
+    },
+  }, async (req, reply) => {
+    setPrivateNoStore(reply);
+    const parsed = PublicChatSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    }
+
+    const result = await service.chat({
+      message: parsed.data.message,
+      history: parsed.data.history,
+      systemPrompt: PUBLIC_ODIE_SYSTEM_PROMPT,
+      requestId: req.id,
+    });
+
+    req.log.info({
+      event: 'assistant.public_chat.completed',
+      provider: result.metadata.provider,
+      model: result.metadata.model,
+      requestId: req.id,
+    }, 'assistant.public_chat.completed');
+
+    return reply.send({ text: result.text, metadata: result.metadata });
+  });
+
   app.addHook('preHandler', async (req: any, reply) => {
     // Status endpoint stays publicly available so the UI can hide entry points.
-    if (req.routeOptions?.url === '/assistant/status') return;
+    if (req.routeOptions?.url === '/assistant/status' || req.routeOptions?.url === '/assistant/public-chat') return;
 
     if (devBypass) return;
 

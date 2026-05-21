@@ -10,9 +10,28 @@
  *   student@dev.local / DevPass123!   (STUDENT)
  */
 
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import argon2 from 'argon2';
 import { Pool } from 'pg';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function loadEnvFile(filePath: string) {
+  if (fs.existsSync(filePath)) {
+    dotenv.config({ path: filePath, override: false });
+  }
+}
+
+const packageRoot = path.resolve(__dirname, '..');
+const repoRoot = path.resolve(packageRoot, '..');
+loadEnvFile(path.resolve(repoRoot, '.env.local'));
+loadEnvFile(path.resolve(repoRoot, '.env'));
+loadEnvFile(path.resolve(packageRoot, '.env.local'));
+loadEnvFile(path.resolve(packageRoot, '.env'));
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error('DATABASE_URL is required');
@@ -47,15 +66,31 @@ async function seedTutor() {
   const email = 'tutor@dev.local';
   const existing = await pool.query('select id from users where email = $1', [email]);
   if (existing.rowCount && existing.rowCount > 0) {
+    await pool.query(
+      `update tutor_profiles t
+       set active = true,
+           status = 'ACTIVE',
+           approval_status = 'approved',
+           qualification_band = coalesce(qualification_band, 'GRADES_10_12'),
+           qualified_subjects_json = case
+             when qualified_subjects_json is null or qualified_subjects_json = '[]'::jsonb then $2::jsonb
+             else qualified_subjects_json
+           end
+       from users u
+       where u.id = $1 and u.tutor_profile_id = t.id`,
+      [existing.rows[0].id, JSON.stringify(['Mathematics', 'Physical Sciences'])]
+    );
     console.log('  tutor already exists, skipping');
     return existing.rows[0].id as string;
   }
 
   // tutor_profile first (no user yet)
   const profileRes = await pool.query(
-    `insert into tutor_profiles (full_name, phone, default_hourly_rate, active)
-     values ('Dev Tutor', null, 350, true)
+    `insert into tutor_profiles
+     (full_name, phone, default_hourly_rate, active, status, approval_status, qualification_band, qualified_subjects_json)
+     values ('Dev Tutor', null, 350, true, 'ACTIVE', 'approved', 'GRADES_10_12', $1::jsonb)
      returning id`
+    , [JSON.stringify(['Mathematics', 'Physical Sciences'])]
   );
   const profileId = profileRes.rows[0].id as string;
 
@@ -73,14 +108,29 @@ async function seedStudent() {
   const email = 'student@dev.local';
   const existing = await pool.query('select id from users where email = $1', [email]);
   if (existing.rowCount && existing.rowCount > 0) {
+    await pool.query(
+      `update students s
+       set full_name = coalesce(full_name, 'Dev Student'),
+           grade = coalesce(grade, '10'),
+           school = coalesce(school, 'Project Odysseus Dev School'),
+           subjects_json = case
+             when subjects_json is null or subjects_json = '[]'::jsonb then $2::jsonb
+             else subjects_json
+           end,
+           is_active = true
+       from users u
+       where u.id = $1 and u.student_id = s.id`,
+      [existing.rows[0].id, JSON.stringify(['Mathematics', 'Physical Sciences', 'English Home Language'])]
+    );
     console.log('  student already exists, skipping');
     return existing.rows[0].id as string;
   }
 
   const studentRes = await pool.query(
-    `insert into students (full_name, grade, is_active)
-     values ('Dev Student', '10', true)
+    `insert into students (full_name, grade, school, subjects_json, is_active)
+     values ('Dev Student', '10', 'Project Odysseus Dev School', $1::jsonb, true)
      returning id`
+    , [JSON.stringify(['Mathematics', 'Physical Sciences', 'English Home Language'])]
   );
   const studentId = studentRes.rows[0].id as string;
 
@@ -137,6 +187,38 @@ async function seedDashboardFixtures() {
       [tutorId, studentId, JSON.stringify([1, 2, 3, 4, 5]), JSON.stringify([{ start: '15:00', end: '18:00' }])]
     );
     assignmentId = created.rows[0].id as string;
+  }
+
+  const learningAssignment = await pool.query(
+    `select id from learning_assignments
+     where student_id = $1 and title = 'Dev Algebra Revision Task'
+     limit 1`,
+    [studentId]
+  );
+  if (Number(learningAssignment.rowCount || 0) === 0) {
+    await pool.query(
+      `insert into learning_assignments
+       (tutor_id, student_id, teaching_assignment_id, subject, title, description, instructions,
+        due_date, status, published_at, created_by_user_id)
+       values ($1, $2, $3, 'Mathematics', 'Dev Algebra Revision Task',
+               'Complete the attached algebra practice and upload a PDF, JPG, or PNG answer file.',
+               'Complete the attached algebra practice and upload a PDF, JPG, or PNG answer file.',
+               current_date + interval '7 days', 'published', now(), $4)`,
+      [tutorId, studentId, assignmentId, tutor.id]
+    );
+  } else {
+    await pool.query(
+      `update learning_assignments
+       set tutor_id = $1,
+           teaching_assignment_id = $2,
+           subject = 'Mathematics',
+           status = 'published',
+           published_at = coalesce(published_at, now()),
+           due_date = current_date + interval '7 days',
+           updated_at = now()
+       where id = $3`,
+      [tutorId, assignmentId, learningAssignment.rows[0].id]
+    );
   }
 
   await pool.query(
@@ -202,6 +284,31 @@ async function seedDashboardFixtures() {
       JSON.stringify([{ code: 'steady_progress', detail: 'Recent activity is consistent, with room to strengthen algebra fluency.' }]),
       JSON.stringify({ attendanceRate: 0.9, minutesThisWeek: 95 }),
       JSON.stringify([{ label: 'Review algebra foundations', priority: 'medium' }]),
+    ]
+  );
+
+  await pool.query(
+    `delete from baseline_assessments
+     where student_id = $1 and subject = 'Mathematics' and source_type = 'diagnostic'`,
+    [studentId]
+  );
+  await pool.query(
+    `insert into baseline_assessments
+     (student_id, subject, grade, score, total, percentage, level_band,
+      cognitive_breakdown_json, topic_breakdown_json, recommended_next_steps_json,
+      completed_at, created_by_user_id, source_type)
+     values ($1, 'Mathematics', '10', 72, 100, 72, 'Developing',
+             $2::jsonb, $3::jsonb, $4::jsonb, now(), $5, 'diagnostic')`,
+    [
+      studentId,
+      JSON.stringify({ procedural: 76, conceptual: 68, problemSolving: 70 }),
+      JSON.stringify({
+        Algebra: { score: 62, support: 12 },
+        Functions: { score: 74, support: 8 },
+        Geometry: { score: 81, support: 6 },
+      }),
+      JSON.stringify(['Revise algebra factorisation', 'Practise two function interpretation questions', 'Ask Odie for a 5-day study plan']),
+      tutor.id,
     ]
   );
 

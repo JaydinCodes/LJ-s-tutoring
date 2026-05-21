@@ -1,20 +1,6 @@
 (function () {
   'use strict';
 
-  const SYSTEM_PROMPT =
-    'You are Odie, a friendly AI assistant for Project Odysseus — a premium Mathematics tutoring service based in Cape Town, South Africa. ' +
-    'You help students (Grades 8–12) and parents get quick answers and understand the next steps.\n\n' +
-    'Key facts about Project Odysseus:\n' +
-    '- 1-on-1 Mathematics tutoring for Grades 8–12 (CAPS curriculum only, not Maths Literacy)\n' +
-    '- Two tutors: Liam Newton (BSc Investment Banking, Stellenbosch University) and Jaydin Morrison (BSc Honours Computer Science, UWC)\n' +
-    '- Sessions run Monday–Thursday 5pm–8pm, with limited weekend slots available\n' +
-    '- Pricing: R180–R250 per hour (far cheaper than big agencies at R300–R500)\n' +
-    '- Money-back guarantee on the first session\n' +
-    '- WhatsApp: +27 67 932 7754 | Email: projectodysseus.maths@gmail.com\n' +
-    '- Grade 8-12 CAPS Mathematics support with 1-on-1 tutoring\n\n' +
-    'Respond in a warm, concise, encouraging tone. Keep replies to 2–4 sentences where possible. ' +
-    'If someone asks a maths question, give a brief pointer and encourage them to contact the tutors for in-depth help. ' +
-    'Do not invent any information not listed above.';
 
   const WELCOME_MSG =
     "Hi! I'm Odie 👋 I'm here to help with any questions about Project Odysseus — subjects, pricing, scheduling, or how we can boost your Maths grade. What would you like to know?";
@@ -184,15 +170,13 @@
     try {
       const headers = { 'Content-Type': 'application/json' };
 
-      const res = await fetch(apiUrl('/assistant/chat'), {
+      const res = await fetch(apiUrl('/assistant/public-chat'), {
         method: 'POST',
         credentials: 'include',
         headers: headers,
         body: JSON.stringify({
           message: message,
           history: conversationHistory.slice(-20),
-          personaVariant: 'study_coach',
-          systemPrompt: SYSTEM_PROMPT,
         }),
       });
 
@@ -268,3 +252,4 @@
     init();
   }
 })();
+

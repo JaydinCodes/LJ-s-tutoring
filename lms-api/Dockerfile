@@ -8,6 +8,7 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
 COPY prisma ./prisma
+COPY data ./data
 
 RUN npm run build
 RUN npm prune --omit=dev
@@ -23,6 +24,7 @@ COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/data ./data
 
 EXPOSE 3001
 
