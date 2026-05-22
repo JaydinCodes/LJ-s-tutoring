@@ -48,7 +48,7 @@ form?.addEventListener('submit', async (e) => {
 
   if (res.ok) {
     const body = await res.json().catch(() => ({}));
-    window.location.href = body.redirectTo || '/dashboard/';
+    window.location.href = body.redirectTo || '/student/dashboard/';
     return;
   }
 
@@ -74,7 +74,7 @@ form?.addEventListener('submit', async (e) => {
     }
     const data = await res.json().catch(() => ({}));
     if (data?.user?.role === 'STUDENT') {
-      window.location.replace('/dashboard/');
+      window.location.replace('/student/dashboard/');
     }
   } catch {
     // Signed-out users stay on the Google sign-in page.

@@ -1,6 +1,30 @@
 [build]
   publish = "dist"
 
+[[redirects]]
+  from = "/dashboard"
+  to = "/student/dashboard/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/dashboard/"
+  to = "/student/dashboard/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/dashboard/assignments/*"
+  to = "/student/assignments/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/dashboard/results/*"
+  to = "/student/results/"
+  status = 301
+  force = true
+
 [[headers]]
   for = "/robots.txt"
   [headers.values]

@@ -274,10 +274,10 @@ function portalRedirectTarget(role: 'ADMIN' | 'TUTOR' | 'STUDENT', req?: any) {
 
   if (role === 'ADMIN' && adminBase) return `${adminBase}/`;
   if (role === 'TUTOR' && tutorBase) return `${tutorBase}/dashboard/`;
-  if (role === 'STUDENT' && studentBase) return `${studentBase}/dashboard/`;
+  if (role === 'STUDENT' && studentBase) return `${studentBase}/student/dashboard/`;
 
   // No configured portal URLs: choose paths based on the request host.
-  // Your static site is deployed with path-based routes (/admin/*, /tutor/*, /dashboard/*).
+  // Your static site is deployed with path-based routes (/admin/*, /tutor/*, /student/*).
   // Without explicit portal URLs, keep redirects on those paths even on subdomains.
   const host = requestHost(req);
   const isAdminSub = host.startsWith('admin.');
@@ -286,7 +286,7 @@ function portalRedirectTarget(role: 'ADMIN' | 'TUTOR' | 'STUDENT', req?: any) {
 
   if (role === 'ADMIN') return isAdminSub ? '/admin/' : '/admin/';
   if (role === 'TUTOR') return isTutorSub ? '/tutor/dashboard/' : '/tutor/dashboard/';
-  return isStudentSub ? '/dashboard/' : '/dashboard/';
+  return isStudentSub ? '/student/dashboard/' : '/student/dashboard/';
 }
 
 function portalLoginTarget(role: 'ADMIN' | 'TUTOR' | 'STUDENT') {

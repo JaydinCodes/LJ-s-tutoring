@@ -106,7 +106,7 @@ function roleRedirectTarget(role: UserRole) {
     return tutorBase ? `${tutorBase}/dashboard/` : '/tutor';
   }
   const studentBase = normalizeBaseUrl(process.env.STUDENT_PORTAL_URL, '');
-  return studentBase ? `${studentBase}/dashboard/` : '/dashboard';
+  return studentBase ? `${studentBase}/student/dashboard/` : '/student/dashboard/';
 }
 
 function computeDeviceHash(userAgent: string, acceptLanguage: string) {
