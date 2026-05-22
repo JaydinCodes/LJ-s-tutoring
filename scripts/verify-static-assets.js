@@ -86,6 +86,10 @@ function checkJavaScriptFile(filePath) {
   }
   checked.add(filePath);
 
+  if (filePath.includes(`${path.sep}student-app-dist${path.sep}`)) {
+    return;
+  }
+
   const source = fs.readFileSync(filePath, 'utf8');
   for (const match of source.matchAll(jsImportPattern)) {
     checkReference(filePath, match[1] || match[2]);

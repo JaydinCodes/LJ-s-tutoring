@@ -14,6 +14,8 @@ const copyTargets = [
   'robots.txt',
   'sitemap.xml',
   'assets',
+  'student',
+  'student-app-dist',
   'dashboard',
   'reports',
   'guides',

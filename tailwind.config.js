@@ -1,6 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ['./*.html', './guides/**/*.html'],
+  content: [
+    './*.html',
+    './guides/**/*.html',
+    './student/**/*.html',
+    './student-app/src/**/*.{ts,tsx}',
+  ],
   theme: {
     extend: {
       colors: {
@@ -8,6 +13,10 @@ module.exports = {
           dark: '#0f172a',
           gold: '#9b6e00',
           light: '#f8fafc',
+          navy: '#091427',
+          midnight: '#12203c',
+          teal: '#14b8a6',
+          violet: '#7c3aed',
         },
         green: {
           400: '#4ade80',
