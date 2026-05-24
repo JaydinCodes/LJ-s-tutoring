@@ -58,7 +58,7 @@ async function ensureMigrationsTable(client: any) {
 
 async function applied(client: any, id: string): Promise<boolean> {
   const res = await client.query('select 1 from schema_migrations where id = $1', [id]);
-  return res.rowCount > 0;
+  return (res.rowCount ?? 0) > 0;
 }
 
 async function markApplied(client: any, id: string) {

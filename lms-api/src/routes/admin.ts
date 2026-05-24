@@ -337,13 +337,13 @@ export async function adminRoutes(app: FastifyInstance) {
       `select 1 from sessions where tutor_id = $1 and date >= $2::date limit 1`,
       [tutorId, cutoffs.sessionsBefore]
     );
-    if (recentSession.rowCount > 0) return false;
+    if ((recentSession.rowCount ?? 0) > 0) return false;
 
     const recentInvoice = await client.query(
       `select 1 from invoices where tutor_id = $1 and period_end >= $2::date limit 1`,
       [tutorId, cutoffs.invoicesBefore]
     );
-    if (recentInvoice.rowCount > 0) return false;
+    if ((recentInvoice.rowCount ?? 0) > 0) return false;
 
     const invoiceLine = await client.query(
       `select 1
@@ -362,7 +362,7 @@ export async function adminRoutes(app: FastifyInstance) {
       `select 1 from sessions where student_id = $1 and date >= $2::date limit 1`,
       [studentId, cutoffs.sessionsBefore]
     );
-    if (recentSession.rowCount > 0) return false;
+    if ((recentSession.rowCount ?? 0) > 0) return false;
 
     const invoiceLine = await client.query(
       `select 1
