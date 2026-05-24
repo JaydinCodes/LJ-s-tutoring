@@ -2146,7 +2146,7 @@ export async function adminRoutes(app: FastifyInstance) {
          where s.id = $1`,
         [sessionId]
       );
-      if (sessionRows.rowCount > 0) {
+      if (sessionRows.rowCount ?? 0 > 0) {
         const row = sessionRows.rows[0];
         await createStudentNotification(pool, {
           studentId: row.student_id,
@@ -2212,7 +2212,7 @@ export async function adminRoutes(app: FastifyInstance) {
          where s.id = $1`,
         [sessionId]
       );
-      if (sessionRows.rowCount > 0) {
+      if (sessionRows.rowCount ?? 0 > 0) {
         const row = sessionRows.rows[0];
         await createStudentNotification(pool, {
           studentId: row.student_id,
