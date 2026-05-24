@@ -73,6 +73,7 @@ import { PII_CLASSIFICATION_MAP } from '../lib/data-classification.js';
 import { parsePagination } from '../lib/pagination.js';
 import { enqueueJob, getJob } from '../lib/job-queue.js';
 import { getErrorMonitor } from '../lib/error-monitor.js';
+import { createStudentNotification } from '../lib/notifications.js';
 import { supportBandFromRiskScore } from '../lib/support-band.js';
 
 
@@ -1440,6 +1441,25 @@ export async function adminRoutes(app: FastifyInstance) {
         userAgent: req.headers['user-agent'] as string | undefined,
         correlationId: req.id
       });
+
+      const sessionRows = await pool.query(
+        `select s.id, s.student_id, s.date, a.subject
+         from sessions s
+         join assignments a on a.id = s.assignment_id
+         where s.id = any($1::uuid[])`,
+        [sessionIds]
+      );
+      await Promise.all(sessionRows.rows.map((row) => createStudentNotification(pool, {
+        studentId: row.student_id,
+        type: 'session_approved',
+        title: 'Session approved',
+        body: `${row.subject || 'Your session'} on ${toDateString(new Date(row.date))} was approved.`,
+        link: '/dashboard/',
+        entityType: 'session',
+        entityId: row.id,
+        createdByUserId: adminId,
+      })));
+
       return reply.send(result);
     } catch (err: any) {
       getErrorMonitor().captureException(err, { correlationId: req.id, userId: req.user?.userId, role: req.user?.role });
@@ -1560,6 +1580,18 @@ export async function adminRoutes(app: FastifyInstance) {
         data.sourceType
       ]
     );
+
+    await createStudentNotification(pool, {
+      studentId: data.studentId,
+      type: 'baseline_assessment_created',
+      title: 'Baseline assessment ready',
+      body: `${data.subject} baseline assessment has been recorded.`,
+      link: '/dashboard/',
+      entityType: 'baseline_assessment',
+      entityId: res.rows[0].id,
+      createdByUserId: req.user!.userId,
+    });
+
     return reply.code(201).send({ baseline: res.rows[0] });
   });
 
@@ -1652,6 +1684,20 @@ export async function adminRoutes(app: FastifyInstance) {
         data.visibleToTutor
       ]
     );
+
+    if (data.visibleToStudent) {
+      await createStudentNotification(pool, {
+        studentId: data.studentId,
+        type: 'learning_goal_created',
+        title: 'New goal added',
+        body: `${data.title} has been added to your study plan.`,
+        link: '/dashboard/',
+        entityType: 'learning_goal',
+        entityId: res.rows[0].id,
+        createdByUserId: req.user!.userId,
+      });
+    }
+
     return reply.code(201).send({ goal: res.rows[0] });
   });
 
@@ -1685,6 +1731,22 @@ export async function adminRoutes(app: FastifyInstance) {
         params.data.id
       ]
     );
+
+    if (res.rows[0].visible_to_student) {
+      await createStudentNotification(pool, {
+        studentId: current.student_id,
+        type: data.status === 'completed' ? 'learning_goal_completed' : 'learning_goal_updated',
+        title: data.status === 'completed' ? 'Goal completed' : 'Goal updated',
+        body: data.status === 'completed'
+          ? `${res.rows[0].title} is now marked as completed.`
+          : `${res.rows[0].title} has been updated.`,
+        link: '/dashboard/',
+        entityType: 'learning_goal',
+        entityId: res.rows[0].id,
+        createdByUserId: req.user!.userId,
+      });
+    }
+
     return reply.send({ goal: res.rows[0] });
   });
 
@@ -1744,6 +1806,20 @@ export async function adminRoutes(app: FastifyInstance) {
         req.user!.userId,
       ]
     );
+
+    if (res.rows[0].status !== 'draft') {
+      await createStudentNotification(pool, {
+        studentId: data.studentId,
+        type: 'learning_assignment_published',
+        title: 'New assignment published',
+        body: `${data.title} has been published for you.`,
+        link: '/dashboard/assignments/',
+        entityType: 'learning_assignment',
+        entityId: res.rows[0].id,
+        createdByUserId: req.user!.userId,
+      });
+    }
+
     return reply.code(201).send({ assignment: res.rows[0] });
   });
 
@@ -1782,6 +1858,22 @@ export async function adminRoutes(app: FastifyInstance) {
         params.data.id,
       ]
     );
+
+    if (nextStatus !== 'draft') {
+      await createStudentNotification(pool, {
+        studentId: current.student_id,
+        type: nextStatus === 'published' ? 'learning_assignment_published' : 'learning_assignment_updated',
+        title: nextStatus === 'published' ? 'Assignment published' : 'Assignment updated',
+        body: nextStatus === 'published'
+          ? `${res.rows[0].title} has been published for you.`
+          : `${res.rows[0].title} has been updated.`,
+        link: '/dashboard/assignments/',
+        entityType: 'learning_assignment',
+        entityId: res.rows[0].id,
+        createdByUserId: req.user!.userId,
+      });
+    }
+
     return reply.send({ assignment: res.rows[0] });
   });
 
@@ -1986,6 +2078,25 @@ export async function adminRoutes(app: FastifyInstance) {
         userAgent: req.headers['user-agent'] as string | undefined,
         correlationId: req.id
       });
+
+      const sessionRows = await pool.query(
+        `select s.id, s.student_id, s.date, a.subject
+         from sessions s
+         join assignments a on a.id = s.assignment_id
+         where s.id = any($1::uuid[])`,
+        [sessionIds]
+      );
+      await Promise.all(sessionRows.rows.map((row) => createStudentNotification(pool, {
+        studentId: row.student_id,
+        type: 'session_rejected',
+        title: 'Session rejected',
+        body: `${row.subject || 'Your session'} on ${toDateString(new Date(row.date))} was rejected.`,
+        link: '/dashboard/',
+        entityType: 'session',
+        entityId: row.id,
+        createdByUserId: adminId,
+      })));
+
       return reply.send(result);
     } catch (err: any) {
       getErrorMonitor().captureException(err, { correlationId: req.id, userId: req.user?.userId, role: req.user?.role });
@@ -2027,6 +2138,28 @@ export async function adminRoutes(app: FastifyInstance) {
         userAgent: req.headers['user-agent'] as string | undefined,
         correlationId: req.id
       });
+
+      const sessionRows = await pool.query(
+        `select s.id, s.student_id, s.date, a.subject
+         from sessions s
+         join assignments a on a.id = s.assignment_id
+         where s.id = $1`,
+        [sessionId]
+      );
+      if (sessionRows.rowCount > 0) {
+        const row = sessionRows.rows[0];
+        await createStudentNotification(pool, {
+          studentId: row.student_id,
+          type: 'session_approved',
+          title: 'Session approved',
+          body: `${row.subject || 'Your session'} on ${toDateString(new Date(row.date))} was approved.`,
+          link: '/dashboard/',
+          entityType: 'session',
+          entityId: row.id,
+          createdByUserId: adminId,
+        });
+      }
+
       return reply.send(result);
     } catch (err: any) {
       getErrorMonitor().captureException(err, { correlationId: req.id, userId: req.user?.userId, role: req.user?.role });
@@ -2071,6 +2204,28 @@ export async function adminRoutes(app: FastifyInstance) {
         userAgent: req.headers['user-agent'] as string | undefined,
         correlationId: req.id
       });
+
+      const sessionRows = await pool.query(
+        `select s.id, s.student_id, s.date, a.subject
+         from sessions s
+         join assignments a on a.id = s.assignment_id
+         where s.id = $1`,
+        [sessionId]
+      );
+      if (sessionRows.rowCount > 0) {
+        const row = sessionRows.rows[0];
+        await createStudentNotification(pool, {
+          studentId: row.student_id,
+          type: 'session_rejected',
+          title: 'Session rejected',
+          body: `${row.subject || 'Your session'} on ${toDateString(new Date(row.date))} was rejected.`,
+          link: '/dashboard/',
+          entityType: 'session',
+          entityId: row.id,
+          createdByUserId: adminId,
+        });
+      }
+
       return reply.send(result);
     } catch (err: any) {
       getErrorMonitor().captureException(err, { correlationId: req.id, userId: req.user?.userId, role: req.user?.role });

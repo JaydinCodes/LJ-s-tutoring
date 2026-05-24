@@ -4,6 +4,7 @@ import path from 'node:path';
 import { pool } from '../db/pool.js';
 import { requireAuth, requireRole, requireTutorSelfScope } from '../lib/rbac.js';
 import { getErrorMonitor } from '../lib/error-monitor.js';
+import { createStudentNotification } from '../lib/notifications.js';
 import {
   CreateSessionSchema,
   DateRangeQuerySchema,
@@ -631,6 +632,18 @@ export async function tutorRoutes(app: FastifyInstance) {
           tutorId
         ]
       );
+
+      await createStudentNotification(pool, {
+        studentId: currentRes.rows[0].student_id,
+        type: 'session_report_updated',
+        title: 'Session summary updated',
+        body: 'Your tutor added notes and learning feedback for the latest session.',
+        link: '/dashboard/',
+        entityType: 'session',
+        entityId: params.data.id,
+        createdByUserId: req.user!.userId,
+      });
+
       return reply.send({ session: res.rows[0] });
     } catch (err: any) {
       getErrorMonitor().captureException(err, { correlationId: req.id, userId: req.user?.userId, role: req.user?.role });
@@ -675,6 +688,17 @@ export async function tutorRoutes(app: FastifyInstance) {
          values ($1, $2, 'submit', $3, $4)`,
         [sessionId, req.user!.userId, current, updatedRes.rows[0]]
       );
+
+      await createStudentNotification(pool, {
+        studentId: current.student_id,
+        type: 'session_report_submitted',
+        title: 'Session notes submitted',
+        body: 'Your tutor submitted the latest session summary for review.',
+        link: '/dashboard/',
+        entityType: 'session',
+        entityId: sessionId,
+        createdByUserId: req.user!.userId,
+      });
 
       return reply.send({ session: updatedRes.rows[0] });
     } catch (err: any) {
@@ -729,6 +753,18 @@ export async function tutorRoutes(app: FastifyInstance) {
           req.user!.userId
         ]
       );
+
+      await createStudentNotification(pool, {
+        studentId: res.rows[0].student_id,
+        type: 'learning_assignment_published',
+        title: 'New assignment published',
+        body: `${res.rows[0].title || 'A new learning assignment'} is ready for you.`,
+        link: '/dashboard/assignments/',
+        entityType: 'learning_assignment',
+        entityId: res.rows[0].id,
+        createdByUserId: req.user!.userId,
+      });
+
       return reply.code(201).send({ assignment: res.rows[0] });
     } catch (err: any) {
       getErrorMonitor().captureException(err, { correlationId: req.id, userId: req.user?.userId, role: req.user?.role });

@@ -19,6 +19,7 @@ import {
   renderSubjectSnapshot,
   smartEmpty,
 } from '/assets/student/dashboard-renderers.js';
+import { renderNotificationCard as renderNotificationFeedCard } from '/assets/student/notifications.js';
 
 setActiveNav('dashboard');
 
@@ -195,6 +196,7 @@ setupReflection();
   const comparison = document.getElementById('classComparison');
   const agenda = document.getElementById('upcomingAgenda');
   const recentActivity = document.getElementById('recentActivity');
+  const notifications = document.getElementById('notificationsList');
 
   renderLoading(upcoming, 'Loading your next session...');
   renderLoading(snapshot, 'Loading progress snapshot...');
@@ -203,6 +205,7 @@ setupReflection();
   renderLoading(comparison, 'Preparing anonymised comparison...');
   renderLoading(agenda, 'Loading upcoming agenda...');
   renderLoading(recentActivity, 'Loading recent activity...');
+  renderLoading(notifications, 'Loading notifications...');
 
   let data = null;
   let assignmentsResult = { available: false, items: [] };
@@ -224,6 +227,7 @@ setupReflection();
     renderError(comparison, 'Could not load comparison.');
     renderError(agenda, 'Could not load your upcoming agenda.');
     renderError(recentActivity, 'Could not load learning activity.');
+    renderError(notifications, 'Could not load notifications.');
     return;
   }
 
@@ -238,6 +242,8 @@ setupReflection();
   const average = percentages.length ? Math.round(percentages.reduce((a, b) => a + b, 0) / percentages.length) : null;
   const attendanceRate = data.attendance?.total > 0 ? Math.round((data.attendance.attended / data.attendance.total) * 100) : 0;
   const rhythmLabel = `${data.thisWeek?.minutesStudied ?? 0} mins | ${data.thisWeek?.sessionsAttended ?? 0} sessions`;
+  const unreadNotifications = Number(data.notificationsUnreadCount ?? data.notifications_unread_count ?? 0);
+  const notificationItems = Array.isArray(data.notifications) ? data.notifications : [];
 
   setText('#metricAverage', average === null ? '--' : `${average}%`);
   setText('#metricCompleted', String(completedAssignments.length));
@@ -256,6 +262,16 @@ setupReflection();
   setText('#heroRhythm', `${data.streak?.current ?? 0} day streak`);
   setText('#heroRhythmNote', rhythmLabel);
   updateWeeklyRhythm(data);
+
+  const topbarCount = document.getElementById('notificationCount');
+  const panelCount = document.getElementById('notificationCountPanel');
+  if (topbarCount) {
+    topbarCount.hidden = unreadNotifications <= 0;
+    topbarCount.textContent = unreadNotifications > 0 ? `${unreadNotifications} new` : '';
+  }
+  if (panelCount) {
+    panelCount.textContent = unreadNotifications > 0 ? `${unreadNotifications} new` : 'All caught up';
+  }
 
   const profile = data.profile || {};
   const profileCompletion = profile.completion?.required?.length
@@ -389,6 +405,20 @@ setupReflection();
     ]));
   } else {
     smartEmpty(recentActivity, 'No recent learning activity yet.', 'Approved sessions with tutor notes and homework will appear here.');
+  }
+
+  const markNotificationRead = async (notificationId) => {
+    const response = await apiFetch(`/student/notifications/${encodeURIComponent(notificationId)}/read`, { method: 'PATCH' });
+    if (!response.ok) {
+      throw new Error(`notification_read_failed:${response.status}`);
+    }
+    window.location.reload();
+  };
+
+  if (!notificationItems.length) {
+    smartEmpty(notifications, 'No notifications yet.', 'Assignments, goals, reports, and tutor updates will appear here automatically.');
+  } else {
+    renderList(notifications, notificationItems.slice(0, 6), (item) => renderNotificationFeedCard(item, markNotificationRead));
   }
 
   const agendaItems = buildAgendaItems(data, sortedAssignments);

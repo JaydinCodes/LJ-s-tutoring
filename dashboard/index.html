@@ -44,6 +44,13 @@
       font-size: 0.84rem;
     }
 
+    .notification-count {
+      display: inline-flex;
+      align-items: center;
+      min-width: 3.5rem;
+      justify-content: center;
+    }
+
     .student-dashboard {
       display: grid;
       gap: 24px;
@@ -145,6 +152,7 @@
     .dashboard-metric-card,
     .subject-bar-card,
     .agenda-item,
+    .notification-card,
     .detail-card,
     .quick-action-card,
     .insight-card {
@@ -185,6 +193,36 @@
     .hero-focus-card .progress-bar > span,
     .hero-upcoming-card .progress-bar > span {
       background: linear-gradient(90deg, #14b8a6, #facc15);
+    }
+
+    .notification-card {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.94));
+    }
+
+    :root[data-theme='dark'] .notification-card {
+      background: linear-gradient(180deg, rgba(17,24,39,0.96), rgba(15,23,42,0.94));
+    }
+
+    .notification-card[data-unread='true'] {
+      border-color: rgba(124, 58, 237, 0.34);
+      box-shadow: 0 16px 35px rgba(124, 58, 237, 0.08);
+    }
+
+    .notification-meta,
+    .notification-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .notification-copy {
+      display: grid;
+      gap: 0.5rem;
     }
 
     .dashboard-metrics {
@@ -414,6 +452,7 @@
         <div id="studentSession" class="student-session" hidden>
           <img id="studentAvatar" class="student-avatar" src="" alt="">
           <span id="studentName" class="student-name"></span>
+          <span id="notificationCount" class="badge subtle flat notification-count" hidden></span>
           <button id="studentLogout" class="button secondary student-logout" type="button">Sign out</button>
         </div>
       </div>
@@ -630,6 +669,17 @@
               <div id="supportStatusCard" class="detail-list"></div>
               <div id="attendanceList" class="detail-list"></div>
             </div>
+          </section>
+
+          <section class="panel dashboard-card">
+            <div class="dashboard-card-head">
+              <div>
+                <h2 class="panel-title">Notifications</h2>
+                <p class="note">New updates from tutors, admins, and automated dashboard events.</p>
+              </div>
+              <span class="badge subtle flat" id="notificationCountPanel">0 new</span>
+            </div>
+            <div id="notificationsList" class="detail-list"></div>
           </section>
 
           <section class="panel dashboard-card">
