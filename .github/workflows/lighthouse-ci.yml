@@ -31,6 +31,11 @@ on:
   workflow_dispatch:  # Allow manual trigger
   # Removed: push to main (redundant - PRs already tested)
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 concurrency:
   group: lighthouse-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
