@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { pool } from '../db/pool.js';
 import { requireAuth, requireRole, requireTutor } from '../lib/rbac.js';
 import { getErrorMonitor } from '../lib/error-monitor.js';
+import { countUnreadStudentNotifications, createStudentNotification, listStudentNotifications, markAllStudentNotificationsRead, markStudentNotificationRead } from '../lib/notifications.js';
 import { loadAssistantConfig } from '../domains/assistant/config.js';
 import { createAssistantService } from '../domains/assistant/service.js';
 import { createGroqProvider } from '../domains/assistant/providers/groq.js';
@@ -647,6 +648,11 @@ export async function academicRoutes(app: FastifyInstance) {
       [studentId]
     );
 
+    const [notifications, unreadNotifications] = await Promise.all([
+      listStudentNotifications(pool, studentId, 8),
+      countUnreadStudentNotifications(pool, studentId),
+    ]);
+
     const topics = topicRes.rows.map((row) => {
       const sessions = Number(row.sessions || 0);
       const minutes = Number(row.minutes || 0);
@@ -806,6 +812,8 @@ export async function academicRoutes(app: FastifyInstance) {
             summary: normalizeJson(latestReportRes.rows[0].payload_json, {})?.tutorNotesSummary ?? [],
           }
         : null,
+      notifications,
+      notificationsUnreadCount: unreadNotifications,
       learningAssignments: learningAssignmentsRes.rows,
       sessionSummaries: sessionSummariesRes.rows,
       recommendedNext: scoreDrivenRecommendation
@@ -833,6 +841,39 @@ export async function academicRoutes(app: FastifyInstance) {
     const row = await getStudentProfile(studentId);
     if (!row) return reply.code(404).send({ error: 'student_not_found' });
     return reply.send({ profile: toPublicStudentProfile(row) });
+  });
+
+  app.get('/student/notifications', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    const [notifications, unreadCount] = await Promise.all([
+      listStudentNotifications(pool, studentId, 20),
+      countUnreadStudentNotifications(pool, studentId),
+    ]);
+    return reply.send({ notifications, unreadCount });
+  });
+
+  app.patch('/student/notifications/:id/read', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const params = IdParamSchema.safeParse(req.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid_request', details: params.error.flatten() });
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    const updated = await markStudentNotificationRead(pool, studentId, params.data.id);
+    if (updated === 0) return reply.code(404).send({ error: 'notification_not_found' });
+    return reply.send({ ok: true });
+  });
+
+  app.post('/student/notifications/read-all', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    await markAllStudentNotificationsRead(pool, studentId);
+    return reply.send({ ok: true });
   });
 
   app.get('/student/profile/:id', {
@@ -980,9 +1021,9 @@ export async function academicRoutes(app: FastifyInstance) {
     if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
 
     const assignmentRes = await pool.query(
-      `select id, student_id, due_date, status
-       from learning_assignments
-       where id = $1 and student_id = $2 and status in ('published','submitted','reviewed')`,
+      `select id, student_id, title, subject, due_date, status
+        from learning_assignments
+        where id = $1 and student_id = $2 and status in ('published','submitted','reviewed')`,
       [params.data.id, studentId]
     );
     if (Number(assignmentRes.rowCount || 0) === 0) return reply.code(404).send({ error: 'assignment_not_found' });
@@ -1020,6 +1061,18 @@ export async function academicRoutes(app: FastifyInstance) {
        returning *`,
       [params.data.id, studentId, key, publicUploadPath(key), originalFilename, file.mimetype, buffer.length, status]
     );
+
+    await createStudentNotification(pool, {
+      studentId,
+      type: 'assignment_submission_received',
+      title: 'Assignment submission received',
+      body: `We received your submission for ${assignmentRes.rows[0].title || assignmentRes.rows[0].subject || 'this assignment'}.`,
+      link: '/dashboard/assignments/',
+      entityType: 'learning_assignment',
+      entityId: params.data.id,
+      metadata: { status },
+    });
+
     return reply.code(201).send({ submission: res.rows[0] });
   });
 
@@ -1355,6 +1408,17 @@ export async function academicRoutes(app: FastifyInstance) {
          returning id, user_id, week_start, week_end, created_at`,
         [ownerUserId, week.weekStart, week.weekEnd, JSON.stringify(payload), req.user!.userId]
       );
+
+      await createStudentNotification(pool, {
+        studentId,
+        type: 'weekly_report_ready',
+        title: 'Weekly report ready',
+        body: `Your report for ${week.weekStart} to ${week.weekEnd} is now available.`,
+        link: '/reports/',
+        entityType: 'weekly_report',
+        entityId: res.rows[0].id,
+        createdByUserId: req.user!.userId,
+      });
 
       logEvent(req, 'report_generated', { reportId: res.rows[0].id });
 

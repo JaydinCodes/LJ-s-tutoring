@@ -131,6 +131,31 @@ describe('Student dashboard LMS features', () => {
     expect(body.goals[0]).toMatchObject({ title: 'Improve algebra baseline' });
     expect(body.attendance.items[0]).toMatchObject({ attendance_status: 'present' });
     expect(body.latestReport).toBeTruthy();
+    expect(body.notificationsUnreadCount).toBeGreaterThan(0);
+    expect(body.notifications.some((notification: any) => notification.type === 'baseline_assessment_created')).toBe(true);
+    expect(body.notifications.some((notification: any) => notification.type === 'learning_goal_created')).toBe(true);
+    expect(body.notifications.some((notification: any) => notification.type === 'session_report_submitted')).toBe(true);
+    expect(body.notifications.some((notification: any) => notification.type === 'weekly_report_ready')).toBe(true);
+
+    const notificationList = await app.inject({ method: 'GET', url: '/student/notifications', headers: studentAuth.headers });
+    expect(notificationList.statusCode).toBe(200);
+    const notificationBody = notificationList.json();
+    expect(notificationBody.unreadCount).toBe(body.notificationsUnreadCount);
+    expect(notificationBody.notifications.length).toBeGreaterThan(0);
+
+    const firstNotificationId = notificationBody.notifications[0].id;
+    const markedRead = await app.inject({
+      method: 'PATCH',
+      url: `/student/notifications/${firstNotificationId}/read`,
+      headers: studentAuth.headers
+    });
+    expect(markedRead.statusCode).toBe(200);
+
+    const afterRead = await app.inject({ method: 'GET', url: '/student/notifications', headers: studentAuth.headers });
+    expect(afterRead.statusCode).toBe(200);
+    const afterReadBody = afterRead.json();
+    expect(afterReadBody.unreadCount).toBe(notificationBody.unreadCount - 1);
+    expect(afterReadBody.notifications.find((notification: any) => notification.id === firstNotificationId).is_read).toBe(true);
     await app.close();
   });
 
