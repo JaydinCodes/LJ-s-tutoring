@@ -37,6 +37,7 @@ jobs:
 
       - name: Deploy preview
         id: deploy
+        continue-on-error: true
         run: |
           alias=pr-${{ github.event.pull_request.number }}
           npx netlify-cli deploy \
