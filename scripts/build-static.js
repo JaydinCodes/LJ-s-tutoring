@@ -16,6 +16,7 @@ const copyTargets = [
   'assets',
   'student',
   'student-app-dist',
+  'react-app-dist',
   'dashboard',
   'reports',
   'guides',
@@ -34,6 +35,53 @@ for (const target of copyTargets) {
   }
   const destination = path.join(dist, target);
   fs.cpSync(source, destination, { recursive: true });
+}
+
+const reactDashboardRoutes = [
+  'onboarding/student',
+  'onboarding/tutor',
+  'dashboard/login',
+  'dashboard/student',
+  'dashboard/student/assignments',
+  'dashboard/student/progress',
+  'dashboard/admin',
+  'dashboard/admin/students',
+  'dashboard/admin/tutors',
+  'dashboard/admin/assignments',
+  'dashboard/admin/payments',
+  'dashboard/admin/reports',
+  'dashboard/tutor',
+  'dashboard/tutor/classes',
+  'dashboard/tutor/submissions',
+];
+
+function reactShell(title) {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title} | Project Odysseus LMS</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="/react-app-dist/react-app.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="/react-app-dist/react-app.js"></script>
+  </body>
+</html>
+`;
+}
+
+for (const route of reactDashboardRoutes) {
+  const routeDir = path.join(dist, ...route.split('/'));
+  fs.mkdirSync(routeDir, { recursive: true });
+  const title = route
+    .split('/')
+    .slice(1)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+  fs.writeFileSync(path.join(routeDir, 'index.html'), reactShell(title));
 }
 
 const swPath = path.join(dist, 'sw.js');

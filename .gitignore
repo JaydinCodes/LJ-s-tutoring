@@ -7,9 +7,12 @@ yarn.lock
 # Build outputs
 dist/
 student-app-dist/
+react-app-dist/
 .next/
 web/.next/
 *.tsbuildinfo
+.react-dev-server.log
+.static-server.log
 
 # Environment variables
 .env

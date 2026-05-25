@@ -25,6 +25,36 @@
   status = 301
   force = true
 
+[[redirects]]
+  from = "/dashboard/login/*"
+  to = "/dashboard/login/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/onboarding/student/*"
+  to = "/onboarding/student/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/onboarding/tutor/*"
+  to = "/onboarding/tutor/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard/student/*"
+  to = "/dashboard/student/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard/admin/*"
+  to = "/dashboard/admin/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard/tutor/*"
+  to = "/dashboard/tutor/index.html"
+  status = 200
+
 [[headers]]
   for = "/robots.txt"
   [headers.values]

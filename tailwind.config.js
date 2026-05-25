@@ -5,6 +5,7 @@ module.exports = {
     './guides/**/*.html',
     './student/**/*.html',
     './student-app/src/**/*.{ts,tsx}',
+    './src/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {
