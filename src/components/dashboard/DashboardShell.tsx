@@ -20,6 +20,7 @@ const nav = {
     { to: '/dashboard/admin/assignments', label: 'Assignments' },
     { to: '/dashboard/admin/approvals', label: 'Approvals' },
     { to: '/dashboard/admin/payments', label: 'Payments' },
+    { to: '/dashboard/admin/payroll', label: 'Payroll' },
     { to: '/dashboard/admin/reconciliation', label: 'Reconciliation' },
     { to: '/dashboard/admin/reports', label: 'Reports' },
     { to: '/dashboard/admin/results', label: 'Results' },
@@ -31,7 +32,10 @@ const nav = {
   tutor: [
     { to: '/dashboard/tutor', label: 'Overview' },
     { to: '/dashboard/tutor/classes', label: 'Classes' },
+    { to: '/dashboard/tutor/sessions', label: 'Sessions' },
     { to: '/dashboard/tutor/submissions', label: 'Submissions' },
+    { to: '/dashboard/tutor/reports', label: 'Reports' },
+    { to: '/dashboard/tutor/risk', label: 'Risk' },
   ],
 };
 

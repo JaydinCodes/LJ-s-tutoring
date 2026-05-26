@@ -383,3 +383,34 @@ Replaced the first public React placeholders with real routes:
   - React legal routes based on the existing static legal copy.
 
 The production root still copies the legacy `index.html` until public-site parity and SEO checks are completed. Nested public React shells are generated for direct `/about/`, `/programs/`, `/privacy/`, and `/terms/` checks.
+
+## Tutor Operations Cutover Slice
+
+Added React routes for the remaining high-value tutor portal surfaces:
+
+- `/dashboard/tutor/sessions/`
+  - Loads tutor sessions through the existing tutor API.
+  - Lets tutors open a session, save report notes, and submit draft reports for admin review.
+
+- `/dashboard/tutor/reports/`
+  - Loads tutor-linked weekly reports.
+  - Opens report details.
+  - Regenerates a report for a linked student where the API provides a student ID.
+
+- `/dashboard/tutor/risk/`
+  - Loads linked learner risk and momentum signals from the tutor scores API.
+  - Presents support-oriented risk cards instead of the legacy list renderer.
+
+These routes currently use the existing Fastify tutor APIs because session/payroll/report approval workflows still live in the legacy operational backend. The old `tutor/*.html` pages remain until tests confirm React parity.
+
+## Admin Payroll Cutover Slice
+
+Added `/dashboard/admin/payroll/` as a React route for the legacy payroll console:
+
+- Loads pay-period adjustments for a selected week.
+- Loads pay-period integrity checks including pending submissions, missing invoice lines, overlaps, duplicate sessions, and invoice mismatches.
+- Generates weekly invoices through the existing payroll API.
+- Locks a pay period through the existing payroll API.
+- Creates bonus/correction/penalty adjustments for tutors.
+
+This route complements the Supabase-backed `/dashboard/admin/payments/` route. Payroll remains API-backed because invoice generation, pay-period locks, adjustments, and approval integrity still live in the operational Fastify/Postgres backend.

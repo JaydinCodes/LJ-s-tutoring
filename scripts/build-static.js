@@ -58,6 +58,7 @@ const reactDashboardRoutes = [
   'dashboard/admin/assignments',
   'dashboard/admin/approvals',
   'dashboard/admin/payments',
+  'dashboard/admin/payroll',
   'dashboard/admin/reconciliation',
   'dashboard/admin/reports',
   'dashboard/admin/results',
@@ -67,7 +68,10 @@ const reactDashboardRoutes = [
   'dashboard/admin/ops-runbook',
   'dashboard/tutor',
   'dashboard/tutor/classes',
+  'dashboard/tutor/sessions',
   'dashboard/tutor/submissions',
+  'dashboard/tutor/reports',
+  'dashboard/tutor/risk',
 ];
 
 function reactShell(title) {

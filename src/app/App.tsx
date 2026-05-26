@@ -11,6 +11,7 @@ import {
   AdminRetentionRoute,
 } from '../features/admin/AdminOperationsRoutes';
 import { AdminPaymentsRoute } from '../features/admin/AdminPaymentsRoute';
+import { AdminPayrollRoute } from '../features/admin/AdminPayrollRoute';
 import { AdminReportsRoute } from '../features/admin/AdminReportsRoute';
 import { AdminStudentsRoute } from '../features/admin/AdminStudentsRoute';
 import { AdminTutorsRoute } from '../features/admin/AdminTutorsRoute';
@@ -25,6 +26,7 @@ import { StudentResultsRoute } from '../features/students/StudentResultsRoute';
 import { StudentCommunityRoute, StudentReportsRoute } from '../features/students/StudentSupportRoutes';
 import { TutorClassesRoute } from '../features/tutors/TutorClassesRoute';
 import { TutorDashboardRoute } from '../features/tutors/TutorDashboardRoute';
+import { TutorReportsRoute, TutorRiskRoute, TutorSessionsRoute } from '../features/tutors/TutorOperationsRoutes';
 import { TutorSubmissionsRoute } from '../features/tutors/TutorSubmissionsRoute';
 import { AboutRoute, PrivacyRoute, ProgramsRoute, PublicHomeRoute, TermsRoute } from './routes/PublicRoutes';
 
@@ -53,6 +55,7 @@ export function App() {
       <Route path="/dashboard/admin/assignments" element={<ProtectedRoute roles={['admin']}><AdminAssignmentsRoute /></ProtectedRoute>} />
       <Route path="/dashboard/admin/approvals" element={<ProtectedRoute roles={['admin']}><AdminApprovalsRoute /></ProtectedRoute>} />
       <Route path="/dashboard/admin/payments" element={<ProtectedRoute roles={['admin']}><AdminPaymentsRoute /></ProtectedRoute>} />
+      <Route path="/dashboard/admin/payroll" element={<ProtectedRoute roles={['admin']}><AdminPayrollRoute /></ProtectedRoute>} />
       <Route path="/dashboard/admin/reconciliation" element={<ProtectedRoute roles={['admin']}><AdminReconciliationRoute /></ProtectedRoute>} />
       <Route path="/dashboard/admin/audit" element={<ProtectedRoute roles={['admin']}><AdminAuditRoute /></ProtectedRoute>} />
       <Route path="/dashboard/admin/privacy-requests" element={<ProtectedRoute roles={['admin']}><AdminPrivacyRequestsRoute /></ProtectedRoute>} />
@@ -62,7 +65,10 @@ export function App() {
       <Route path="/dashboard/admin/reports" element={<ProtectedRoute roles={['admin']}><AdminReportsRoute /></ProtectedRoute>} />
       <Route path="/dashboard/tutor" element={<ProtectedRoute roles={['tutor']}><TutorDashboardRoute /></ProtectedRoute>} />
       <Route path="/dashboard/tutor/classes" element={<ProtectedRoute roles={['tutor']}><TutorClassesRoute /></ProtectedRoute>} />
+      <Route path="/dashboard/tutor/sessions" element={<ProtectedRoute roles={['tutor']}><TutorSessionsRoute /></ProtectedRoute>} />
       <Route path="/dashboard/tutor/submissions" element={<ProtectedRoute roles={['tutor']}><TutorSubmissionsRoute /></ProtectedRoute>} />
+      <Route path="/dashboard/tutor/reports" element={<ProtectedRoute roles={['tutor']}><TutorReportsRoute /></ProtectedRoute>} />
+      <Route path="/dashboard/tutor/risk" element={<ProtectedRoute roles={['tutor']}><TutorRiskRoute /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

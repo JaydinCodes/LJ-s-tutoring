@@ -39,9 +39,9 @@ This checklist tracks what can be removed only after equivalent React routes hav
 - Student
   - Notifications, career subroutes, report exports, community Q&A posting/details, final retirement of `student-app`.
 - Admin
-  - Payroll/pay-period invoice parity, reconciliation depth, results analytics, audit export job flow, privacy export/correction details.
+  - Reconciliation depth, results analytics, audit export job flow, privacy export/correction details, payroll route-level tests.
 - Tutor
-  - Tutor sessions workflow, tutor assignment creation/editing, tutor reports, learner risk monitor.
+  - Tutor assignment creation/editing, invoice/payroll self-service, deeper report parity, route-level tests for sessions/reports/risk.
 - Supabase
   - Final RLS policies, storage policies, seed data, generated types, migration from legacy Postgres/API where appropriate.
 - Tests

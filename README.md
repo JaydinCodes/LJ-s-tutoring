@@ -40,8 +40,8 @@ Important unified React routes:
 - Public: `/`, `/about`, `/programs`, `/privacy`, `/terms`
 - Auth/onboarding: `/dashboard/login`, `/onboarding/student`, `/onboarding/tutor`
 - Student: `/dashboard/student`, `/dashboard/student/assignments`, `/dashboard/student/progress`, `/dashboard/student/results`, `/dashboard/student/careers`, `/dashboard/student/reports`, `/dashboard/student/community`
-- Admin: `/dashboard/admin`, `/dashboard/admin/students`, `/dashboard/admin/tutors`, `/dashboard/admin/assignments`, `/dashboard/admin/approvals`, `/dashboard/admin/payments`, `/dashboard/admin/reconciliation`, `/dashboard/admin/reports`, `/dashboard/admin/results`, `/dashboard/admin/audit`, `/dashboard/admin/privacy-requests`, `/dashboard/admin/retention`, `/dashboard/admin/ops-runbook`
-- Tutor: `/dashboard/tutor`, `/dashboard/tutor/classes`, `/dashboard/tutor/submissions`
+- Admin: `/dashboard/admin`, `/dashboard/admin/students`, `/dashboard/admin/tutors`, `/dashboard/admin/assignments`, `/dashboard/admin/approvals`, `/dashboard/admin/payments`, `/dashboard/admin/payroll`, `/dashboard/admin/reconciliation`, `/dashboard/admin/reports`, `/dashboard/admin/results`, `/dashboard/admin/audit`, `/dashboard/admin/privacy-requests`, `/dashboard/admin/retention`, `/dashboard/admin/ops-runbook`
+- Tutor: `/dashboard/tutor`, `/dashboard/tutor/classes`, `/dashboard/tutor/sessions`, `/dashboard/tutor/submissions`, `/dashboard/tutor/reports`, `/dashboard/tutor/risk`
 
 Migration tracking:
 
@@ -125,7 +125,8 @@ Set the `HEALTHCHECK_URL` repository secret to enable it.
 
 ### Local URLs
 
-- Static site: `http://localhost:8080`
+- Static build: `http://localhost:8080`
+- React dev app: `http://localhost:5173`
 - API: `http://localhost:3001`
 - Login: `http://localhost:8080/login.html`
 - Student dashboard: `http://localhost:8080/dashboard/`
@@ -189,7 +190,9 @@ Both endpoints expect an authenticated session and a CSRF token when called from
 ## Scripts
 
 ```bash
-npm run build        # Build static site only
+npm run build        # Build React bundles, copy static files, inject config, verify assets
+npm run build:react  # Build the unified React LMS bundle
+npm run build:student-app # Build the temporary older student React bundle
 npm run build:api    # Install + build lms-api from repo root
 npm run build:static # Copy static source files to dist/
 npm run inject:config
@@ -197,7 +200,7 @@ npm run serve        # Serve dist/ on port 8080
 npm run dev          # Serve static site + run API dev server
 npm run start        # Serve static site + run API prod server (after build:api)
 npm run lint         # Lint JS and validate HTML
-npm run test:unit    # Run frontend helper unit tests
+npm run test:unit    # Run frontend helper and React migration unit tests
 npm run test:api     # Run LMS API integration tests
 npm run test:e2e:api # Run LMS API E2E tests
 npm run test:all     # Run frontend unit + API integration + API E2E
