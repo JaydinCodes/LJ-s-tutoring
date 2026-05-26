@@ -371,7 +371,7 @@ The older `student-app` bundle remains in the build temporarily. It should not b
 Replaced the first public React placeholders with real routes:
 
 - `/`
-  - React public home route now carries the Project Odysseus tutoring offer, dashboard migration context, tutor trust section, program cards, and portal CTA.
+  - React public home route now carries the Project Odysseus tutoring offer, dashboard migration context, tutor trust section, program cards, guide CTA, FAQ, tutor application CTA, enquiry capture, and portal CTA.
 
 - `/about`
   - React route for the tutoring/team story and tutor cards.
@@ -382,7 +382,14 @@ Replaced the first public React placeholders with real routes:
 - `/privacy` and `/terms`
   - React legal routes based on the existing static legal copy.
 
-The production root still copies the legacy `index.html` until public-site parity and SEO checks are completed. Nested public React shells are generated for direct `/about/`, `/programs/`, `/privacy/`, and `/terms/` checks.
+The React public home route now also owns first-pass enquiry capture:
+
+- Uses a React-controlled quick enquiry form with name, email, grade, message, honeypot spam field, validation, and repeat-submit throttling.
+- Posts to `VITE_PO_FORMSPREE_ENDPOINT` when configured.
+- Falls back to pre-filled email and WhatsApp contact actions when the endpoint is not configured or submission fails.
+- Avoids embedding the legacy hard-coded Formspree endpoint in the React source.
+
+The production root still copies the legacy `index.html` until public-site analytics checks and guide content migration are completed. Nested public React shells are generated for direct `/about/`, `/programs/`, `/privacy/`, and `/terms/` checks, now with route-specific descriptions, canonical URLs, Open Graph metadata, and indexable robots tags. Protected React shells emit `noindex` robots metadata.
 
 ## Tutor Operations Cutover Slice
 

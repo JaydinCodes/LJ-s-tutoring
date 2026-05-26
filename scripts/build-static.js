@@ -74,13 +74,66 @@ const reactDashboardRoutes = [
   'dashboard/tutor/risk',
 ];
 
-function reactShell(title) {
+const routeMeta = {
+  about: {
+    title: 'About Project Odysseus',
+    description: 'Learn about Project Odysseus maths tutoring and the React LMS migration supporting students, tutors, admins, parents, and NGO partners.',
+  },
+  programs: {
+    title: 'Grade 8-12 Maths Programs',
+    description: 'CAPS Mathematics tutoring programs for Grade 8-12 learners, matric exam preparation, and NGO learner rollout support.',
+  },
+  privacy: {
+    title: 'Privacy',
+    description: 'Project Odysseus privacy information for tutoring operations, learner data, tutor workflows, and portal access.',
+  },
+  terms: {
+    title: 'Terms',
+    description: 'Project Odysseus terms for tutoring services, learning workflows, portal access, and role-based LMS features.',
+  },
+};
+
+function titleFromRoute(route) {
+  const title = routeMeta[route]?.title || route
+    .split('/')
+    .slice(route.startsWith('dashboard/') ? 1 : 0)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+
+  return title || 'Project Odysseus';
+}
+
+function reactShell(route) {
+  const title = titleFromRoute(route);
+  const meta = routeMeta[route];
+  const isProtected = route.startsWith('dashboard/') || route.startsWith('onboarding/');
+  const canonicalPath = route.endsWith('/') ? route : `${route}/`;
+  const robots = isProtected
+    ? '    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">\n'
+    : '    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">\n';
+  const description = meta
+    ? `    <meta name="description" content="${meta.description}">\n`
+    : '';
+  const canonical = meta
+    ? `    <link rel="canonical" href="https://projectodysseus.live/${canonicalPath}">\n`
+    : '';
+  const openGraph = meta
+    ? `    <meta property="og:type" content="website">
+    <meta property="og:title" content="${meta.title} | Project Odysseus">
+    <meta property="og:description" content="${meta.description}">
+    <meta property="og:url" content="https://projectodysseus.live/${canonicalPath}">
+    <meta property="og:image" content="https://projectodysseus.live/og-image.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+`
+    : '';
+
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title} | Project Odysseus LMS</title>
+${description}${robots}${canonical}${openGraph}    <meta name="theme-color" content="#0f172a">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="/react-app-dist/react-app.css">
   </head>
@@ -95,12 +148,7 @@ function reactShell(title) {
 for (const route of reactDashboardRoutes) {
   const routeDir = path.join(dist, ...route.split('/'));
   fs.mkdirSync(routeDir, { recursive: true });
-  const title = route
-    .split('/')
-    .slice(1)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-  fs.writeFileSync(path.join(routeDir, 'index.html'), reactShell(title));
+  fs.writeFileSync(path.join(routeDir, 'index.html'), reactShell(route));
 }
 
 const swPath = path.join(dist, 'sw.js');

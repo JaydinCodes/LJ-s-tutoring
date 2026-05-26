@@ -141,9 +141,13 @@ Only safe public values should be exposed to browser code.
 
 ```env
 PUBLIC_PO_API_BASE=http://localhost:3001
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+VITE_PO_FORMSPREE_ENDPOINT=
 ```
 
 `PUBLIC_PO_API_BASE` is injected into `dist/assets/portal-config.js` during the static build.
+`VITE_PO_FORMSPREE_ENDPOINT` is optional; when omitted, the React public enquiry form opens a pre-filled email fallback.
 
 ### API config
 

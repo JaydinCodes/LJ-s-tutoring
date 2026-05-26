@@ -5,7 +5,7 @@ This checklist tracks what can be removed only after equivalent React routes hav
 ## Keep Temporarily
 
 - `index.html`
-  - Keep until the React public home route has SEO metadata, enquiry parity, analytics parity, and production root cutover.
+  - Keep until the React public home route has analytics parity, full guide content parity, and production root cutover. First-pass enquiry, FAQ, guide CTA, tutor application, and generated public-route SEO metadata now exist in React.
 - `privacy.html`, `terms.html`
   - Keep until React legal routes are production-routed and validated.
 - `guides/**/*.html`
@@ -35,7 +35,7 @@ This checklist tracks what can be removed only after equivalent React routes hav
 ## Remaining Parity Work
 
 - Public site
-  - Root cutover, SEO/meta parity, enquiry form migration, guide migration.
+  - Root cutover, analytics parity, full guide migration.
 - Student
   - Notifications, career subroutes, report exports, community Q&A posting/details, final retirement of `student-app`.
 - Admin
