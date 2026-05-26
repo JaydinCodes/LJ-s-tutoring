@@ -1,6 +1,5 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { createClient } = require('@supabase/supabase-js');
 
 const envFiles = ['.env', '.env.local'];
 
@@ -67,40 +66,49 @@ async function verifyRole(check) {
     };
   }
 
-  const client = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
+  const signInResponse = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseAnonKey,
+      'Content-Type': 'application/json',
     },
+    body: JSON.stringify({
+      email: check.email,
+      password: check.password,
+    }),
   });
 
-  const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
-    email: check.email,
-    password: check.password,
-  });
+  const signInPayload = await signInResponse.json().catch(() => ({}));
 
-  if (signInError || !signInData.user) {
+  if (!signInResponse.ok || !signInPayload.user || !signInPayload.access_token) {
     return {
       role: check.role,
       ok: false,
-      message: `Sign-in failed for ${maskEmail(check.email)}: ${signInError?.message || 'missing user'}`,
+      message: `Sign-in failed for ${maskEmail(check.email)}: ${signInPayload.error_description || signInPayload.msg || signInPayload.error || 'missing user token'}`,
     };
   }
 
-  const { data: profile, error: profileError } = await client
-    .from('profiles')
-    .select('id, email, role')
-    .eq('auth_user_id', signInData.user.id)
-    .single();
+  const profileUrl = new URL(`${supabaseUrl}/rest/v1/profiles`);
+  profileUrl.searchParams.set('select', 'id,email,role');
+  profileUrl.searchParams.set('auth_user_id', `eq.${signInPayload.user.id}`);
+  profileUrl.searchParams.set('limit', '1');
 
-  await client.auth.signOut();
+  const profileResponse = await fetch(profileUrl, {
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${signInPayload.access_token}`,
+      Accept: 'application/json',
+    },
+  });
 
-  if (profileError || !profile) {
+  const profilePayload = await profileResponse.json().catch(() => []);
+  const profile = Array.isArray(profilePayload) ? profilePayload[0] : null;
+
+  if (!profileResponse.ok || !profile) {
     return {
       role: check.role,
       ok: false,
-      message: `No readable profile row for ${maskEmail(check.email)}: ${profileError?.message || 'missing profile'}`,
+      message: `No readable profile row for ${maskEmail(check.email)}: ${profilePayload.message || profilePayload.hint || 'missing profile'}`,
     };
   }
 
