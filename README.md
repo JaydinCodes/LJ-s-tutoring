@@ -162,6 +162,22 @@ For local `npm start`, make sure `DATABASE_URL`, `COOKIE_SECRET`, `JWT_SECRET`, 
 
 See `.env.example` for the canonical variable list (placeholders only).
 
+### Supabase dashboard role verification
+
+After applying `docs/supabase/schema.sql` and creating Auth users plus matching `profiles` rows, verify role mapping without committing passwords:
+
+```powershell
+$env:VERIFY_ADMIN_EMAIL="admin@example.com"
+$env:VERIFY_ADMIN_PASSWORD="admin_password"
+$env:VERIFY_STUDENT_EMAIL="student@example.com"
+$env:VERIFY_STUDENT_PASSWORD="student_password"
+$env:VERIFY_TUTOR_EMAIL="tutor@example.com"
+$env:VERIFY_TUTOR_PASSWORD="tutor_password"
+npm run verify:supabase:roles
+```
+
+The script signs in with the public Supabase anon client, reads each user's own `profiles` row through RLS, confirms the expected role, then signs out.
+
 ### Google OAuth
 
 Tutor and student Google sign-in is enabled when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set.
