@@ -30,6 +30,25 @@ export async function apiGet<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  const response = await fetch(`${resolveApiBase()}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+    },
+    body: body == null ? undefined : JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const responseBody = await response.text();
+    throw new Error(responseBody || `request_failed:${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export async function optionalApiGet<T>(path: string, fallback: T): Promise<T> {
   try {
     return await apiGet<T>(path);

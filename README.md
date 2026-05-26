@@ -5,8 +5,10 @@ Static site + LMS API monorepo.
 ## What this repo now contains
 
 - Static HTML/CSS/JS pages at the repository root for the public site and portal shells.
+- A unified Vite + React + TypeScript LMS migration app in `src/`.
+- A temporary older student React bundle in `student-app/` while `/student/*` routes are consolidated.
 - `lms-api/` for the Fastify + Postgres backend.
-- Simple build scripts that copy the static site into `dist/` and inject the public API base.
+- Build scripts that compile React bundles, copy the static site into `dist/`, generate React route shells, and inject the public API base.
 
 ## Quick start
 
@@ -20,6 +22,33 @@ npm run start
 ```
 
 You can also use `.env.local` for machine-specific secrets; it is ignored by git.
+
+## React LMS migration
+
+The migration is incremental. Legacy static pages remain in the build until each area has React parity, auth coverage, data coverage, and route-level tests.
+
+Primary React app:
+
+```bash
+npm run dev:react
+npm run typecheck:react
+npm run build:react
+```
+
+Important unified React routes:
+
+- Public: `/`, `/about`, `/programs`, `/privacy`, `/terms`
+- Auth/onboarding: `/dashboard/login`, `/onboarding/student`, `/onboarding/tutor`
+- Student: `/dashboard/student`, `/dashboard/student/assignments`, `/dashboard/student/progress`, `/dashboard/student/results`, `/dashboard/student/careers`, `/dashboard/student/reports`, `/dashboard/student/community`
+- Admin: `/dashboard/admin`, `/dashboard/admin/students`, `/dashboard/admin/tutors`, `/dashboard/admin/assignments`, `/dashboard/admin/approvals`, `/dashboard/admin/payments`, `/dashboard/admin/reconciliation`, `/dashboard/admin/reports`, `/dashboard/admin/results`, `/dashboard/admin/audit`, `/dashboard/admin/privacy-requests`, `/dashboard/admin/retention`, `/dashboard/admin/ops-runbook`
+- Tutor: `/dashboard/tutor`, `/dashboard/tutor/classes`, `/dashboard/tutor/submissions`
+
+Migration tracking:
+
+- Audit and slice history: `docs/MIGRATION_AUDIT.md`
+- Supabase schema plan: `docs/supabase/schema.sql`
+- Supabase auth seed notes: `docs/supabase/auth-seed-notes.md`
+- Cleanup checklist: `docs/REACT_MIGRATION_CLEANUP_CHECKLIST.md`
 
 ## Docker Postgres
 

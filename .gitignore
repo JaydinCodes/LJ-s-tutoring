@@ -12,6 +12,7 @@ react-app-dist/
 web/.next/
 *.tsbuildinfo
 .react-dev-server.log
+.react-dev-server.err.log
 .static-server.log
 
 # Environment variables

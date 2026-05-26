@@ -316,3 +316,70 @@ Implemented the first operational student/tutor roster workflows:
 - `/dashboard/admin/tutors/` can update tutor name, email, phone, subjects, grades, hourly rate, and status.
 
 These forms intentionally require an existing `auth.users.id`; browser-side admin user creation would require service-role privileges and must be handled by a server function or trusted admin backend later.
+
+## Admin Operations Cutover Slice
+
+Added React routes for the remaining static admin operations surfaces:
+
+- `/dashboard/admin/approvals/`
+  - Loads the legacy admin session approval queue through the API.
+  - Supports single-session approve/reject actions.
+  - Preserves status filtering and operational summary cards.
+
+- `/dashboard/admin/privacy-requests/`
+  - Creates POPIA privacy requests through the API.
+  - Lists open/closed requests.
+  - Supports request closure with outcome/note capture.
+
+- `/dashboard/admin/audit/`
+  - Reads the audit log through the API.
+  - Supports entity type filtering.
+
+- `/dashboard/admin/retention/`
+  - Shows retention policy cutoffs, eligible cleanup counts, and the latest retention event.
+
+- `/dashboard/admin/reconciliation/`, `/dashboard/admin/results/`, and `/dashboard/admin/ops-runbook/`
+  - Provide React route surfaces for the remaining admin console areas so direct route testing and navigation can move off `admin/*.html`.
+
+These routes intentionally use the existing admin API where the source of truth is still the Fastify/Prisma operational backend. They are cutover scaffolds plus the highest-value actions, not a Supabase rewrite of every legacy finance/compliance detail yet.
+
+## Student App Consolidation Slice
+
+Started reducing the duplicate `student-app` surface by adding unified React routes under `src/` for:
+
+- `/dashboard/student/results/`
+  - Shows marked assignment submissions, feedback, and progress records from the unified student dashboard data loader.
+
+- `/dashboard/student/careers/`
+  - Moves the career catalogue and targeted assistant workflow into the unified React dashboard.
+  - Uses the existing careers and assistant APIs while the long-term Supabase careers/reporting model is finalized.
+
+- `/dashboard/student/reports/`
+  - Adds parent/NGO-ready summary counts using the current assignment/submission/progress/class data.
+  - Generates weekly reports through the existing reports API.
+  - Lists report history and opens report details including sessions, minutes, summary, topics, assignment highlights, and next step where available.
+
+- `/dashboard/student/community/`
+  - Loads study rooms, weekly challenges, and peer Q&A through the existing community API.
+  - Supports room creation, room joining, message loading, and message posting.
+  - Keeps moderation and RBAC enforcement in the existing API while the frontend moves out of vanilla JS.
+
+The older `student-app` bundle remains in the build temporarily. It should not be deleted until the unified routes cover the remaining UX and route-level tests confirm parity.
+
+## Public Website React Slice
+
+Replaced the first public React placeholders with real routes:
+
+- `/`
+  - React public home route now carries the Project Odysseus tutoring offer, dashboard migration context, tutor trust section, program cards, and portal CTA.
+
+- `/about`
+  - React route for the tutoring/team story and tutor cards.
+
+- `/programs`
+  - React route for Grade 8-12 tutoring programs and NGO rollout support.
+
+- `/privacy` and `/terms`
+  - React legal routes based on the existing static legal copy.
+
+The production root still copies the legacy `index.html` until public-site parity and SEO checks are completed. Nested public React shells are generated for direct `/about/`, `/programs/`, `/privacy/`, and `/terms/` checks.
