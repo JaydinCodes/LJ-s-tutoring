@@ -414,3 +414,13 @@ Added `/dashboard/admin/payroll/` as a React route for the legacy payroll consol
 - Creates bonus/correction/penalty adjustments for tutors.
 
 This route complements the Supabase-backed `/dashboard/admin/payments/` route. Payroll remains API-backed because invoice generation, pay-period locks, adjustments, and approval integrity still live in the operational Fastify/Postgres backend.
+
+## Supabase RLS Hardening Slice
+
+Tightened the Supabase schema plan for React workflows:
+
+- Added `public.current_profile_id()` for ownership-scoped policies.
+- Changed tutor assignment write access from broad role-based access to `assignments.created_by = current_profile_id()`.
+- Added a tutor-only subject insert policy so tutor assignment creation can create missing `subjects` rows without granting broad subject management.
+- Added schema policy regression coverage in `tests/frontend/supabase-schema-policy.test.cjs`.
+- Added `docs/supabase/PRODUCTION_RLS_REVIEW.md` to document remaining production authorization concerns, especially student submission update columns and tutor progress insertion scope.

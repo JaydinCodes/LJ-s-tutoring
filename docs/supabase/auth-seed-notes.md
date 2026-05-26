@@ -27,6 +27,14 @@ where email = 'student@example.com';
 
 For admin assignment creation, the signed-in user must have `profiles.role = 'admin'`.
 
+For tutor assignment creation, the signed-in user must have:
+
+- `profiles.role = 'tutor'`
+- a linked `tutors` row
+- assignment rows with `assignments.created_by = profiles.id`
+
+RLS intentionally scopes tutor assignment updates to rows created by the current tutor profile. Tutors can insert missing `subjects` rows so assignment creation can reuse or create subject records without granting broad subject-management access.
+
 ## Storage
 
 The schema file creates private buckets:
@@ -43,6 +51,7 @@ If you create buckets manually in the Supabase dashboard, keep them private and 
 - `/onboarding/tutor/` lets signed-in users without a profile create a `tutor` profile and linked `tutors` row with `pending` status.
 - `/dashboard/admin/*` requires `profiles.role = 'admin'`.
 - `/dashboard/student/*` requires `profiles.role = 'student'`.
+- `/dashboard/tutor/*` requires `profiles.role = 'tutor'`.
 - Users without a profile row see a clear profile-missing message.
 - Missing Supabase env vars show a setup-required message.
 

@@ -48,6 +48,7 @@ Migration tracking:
 - Audit and slice history: `docs/MIGRATION_AUDIT.md`
 - Supabase schema plan: `docs/supabase/schema.sql`
 - Supabase auth seed notes: `docs/supabase/auth-seed-notes.md`
+- Supabase production RLS review: `docs/supabase/PRODUCTION_RLS_REVIEW.md`
 - Cleanup checklist: `docs/REACT_MIGRATION_CLEANUP_CHECKLIST.md`
 
 ## Docker Postgres

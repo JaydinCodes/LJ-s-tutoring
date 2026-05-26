@@ -170,6 +170,16 @@ as $$
   select role from public.profiles where auth_user_id = auth.uid()
 $$;
 
+create or replace function public.current_profile_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select id from public.profiles where auth_user_id = auth.uid()
+$$;
+
 create policy "profiles_select_self_or_admin"
 on public.profiles for select
 using (auth_user_id = auth.uid() or public.current_profile_role() = 'admin');
@@ -240,14 +250,29 @@ on public.subjects for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
+create policy "tutors_insert_subjects"
+on public.subjects for insert
+with check (public.current_profile_role() = 'tutor');
+
 create policy "assignments_read_authenticated"
 on public.assignments for select
 using (auth.uid() is not null);
 
-create policy "admin_tutor_manage_assignments"
+create policy "admin_manage_assignments"
 on public.assignments for all
-using (public.current_profile_role() in ('admin', 'tutor'))
-with check (public.current_profile_role() in ('admin', 'tutor'));
+using (public.current_profile_role() = 'admin')
+with check (public.current_profile_role() = 'admin');
+
+create policy "tutors_manage_own_assignments"
+on public.assignments for all
+using (
+  public.current_profile_role() = 'tutor'
+  and created_by = public.current_profile_id()
+)
+with check (
+  public.current_profile_role() = 'tutor'
+  and created_by = public.current_profile_id()
+);
 
 create policy "submissions_student_self_or_admin"
 on public.assignment_submissions for select
