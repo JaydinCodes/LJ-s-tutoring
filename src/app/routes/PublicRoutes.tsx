@@ -202,6 +202,63 @@ export function ProgramsRoute() {
   );
 }
 
+export function GuidesIndexRoute() {
+  return (
+    <PublicLayout>
+      <section className="bg-white px-6 py-20">
+        <div className="mx-auto max-w-4xl">
+          <SectionIntro title="Learning guides" eyebrow="Resources">
+            Short, practical resources for learners and parents. These are now served through the React app while the old static guide files remain available for compatibility.
+          </SectionIntro>
+          <div className="mt-10 rounded-lg border border-slate-200 bg-slate-50 p-6">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Matric Maths Mistakes Guide</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              A concise guide to avoid frequent Grade 12 maths mistakes and improve exam consistency.
+            </p>
+            <Link className="mt-5 inline-flex rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">
+              Read guide
+            </Link>
+          </div>
+        </div>
+      </section>
+    </PublicLayout>
+  );
+}
+
+export function MatricMathsMistakesGuideRoute() {
+  const guideSections = [
+    ['Misreading the question', 'Underline command words and rewrite the ask before calculating. This keeps the method aligned with what the examiner actually wants.'],
+    ['Skipping algebra steps', 'Show transformations line by line so method marks are still earned when arithmetic slips happen.'],
+    ['No time strategy', 'Allocate time per mark and return to hard questions later. Do not let one difficult question drain marks from the rest of the paper.'],
+    ['Weak error review', 'Keep an error log by topic and trigger so revision follows patterns instead of guesswork.'],
+  ];
+
+  return (
+    <PublicLayout>
+      <article className="bg-white px-6 py-20">
+        <div className="mx-auto max-w-3xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Guide</p>
+          <h1 className="mt-3 text-5xl font-semibold tracking-tight text-slate-950">Matric Maths Mistakes Guide</h1>
+          <p className="mt-5 text-lg leading-8 text-slate-600">
+            A concise Grade 12 maths guide for avoiding common exam mistakes and making revision more consistent.
+          </p>
+          <div className="mt-10 grid gap-4">
+            {guideSections.map(([title, description], index) => (
+              <section key={title} className="rounded-lg border border-slate-200 bg-slate-50 p-6">
+                <h2 className="text-xl font-semibold text-slate-950">{index + 1}. {title}</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{description}</p>
+              </section>
+            ))}
+          </div>
+          <Link className="mt-8 inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800" to="/guides">
+            Back to guides
+          </Link>
+        </div>
+      </article>
+    </PublicLayout>
+  );
+}
+
 export function PrivacyRoute() {
   return (
     <LegalRoute title="Privacy">
@@ -310,9 +367,9 @@ function GuideSection() {
           <p className="mt-2 text-sm leading-6 text-slate-600">
             A practical revision guide for avoiding avoidable marks lost in tests and exams.
           </p>
-          <a className="mt-5 inline-flex rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" href="/guides/matric-maths-mistakes-guide.html">
+          <Link className="mt-5 inline-flex rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">
             Open guide
-          </a>
+          </Link>
         </div>
       </div>
     </section>

@@ -382,6 +382,10 @@ Replaced the first public React placeholders with real routes:
 - `/privacy` and `/terms`
   - React legal routes based on the existing static legal copy.
 
+- `/guides` and `/guides/matric-maths-mistakes-guide`
+  - React guide routes now preserve the learning guide index and Matric Maths Mistakes Guide content.
+  - Legacy `.html` guide files are still copied for compatibility, but the public React home links to the React guide route.
+
 The React public home route now also owns first-pass enquiry capture:
 
 - Uses a React-controlled quick enquiry form with name, email, grade, message, honeypot spam field, validation, and repeat-submit throttling.
@@ -389,7 +393,7 @@ The React public home route now also owns first-pass enquiry capture:
 - Falls back to pre-filled email and WhatsApp contact actions when the endpoint is not configured or submission fails.
 - Avoids embedding the legacy hard-coded Formspree endpoint in the React source.
 
-The production root still copies the legacy `index.html` until public-site analytics checks and guide content migration are completed. Nested public React shells are generated for direct `/about/`, `/programs/`, `/privacy/`, and `/terms/` checks, now with route-specific descriptions, canonical URLs, Open Graph metadata, and indexable robots tags. Protected React shells emit `noindex` robots metadata.
+The static build now writes the React shell to `dist/index.html`, so the built root serves the unified React public home. Legacy source HTML remains in the repository for rollback/reference until final cleanup. Public React shells are generated for direct `/about/`, `/programs/`, `/guides/`, `/guides/matric-maths-mistakes-guide/`, `/privacy/`, and `/terms/` checks, now with route-specific descriptions, canonical URLs, Open Graph metadata, indexable robots tags, and the existing fail-safe analytics/SEO scripts. Protected React shells emit `noindex` robots metadata.
 
 ## Tutor Operations Cutover Slice
 

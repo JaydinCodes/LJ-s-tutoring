@@ -38,8 +38,11 @@ for (const target of copyTargets) {
 }
 
 const reactDashboardRoutes = [
+  '',
   'about',
   'programs',
+  'guides',
+  'guides/matric-maths-mistakes-guide',
   'privacy',
   'terms',
   'onboarding/student',
@@ -75,6 +78,10 @@ const reactDashboardRoutes = [
 ];
 
 const routeMeta = {
+  '': {
+    title: 'Maths Tutoring Cape Town and South Africa',
+    description: 'Project Odysseus provides Grade 8-12 CAPS Mathematics tutoring for Cape Town and South African learners, with a React LMS for assignments, progress, reporting, and NGO rollout.',
+  },
   about: {
     title: 'About Project Odysseus',
     description: 'Learn about Project Odysseus maths tutoring and the React LMS migration supporting students, tutors, admins, parents, and NGO partners.',
@@ -82,6 +89,14 @@ const routeMeta = {
   programs: {
     title: 'Grade 8-12 Maths Programs',
     description: 'CAPS Mathematics tutoring programs for Grade 8-12 learners, matric exam preparation, and NGO learner rollout support.',
+  },
+  guides: {
+    title: 'Learning Guides',
+    description: 'Practical Project Odysseus maths learning guides for Grade 8-12 learners and families.',
+  },
+  'guides/matric-maths-mistakes-guide': {
+    title: 'Matric Maths Mistakes Guide',
+    description: 'A concise Grade 12 maths guide for avoiding common exam mistakes and improving revision consistency.',
   },
   privacy: {
     title: 'Privacy',
@@ -107,7 +122,7 @@ function reactShell(route) {
   const title = titleFromRoute(route);
   const meta = routeMeta[route];
   const isProtected = route.startsWith('dashboard/') || route.startsWith('onboarding/');
-  const canonicalPath = route.endsWith('/') ? route : `${route}/`;
+  const canonicalPath = route ? (route.endsWith('/') ? route : `${route}/`) : '';
   const robots = isProtected
     ? '    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">\n'
     : '    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">\n';
@@ -117,6 +132,13 @@ function reactShell(route) {
   const canonical = meta
     ? `    <link rel="canonical" href="https://projectodysseus.live/${canonicalPath}">\n`
     : '';
+  const publicScripts = isProtected
+    ? ''
+    : `    <script defer src="/assets/portal-config.js"></script>
+    <script defer src="/assets/analytics.js"></script>
+    <script defer src="/assets/seo-index.js"></script>
+    <script defer src="/assets/sw-register.js"></script>
+`;
   const openGraph = meta
     ? `    <meta property="og:type" content="website">
     <meta property="og:title" content="${meta.title} | Project Odysseus">
@@ -136,6 +158,7 @@ function reactShell(route) {
 ${description}${robots}${canonical}${openGraph}    <meta name="theme-color" content="#0f172a">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="/react-app-dist/react-app.css">
+${publicScripts}
   </head>
   <body>
     <div id="root"></div>
@@ -146,7 +169,7 @@ ${description}${robots}${canonical}${openGraph}    <meta name="theme-color" cont
 }
 
 for (const route of reactDashboardRoutes) {
-  const routeDir = path.join(dist, ...route.split('/'));
+  const routeDir = route ? path.join(dist, ...route.split('/')) : dist;
   fs.mkdirSync(routeDir, { recursive: true });
   fs.writeFileSync(path.join(routeDir, 'index.html'), reactShell(route));
 }

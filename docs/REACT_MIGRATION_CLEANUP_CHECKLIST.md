@@ -5,11 +5,11 @@ This checklist tracks what can be removed only after equivalent React routes hav
 ## Keep Temporarily
 
 - `index.html`
-  - Keep until the React public home route has analytics parity, full guide content parity, and production root cutover. First-pass enquiry, FAQ, guide CTA, tutor application, and generated public-route SEO metadata now exist in React.
+  - Source file kept temporarily for rollback/reference. The static build now serves the React root at `dist/index.html`.
 - `privacy.html`, `terms.html`
   - Keep until React legal routes are production-routed and validated.
 - `guides/**/*.html`
-  - Keep until guides are migrated into React or a content system.
+  - Source files kept temporarily for compatibility. Guide index and Matric Maths Mistakes Guide now have React routes.
 - `student-app/` and `student-app-dist/`
   - Keep until unified `src` student routes fully replace `/student/*` route family and route tests pass.
 - `dashboard/**/*.html`, `reports/index.html`
@@ -35,7 +35,7 @@ This checklist tracks what can be removed only after equivalent React routes hav
 ## Remaining Parity Work
 
 - Public site
-  - Root cutover, analytics parity, full guide migration.
+  - Final SEO/content review, then remove or redirect legacy `.html` entry points.
 - Student
   - Notifications, career subroutes, report exports, community Q&A posting/details, final retirement of `student-app`.
 - Admin

@@ -26,8 +26,20 @@ test('React public route carries remaining public-site parity sections', () => {
   const publicRoutes = fs.readFileSync(path.join(root, 'src', 'app', 'routes', 'PublicRoutes.tsx'), 'utf8');
 
   assert.ok(publicRoutes.includes('GuideSection'), 'React public home must preserve guide/lead-magnet path');
-  assert.ok(publicRoutes.includes('/guides/matric-maths-mistakes-guide.html'), 'React public home must link to the existing guide');
+  assert.ok(publicRoutes.includes('/guides/matric-maths-mistakes-guide'), 'React public home must link to the React guide');
   assert.ok(publicRoutes.includes('FaqSection'), 'React public home must preserve FAQ content');
   assert.ok(publicRoutes.includes('BecomeTutorSection'), 'React public home must preserve tutor application CTA');
   assert.ok(publicRoutes.includes('mailto:${contactEmail}?subject='), 'React tutor CTA must use configured contact email');
+});
+
+test('React public routes include guide pages', () => {
+  const app = fs.readFileSync(path.join(root, 'src', 'app', 'App.tsx'), 'utf8');
+  const publicRoutes = fs.readFileSync(path.join(root, 'src', 'app', 'routes', 'PublicRoutes.tsx'), 'utf8');
+
+  assert.ok(app.includes('path="/guides"'), 'React app must register the guides index route');
+  assert.ok(app.includes('path="/guides/matric-maths-mistakes-guide"'), 'React app must register the matric guide route');
+  assert.ok(publicRoutes.includes('GuidesIndexRoute'), 'React public route file must expose the guides index');
+  assert.ok(publicRoutes.includes('MatricMathsMistakesGuideRoute'), 'React public route file must expose the matric guide');
+  assert.ok(publicRoutes.includes('Misreading the question'), 'React matric guide must carry legacy guide content');
+  assert.ok(publicRoutes.includes('Skipping algebra steps'), 'React matric guide must carry legacy guide content');
 });

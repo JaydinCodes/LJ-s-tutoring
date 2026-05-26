@@ -39,6 +39,8 @@ const publicRoutes = [
   '/',
   '/about',
   '/programs',
+  '/guides',
+  '/guides/matric-maths-mistakes-guide',
   '/privacy',
   '/terms',
   '/dashboard/login',
@@ -75,7 +77,9 @@ test('build-static generates direct shell files for every nested React route', (
 
   assert.ok(buildStatic.includes('/react-app-dist/react-app.js'), 'React shell must load the unified React bundle');
   assert.ok(buildStatic.includes('/react-app-dist/react-app.css'), 'React shell must load the unified React stylesheet');
+  assert.ok(buildStatic.includes("''"), 'React shell generation must replace dist/index.html for root cutover');
   assert.ok(buildStatic.includes('routeMeta'), 'React shell generation must provide public route metadata');
+  assert.ok(buildStatic.includes('/assets/analytics.js'), 'Public React shells must load the fail-safe analytics bridge');
   assert.ok(buildStatic.includes('noindex, nofollow, noarchive, nosnippet'), 'Protected React shells must be noindexed');
   assert.ok(buildStatic.includes('https://projectodysseus.live/${canonicalPath}'), 'Public React shells must emit canonical URLs');
 });

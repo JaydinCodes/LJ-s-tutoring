@@ -28,7 +28,15 @@ import { TutorClassesRoute } from '../features/tutors/TutorClassesRoute';
 import { TutorDashboardRoute } from '../features/tutors/TutorDashboardRoute';
 import { TutorReportsRoute, TutorRiskRoute, TutorSessionsRoute } from '../features/tutors/TutorOperationsRoutes';
 import { TutorSubmissionsRoute } from '../features/tutors/TutorSubmissionsRoute';
-import { AboutRoute, PrivacyRoute, ProgramsRoute, PublicHomeRoute, TermsRoute } from './routes/PublicRoutes';
+import {
+  AboutRoute,
+  GuidesIndexRoute,
+  MatricMathsMistakesGuideRoute,
+  PrivacyRoute,
+  ProgramsRoute,
+  PublicHomeRoute,
+  TermsRoute,
+} from './routes/PublicRoutes';
 
 export function App() {
   return (
@@ -36,6 +44,8 @@ export function App() {
       <Route path="/" element={<PublicHomeRoute />} />
       <Route path="/about" element={<AboutRoute />} />
       <Route path="/programs" element={<ProgramsRoute />} />
+      <Route path="/guides" element={<GuidesIndexRoute />} />
+      <Route path="/guides/matric-maths-mistakes-guide" element={<MatricMathsMistakesGuideRoute />} />
       <Route path="/privacy" element={<PrivacyRoute />} />
       <Route path="/terms" element={<TermsRoute />} />
       <Route path="/login" element={<LoginRoute />} />

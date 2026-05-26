@@ -1,14 +1,14 @@
 # Project Odysseus
 
-Static site + LMS API monorepo.
+React LMS + public site + API monorepo.
 
 ## What this repo now contains
 
-- Static HTML/CSS/JS pages at the repository root for the public site and portal shells.
+- Preserved legacy HTML/CSS/JS pages for rollback/reference while React route parity is validated.
 - A unified Vite + React + TypeScript LMS migration app in `src/`.
 - A temporary older student React bundle in `student-app/` while `/student/*` routes are consolidated.
 - `lms-api/` for the Fastify + Postgres backend.
-- Build scripts that compile React bundles, copy the static site into `dist/`, generate React route shells, and inject the public API base.
+- Build scripts that compile React bundles, generate React route shells, serve the React public root from `dist/index.html`, and inject the public API base.
 
 ## Quick start
 
@@ -25,7 +25,7 @@ You can also use `.env.local` for machine-specific secrets; it is ignored by git
 
 ## React LMS migration
 
-The migration is incremental. Legacy static pages remain in the build until each area has React parity, auth coverage, data coverage, and route-level tests.
+The migration is incremental. The built public root now serves React; legacy static source files remain until final deletion/redirect cleanup is approved.
 
 Primary React app:
 
@@ -37,7 +37,7 @@ npm run build:react
 
 Important unified React routes:
 
-- Public: `/`, `/about`, `/programs`, `/privacy`, `/terms`
+- Public: `/`, `/about`, `/programs`, `/guides`, `/guides/matric-maths-mistakes-guide`, `/privacy`, `/terms`
 - Auth/onboarding: `/dashboard/login`, `/onboarding/student`, `/onboarding/tutor`
 - Student: `/dashboard/student`, `/dashboard/student/assignments`, `/dashboard/student/progress`, `/dashboard/student/results`, `/dashboard/student/careers`, `/dashboard/student/reports`, `/dashboard/student/community`
 - Admin: `/dashboard/admin`, `/dashboard/admin/students`, `/dashboard/admin/tutors`, `/dashboard/admin/assignments`, `/dashboard/admin/approvals`, `/dashboard/admin/payments`, `/dashboard/admin/payroll`, `/dashboard/admin/reconciliation`, `/dashboard/admin/reports`, `/dashboard/admin/results`, `/dashboard/admin/audit`, `/dashboard/admin/privacy-requests`, `/dashboard/admin/retention`, `/dashboard/admin/ops-runbook`
