@@ -4,11 +4,10 @@ React LMS + public site + API monorepo.
 
 ## What this repo now contains
 
-- Preserved legacy HTML/CSS/JS pages for rollback/reference while React route parity is validated.
 - A unified Vite + React + TypeScript LMS migration app in `src/`.
-- A temporary older student React bundle in `student-app/` while `/student/*` routes are consolidated.
+- Legacy HTML/CSS/JS source files may remain for audit/reference, but the production build no longer copies old portal route trees.
 - `lms-api/` for the Fastify + Postgres backend.
-- Build scripts that compile React bundles, generate React route shells, serve the React public root from `dist/index.html`, and inject the public API base.
+- Build scripts that compile the unified React bundle, generate React route shells, serve the React public root from `dist/index.html`, and inject the public API base.
 
 ## Quick start
 
@@ -25,7 +24,7 @@ You can also use `.env.local` for machine-specific secrets; it is ignored by git
 
 ## React LMS migration
 
-The migration is incremental. The built public root now serves React; legacy static source files remain until final deletion/redirect cleanup is approved.
+The production build now serves the unified React app for public, student, admin, tutor, auth, and onboarding routes. Legacy static source files are retained only as inactive reference material unless explicitly reintroduced.
 
 Primary React app:
 
@@ -126,12 +125,12 @@ Set the `HEALTHCHECK_URL` repository secret to enable it.
 
 ### Local URLs
 
-- Static build: `http://localhost:8080`
+- Static React build: `http://localhost:8080`
 - React dev app: `http://localhost:5173`
 - API: `http://localhost:3001`
-- Login: `http://localhost:8080/login.html`
-- Student dashboard: `http://localhost:8080/dashboard/`
-- Tutor dashboard: `http://localhost:8080/tutor/dashboard/`
+- Login: `http://localhost:8080/dashboard/login/`
+- Student dashboard: `http://localhost:8080/dashboard/student/`
+- Tutor dashboard: `http://localhost:8080/dashboard/tutor/`
 
 ## Environment variables
 
@@ -211,11 +210,10 @@ Both endpoints expect an authenticated session and a CSRF token when called from
 ## Scripts
 
 ```bash
-npm run build        # Build React bundles, copy static files, inject config, verify assets
+npm run build        # Build the React bundle, generate route shells, inject config, verify assets
 npm run build:react  # Build the unified React LMS bundle
-npm run build:student-app # Build the temporary older student React bundle
 npm run build:api    # Install + build lms-api from repo root
-npm run build:static # Copy static source files to dist/
+npm run build:static # Generate React route shells and copy required public assets to dist/
 npm run inject:config
 npm run serve        # Serve dist/ on port 8080
 npm run dev          # Serve static site + run API dev server
@@ -230,26 +228,23 @@ docker compose up -d db # Start only Postgres in Docker
 docker compose up api db # Run API + Postgres in Docker
 ```
 
-## Static site structure
+## Production Static Output
 
 ```text
-index.html
-login.html
-privacy.html
-terms.html
-assets/
-  portal.css
-  portal-config.js
-  common.js
-  student/
-  tutor/
-  admin/
-dashboard/
-reports/
-guides/
-tutor/
-admin/
-lms-api/
+dist/
+  index.html
+  react-app-dist/
+  assets/
+    analytics.js
+    portal-config.js
+    seo-index.js
+    sw-register.js
+  dashboard/
+    student/
+    admin/
+    tutor/
+  onboarding/
+  guides/
 ```
 
 ## Operations Docs

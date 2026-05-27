@@ -1,14 +1,13 @@
 # Future LMS Security Blueprint
 
-This document defines minimum guardrails for the authenticated `/admin`,
-`/tutor`, and student LMS experiences. The previous revision claimed edge
-`404` responses for internal routes; that is not how the current Netlify
-deployment behaves, so this revision reconciles the documented model with
-what is actually shipped.
+This document defines minimum guardrails for the authenticated `/dashboard/admin`,
+`/dashboard/tutor`, and student LMS experiences. DigitalOcean App Platform is
+the production edge, so route protection must be documented against `.do/app.yaml`
+and the backend RBAC layer rather than a retired Netlify configuration.
 
 ## 1) Route Protection Baseline (Current)
 
-What is actually enforced at the edge today (see `netlify.toml`):
+What is actually enforced at the edge today (see `.do/app.yaml`):
 
 - `/admin/*` and `/tutor/*` receive `X-Robots-Tag: noindex, nofollow,
   noarchive, nosnippet` and `Cache-Control: no-store` response headers.
@@ -29,12 +28,12 @@ Authentication boundary:
 
 ### Rationale for the reconciliation
 
-- Edge `404`s require per-route rewrites that were never wired up; leaving
+- Edge `404`s require per-route DigitalOcean ingress rules that were never wired up; leaving
   the claim in the blueprint created a false sense of defence-in-depth.
 - The real protection is the server-side RBAC layer which is exercised by
   the test suite, so the blueprint now matches the code and tests.
-- If edge-layer hard blocking is later desired, it should be added as a
-  Netlify rewrite shim and the blueprint updated at the same time.
+- If edge-layer hard blocking is later desired, it should be added as
+  DigitalOcean ingress rules and the blueprint updated at the same time.
 
 ## 2) Authentication + Session Model
 
@@ -113,6 +112,6 @@ Required controls before enabling uploads:
       sensitive data fetch.
 - [ ] Add upload gateway with MIME/extension/size validation and scanning.
 - [ ] Decide whether to enforce hard edge `404`s for internal routes via
-      Netlify rewrites, or keep the current server-side enforcement only.
+      DigitalOcean ingress rules, or keep the current server-side enforcement only.
 - [ ] Add security integration tests for authz bypass, CSRF, and upload
       abuse cases.

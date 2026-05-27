@@ -105,7 +105,7 @@ Hardcoded/mock/browser-only data to migrate or classify:
 - There are two student route families: `/dashboard/*` and `/student/*`.
 - Login routes are split across `/login.html`, `/dashboard/login.html`, `/admin/login.html`, and `/tutor/login.html`.
 - Static admin links use `.html` paths; target React routes should use extensionless paths.
-- Current build copies static files into `dist` and separately copies `student-app-dist`; unified React output is not yet wired into production build.
+- Final cleanup changed the build so `dist` receives generated React route shells and curated public assets instead of copied legacy route trees or `student-app-dist`.
 
 ## Migration Risks
 
@@ -160,9 +160,9 @@ The existing static build now copies this bundle into `dist`, and the first prod
 - `/dashboard/student/`
 - `/dashboard/admin/`
 
-The older student routes (`/student/dashboard/`, `/student/assignments/`, etc.) and legacy admin routes (`/admin/*.html`) remain active. This avoids breaking the current production surface while allowing the new React routes to be tested in built output.
+The older student routes (`/student/dashboard/`, `/student/assignments/`, etc.) and legacy admin routes (`/admin/*.html`) were later redirected to the unified `/dashboard/*` React routes during final cleanup.
 
-Netlify rewrites were added for nested React dashboard paths:
+DigitalOcean App Platform ingress rules serve nested React dashboard paths:
 
 - `/dashboard/student/* -> /dashboard/student/index.html`
 - `/dashboard/admin/* -> /dashboard/admin/index.html`
@@ -181,7 +181,7 @@ The following nested React routes now render functional data views rather than p
 - `/dashboard/admin/payments/`
 - `/dashboard/admin/reports/`
 
-`scripts/build-static.js` generates static shell files for these routes inside `dist` so direct URL loads work on a simple static server as well as on Netlify rewrites. This keeps migration testing independent from a server-side SPA fallback.
+`scripts/build-static.js` generates static shell files for these routes inside `dist` so direct URL loads work on a simple static server and DigitalOcean Static Sites without depending only on an SPA fallback.
 
 Validation completed:
 
@@ -364,7 +364,7 @@ Started reducing the duplicate `student-app` surface by adding unified React rou
   - Supports room creation, room joining, message loading, and message posting.
   - Keeps moderation and RBAC enforcement in the existing API while the frontend moves out of vanilla JS.
 
-The older `student-app` bundle remains in the build temporarily. It should not be deleted until the unified routes cover the remaining UX and route-level tests confirm parity.
+The older `student-app` bundle was later retired from the active production build after unified `/dashboard/student/*` route coverage and route-shell tests were in place.
 
 ## Public Website React Slice
 

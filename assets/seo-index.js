@@ -74,7 +74,7 @@
       '@type': 'LocalBusiness',
       '@id': 'https://projectodysseus.live/#business',
       'name': 'Project Odysseus Maths Tutoring',
-      'image': 'https://projectodysseus.live/og-image.jpg',
+      'image': 'https://projectodysseus.live/images/og-image-placeholder.svg',
       'priceRange': 'R170-R200/hour',
       'openingHoursSpecification': [
         {

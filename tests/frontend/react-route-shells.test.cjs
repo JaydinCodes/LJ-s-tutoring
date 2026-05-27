@@ -37,6 +37,7 @@ const protectedRoutes = [
 
 const publicRoutes = [
   '/',
+  '/login',
   '/about',
   '/programs',
   '/guides',
@@ -80,6 +81,10 @@ test('build-static generates direct shell files for every nested React route', (
   assert.ok(buildStatic.includes("''"), 'React shell generation must replace dist/index.html for root cutover');
   assert.ok(buildStatic.includes('routeMeta'), 'React shell generation must provide public route metadata');
   assert.ok(buildStatic.includes('/assets/analytics.js'), 'Public React shells must load the fail-safe analytics bridge');
+  assert.ok(!buildStatic.includes("'student-app-dist'"), 'final build must not ship the retired student-app bundle');
+  assert.ok(!buildStatic.includes("'admin'"), 'final build must not copy legacy admin HTML');
+  assert.ok(!buildStatic.includes("'tutor'"), 'final build must not copy legacy tutor HTML');
+  assert.ok(!buildStatic.includes("'dashboard'"), 'final build must not copy legacy dashboard HTML');
   assert.ok(buildStatic.includes('noindex, nofollow, noarchive, nosnippet'), 'Protected React shells must be noindexed');
   assert.ok(buildStatic.includes('https://projectodysseus.live/${canonicalPath}'), 'Public React shells must emit canonical URLs');
 });

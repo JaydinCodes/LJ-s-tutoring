@@ -109,7 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ARIA labels and roles
   - Keyboard navigation support
   - WCAG 2.0 AA compliance target
-- Security headers via Netlify configuration:
+- Security headers via hosting configuration:
   - Content Security Policy (CSP)
   - HSTS
   - X-Frame-Options
@@ -152,7 +152,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Linting**: ESLint, html-validate
 - **Testing**: pa11y-ci, linkinator
 - **Version Control**: Git, GitHub
-- **Hosting**: Netlify (recommended), Vercel compatible
+- **Hosting**: DigitalOcean App Platform
 - **Forms**: Formspree
 - **Analytics**: Google Analytics 4 (privacy-first)
 

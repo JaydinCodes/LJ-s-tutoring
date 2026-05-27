@@ -2,21 +2,19 @@
 
 ## Static site build
 
-`npm run build:static` copies the static site source into `dist/`.
+`npm run build:static` generates static React route shells into `dist/` and copies only the public assets required by the unified React app.
 
-Copied paths:
+Generated/copied output includes:
 
-- `index.html`
-- `login.html`
-- `privacy.html`
-- `terms.html`
+- React shells for `/`, `/about`, `/programs`, `/guides`, `/privacy`, `/terms`, `/dashboard/*`, and `/onboarding/*`
+- `react-app-dist/`
+- `assets/analytics.js`
+- `assets/analytics-module.js`
+- `assets/portal-config.js`
+- `assets/seo-index.js`
+- `assets/sw-register.js`
+- `assets/tailwind-input.css`
 - `sw.js`
-- `assets/`
-- `dashboard/`
-- `reports/`
-- `guides/`
-- `tutor/`
-- `admin/`
 - `images/`
 - `favicon.svg`
 - `robots.txt`
@@ -53,7 +51,8 @@ If your API component must build from repository root, use `npm run build:api` a
 
 Routing note:
 
-- The app spec in `.do/app.yaml` uses component routes for the static `website` and the API.
+- The DigitalOcean app spec in `.do/app.yaml` is the production routing source of truth.
+- Role subdomains redirect to the unified React dashboards: admin to `/dashboard/admin/`, tutor to `/dashboard/tutor/`, and student to `/dashboard/student/`.
 - The static site sets `PUBLIC_PO_API_BASE=https://api.projectodysseus.live` so browser calls land on the API subdomain.
 - Without this route setup, API endpoints can return static-site 404 pages.
 

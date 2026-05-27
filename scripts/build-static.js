@@ -5,24 +5,22 @@ const root = path.resolve(__dirname, '..');
 const dist = path.join(root, 'dist');
 
 const copyTargets = [
-  'index.html',
-  'login.html',
-  'privacy.html',
-  'terms.html',
   'sw.js',
   'favicon.svg',
   'robots.txt',
   'sitemap.xml',
-  'assets',
-  'student',
-  'student-app-dist',
   'react-app-dist',
-  'dashboard',
-  'reports',
-  'guides',
-  'tutor',
-  'admin',
   'images',
+];
+
+const assetCopyTargets = [
+  'analytics.js',
+  'analytics-module.js',
+  'portal-config.js',
+  'seo-index.js',
+  'sw-register.js',
+  'tailwind-input.css',
+  path.join('lib', 'sanitize.js'),
 ];
 
 fs.rmSync(dist, { recursive: true, force: true });
@@ -37,8 +35,19 @@ for (const target of copyTargets) {
   fs.cpSync(source, destination, { recursive: true });
 }
 
+for (const target of assetCopyTargets) {
+  const source = path.join(root, 'assets', target);
+  if (!fs.existsSync(source)) {
+    continue;
+  }
+  const destination = path.join(dist, 'assets', target);
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  fs.cpSync(source, destination, { recursive: true });
+}
+
 const reactDashboardRoutes = [
   '',
+  'login',
   'about',
   'programs',
   'guides',
@@ -144,12 +153,12 @@ function reactShell(route) {
     <meta property="og:title" content="${meta.title} | Project Odysseus">
     <meta property="og:description" content="${meta.description}">
     <meta property="og:url" content="https://projectodysseus.live/${canonicalPath}">
-    <meta property="og:image" content="https://projectodysseus.live/og-image.jpg">
+    <meta property="og:image" content="https://projectodysseus.live/images/og-image-placeholder.svg">
     <meta name="twitter:card" content="summary_large_image">
 `
     : '';
 
-  return `<!doctype html>
+  return `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">

@@ -86,10 +86,7 @@ function checkJavaScriptFile(filePath) {
   }
   checked.add(filePath);
 
-  if (
-    filePath.includes(`${path.sep}student-app-dist${path.sep}`) ||
-    filePath.includes(`${path.sep}react-app-dist${path.sep}`)
-  ) {
+  if (filePath.includes(`${path.sep}react-app-dist${path.sep}`)) {
     return;
   }
 

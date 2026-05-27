@@ -33,6 +33,7 @@ async function findPort(startPort) {
 async function main() {
   const port = await findPort(preferredPort);
   const httpServerBin = require.resolve('http-server/bin/http-server');
+  // eslint-disable-next-line no-console
   console.log(`Serving dist on http://localhost:${port}`);
 
   const child = spawn(process.execPath, [httpServerBin, 'dist', '-p', String(port), '-c-1'], {
@@ -59,6 +60,7 @@ async function main() {
 }
 
 main().catch((error) => {
+  // eslint-disable-next-line no-console
   console.error(error.message || error);
   process.exit(1);
 });
