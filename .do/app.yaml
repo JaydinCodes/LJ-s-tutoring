@@ -62,6 +62,12 @@ envs:
   - key: ASSISTANT_ENABLED
     scope: RUN_AND_BUILD_TIME
     value: "true"
+  - key: VITE_SUPABASE_URL
+    scope: RUN_AND_BUILD_TIME
+    value: ${VITE_SUPABASE_URL}
+  - key: VITE_SUPABASE_ANON_KEY
+    scope: RUN_AND_BUILD_TIME
+    value: ${VITE_SUPABASE_ANON_KEY}
   - key: ODIE_ALLOW_ACCESS_KEY_FALLBACK
     scope: RUN_AND_BUILD_TIME
     value: "false"
@@ -357,3 +363,9 @@ static_sites:
       - key: ASSISTANT_ENABLED
         scope: BUILD_TIME
         value: "true"
+      - key: VITE_SUPABASE_URL
+        scope: BUILD_TIME
+        value: ${VITE_SUPABASE_URL}
+      - key: VITE_SUPABASE_ANON_KEY
+        scope: BUILD_TIME
+        value: ${VITE_SUPABASE_ANON_KEY}

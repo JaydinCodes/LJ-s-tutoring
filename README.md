@@ -98,7 +98,7 @@ Use the dedicated production compose file to run only the API service against an
 
 Required environment variables in `.env`:
 
-- `DATABASE_URL` (managed Postgres connection string)
+- `DATABASE_URL` (Supabase pooler/session Postgres connection string; direct Supabase DB hosts can be IPv6-only)
 - `COOKIE_SECRET`
 - `JWT_SECRET`
 - `PUBLIC_BASE_URL`

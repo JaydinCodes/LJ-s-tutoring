@@ -51,12 +51,13 @@ function describeDatabaseUrl(databaseUrl: string) {
 const parsedDatabaseUrl = parseDatabaseUrl(DATABASE_URL);
 if (!parsedDatabaseUrl.hostname || parsedDatabaseUrl.hostname === 'base') {
   console.error(
-    'DATABASE_URL host is invalid. In DigitalOcean, set DATABASE_URL to the full managed database connection string, not a placeholder such as "base".'
+    'DATABASE_URL host is invalid. In DigitalOcean, set DATABASE_URL to the full Supabase Postgres connection string, not a placeholder such as "base".'
   );
   process.exit(1);
 }
 
-const ssl = DATABASE_URL.includes('sslmode=require')
+const requiresSsl = DATABASE_URL.includes('sslmode=require') || parsedDatabaseUrl.hostname.endsWith('.supabase.co');
+const ssl = requiresSsl
   ? { rejectUnauthorized: false }
   : undefined;
 

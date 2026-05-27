@@ -11,7 +11,9 @@ if (!DATABASE_URL) {
   throw new Error('DATABASE_URL is required');
 }
 
-const ssl = DATABASE_URL.includes('sslmode=require')
+const parsedDatabaseUrl = new URL(DATABASE_URL);
+const requiresSsl = DATABASE_URL.includes('sslmode=require') || parsedDatabaseUrl.hostname.endsWith('.supabase.co');
+const ssl = requiresSsl
   ? { rejectUnauthorized: false }
   : undefined;
 
