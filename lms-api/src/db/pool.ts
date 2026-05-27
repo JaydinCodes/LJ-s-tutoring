@@ -39,6 +39,11 @@ function parseDatabaseUrl(databaseUrl: string) {
 
 const DATABASE_URL = normalizeDatabaseUrl(rawDatabaseUrl);
 const parsedDatabaseUrl = parseDatabaseUrl(DATABASE_URL);
+if (process.env.NODE_ENV === 'production' && /^db\.[^.]+\.supabase\.co$/.test(parsedDatabaseUrl.hostname)) {
+  throw new Error(
+    'DATABASE_URL uses Supabase direct Postgres host, which can be IPv6-only and unreachable from DigitalOcean. Use the Supabase Session Pooler connection string instead.'
+  );
+}
 const requiresSsl = DATABASE_URL.includes('sslmode=require') || parsedDatabaseUrl.hostname.endsWith('.supabase.co');
 const ssl = requiresSsl
   ? { rejectUnauthorized: false }
