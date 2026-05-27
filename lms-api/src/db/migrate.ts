@@ -31,13 +31,31 @@ if (!rawDatabaseUrl) {
   console.error(isTest ? 'Missing DATABASE_URL_TEST' : 'Missing DATABASE_URL');
   process.exit(1);
 }
-const DATABASE_URL = rawDatabaseUrl;
+const DATABASE_URL = normalizeDatabaseUrl(rawDatabaseUrl);
+
+function normalizeDatabaseUrl(databaseUrl: string) {
+  const trimmed = databaseUrl.trim();
+  const quoteWrapped =
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"));
+
+  return quoteWrapped ? trimmed.slice(1, -1).trim() : trimmed;
+}
 
 function parseDatabaseUrl(databaseUrl: string) {
   try {
-    return new URL(databaseUrl);
+    const parsed = new URL(databaseUrl);
+    if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) {
+      throw new Error('invalid protocol');
+    }
+    if (databaseUrl.includes('[YOUR-PASSWORD]')) {
+      throw new Error('placeholder password');
+    }
+    return parsed;
   } catch {
-    console.error('DATABASE_URL is not a valid PostgreSQL connection URL.');
+    console.error(
+      'DATABASE_URL is not a valid PostgreSQL connection URL. Use Supabase Project Settings > Database, replace [YOUR-PASSWORD], and do not include wrapping quotes.'
+    );
     process.exit(1);
   }
 }

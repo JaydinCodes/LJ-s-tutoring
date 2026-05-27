@@ -1,17 +1,44 @@
 import { Pool } from 'pg';
 
 const isTest = process.env.NODE_ENV === 'test';
-const DATABASE_URL = isTest ? process.env.DATABASE_URL_TEST : process.env.DATABASE_URL;
+const rawDatabaseUrl = isTest ? process.env.DATABASE_URL_TEST : process.env.DATABASE_URL;
 
 if (isTest && !process.env.DATABASE_URL_TEST) {
   throw new Error('DATABASE_URL_TEST is required when NODE_ENV=test');
 }
 
-if (!DATABASE_URL) {
+if (!rawDatabaseUrl) {
   throw new Error('DATABASE_URL is required');
 }
 
-const parsedDatabaseUrl = new URL(DATABASE_URL);
+function normalizeDatabaseUrl(databaseUrl: string) {
+  const trimmed = databaseUrl.trim();
+  const quoteWrapped =
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"));
+
+  return quoteWrapped ? trimmed.slice(1, -1).trim() : trimmed;
+}
+
+function parseDatabaseUrl(databaseUrl: string) {
+  try {
+    const parsed = new URL(databaseUrl);
+    if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) {
+      throw new Error('invalid protocol');
+    }
+    if (databaseUrl.includes('[YOUR-PASSWORD]')) {
+      throw new Error('placeholder password');
+    }
+    return parsed;
+  } catch {
+    throw new Error(
+      'DATABASE_URL is not a valid PostgreSQL connection URL. Use Supabase Project Settings > Database, replace [YOUR-PASSWORD], and do not include wrapping quotes.'
+    );
+  }
+}
+
+const DATABASE_URL = normalizeDatabaseUrl(rawDatabaseUrl);
+const parsedDatabaseUrl = parseDatabaseUrl(DATABASE_URL);
 const requiresSsl = DATABASE_URL.includes('sslmode=require') || parsedDatabaseUrl.hostname.endsWith('.supabase.co');
 const ssl = requiresSsl
   ? { rejectUnauthorized: false }
