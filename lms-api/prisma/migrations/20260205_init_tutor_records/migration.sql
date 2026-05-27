@@ -69,12 +69,22 @@ create table if not exists tutor_profiles (
 
 do $$
 begin
-  if exists (select 1 from pg_class where relname = 'tutors') then
+  if exists (select 1 from information_schema.columns where table_name = 'tutors' and column_name = 'first_name')
+     and exists (select 1 from information_schema.columns where table_name = 'tutors' and column_name = 'last_name') then
     insert into tutor_profiles (id, full_name, phone, default_hourly_rate, active)
     select t.id, concat_ws(' ', t.first_name, t.last_name), t.phone, 0, true
     from tutors t
     on conflict (id) do nothing;
+  elsif exists (select 1 from information_schema.columns where table_name = 'tutors' and column_name = 'profile_id')
+     and exists (select 1 from pg_class where relname = 'profiles') then
+    insert into tutor_profiles (id, full_name, phone, default_hourly_rate, active)
+    select t.id, p.full_name, p.phone, coalesce(t.hourly_rate, 0), coalesce(t.status::text, 'active') not in ('inactive', 'suspended')
+    from tutors t
+    join profiles p on p.id = t.profile_id
+    on conflict (id) do nothing;
+  end if;
 
+  if exists (select 1 from information_schema.columns where table_name = 'tutors' and column_name = 'user_id') then
     update users u
     set tutor_profile_id = t.id
     from tutors t
@@ -104,8 +114,25 @@ alter table students
   add column if not exists guardian_phone text,
   add column if not exists notes text;
 
+do $$
+begin
+  if exists (select 1 from information_schema.columns where table_name = 'students' and column_name = 'first_name')
+     and exists (select 1 from information_schema.columns where table_name = 'students' and column_name = 'last_name') then
+    update students
+    set full_name = concat_ws(' ', first_name, last_name)
+    where full_name is null;
+  end if;
+end $$;
+
+update students s
+set full_name = p.full_name
+from profiles p
+where s.full_name is null
+  and exists (select 1 from information_schema.columns where table_name = 'students' and column_name = 'profile_id')
+  and s.profile_id = p.id;
+
 update students
-set full_name = concat_ws(' ', first_name, last_name)
+set full_name = 'Learner ' || left(id::text, 8)
 where full_name is null;
 
 alter table students
@@ -124,8 +151,14 @@ create table if not exists assignments (
   active boolean not null default true
 );
 
-create index if not exists idx_assignments_tutor_student
-  on assignments (tutor_id, student_id);
+do $$
+begin
+  if exists (select 1 from information_schema.columns where table_name = 'assignments' and column_name = 'tutor_id')
+     and exists (select 1 from information_schema.columns where table_name = 'assignments' and column_name = 'student_id') then
+    create index if not exists idx_assignments_tutor_student
+      on assignments (tutor_id, student_id);
+  end if;
+end $$;
 
 create table if not exists sessions (
   id uuid primary key default gen_random_uuid(),

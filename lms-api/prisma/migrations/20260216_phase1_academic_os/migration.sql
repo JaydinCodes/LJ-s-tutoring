@@ -86,8 +86,14 @@ create table if not exists tutor_student_map (
 create index if not exists tutor_student_map_student_idx
   on tutor_student_map (student_id, tutor_id);
 
-insert into tutor_student_map (tutor_id, student_id)
-select distinct a.tutor_id, a.student_id
-from assignments a
-where a.tutor_id is not null and a.student_id is not null
-on conflict do nothing;
+do $$
+begin
+  if exists (select 1 from information_schema.columns where table_name = 'assignments' and column_name = 'tutor_id')
+     and exists (select 1 from information_schema.columns where table_name = 'assignments' and column_name = 'student_id') then
+    insert into tutor_student_map (tutor_id, student_id)
+    select distinct a.tutor_id, a.student_id
+    from assignments a
+    where a.tutor_id is not null and a.student_id is not null
+    on conflict do nothing;
+  end if;
+end $$;
