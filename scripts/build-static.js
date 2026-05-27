@@ -3,6 +3,8 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const dist = path.join(root, 'dist');
+const buildVersion = process.env.RELEASE_VERSION || process.env.GITHUB_SHA || String(Date.now());
+const safeBuildVersion = `po-v-${buildVersion}`.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80);
 
 const copyTargets = [
   'sw.js',
@@ -172,12 +174,12 @@ function reactShell(route) {
     <title>${title} | Project Odysseus LMS</title>
 ${description}${robots}${canonical}${openGraph}    <meta name="theme-color" content="#0f172a">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="stylesheet" href="/react-app-dist/react-app.css">
+    <link rel="stylesheet" href="/react-app-dist/react-app.css?v=${safeBuildVersion}">
 ${publicScripts}
   </head>
   <body>
     <div id="root"></div>
-    <script src="/react-app-dist/react-app.js"></script>
+    <script src="/react-app-dist/react-app.js?v=${safeBuildVersion}"></script>
   </body>
 </html>
 `;
@@ -201,9 +203,7 @@ for (const file of compatibilityHtmlFiles) {
 
 const swPath = path.join(dist, 'sw.js');
 if (fs.existsSync(swPath)) {
-  const version = process.env.RELEASE_VERSION || process.env.GITHUB_SHA || String(Date.now());
-  const safeVersion = `po-v-${version}`.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80);
-  const sw = fs.readFileSync(swPath, 'utf8').replace('const VERSION = "po-v-dev";', `const VERSION = "${safeVersion}";`);
+  const sw = fs.readFileSync(swPath, 'utf8').replace('const VERSION = "po-v-dev";', `const VERSION = "${safeBuildVersion}";`);
   fs.writeFileSync(swPath, sw);
 }
 
