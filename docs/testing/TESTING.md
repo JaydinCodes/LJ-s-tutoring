@@ -46,7 +46,7 @@ npm run test:e2e:web
 
 ## 20-Minute Production Live-User Test Scope
 
-Use this only after the release gates in `RELEASE_GOVERNANCE.md` have passed and the production deployment is already live. The goal is to validate real production auth, routing, and core workflows with a small controlled group while protecting learner data and keeping rollback simple.
+Use this only after the release gates in `../release/RELEASE_GOVERNANCE.md` have passed and the production deployment is already live. The goal is to validate real production auth, routing, and core workflows with a small controlled group while protecting learner data and keeping rollback simple.
 
 ### Guardrails
 
@@ -76,9 +76,9 @@ npm run seed:prod-test-users --prefix lms-api
 
 Expected login paths:
 
-- Student: `https://student.projectodysseus.live/dashboard/login.html`, then sign in with Google using `PROD_TEST_STUDENT_EMAIL`.
-- Admin: `https://admin.projectodysseus.live/admin/login.html`, then use `PROD_TEST_ADMIN_EMAIL`, `PROD_TEST_ADMIN_PASSWORD`, and the emailed OTP.
-- Tutor, if seeded: `https://tutor.projectodysseus.live/tutor/login.html`, then use `PROD_TEST_TUTOR_EMAIL` and `PROD_TEST_TUTOR_PASSWORD`.
+- Student: `https://student.projectodysseus.live/dashboard/login/`, then sign in with Google using `PROD_TEST_STUDENT_EMAIL`.
+- Admin: `https://admin.projectodysseus.live/dashboard/login/`, then use `PROD_TEST_ADMIN_EMAIL`, `PROD_TEST_ADMIN_PASSWORD`, and the emailed OTP.
+- Tutor, if seeded: `https://tutor.projectodysseus.live/dashboard/login/`, then use `PROD_TEST_TUTOR_EMAIL` and `PROD_TEST_TUTOR_PASSWORD`.
 
 ### Scope
 

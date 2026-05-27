@@ -17,7 +17,7 @@
 ## Deployment Safety
 - Use canary for API changes affecting auth/payroll/arcade validation.
 - Promote to full rollout after 30-60 minutes of error-free monitoring.
-- For production validation with real users, run the 20-minute live-user test scope in `TESTING.md` before full promotion.
+- For production validation with real users, run the 20-minute live-user test scope in `../testing/TESTING.md` before full promotion.
 
 ## Evidence
 Attach the following to the release record:

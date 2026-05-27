@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 test('readiness page wires careerId-aware frontend module', () => {
-  const htmlPath = path.resolve(__dirname, '../../dashboard/career/readiness/index.html');
+  const htmlPath = path.resolve(__dirname, '../../legacy/static/dashboard/career/readiness/index.html');
   const content = fs.readFileSync(htmlPath, 'utf8');
 
   assert.match(content, /id="milestoneCategories"/);

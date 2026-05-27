@@ -19,6 +19,7 @@ web/.next/
 .env
 .env.local
 .env.example
+!.env.example
 
 # Husky
 .husky/_

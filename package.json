@@ -68,7 +68,7 @@
     "typecheck": "npm run typecheck:react",
     "validate:monitoring": "node scripts/validate-monitoring-assets.js",
     "lint:js": "eslint \"assets/**/*.js\" \"scripts/**/*.js\" --max-warnings=0",
-    "lint:html": "html-validate \"*.html\" \"dashboard/**/*.html\" \"reports/**/*.html\" \"tutor/**/*.html\" \"guides/**/*.html\" \"admin/**/*.html\"",
+    "lint:html": "html-validate \"*.html\" \"legacy/static/**/*.html\"",
     "lint": "npm-run-all --parallel lint:js lint:html",
     "prepare": "husky || echo husky-not-installed"
   }

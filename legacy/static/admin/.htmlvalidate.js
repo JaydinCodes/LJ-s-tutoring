@@ -1,5 +1,5 @@
 module.exports = {
-  extends: ['../.htmlvalidate.js'],
+  extends: ['../../../.htmlvalidate.js'],
   rules: {
     'no-implicit-button-type': 'off',
     'no-inline-style': 'off',

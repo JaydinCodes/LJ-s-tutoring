@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or typed row specs.
 - Stopped logging every inbound request via `console.log('[HIT]')` in the
   API; structured `request.complete` / `request.slow` logs remain.
-- Reconciled `FUTURE_LMS_SECURITY_BLUEPRINT.md` with current deployment
+- Reconciled `docs/security/FUTURE_LMS_SECURITY_BLUEPRINT.md` with current deployment
   (see the "Route Protection Baseline (Current)" section).
 
 ### Added

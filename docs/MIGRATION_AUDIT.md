@@ -7,9 +7,9 @@ Date: 2026-05-25
 The repository is a hybrid application:
 
 - Static public website: `index.html`, `privacy.html`, `terms.html`, `guides/**/*.html`.
-- Static admin console: `admin/**/*.html` plus `assets/admin/**/*.js`.
-- Static tutor portal: `tutor/**/*.html` plus `assets/tutor/**/*.js`.
-- Legacy student portal: `dashboard/**/*.html`, `reports/index.html`, and `assets/student/**/*.js`.
+- Static admin console: `legacy/static/admin/**/*.html` plus `assets/admin/**/*.js`.
+- Static tutor portal: `legacy/static/tutor/**/*.html` plus `assets/tutor/**/*.js`.
+- Legacy student portal: `legacy/static/dashboard/**/*.html`, `legacy/static/reports/index.html`, and `assets/student/**/*.js`.
 - Newer React student slice: `student-app/src/**/*`, built into `student-app-dist`.
 - Existing API/backend: `lms-api`, Fastify, Prisma, PostgreSQL, migrations, tests, RBAC, audit, payments, assignments, tutor portal routes, student dashboard routes.
 - Assets and branding: `favicon.svg`, `images/*`, `assets/site.css`, `assets/portal.css`, `assets/animations/odie-mascot-idle.lottie.json`, tutor photos in `images/`.

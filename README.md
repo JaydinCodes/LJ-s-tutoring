@@ -22,6 +22,24 @@ npm run start
 
 You can also use `.env.local` for machine-specific secrets; it is ignored by git.
 
+## Repository map
+
+```text
+src/                 Unified React + TypeScript LMS frontend
+lms-api/             Fastify API, Prisma schema, migrations, API tests
+docs/                Architecture, setup, deployment, compliance, release, and ops docs
+.do/                 DigitalOcean App Platform spec
+assets/              Public support assets copied into the React static build
+images/              Public images used by React routes and SEO metadata
+scripts/             Build, verification, release, and operational helper scripts
+tests/               Frontend unit tests and browser E2E tests
+ops/                 Gateway and monitoring assets
+releases/            Release evidence and rollback templates
+legacy/static/       Retired static portal source kept for reference/fallback work
+```
+
+Root-level config files are intentionally kept at the top level because the related tools expect them there. Deeper project notes live in `docs/README.md`.
+
 ## React LMS migration
 
 The production build now serves the unified React app for public, student, admin, tutor, auth, and onboarding routes. Legacy static source files are retained only as inactive reference material unless explicitly reintroduced.
@@ -45,6 +63,7 @@ Important unified React routes:
 Migration tracking:
 
 - Audit and slice history: `docs/MIGRATION_AUDIT.md`
+- Documentation map: `docs/README.md`
 - Supabase schema plan: `docs/supabase/schema.sql`
 - Supabase auth seed notes: `docs/supabase/auth-seed-notes.md`
 - Supabase production RLS review: `docs/supabase/PRODUCTION_RLS_REVIEW.md`

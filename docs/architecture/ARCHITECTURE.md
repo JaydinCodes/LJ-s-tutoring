@@ -19,7 +19,7 @@ The browser pages call the API directly using `PUBLIC_PO_API_BASE`.
 ## Front-end folders
 
 - `assets/` contains shared CSS and browser modules
-- `dashboard/`, `reports/`, `tutor/`, `admin/`, and `guides/` contain the HTML pages
+- `legacy/static/` contains retired static HTML pages kept for reference only
 - root HTML files are the public pages (`index.html`, `login.html`, `privacy.html`, `terms.html`)
 
 ## Back-end folders

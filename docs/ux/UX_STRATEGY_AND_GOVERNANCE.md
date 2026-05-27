@@ -41,7 +41,7 @@
 
 ## UX KPI Framework
 
-Mapped to analytics events in `ANALYTICS_EVENTS.md`.
+Mapped to analytics events in `../product/ANALYTICS_EVENTS.md`.
 
 - Activation: login success rate, first dashboard_viewed within 5 minutes.
 - Engagement: game_session_start -> game_session_end completion rate.

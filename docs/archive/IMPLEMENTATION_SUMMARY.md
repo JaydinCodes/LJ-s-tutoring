@@ -97,7 +97,7 @@ All **8 immediate action items** from the audit have been completed, plus additi
   - Comprehensive documentation (200+ lines of comments)
 - **Integration**: First layer of formatting (before linting)
 
-### 11. ✅ Created ARCHITECTURE.md
+### 11. Created docs/architecture/ARCHITECTURE.md
 - **Purpose**: System-level understanding for developers
 - **Contents**:
   - How all files fit together
@@ -127,7 +127,7 @@ All **8 immediate action items** from the audit have been completed, plus additi
 ### Documentation Files
 - `README.md`: Complete rewrite (400+ lines)
 - `CHANGELOG.md`: Version tracking established (NEW)
-- `ARCHITECTURE.md`: System overview (500+ lines, NEW)
+- `docs/architecture/ARCHITECTURE.md`: System overview (500+ lines, NEW)
 - `.github/PULL_REQUEST_TEMPLATE/pull_request_template.md`: PR standards (NEW)
 
 ### Content Updates
@@ -209,7 +209,7 @@ All **8 immediate action items** from the audit have been completed, plus additi
 **Recommended Reading Order**:
 
 1. **README.md** (5 min) - Get started, understand commands
-2. **ARCHITECTURE.md** (15 min) - Understand how everything fits together
+2. **docs/architecture/ARCHITECTURE.md** (15 min) - Understand how everything fits together
 3. **scripts/inject-config.js** (10 min) - Learn config system
 4. **.eslintrc.js** (10 min) - Understand code quality rules
 5. **lighthouserc.js** (10 min) - Understand performance budgets
@@ -217,7 +217,7 @@ All **8 immediate action items** from the audit have been completed, plus additi
 
 **For Specific Tasks**:
 - Setting up environment: README.md → Configuration section
-- Making changes: ARCHITECTURE.md → Workflow section
+- Making changes: docs/architecture/ARCHITECTURE.md -> Workflow section
 - Adjusting rules: Read comments in respective config file
 - Understanding failures: Check CI logs → corresponding config file
 
@@ -239,7 +239,7 @@ All **8 immediate action items** from the audit have been completed, plus additi
 
 ## 📞 Support
 
-- **Questions about system**: Read ARCHITECTURE.md
+- **Questions about system**: Read docs/architecture/ARCHITECTURE.md
 - **Questions about commands**: Read README.md
 - **Questions about why**: Check inline comments in config files
 - **Questions about history**: Read CHANGELOG.md
@@ -258,7 +258,7 @@ All **8 immediate action items** from the audit have been completed, plus additi
 **The system now answers**:
 - ✅ "How do I configure this?" → README.md Configuration section
 - ✅ "Why is this rule here?" → Inline comments in config files
-- ✅ "How do all these files work together?" → ARCHITECTURE.md
+- "How do all these files work together?" -> docs/architecture/ARCHITECTURE.md
 - ✅ "What changed and when?" → CHANGELOG.md
 - ✅ "What should my PR include?" → PR template
 - ✅ "Is my code good enough?" → CI/CD will tell you
