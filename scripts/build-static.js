@@ -54,6 +54,12 @@ const reactDashboardRoutes = [
   'guides/matric-maths-mistakes-guide',
   'privacy',
   'terms',
+  'admin/login',
+  'student',
+  'student/login',
+  'tutor/login',
+  'tutor/dashboard',
+  'reports',
   'onboarding/student',
   'onboarding/tutor',
   'dashboard/login',
@@ -181,6 +187,16 @@ for (const route of reactDashboardRoutes) {
   const routeDir = route ? path.join(dist, ...route.split('/')) : dist;
   fs.mkdirSync(routeDir, { recursive: true });
   fs.writeFileSync(path.join(routeDir, 'index.html'), reactShell(route));
+}
+
+const compatibilityHtmlFiles = [
+  'dashboard/login.html',
+];
+
+for (const file of compatibilityHtmlFiles) {
+  const filePath = path.join(dist, ...file.split('/'));
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, reactShell(file.replace(/\.html$/, '')));
 }
 
 const swPath = path.join(dist, 'sw.js');

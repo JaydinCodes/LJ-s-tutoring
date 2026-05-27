@@ -42,6 +42,10 @@ export function App() {
   return (
     <Routes>
       <Route path="/" element={<PublicHomeRoute />} />
+      <Route path="/admin/*" element={<Navigate to="/dashboard/admin" replace />} />
+      <Route path="/student/*" element={<Navigate to="/dashboard/student" replace />} />
+      <Route path="/tutor/*" element={<Navigate to="/dashboard/tutor" replace />} />
+      <Route path="/reports/*" element={<Navigate to="/dashboard/student/reports" replace />} />
       <Route path="/about" element={<AboutRoute />} />
       <Route path="/programs" element={<ProgramsRoute />} />
       <Route path="/guides" element={<GuidesIndexRoute />} />
@@ -49,7 +53,10 @@ export function App() {
       <Route path="/privacy" element={<PrivacyRoute />} />
       <Route path="/terms" element={<TermsRoute />} />
       <Route path="/login" element={<LoginRoute />} />
+      <Route path="/dashboard" element={<Navigate to="/dashboard/student" replace />} />
+      <Route path="/dashboard/" element={<Navigate to="/dashboard/student" replace />} />
       <Route path="/dashboard/login" element={<LoginRoute />} />
+      <Route path="/dashboard/login.html" element={<Navigate to="/dashboard/login" replace />} />
       <Route path="/onboarding/student" element={<OnboardingRoute role="student" />} />
       <Route path="/onboarding/tutor" element={<OnboardingRoute role="tutor" />} />
       <Route path="/dashboard/student" element={<ProtectedRoute roles={['student']}><StudentDashboardRoute /></ProtectedRoute>} />

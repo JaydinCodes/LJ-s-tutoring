@@ -7,6 +7,9 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production'),
+  },
   build: {
     outDir: path.resolve(rootDir, 'react-app-dist'),
     emptyOutDir: true,

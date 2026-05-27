@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,11 +25,34 @@ function loadRuntimeEnv() {
 
 loadRuntimeEnv();
 
-const DATABASE_URL = [process.env.DATABASE_URL_TEST, process.env.DATABASE_URL]
-  .map((value) => (value ?? '').trim())
-  .find(Boolean);
-if (!DATABASE_URL) {
-  console.error('Missing DATABASE_URL');
+const isTest = process.env.NODE_ENV === 'test';
+const rawDatabaseUrl = (isTest ? process.env.DATABASE_URL_TEST : process.env.DATABASE_URL)?.trim();
+if (!rawDatabaseUrl) {
+  console.error(isTest ? 'Missing DATABASE_URL_TEST' : 'Missing DATABASE_URL');
+  process.exit(1);
+}
+const DATABASE_URL = rawDatabaseUrl;
+
+function parseDatabaseUrl(databaseUrl: string) {
+  try {
+    return new URL(databaseUrl);
+  } catch {
+    console.error('DATABASE_URL is not a valid PostgreSQL connection URL.');
+    process.exit(1);
+  }
+}
+
+function describeDatabaseUrl(databaseUrl: string) {
+  const parsed = parseDatabaseUrl(databaseUrl);
+  const port = parsed.port ? `:${parsed.port}` : '';
+  return `${parsed.protocol}//${parsed.hostname}${port}${parsed.pathname}`;
+}
+
+const parsedDatabaseUrl = parseDatabaseUrl(DATABASE_URL);
+if (!parsedDatabaseUrl.hostname || parsedDatabaseUrl.hostname === 'base') {
+  console.error(
+    'DATABASE_URL host is invalid. In DigitalOcean, set DATABASE_URL to the full managed database connection string, not a placeholder such as "base".'
+  );
   process.exit(1);
 }
 
@@ -84,9 +107,11 @@ async function run() {
       return a.localeCompare(b);
     });
 
-  const client = await pool.connect();
+  let client: PoolClient | undefined;
   let lockAcquired = false;
   try {
+    console.log(`Running migrations against ${describeDatabaseUrl(DATABASE_URL)}...`);
+    client = await pool.connect();
     await client.query('BEGIN');
     const lockRes = await client.query(
       `select pg_try_advisory_lock($1::int, $2::int) as ok`,
@@ -118,15 +143,17 @@ async function run() {
     }
     console.log('Migrations complete.');
   } catch (err) {
-    await client.query('ROLLBACK');
-    if (lockAcquired) {
+    if (client) {
+      await client.query('ROLLBACK');
+    }
+    if (client && lockAcquired) {
       await client.query(`select pg_advisory_unlock($1::int, $2::int)`, [1701, 2603]);
       lockAcquired = false;
     }
     console.error('Migration failed:', err);
     process.exitCode = 1;
   } finally {
-    client.release();
+    client?.release();
     await pool.end();
   }
 }
