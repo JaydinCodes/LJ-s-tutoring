@@ -66,6 +66,13 @@ function describeDatabaseUrl(databaseUrl: string) {
   return `${parsed.protocol}//${parsed.hostname}${port}${parsed.pathname}`;
 }
 
+function connectionStringForPg(databaseUrl: string) {
+  const parsed = parseDatabaseUrl(databaseUrl);
+  parsed.searchParams.delete('sslmode');
+  parsed.searchParams.delete('uselibpqcompat');
+  return parsed.toString();
+}
+
 const parsedDatabaseUrl = parseDatabaseUrl(DATABASE_URL);
 if (!parsedDatabaseUrl.hostname || parsedDatabaseUrl.hostname === 'base') {
   console.error(
@@ -80,13 +87,16 @@ if (process.env.NODE_ENV === 'production' && /^db\.[^.]+\.supabase\.co$/.test(pa
   process.exit(1);
 }
 
-const requiresSsl = DATABASE_URL.includes('sslmode=require') || parsedDatabaseUrl.hostname.endsWith('.supabase.co');
+const requiresSsl =
+  DATABASE_URL.includes('sslmode=require') ||
+  parsedDatabaseUrl.hostname.endsWith('.supabase.co') ||
+  parsedDatabaseUrl.hostname.endsWith('.supabase.com');
 const ssl = requiresSsl
   ? { rejectUnauthorized: false }
   : undefined;
 
 const pool = new Pool({
-  connectionString: DATABASE_URL,
+  connectionString: connectionStringForPg(DATABASE_URL),
   ssl,
   connectionTimeoutMillis: Number(process.env.PG_CONN_TIMEOUT_MS ?? 10000),
 });

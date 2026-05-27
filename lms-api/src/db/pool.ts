@@ -37,6 +37,13 @@ function parseDatabaseUrl(databaseUrl: string) {
   }
 }
 
+function connectionStringForPg(databaseUrl: string) {
+  const parsed = parseDatabaseUrl(databaseUrl);
+  parsed.searchParams.delete('sslmode');
+  parsed.searchParams.delete('uselibpqcompat');
+  return parsed.toString();
+}
+
 const DATABASE_URL = normalizeDatabaseUrl(rawDatabaseUrl);
 const parsedDatabaseUrl = parseDatabaseUrl(DATABASE_URL);
 if (process.env.NODE_ENV === 'production' && /^db\.[^.]+\.supabase\.co$/.test(parsedDatabaseUrl.hostname)) {
@@ -44,13 +51,16 @@ if (process.env.NODE_ENV === 'production' && /^db\.[^.]+\.supabase\.co$/.test(pa
     'DATABASE_URL uses Supabase direct Postgres host, which can be IPv6-only and unreachable from DigitalOcean. Use the Supabase Session Pooler connection string instead.'
   );
 }
-const requiresSsl = DATABASE_URL.includes('sslmode=require') || parsedDatabaseUrl.hostname.endsWith('.supabase.co');
+const requiresSsl =
+  DATABASE_URL.includes('sslmode=require') ||
+  parsedDatabaseUrl.hostname.endsWith('.supabase.co') ||
+  parsedDatabaseUrl.hostname.endsWith('.supabase.com');
 const ssl = requiresSsl
   ? { rejectUnauthorized: false }
   : undefined;
 
 export const pool = new Pool({
-  connectionString: DATABASE_URL,
+  connectionString: connectionStringForPg(DATABASE_URL),
   ssl,
   max: Number(process.env.PG_POOL_MAX ?? 10),
   idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS ?? 30000),
