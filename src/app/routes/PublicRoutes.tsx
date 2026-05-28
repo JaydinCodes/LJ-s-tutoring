@@ -125,7 +125,7 @@ export function PublicHomeRoute() {
       <section className="relative overflow-hidden bg-brand-navy text-white">
         <video
           className="absolute inset-0 h-full w-full object-cover opacity-45"
-          src="/images/e_b_e_bc_E_cb_b_mp_.mp4"
+          src="./images/e_b_e_bc_f_cb_b_mp_.mp4"
           autoPlay
           muted
           loop
