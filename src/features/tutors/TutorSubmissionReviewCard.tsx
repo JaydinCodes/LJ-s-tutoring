@@ -45,7 +45,7 @@ export function TutorSubmissionReviewCard({
           <h3 className="font-semibold text-slate-950">{submission.assignment_title || submission.assignment_id}</h3>
           <p className="mt-1 text-sm text-slate-600">{submission.student_label || submission.student_id}</p>
         </div>
-        <StatusBadge value={submission.status} />
+        <StatusBadge value={submission.status === 'returned' ? 'returned_for_correction' : submission.status === 'submitted' ? 'under_review' : submission.status} />
       </div>
       <dl className="mt-4 grid gap-2 text-sm text-slate-600">
         <div><dt className="font-semibold text-slate-800">Submitted</dt><dd>{formatDate(submission.submitted_at)}</dd></div>
@@ -60,8 +60,8 @@ export function TutorSubmissionReviewCard({
           <FormField label="Status">
             <select className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={status} onChange={(event) => setStatus(event.target.value as 'submitted' | 'marked' | 'returned')}>
               <option value="marked">Marked</option>
-              <option value="returned">Returned</option>
-              <option value="submitted">Submitted</option>
+              <option value="returned">Returned for correction</option>
+              <option value="submitted">Under review</option>
             </select>
           </FormField>
         </div>

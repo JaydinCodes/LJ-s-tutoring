@@ -7,11 +7,13 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatDate } from '../../lib/utils/format';
 import type { AssignmentSubmission, StudentProgress } from '../../types/lms';
+import { calculateAssignmentStatus } from '../assignments/assignmentStatus';
 import { loadStudentDashboard } from './studentDashboardRepository';
 
 export function StudentResultsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadStudentDashboard, []);
   const markedSubmissions = (data?.submissions || []).filter((submission) => submission.status === 'marked' || submission.marks_awarded != null);
+  const assignmentsById = new Map((data?.assignments || []).map((assignment) => [assignment.id, assignment]));
 
   return (
     <DashboardShell
@@ -37,9 +39,9 @@ export function StudentResultsRoute() {
                 rows={markedSubmissions}
                 empty="No marked submissions have been released yet."
                 columns={[
-                  { key: 'assignment', label: 'Assignment', render: (row) => row.assignment_id },
+                  { key: 'assignment', label: 'Assignment', render: (row) => assignmentsById.get(row.assignment_id)?.title || row.assignment_id },
                   { key: 'marks', label: 'Marks', render: (row) => row.marks_awarded == null ? 'Pending' : `${row.marks_awarded}%` },
-                  { key: 'status', label: 'Status', render: (row) => <StatusBadge value={row.status || 'submitted'} /> },
+                  { key: 'status', label: 'Status', render: (row) => <StatusBadge value={calculateAssignmentStatus({ assignment: assignmentsById.get(row.assignment_id) || { status: 'published', due_date: null, id: '', title: '', created_at: '' }, submission: row })} /> },
                   { key: 'submitted', label: 'Submitted', render: (row) => formatDate(row.submitted_at) },
                 ]}
               />
@@ -53,7 +55,7 @@ export function StudentResultsRoute() {
             {markedSubmissions.slice(0, 6).map((submission) => (
               <div key={submission.id} className="rounded-lg border border-slate-200 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="font-semibold text-slate-950">{submission.assignment_id}</p>
+                  <p className="font-semibold text-slate-950">{assignmentsById.get(submission.assignment_id)?.title || submission.assignment_id}</p>
                   <p className="text-sm font-semibold text-teal-700">{submission.marks_awarded == null ? 'Pending' : `${submission.marks_awarded}%`}</p>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{submission.feedback || 'No written feedback was supplied.'}</p>
