@@ -18,6 +18,11 @@ const tutors = [
     focus: 'Problem solving, calculus foundations, learner momentum',
     image: '/images/liam-newton.jpg',
   },
+  {
+    name: 'Logan Petrus', 
+    focus: 'Data Handling, Financial Mathematics, Critical Thinking',
+    image: '/images/logan-petrus.jpeg'
+  }
 ];
 
 const stats = [
@@ -118,7 +123,15 @@ export function PublicHomeRoute() {
   return (
     <PublicLayout>
       <section className="relative overflow-hidden bg-brand-navy text-white">
-        <img className="absolute inset-0 h-full w-full object-cover opacity-45" src="/images/logan-petrus.jpeg" alt="" />
+        <video
+          className="absolute inset-0 h-full w-full object-cover opacity-45"
+          src="/images/bg_video.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-hidden="true"
+        />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,_rgba(8,19,38,0.96)_0%,_rgba(8,19,38,0.76)_48%,_rgba(8,19,38,0.28)_100%)]" />
         <div className="relative mx-auto flex min-h-[86svh] max-w-7xl flex-col justify-center px-6 py-20">
           <p className="text-sm font-semibold uppercase tracking-[0.32em] text-amber-300">Grade 8-12 CAPS Mathematics</p>
