@@ -133,10 +133,12 @@ export async function buildApp() {
     'http://127.0.0.1:8081',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
   ];
-  const allowedOrigins = configuredOrigins.length > 0
+  const allowedOrigins = process.env.NODE_ENV === 'production'
     ? configuredOrigins
-    : (process.env.NODE_ENV === 'production' ? [] : defaultDevOrigins);
+    : Array.from(new Set([...configuredOrigins, ...defaultDevOrigins]));
   const enforceSameOrigin = process.env.ENFORCE_SAME_ORIGIN !== 'false';
 
   function headerValue(value: string | string[] | undefined) {

@@ -6,6 +6,8 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextArea } from '../../components/ui/FormField';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { apiPost, optionalApiGet } from '../../lib/api/client';
+import careersDataset from '../../../lms-api/data/odie-careers/careers.v1.json';
+import coursesDataset from '../../../lms-api/data/odie-careers/courses.v1.json';
 
 interface CareerOverview {
   careers?: Array<{ id: string; title: string; description?: string; category?: string }>;
@@ -13,16 +15,24 @@ interface CareerOverview {
 }
 
 async function loadCareersOverview() {
-  return optionalApiGet<CareerOverview>('/odie-careers/overview', { careers: [], supportedSubjects: [] });
+  const fallback = {
+    careers: careersDataset.careers,
+    supportedSubjects: coursesDataset.supportedSubjects,
+  };
+  return optionalApiGet<CareerOverview>('/odie-careers/overview', fallback);
 }
 
-async function askCareersAssistant(message: string) {
-  return apiPost<{ message?: string; text?: string }>('/assistant/chat', {
-    role: 'student',
-    persona: 'study_coach',
-    subject: 'Career pathways',
-    careerPathwayContext: 'The learner is using the unified React student careers dashboard for pathway advice, APS planning, and study planning.',
-    message,
+async function askCareersAssistant(message: string, history: Array<{ role: 'user' | 'assistant'; text: string }>) {
+  return apiPost<{ message?: string; text?: string }>('/assistant/careers-chat', {
+    message: [
+      'The learner is using the Project Odysseus Careers dashboard.',
+      'Give career pathway advice, subject planning, APS readiness guidance, and study planning.',
+      `Learner question: ${message}`,
+    ].join('\n'),
+    history: history
+      .filter((item) => item.text.trim())
+      .slice(-8)
+      .map((item) => ({ role: item.role, content: item.text })),
   });
 }
 
@@ -44,10 +54,11 @@ export function StudentCareersRoute() {
     setMessage('');
     setChat((current) => [...current, { role: 'user', text: prompt }]);
     try {
-      const response = await askCareersAssistant(prompt);
+      const response = await askCareersAssistant(prompt, chat);
       setChat((current) => [...current, { role: 'assistant', text: response.message || response.text || 'I need a little more context before I can help.' }]);
-    } catch {
-      setChat((current) => [...current, { role: 'assistant', text: 'I cannot connect to the assistant right now. Please try again shortly.' }]);
+    } catch (err) {
+      const details = err instanceof Error ? err.message : '';
+      setChat((current) => [...current, { role: 'assistant', text: `I cannot connect to Odie right now. ${details.includes('assistant_not_configured') ? 'No assistant provider is configured on the API server yet.' : 'Please check that the LMS API is running and try again shortly.'}` }]);
     } finally {
       setBusy(false);
     }

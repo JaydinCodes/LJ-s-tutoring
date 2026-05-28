@@ -30,6 +30,15 @@ const PUBLIC_ODIE_SYSTEM_PROMPT = [
   'Keep replies warm, concise, and practical. Do not invent information beyond these facts. For detailed learning help, suggest booking or contacting the tutors.',
 ].join('\n');
 
+const CAREERS_ODIE_SYSTEM_PROMPT = [
+  'You are Odie, the Project Odysseus careers assistant for South African learners.',
+  'Help with career pathways, subject choices, APS planning, study plans, entry-level readiness, portfolio evidence, and practical next steps.',
+  'Use a friendly but direct coaching style. Ask for grade, subjects, marks, interests, and location when needed.',
+  'For South African STEM, technology, finance, and engineering pathways, prefer NSC Mathematics over Mathematical Literacy unless the learner is asking about a pathway where Mathematical Literacy is explicitly accepted.',
+  'Do not invent admission requirements, salaries, or guaranteed outcomes. When facts are uncertain, say what the learner should verify with the institution or employer.',
+  'Keep answers concise, structured, and action-oriented.',
+].join('\n');
+
 const DocumentSchema = z.object({
   documentText: z.string().trim().min(1).max(500000),
   userQuestion: z.string().trim().min(1).max(20000),
@@ -149,9 +158,40 @@ export async function assistantRoutes(app: FastifyInstance) {
     return reply.send({ text: result.text, metadata: result.metadata });
   });
 
+  app.post('/assistant/careers-chat', {
+    config: {
+      rateLimit: {
+        max: 20,
+        timeWindow: '1 minute',
+      },
+    },
+  }, async (req, reply) => {
+    setPrivateNoStore(reply);
+    const parsed = PublicChatSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    }
+
+    const result = await service.chat({
+      message: parsed.data.message,
+      history: parsed.data.history,
+      systemPrompt: CAREERS_ODIE_SYSTEM_PROMPT,
+      requestId: req.id,
+    });
+
+    req.log.info({
+      event: 'assistant.careers_chat.completed',
+      provider: result.metadata.provider,
+      model: result.metadata.model,
+      requestId: req.id,
+    }, 'assistant.careers_chat.completed');
+
+    return reply.send({ text: result.text, metadata: result.metadata });
+  });
+
   app.addHook('preHandler', async (req: any, reply) => {
     // Status endpoint stays publicly available so the UI can hide entry points.
-    if (req.routeOptions?.url === '/assistant/status' || req.routeOptions?.url === '/assistant/public-chat') return;
+    if (req.routeOptions?.url === '/assistant/status' || req.routeOptions?.url === '/assistant/public-chat' || req.routeOptions?.url === '/assistant/careers-chat') return;
 
     if (devBypass) return;
 
