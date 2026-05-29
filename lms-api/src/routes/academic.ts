@@ -26,6 +26,7 @@ const WEEK_BONUS_XP = 20;
 const SUBMISSION_MAX_BYTES = Number(process.env.SUBMISSION_MAX_FILE_BYTES ?? 10 * 1024 * 1024);
 const SUBMISSION_ALLOWED_MIME = new Set(['application/pdf', 'image/jpeg', 'image/png']);
 const SUBMISSION_ALLOWED_EXT = new Set(['.pdf', '.jpg', '.jpeg', '.png']);
+const CLASS_ANALYTICS_PRIVACY_THRESHOLD = 3;
 const ODIE_SYSTEM_PROMPT = 'You are Odie, the Project Odysseus AI tutoring assistant. You help learners understand schoolwork step by step without simply giving final answers too early. You are encouraging, clear, and practical. You adapt to the learner’s subject, grade, current assignment, recent performance, and weak areas when available. You use a Socratic tutoring style: ask guiding questions, explain concepts simply, and give worked examples when needed. You may help with study planning, revision, assignment understanding, and career pathways. You must not fabricate marks, assignment details, or results. If context is missing, say what information is needed.';
 
 function toDateOnly(value: Date) {
@@ -80,6 +81,51 @@ function normalizeJson(value: any, fallback: any) {
     }
   }
   return value;
+}
+
+function roundMetric(value: number | null | undefined, digits = 0) {
+  if (!Number.isFinite(Number(value))) return null;
+  const factor = 10 ** digits;
+  return Math.round(Number(value) * factor) / factor;
+}
+
+function average(values: number[]) {
+  const finite = values.filter((value) => Number.isFinite(value));
+  if (!finite.length) return null;
+  return finite.reduce((total, value) => total + value, 0) / finite.length;
+}
+
+function academicStatus(score: number | null) {
+  if (score == null) return 'Awaiting results';
+  if (score >= 80) return 'Excellent progress';
+  if (score >= 70) return 'Strong progress';
+  if (score >= 50) return 'On track';
+  if (score >= 40) return 'Needs support';
+  return 'Urgent intervention';
+}
+
+function scoreBucket(score: number | null | undefined) {
+  const value = Number(score);
+  if (!Number.isFinite(value)) return null;
+  if (value < 30) return '0-29%';
+  if (value < 40) return '30-39%';
+  if (value < 50) return '40-49%';
+  if (value < 60) return '50-59%';
+  if (value < 70) return '60-69%';
+  if (value < 80) return '70-79%';
+  return '80-100%';
+}
+
+const SCORE_BUCKETS = ['0-29%', '30-39%', '40-49%', '50-59%', '60-69%', '70-79%', '80-100%'];
+
+function classPositioning(percentile: number | null, ownAverage: number | null, classAverage: number | null) {
+  if (percentile == null || ownAverage == null || classAverage == null) {
+    return 'Class comparison is available once enough anonymous results exist.';
+  }
+  if (percentile >= 75) return 'You are in the top 25% performance band for this class context.';
+  if (ownAverage > classAverage) return 'You performed above the class average.';
+  if (percentile >= 40) return 'You are in the middle performance band.';
+  return 'You are below the class average and should prioritise the improvement areas.';
 }
 
 function setPrivateNoStore(reply: any) {
@@ -444,7 +490,11 @@ export async function academicRoutes(app: FastifyInstance) {
   }, async (req, reply) => {
     const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
     if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
-    const res = await pool.query(
+    setPrivateNoStore(reply);
+
+    const [studentRes, res] = await Promise.all([
+      pool.query(`select grade from students where id = $1`, [studentId]),
+      pool.query(
       `select id, subject, grade, score, total, percentage, level_band,
               topic_breakdown_json, cognitive_breakdown_json, recommended_next_steps_json,
               completed_at, source_type
@@ -452,12 +502,15 @@ export async function academicRoutes(app: FastifyInstance) {
        where student_id = $1
        order by completed_at desc
        limit 24`,
-      [studentId]
-    );
+        [studentId]
+      ),
+    ]);
+
     const items = res.rows.map((row) => ({
       id: row.id,
       title: `${row.subject} result`,
       subject: row.subject,
+      grade: row.grade,
       score: Number(row.score),
       total: Number(row.total),
       percentage: Number(row.percentage),
@@ -469,12 +522,190 @@ export async function academicRoutes(app: FastifyInstance) {
       recommendedNextSteps: normalizeJson(row.recommended_next_steps_json, []),
       feedbackSummary: row.level_band ? `Current band: ${row.level_band}` : 'Result recorded.',
     }));
-    const weakAreas = items
-      .flatMap((item) => item.topicBreakdown.map((topic: any) => ({ ...topic, subject: item.subject })))
+
+    const totalMarksObtained = items.reduce((total, item) => total + item.score, 0);
+    const totalMarksAvailable = items.reduce((total, item) => total + item.total, 0);
+    const overallPercentage = totalMarksAvailable > 0
+      ? roundMetric((totalMarksObtained / totalMarksAvailable) * 100, 1)
+      : roundMetric(average(items.map((item) => item.percentage)), 1);
+    const averageAcrossAssessments = roundMetric(average(items.map((item) => item.percentage)), 1);
+    const topics = items
+      .flatMap((item) => item.topicBreakdown.map((topic: any) => ({
+        topic: String(topic.topic ?? topic.name ?? 'Topic'),
+        score: Number(topic.score ?? topic.percentage),
+        support: Number(topic.support ?? 0) || undefined,
+        subject: item.subject,
+      })))
       .filter((topic: any) => Number.isFinite(Number(topic.score)))
-      .sort((a: any, b: any) => Number(a.score) - Number(b.score))
-      .slice(0, 8);
-    return reply.send({ results: items, items, analytics: { weakAreas } });
+      .map((topic: any) => ({ ...topic, score: roundMetric(Number(topic.score), 1) }));
+
+    const bySubject = new Map<string, typeof items>();
+    for (const item of items) {
+      bySubject.set(item.subject, [...(bySubject.get(item.subject) ?? []), item]);
+    }
+    const subjectBreakdown = [...bySubject.entries()]
+      .map(([subject, subjectItems]) => {
+        const score = subjectItems.reduce((total, item) => total + item.score, 0);
+        const total = subjectItems.reduce((sum, item) => sum + item.total, 0);
+        return {
+          subject,
+          score: roundMetric(total > 0 ? (score / total) * 100 : average(subjectItems.map((item) => item.percentage)), 1),
+          marksObtained: roundMetric(score, 1),
+          marksAvailable: roundMetric(total, 1),
+          assessments: subjectItems.length,
+        };
+      })
+      .sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0));
+
+    const strongestSubjects = subjectBreakdown.slice(0, 3);
+    const improvementSubjects = [...subjectBreakdown].sort((a, b) => Number(a.score ?? 0) - Number(b.score ?? 0)).slice(0, 3);
+    const strongestTopics = [...topics].sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0)).slice(0, 5);
+    const weakAreas = [...topics].sort((a, b) => Number(a.score ?? 0) - Number(b.score ?? 0)).slice(0, 8);
+
+    const ownGrade = studentRes.rows[0]?.grade ?? items.find((item) => item.grade)?.grade ?? null;
+    const subjects = subjectBreakdown.map((item) => item.subject);
+    let classAnalytics: any = {
+      available: false,
+      privacyThreshold: CLASS_ANALYTICS_PRIVACY_THRESHOLD,
+      overview: null,
+      distribution: SCORE_BUCKETS.map((range) => ({ range, count: 0, isLearnerBucket: range === scoreBucket(overallPercentage) })),
+      positioning: classPositioning(null, overallPercentage, null),
+      trends: [],
+      subjectTrends: [],
+    };
+
+    if (subjects.length) {
+      const classParams = [subjects, ownGrade];
+      const classFilter = `
+        b.subject = any($1::text[])
+        and ($2::text is null or coalesce(b.grade, s.grade) = $2::text)
+      `;
+      const [overviewRes, distributionRes, trendRes, subjectTrendRes, studentAverageRes] = await Promise.all([
+        pool.query(
+          `select round(avg(b.percentage)::numeric, 2) as class_average,
+                  max(b.percentage) as highest_score,
+                  min(b.percentage) as lowest_score,
+                  round((count(*) filter (where b.percentage >= 50)::numeric / nullif(count(*), 0)) * 100, 2) as pass_rate,
+                  count(distinct b.student_id)::int as number_of_learners,
+                  count(*)::int as assessment_count
+           from baseline_assessments b
+           join students s on s.id = b.student_id
+           where ${classFilter}`,
+          classParams
+        ),
+        pool.query(
+          `select case
+                    when b.percentage < 30 then '0-29%'
+                    when b.percentage < 40 then '30-39%'
+                    when b.percentage < 50 then '40-49%'
+                    when b.percentage < 60 then '50-59%'
+                    when b.percentage < 70 then '60-69%'
+                    when b.percentage < 80 then '70-79%'
+                    else '80-100%'
+                  end as range,
+                  count(*)::int as count
+           from baseline_assessments b
+           join students s on s.id = b.student_id
+           where ${classFilter}
+           group by range`,
+          classParams
+        ),
+        pool.query(
+          `select date_trunc('month', b.completed_at)::date as period,
+                  round(avg(b.percentage)::numeric, 2) as average
+           from baseline_assessments b
+           join students s on s.id = b.student_id
+           where ${classFilter}
+           group by period
+           order by period asc
+           limit 12`,
+          classParams
+        ),
+        pool.query(
+          `select b.subject,
+                  round(avg(b.percentage)::numeric, 2) as average,
+                  count(*)::int as assessments
+           from baseline_assessments b
+           join students s on s.id = b.student_id
+           where ${classFilter}
+           group by b.subject
+           order by b.subject asc`,
+          classParams
+        ),
+        pool.query(
+          `select b.student_id, round(avg(b.percentage)::numeric, 2) as average
+           from baseline_assessments b
+           join students s on s.id = b.student_id
+           where ${classFilter}
+           group by b.student_id`,
+          classParams
+        ),
+      ]);
+
+      const overview = overviewRes.rows[0] ?? {};
+      const numberOfLearners = Number(overview.number_of_learners ?? 0);
+      if (numberOfLearners >= CLASS_ANALYTICS_PRIVACY_THRESHOLD) {
+        const ownAverage = overallPercentage;
+        const classAverage = roundMetric(Number(overview.class_average), 1);
+        const studentAverages = studentAverageRes.rows.map((row) => Number(row.average)).filter(Number.isFinite);
+        const percentile = ownAverage == null || !studentAverages.length
+          ? null
+          : roundMetric((studentAverages.filter((score) => score <= ownAverage).length / studentAverages.length) * 100, 0);
+        const distributionCounts = new Map(distributionRes.rows.map((row) => [row.range, Number(row.count)]));
+        const learnerBucket = scoreBucket(ownAverage);
+
+        classAnalytics = {
+          available: true,
+          privacyThreshold: CLASS_ANALYTICS_PRIVACY_THRESHOLD,
+          overview: {
+            classAverage,
+            highestScore: roundMetric(Number(overview.highest_score), 1),
+            lowestScore: roundMetric(Number(overview.lowest_score), 1),
+            passRate: roundMetric(Number(overview.pass_rate), 1),
+            numberOfLearners,
+            assessmentCount: Number(overview.assessment_count ?? 0),
+          },
+          distribution: SCORE_BUCKETS.map((range) => ({
+            range,
+            count: distributionCounts.get(range) ?? 0,
+            isLearnerBucket: range === learnerBucket,
+          })),
+          positioning: classPositioning(percentile, ownAverage, classAverage),
+          percentile,
+          differenceFromClassAverage: ownAverage == null || classAverage == null ? null : roundMetric(ownAverage - classAverage, 1),
+          trends: trendRes.rows.map((row) => ({
+            period: row.period,
+            average: roundMetric(Number(row.average), 1),
+          })),
+          subjectTrends: subjectTrendRes.rows.map((row) => ({
+            subject: row.subject,
+            average: roundMetric(Number(row.average), 1),
+            assessments: Number(row.assessments),
+          })),
+        };
+      }
+    }
+
+    const summary = {
+      overallPercentage,
+      totalMarksObtained: roundMetric(totalMarksObtained, 1),
+      totalMarksAvailable: roundMetric(totalMarksAvailable, 1),
+      averageAcrossAssessments,
+      currentAcademicStatus: academicStatus(overallPercentage),
+      classAverage: classAnalytics.overview?.classAverage ?? null,
+      differenceFromClassAverage: classAnalytics.differenceFromClassAverage ?? null,
+    };
+
+    return reply.send({
+      results: items,
+      items,
+      summary,
+      subjectBreakdown,
+      strengths: { subjects: strongestSubjects, topics: strongestTopics },
+      improvementAreas: { subjects: improvementSubjects, topics: weakAreas },
+      classAnalytics,
+      analytics: { weakAreas, classAnalytics },
+    });
   });
 
   app.get('/student/class-stats', {
@@ -482,12 +713,15 @@ export async function academicRoutes(app: FastifyInstance) {
   }, async (req, reply) => {
     const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
     if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    setPrivateNoStore(reply);
     const res = await pool.query(
       `select latest.subject,
               latest.percentage as learner_score,
-              class_stats.class_average,
-              class_stats.highest_score,
-              class_stats.sample_size
+              case when class_stats.sample_size >= $2 then class_stats.class_average else null end as class_average,
+              case when class_stats.sample_size >= $2 then class_stats.highest_score else null end as highest_score,
+              case when class_stats.sample_size >= $2 then class_stats.lowest_score else null end as lowest_score,
+              class_stats.sample_size,
+              class_stats.sample_size >= $2 as available
        from lateral (
          select subject, percentage
          from baseline_assessments
@@ -498,11 +732,15 @@ export async function academicRoutes(app: FastifyInstance) {
        join lateral (
          select round(avg(percentage)::numeric, 2) as class_average,
                 max(percentage) as highest_score,
-                count(*)::int as sample_size
-         from baseline_assessments
-         where subject = latest.subject
+                min(percentage) as lowest_score,
+                count(distinct b.student_id)::int as sample_size
+         from baseline_assessments b
+         join students s on s.id = b.student_id
+         join students current_student on current_student.id = $1
+         where b.subject = latest.subject
+           and (current_student.grade is null or coalesce(b.grade, s.grade) = current_student.grade)
        ) class_stats on true`,
-      [studentId]
+      [studentId, CLASS_ANALYTICS_PRIVACY_THRESHOLD]
     );
     return reply.send({ stats: res.rows, items: res.rows });
   });

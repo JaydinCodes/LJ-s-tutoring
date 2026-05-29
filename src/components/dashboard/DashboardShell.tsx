@@ -59,14 +59,14 @@ export function DashboardShell({
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-950">
+    <div className="min-h-screen bg-slate-100 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
       <div className="mx-auto flex max-w-[1600px] gap-4 px-4 py-4">
-        <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-64 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:block">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="grid h-10 w-10 place-items-center rounded-lg bg-slate-950 text-sm font-bold text-white">PO</div>
+        <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-64 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950 lg:block">
+          <div className="flex items-center gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+            <div className="grid h-10 w-10 place-items-center rounded-lg bg-slate-950 text-sm font-bold text-white dark:bg-slate-100 dark:text-slate-950">PO</div>
             <div>
               <p className="font-semibold">Project Odysseus</p>
-              <p className="text-xs text-slate-500">React LMS</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">React LMS</p>
             </div>
           </div>
           <nav className="mt-4 grid gap-1">
@@ -74,7 +74,7 @@ export function DashboardShell({
               <NavLink
                 key={item.to}
                 to={item.to}
-                className={({ isActive }) => `rounded-lg px-3 py-2 text-sm font-semibold ${isActive ? 'bg-slate-950 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                className={({ isActive }) => `rounded-lg px-3 py-2 text-sm font-semibold ${isActive ? 'bg-slate-950 text-white dark:bg-slate-100 dark:text-slate-950' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900'}`}
               >
                 {item.label}
               </NavLink>
@@ -82,18 +82,18 @@ export function DashboardShell({
           </nav>
         </aside>
         <main className="min-w-0 flex-1">
-          <header className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <header className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">{section} dashboard</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700 dark:text-teal-300">{section} dashboard</p>
                 <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">{title}</h1>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{subtitle}</p>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{subtitle}</p>
               </div>
               {auth.profile ? (
-                <div className="rounded-lg bg-slate-50 p-3 text-right">
-                  <p className="text-sm font-semibold text-slate-950">{auth.profile.full_name}</p>
-                  <p className="text-xs uppercase tracking-wide text-slate-500">{auth.profile.role}</p>
-                  <button className="mt-2 text-sm font-semibold text-slate-700 underline" type="button" onClick={() => void handleSignOut()}>
+                <div className="rounded-lg bg-slate-50 p-3 text-right dark:bg-slate-900">
+                  <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">{auth.profile.full_name}</p>
+                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{auth.profile.role}</p>
+                  <button className="mt-2 text-sm font-semibold text-slate-700 underline dark:text-slate-200" type="button" onClick={() => void handleSignOut()}>
                     Sign out
                   </button>
                 </div>

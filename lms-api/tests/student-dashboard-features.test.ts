@@ -173,6 +173,53 @@ describe('Student dashboard LMS features', () => {
     await app.close();
   });
 
+  it('returns private student results with anonymous class aggregates only', async () => {
+    const app = await buildApp();
+    const { student: ownStudent, user } = await createStudentUser({ email: 'student@example.com', fullName: 'Own Student', grade: 'Grade 11' });
+    const { student: otherStudent } = await createStudentUser({ email: 'other@example.com', fullName: 'Other Student', grade: 'Grade 11' });
+    const { student: thirdStudent } = await createStudentUser({ email: 'third@example.com', fullName: 'Third Student', grade: 'Grade 11' });
+    const auth = await loginWithMagicToken(app, await issueMagicToken(user.id));
+
+    await pool.query(
+      `insert into baseline_assessments
+       (student_id, subject, grade, score, total, percentage, level_band, topic_breakdown_json, completed_at, source_type)
+       values
+       ($1, 'Mathematics', 'Grade 11', 72, 100, 72, 'Proficient', $2::jsonb, '2026-02-01T10:00:00.000Z', 'diagnostic'),
+       ($3, 'Mathematics', 'Grade 11', 91, 100, 91, 'Excellent', $4::jsonb, '2026-02-01T10:00:00.000Z', 'diagnostic'),
+       ($5, 'Mathematics', 'Grade 11', 34, 100, 34, 'At risk', $6::jsonb, '2026-02-01T10:00:00.000Z', 'diagnostic')`,
+      [
+        ownStudent.id,
+        JSON.stringify({ Algebra: { score: 86 }, Geometry: { score: 54 } }),
+        otherStudent.id,
+        JSON.stringify({ Algebra: { score: 95 } }),
+        thirdStudent.id,
+        JSON.stringify({ Geometry: { score: 30 } }),
+      ]
+    );
+
+    const response = await app.inject({ method: 'GET', url: '/student/results', headers: auth.headers });
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    const raw = JSON.stringify(body);
+
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0]).toMatchObject({ subject: 'Mathematics', percentage: 72 });
+    expect(body.summary).toMatchObject({ overallPercentage: 72, classAverage: 65.7, differenceFromClassAverage: 6.3 });
+    expect(body.classAnalytics.available).toBe(true);
+    expect(body.classAnalytics.overview).toMatchObject({ numberOfLearners: 3, highestScore: 91, lowestScore: 34 });
+    expect(body.classAnalytics.distribution.some((bucket: any) => bucket.range === '70-79%' && bucket.isLearnerBucket)).toBe(true);
+    expect(raw).not.toContain('Other Student');
+    expect(raw).not.toContain(otherStudent.id);
+    expect(raw).not.toContain(thirdStudent.id);
+    expect(body.classAnalytics.students).toBeUndefined();
+
+    const classStats = await app.inject({ method: 'GET', url: '/student/class-stats', headers: auth.headers });
+    expect(classStats.statusCode).toBe(200);
+    expect(JSON.stringify(classStats.json())).not.toContain(otherStudent.id);
+    expect(classStats.json().items[0]).toMatchObject({ available: true, sample_size: 3 });
+    await app.close();
+  });
+
   it('allows assigned tutors to view learner summaries and blocks unassigned tutors', async () => {
     const app = await buildApp();
     const { tutor, user: tutorUser } = await createTutor({ email: 'tutor@example.com', fullName: 'Assigned Tutor' });
