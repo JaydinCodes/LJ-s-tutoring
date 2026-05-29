@@ -18,6 +18,11 @@ const tutors = [
     focus: 'Problem solving, calculus foundations, learner momentum',
     image: '/images/liam-newton.jpg',
   },
+  {
+    name: 'Logan Petrus',
+    focus: 'Data Handling, Financial Mathematics, Critical Thinking',
+    image: '/images/logan-petrus.jpeg'
+  }
 ];
 
 const stats = [
@@ -117,51 +122,117 @@ const initialEnquiryForm: EnquiryFormState = {
 export function PublicHomeRoute() {
   return (
     <PublicLayout>
-      <section className="relative overflow-hidden bg-slate-950 text-white">
-        <img className="absolute inset-0 h-full w-full object-cover opacity-25" src="/images/og-image-placeholder.svg" alt="" />
-        <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl content-center gap-10 px-6 py-20 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-300">Grade 8-12 CAPS Maths</p>
-            <h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl">Project Odysseus</h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200">
-              1-on-1 maths tutoring for Cape Town and South African learners, supported by a React LMS for assignments, progress, payments, reporting, and NGO rollout operations.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <a className="rounded-lg bg-amber-400 px-5 py-3 font-semibold text-slate-950" href="#enquiry">Send an enquiry</a>
-              <Link className="rounded-lg border border-white/25 px-5 py-3 font-semibold text-white" to="/programs">View programs</Link>
-              <Link className="rounded-lg border border-white/25 px-5 py-3 font-semibold text-white" to="/dashboard/login">Portal login</Link>
-            </div>
+      <section className="relative overflow-hidden bg-brand-navy text-white">
+        <video
+          className="absolute inset-0 h-full w-full object-cover opacity-45"
+          src="./images/e_b_e_bc_f_cb_b_mp_.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,_rgba(8,19,38,0.96)_0%,_rgba(8,19,38,0.76)_48%,_rgba(8,19,38,0.28)_100%)]" />
+        <div className="relative mx-auto flex min-h-[86svh] max-w-7xl flex-col justify-center px-6 py-20">
+          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-amber-300">Grade 8-12 CAPS Mathematics</p>
+          <h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl">Project Odysseus</h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-blue-50">
+            Premium maths tutoring for Cape Town and South African learners, now shaped around the same React LMS experience students use for assignments, progress, results, and careers.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a className="rounded-full bg-amber-400 px-5 py-3 font-semibold text-slate-950 shadow-lg shadow-amber-900/20 transition hover:bg-amber-300" href="#enquiry">Send an enquiry</a>
+            <Link className="rounded-full border border-white/30 bg-white/10 px-5 py-3 font-semibold text-white backdrop-blur transition hover:bg-white/20" to="/programs">View programs</Link>
+            <Link className="rounded-full border border-white/30 bg-white/10 px-5 py-3 font-semibold text-white backdrop-blur transition hover:bg-white/20" to="/dashboard/login">Portal login</Link>
           </div>
-          <div className="grid gap-3">
+          <div className="mt-10 grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map(([value, label]) => (
-              <div key={label} className="rounded-lg border border-white/10 bg-white/10 p-5 backdrop-blur">
+              <div key={label} className="rounded-[1.5rem] border border-white/15 bg-white/10 p-5 backdrop-blur">
                 <p className="text-3xl font-semibold text-amber-300">{value}</p>
-                <p className="mt-1 text-sm text-slate-200">{label}</p>
+                <p className="mt-1 text-sm text-blue-50">{label}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
+      <section className="bg-[linear-gradient(135deg,_#eef6ff_0%,_#f8fafc_48%,_#fff8e6_100%)] py-16">
+        <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
+          <div>
+            <SectionIntro title="Tutoring that feels connected, not scattered" eyebrow="React LMS workflow">
+              Students get direct maths support. Parents get clarity. Tutors get a review workflow. Admins get visibility. The public site now matches that same clean LMS identity.
+            </SectionIntro>
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              {[
+                ['Diagnose gaps', 'Baseline weak topics and turn them into focused study goals.'],
+                ['Assign focused work', 'Publish tasks, track submissions, and reduce homework ambiguity.'],
+                ['Track progress', 'Surface marks, feedback, attendance, and momentum in one place.'],
+              ].map(([title, description], index) => (
+                <article key={title} className="rounded-[1.5rem] border border-white/80 bg-white/90 p-6 shadow-lg shadow-slate-200/60">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Step {index + 1}</p>
+                  <h3 className="mt-3 text-xl font-semibold text-slate-950">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+          <aside className="space-y-4">
+            <div className="rounded-[1.5rem] bg-[linear-gradient(135deg,_#0f4db8_0%,_#1697df_100%)] p-5 text-white shadow-xl shadow-blue-900/20">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-100">Student snapshot</p>
+              <h3 className="mt-3 text-2xl font-semibold">This week in Maths</h3>
+              <div className="mt-5 grid gap-3">
+                {[
+                  ['Assignments due', '2 priority tasks'],
+                  ['Latest result', '78% Algebra revision'],
+                  ['Progress', 'Functions improving'],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between gap-4 rounded-2xl bg-white/12 px-4 py-3">
+                    <span className="text-sm text-blue-50">{label}</span>
+                    <span className="text-sm font-semibold">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="grid gap-3">
+              {[
+                ['Student dashboard', 'Assignments, results, progress, careers'],
+                ['Tutor dashboard', 'Classes, sessions, submissions, reports'],
+                ['Admin dashboard', 'Students, tutors, approvals, payments'],
+              ].map(([title, description]) => (
+                <div key={title} className="rounded-2xl border border-white/80 bg-white/95 p-4 shadow-lg shadow-slate-200/50">
+                  <p className="font-semibold text-slate-950">{title}</p>
+                  <p className="mt-1 text-sm text-slate-600">{description}</p>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
+      </section>
+
       <section className="bg-white py-16">
         <div className="mx-auto max-w-7xl px-6">
-          <SectionIntro title="Tutoring that connects to learner progress" eyebrow="How it works">
-            We keep the public tutoring offer and the LMS roadmap aligned: learners get support, parents get clarity, tutors get workflows, and admins get operational visibility.
-          </SectionIntro>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {['Diagnose gaps', 'Assign focused work', 'Track progress'].map((item, index) => (
-              <article key={item} className="rounded-lg border border-slate-200 p-6">
-                <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Step {index + 1}</p>
-                <h3 className="mt-3 text-xl font-semibold text-slate-950">{item}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">A practical tutoring workflow that can be reflected in the student, tutor, and admin dashboards as the platform matures.</p>
-              </article>
-            ))}
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
+            <div>
+              <SectionIntro title="Built for learners who need maths to make sense" eyebrow="Why families choose us">
+                The work is practical: identify the gap, explain the method, practise under pressure, and make the next school task easier to face.
+              </SectionIntro>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <a className="rounded-full bg-brand-navy px-5 py-3 text-sm font-semibold text-white" href="#enquiry">Book a first conversation</a>
+                <Link className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-800" to="/guides/matric-maths-mistakes-guide">Read the matric guide</Link>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {programs.slice(0, 4).map((program) => (
+                <article key={program.title} className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <h3 className="text-xl font-semibold text-slate-950">{program.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{program.description}</p>
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       <TutorSection />
-      <ProgramsSection />
       <GuideSection />
       <FaqSection />
       <BecomeTutorSection />
@@ -284,15 +355,18 @@ export function TermsRoute() {
 function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-6">
-          <Link className="text-lg font-semibold tracking-tight text-slate-950" to="/">Project Odysseus</Link>
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Link className="rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100" to="/about">About</Link>
-            <Link className="rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100" to="/programs">Programs</Link>
-            <a className="hidden rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 sm:inline-flex" href="/#faq">FAQ</a>
-            <a className="hidden rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 md:inline-flex" href="/#become-a-tutor">Tutor with us</a>
-            <Link className="rounded-lg bg-slate-950 px-3 py-2 text-white" to="/dashboard/login">Login</Link>
+      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/90 shadow-sm shadow-slate-200/60 backdrop-blur">
+        <nav className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <Link className="flex items-center gap-3 text-lg font-semibold tracking-tight text-slate-950" to="/">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-navy text-sm font-bold text-white">PO</span>
+            <span>Project Odysseus</span>
+          </Link>
+          <div className="flex items-center gap-1 text-sm font-semibold sm:gap-2">
+            <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950" to="/about">About</Link>
+            <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950" to="/programs">Programs</Link>
+            <a className="hidden rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:inline-flex" href="/#faq">FAQ</a>
+            <a className="hidden rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 lg:inline-flex" href="/#become-a-tutor">Tutor with us</a>
+            <Link className="rounded-full bg-brand-navy px-4 py-2 text-white shadow-sm transition hover:bg-blue-900" to="/dashboard/login">Login</Link>
           </div>
         </nav>
       </header>

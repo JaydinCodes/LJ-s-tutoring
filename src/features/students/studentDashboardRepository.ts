@@ -36,7 +36,25 @@ async function loadFromApi(): Promise<StudentDashboardView> {
 
   const assignments = assignmentsPayload.assignments || assignmentsPayload.items || [];
   const results = resultsPayload.results || resultsPayload.items || [];
-  const completed = assignments.filter((item) => ['submitted', 'marked'].includes(String(item.status || '').toLowerCase())).length;
+  const submissions = assignments
+    .filter((item) => (item as Assignment & { submission_id?: string }).submission_id)
+    .map((item) => {
+      const legacy = item as Assignment & {
+        submission_id?: string;
+        submission_status?: string;
+        submitted_at?: string;
+        original_filename?: string;
+      };
+      return {
+        id: legacy.submission_id || `${legacy.id}-submission`,
+        assignment_id: legacy.id,
+        student_id: 'current',
+        file_url: legacy.original_filename || null,
+        submitted_at: legacy.submitted_at || null,
+        status: legacy.submission_status || 'submitted',
+      } as AssignmentSubmission;
+    });
+  const completed = submissions.filter((item) => ['submitted', 'late', 'reviewed', 'marked'].includes(String(item.status || '').toLowerCase())).length;
   const attendanceRate = dashboard.attendance?.total ? Math.round(((dashboard.attendance.attended || 0) / dashboard.attendance.total) * 100) : 0;
   const score = average(results.map((item) => Number(item.percentage)).filter(Number.isFinite));
 
@@ -63,7 +81,7 @@ async function loadFromApi(): Promise<StudentDashboardView> {
       recorded_at: new Date().toISOString(),
     })),
     classes: [],
-    submissions: [],
+    submissions,
   };
 }
 
@@ -91,7 +109,7 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
   }
 
   const [assignmentsResult, progressResult, classesResult, submissionsResult] = await Promise.all([
-    supabase.from('assignments').select('*').eq('grade', student.grade || '').order('due_date', { ascending: true }),
+    supabase.from('assignments').select('*').eq('grade', student.grade || '').neq('status', 'draft').order('due_date', { ascending: true }),
     supabase.from('student_progress').select('*').eq('student_id', student.id).order('recorded_at', { ascending: false }),
     supabase.from('classes').select('*').eq('grade', student.grade || ''),
     supabase.from('assignment_submissions').select('*').eq('student_id', student.id).order('submitted_at', { ascending: false }),
@@ -103,6 +121,15 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
   const submissions = (submissionsResult.data || []) as AssignmentSubmission[];
   const submittedIds = new Set(submissions.map((item) => item.assignment_id));
   const score = average(progress.map((item) => Number(item.score)).filter(Number.isFinite));
+  const subjectIds = Array.from(new Set(assignments.map((assignment) => assignment.subject_id).filter(Boolean)));
+  const subjectsResult = subjectIds.length
+    ? await supabase.from('subjects').select('*').in('id', subjectIds)
+    : { data: [], error: null };
+  const subjectNameById = new Map(((subjectsResult.data || []) as Array<{ id: string; name?: string }>).map((subject) => [subject.id, subject.name]));
+  const assignmentsWithSubjects = assignments.map((assignment) => ({
+    ...assignment,
+    subject: assignment.subject || (assignment.subject_id ? subjectNameById.get(assignment.subject_id) : undefined),
+  }));
 
   return {
     profile: {
@@ -114,10 +141,10 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     metrics: [
       { label: 'Overall score', value: score == null ? '--' : `${score}%`, helper: 'Average from Supabase progress records.', tone: 'violet' },
       { label: 'Assignments completed', value: String(submittedIds.size), helper: 'Submitted assignment records.', tone: 'teal' },
-      { label: 'Open assignments', value: String(assignments.filter((item) => !submittedIds.has(item.id)).length), helper: 'Published work not yet submitted.', tone: 'amber' },
+      { label: 'Open assignments', value: String(assignmentsWithSubjects.filter((item) => !submittedIds.has(item.id)).length), helper: 'Published work not yet submitted.', tone: 'amber' },
       { label: 'Classes', value: String(classes.length), helper: 'Current classes for this learner.', tone: 'blue' },
     ],
-    assignments,
+    assignments: assignmentsWithSubjects,
     progress,
     classes,
     submissions,

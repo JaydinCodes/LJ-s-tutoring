@@ -1,7 +1,7 @@
 const isLocalHost = (value: string) => value === 'localhost' || value === '127.0.0.1';
 
 export function resolveApiBase() {
-  const configured = import.meta.env.VITE_PO_API_BASE as string | undefined;
+  const configured = (import.meta.env.VITE_PO_API_BASE || import.meta.env.PUBLIC_PO_API_BASE) as string | undefined;
   const raw = String(configured || '').replace(/\/$/, '');
   const host = window.location.hostname;
 
@@ -27,6 +27,11 @@ export async function apiGet<T>(path: string): Promise<T> {
     throw new Error(body || `request_failed:${response.status}`);
   }
 
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(`api_non_json_response:${response.status}`);
+  }
+
   return response.json() as Promise<T>;
 }
 
@@ -44,6 +49,11 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   if (!response.ok) {
     const responseBody = await response.text();
     throw new Error(responseBody || `request_failed:${response.status}`);
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(`api_non_json_response:${response.status}`);
   }
 
   return response.json() as Promise<T>;
@@ -65,6 +75,11 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
     throw new Error(responseBody || `request_failed:${response.status}`);
   }
 
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(`api_non_json_response:${response.status}`);
+  }
+
   return response.json() as Promise<T>;
 }
 
@@ -73,7 +88,7 @@ export async function optionalApiGet<T>(path: string, fallback: T): Promise<T> {
     return await apiGet<T>(path);
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
-    if (message.includes('404') || message.includes('501') || message.includes('Failed to fetch')) {
+    if (message.includes('404') || message.includes('501') || message.includes('Failed to fetch') || message.includes('api_non_json_response')) {
       return fallback;
     }
     throw error;

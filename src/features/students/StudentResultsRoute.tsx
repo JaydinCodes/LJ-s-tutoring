@@ -102,10 +102,10 @@ export function StudentResultsRoute() {
                     <MiniMetric label="Learners" value={String(data.classAnalytics.overview.numberOfLearners)} />
                     <MiniMetric label="Assessments" value={String(data.classAnalytics.overview.assessmentCount)} />
                   </div>
-                  <p className="mt-4 rounded-lg bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-900 dark:bg-teal-950/40 dark:text-teal-100">{data.classAnalytics.positioning}</p>
+                  <p className="mt-4 rounded-2xl bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-900 dark:bg-teal-950/40 dark:text-teal-100">{data.classAnalytics.positioning}</p>
                 </>
               ) : (
-                <div className="mt-4 rounded-lg border border-dashed border-slate-300 p-4 text-sm leading-6 text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-4 text-sm leading-6 text-slate-600 dark:border-slate-700 dark:text-slate-300">
                   Anonymous class analytics are hidden until at least {data.classAnalytics.privacyThreshold} learners are represented.
                 </div>
               )}
@@ -135,11 +135,11 @@ export function StudentResultsRoute() {
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Only your own assessments, marks, and feedback are shown here.</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <input className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter feedback" />
-                <select className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
+                <input className="h-10 rounded-2xl border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter feedback" />
+                <select className="h-10 rounded-2xl border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
                   {subjects.map((subject) => <option key={subject} value={subject}>{subject === 'all' ? 'All subjects' : subject}</option>)}
                 </select>
-                <select className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
+                <select className="h-10 rounded-2xl border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
                   <option value="date">Newest first</option>
                   <option value="percentage">Highest mark</option>
                   <option value="subject">Subject</option>
@@ -162,7 +162,7 @@ function KpiCard({ label, value, helper, tone }: { label: string; value: string;
     blue: 'border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/40',
   }[tone];
   return (
-    <article className={`rounded-lg border p-5 shadow-sm ${accent}`}>
+    <article className={`rounded-[1.5rem] border p-5 shadow-sm ${accent}`}>
       <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{label}</p>
       <p className="mt-3 min-h-10 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{value}</p>
       <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{helper}</p>
@@ -173,7 +173,7 @@ function KpiCard({ label, value, helper, tone }: { label: string; value: string;
 function SubjectCard({ item, color }: { item: SubjectBreakdownItem; color: string }) {
   const score = clampPercent(item.score);
   return (
-    <article className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+    <article className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
       <div className="flex items-center justify-between gap-3">
         <p className="font-semibold text-slate-950 dark:text-slate-100">{item.subject}</p>
         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatPercent(item.score)}</p>
@@ -181,7 +181,7 @@ function SubjectCard({ item, color }: { item: SubjectBreakdownItem; color: strin
       <div className="mt-3 h-2 rounded-full bg-slate-100 dark:bg-slate-800">
         <div className="h-2 rounded-full" style={{ width: `${score}%`, backgroundColor: color }} />
       </div>
-      <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{item.assessments} assessment{item.assessments === 1 ? '' : 's'} · {formatMark(item.marksObtained)} / {formatMark(item.marksAvailable)} marks</p>
+      <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{item.assessments} assessment{item.assessments === 1 ? '' : 's'} - {formatMark(item.marksObtained)} / {formatMark(item.marksAvailable)} marks</p>
     </article>
   );
 }
@@ -196,7 +196,7 @@ function InsightList({ title, items, empty, tone }: { title: string; items: Stud
       <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{title}</h3>
       <div className="mt-3 space-y-2">
         {items.slice(0, 4).map((item) => (
-          <div key={`${item.subject}-${item.topic}`} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+          <div key={`${item.subject}-${item.topic}`} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2 dark:bg-slate-900">
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{item.topic}</span>
               {item.subject ? <span className="text-xs text-slate-500 dark:text-slate-400">{item.subject}</span> : null}
@@ -204,7 +204,7 @@ function InsightList({ title, items, empty, tone }: { title: string; items: Stud
             <span className={`text-sm font-semibold ${tone === 'strong' ? 'text-teal-700 dark:text-teal-300' : 'text-amber-700 dark:text-amber-300'}`}>{formatPercent(item.score)}</span>
           </div>
         ))}
-        {!items.length ? <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{empty}</p> : null}
+        {!items.length ? <p className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{empty}</p> : null}
       </div>
     </div>
   );
@@ -222,7 +222,7 @@ function DoughnutScore({ value }: { value: number | null }) {
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
+    <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-900">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
       <p className="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">{value}</p>
     </div>
@@ -232,7 +232,7 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
 function DistributionChart({ buckets }: { buckets: ClassDistributionBucket[] }) {
   const max = Math.max(1, ...buckets.map((bucket) => bucket.count));
   return (
-    <div className="mt-5 flex h-64 items-end gap-2 rounded-lg bg-slate-50 p-4 dark:bg-slate-900">
+    <div className="mt-5 flex h-64 items-end gap-2 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900">
       {buckets.map((bucket) => (
         <div key={bucket.range} className="flex min-w-0 flex-1 flex-col items-center gap-2">
           <div className="flex h-44 w-full items-end">
@@ -251,7 +251,7 @@ function DistributionChart({ buckets }: { buckets: ClassDistributionBucket[] }) 
 }
 
 function LineChart({ points, empty }: { points: Array<{ label: string; value: number }>; empty: string }) {
-  if (points.length < 2) return <p className="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{empty}</p>;
+  if (points.length < 2) return <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{empty}</p>;
   const width = 640;
   const height = 220;
   const pad = 24;
@@ -263,7 +263,7 @@ function LineChart({ points, empty }: { points: Array<{ label: string; value: nu
     return { ...point, x, y };
   });
   return (
-    <div className="mt-4 overflow-hidden rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
+    <div className="mt-4 overflow-hidden rounded-2xl bg-slate-50 p-3 dark:bg-slate-900">
       <svg viewBox={`0 0 ${width} ${height}`} className="h-64 w-full" role="img" aria-label="Class average trend">
         <polyline fill="none" stroke="#0f766e" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" points={coords.map((point) => `${point.x},${point.y}`).join(' ')} />
         {coords.map((point) => <circle key={point.label} cx={point.x} cy={point.y} r="5" fill="#7c3aed" />)}
@@ -277,14 +277,14 @@ function LineChart({ points, empty }: { points: Array<{ label: string; value: nu
 }
 
 function HorizontalBars({ items, empty }: { items: Array<{ label: string; value: number; helper: string }>; empty: string }) {
-  if (!items.length) return <p className="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{empty}</p>;
+  if (!items.length) return <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{empty}</p>;
   return (
     <div className="mt-4 space-y-3">
       {items.map((item, index) => (
         <div key={item.label}>
           <div className="flex justify-between gap-3 text-sm">
             <span className="font-semibold text-slate-900 dark:text-slate-100">{item.label}</span>
-            <span className="text-slate-600 dark:text-slate-300">{formatPercent(item.value)} · {item.helper}</span>
+            <span className="text-slate-600 dark:text-slate-300">{formatPercent(item.value)} - {item.helper}</span>
           </div>
           <div className="mt-2 h-2 rounded-full bg-slate-100 dark:bg-slate-800">
             <div className="h-2 rounded-full" style={{ width: `${clampPercent(item.value)}%`, backgroundColor: chartPalette[index % chartPalette.length] }} />
@@ -298,7 +298,7 @@ function HorizontalBars({ items, empty }: { items: Array<{ label: string; value:
 function AssessmentTable({ items }: { items: StudentResultItem[] }) {
   if (!items.length) return <div className="mt-5"><EmptyState title="No results match" description="Try changing the filter or wait for marked assessments to be released." /></div>;
   return (
-    <div className="mt-5 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
@@ -335,7 +335,7 @@ function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => Prom
     <Card>
       <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Results unavailable</h2>
       <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{message}</p>
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-950" onClick={() => void onRetry()}>Retry</button>
+      <button className="mt-4 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-950" onClick={() => void onRetry()}>Retry</button>
     </Card>
   );
 }
