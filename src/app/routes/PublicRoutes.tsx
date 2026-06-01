@@ -4,29 +4,38 @@ import { Link } from 'react-router-dom';
 import { CountUpStat } from '../../components/animations/CountUpStat';
 import { Reveal, StaggerReveal } from '../../components/animations/Reveal';
 import { SplitHeroTitle } from '../../components/animations/SplitHeroTitle';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 
 
 const tutors = [
   {
     name: 'Jaydin Morrison',
-    focus: 'Mathematics, exam preparation, confidence rebuilding',
+    subject: 'Mathematics',
+    role: 'Senior CAPS tutor',
+    bio: 'Jaydin helps learners rebuild confidence through patient explanations, exam-focused practice, and a clear plan for closing foundational gaps.',
     image: '/images/jaydin-morrison.jpg',
   },
   {
     name: 'Nicholas Dreyer',
-    focus: 'CAPS support, algebra, functions, structured revision',
+    subject: 'Physical Sciences',
+    role: 'Physics Tutor',
+    bio: 'Nicholas makes Physics feel less abstract by connecting the theory to clear examples, structured calculations, and the reasoning behind every formula.',
     image: '/images/nicholas-dreyer.png',
   },
   {
     name: 'Liam Newton',
-    focus: 'Problem solving, calculus foundations, learner momentum',
+    subject: 'Mathematics',
+    role: 'Problem-solving tutor',
+    bio: 'Liam focuses on problem-solving habits and calculus foundations, helping learners turn difficult questions into manageable steps and build momentum.',
     image: '/images/liam-newton.jpg',
   },
   {
-    name: 'Logan Petrus', 
-    focus: 'Data Handling, Financial Mathematics, Critical Thinking',
-    image: '/images/logan-petrus.jpeg'
-  }
+    name: 'Logan Petrus',
+    subject: 'Mathematical Literacy',
+    role: 'Mathematical Literacy Tutor',
+    bio: 'Logan makes Mathematical Literacy practical and approachable, helping learners apply data handling, finance, and measurement skills with confidence.',
+    image: '/images/logan-petrus.jpeg',
+  },
 ];
 
 const stats = [
@@ -382,17 +391,77 @@ function TutorSection() {
         </SectionIntro>
         <StaggerReveal className="mt-10 grid gap-4 md:grid-cols-3">
           {tutors.map((tutor) => (
-            <article key={tutor.name} data-reveal-child className="overflow-hidden rounded-[1.5rem] border border-brand-marble bg-white shadow-sm shadow-slate-200/50">
-              <img className="aspect-[4/3] w-full object-cover" src={tutor.image} alt={tutor.name} />
-              <div className="p-5">
-                <h3 className="text-xl font-semibold text-brand-obsidian">{tutor.name}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{tutor.focus}</p>
-              </div>
-            </article>
+            <TutorCard key={tutor.name} tutor={tutor} />
           ))}
         </StaggerReveal>
       </div>
     </Reveal>
+  );
+}
+
+function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
+  const [isBioVisible, setIsBioVisible] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const bioId = `tutor-bio-${tutor.name.toLowerCase().replace(/\s+/g, '-')}`;
+  const transitionClass = prefersReducedMotion ? '' : 'transition duration-300 ease-out';
+
+  return (
+    <article
+      data-reveal-child
+      className="group overflow-hidden rounded-[1.5rem] border border-brand-marble bg-white shadow-sm shadow-slate-200/50"
+    >
+      <div className="relative overflow-hidden">
+        <img
+          className={`aspect-[4/3] w-full object-cover ${transitionClass} ${prefersReducedMotion ? '' : 'group-hover:scale-[1.03]'}`}
+          src={tutor.image}
+          alt={tutor.name}
+        />
+        <button
+          className="absolute inset-0 z-10 focus:outline-none focus:ring-4 focus:ring-inset focus:ring-brand-gold"
+          type="button"
+          aria-label={`Read ${tutor.name}'s bio`}
+          aria-controls={bioId}
+          aria-expanded={isBioVisible}
+          onClick={() => setIsBioVisible(true)}
+          onFocus={() => setIsBioVisible(true)}
+        />
+        <div
+          id={bioId}
+          className={`absolute inset-0 z-20 flex flex-col justify-end bg-brand-navy/90 p-5 text-white ${
+            isBioVisible ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+          } ${transitionClass} group-hover:pointer-events-auto group-hover:opacity-100`}
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">Tutor bio</p>
+          <p className="mt-3 text-sm leading-6 text-brand-parchment">{tutor.bio}</p>
+          <button
+            className="mt-4 w-fit rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-brand-gold"
+            type="button"
+            tabIndex={isBioVisible ? 0 : -1}
+            onClick={(event) => {
+              setIsBioVisible(false);
+              event.currentTarget.blur();
+            }}
+          >
+            Close bio
+          </button>
+        </div>
+      </div>
+      <div className="p-5">
+        <h3 className="text-xl font-semibold text-brand-obsidian">{tutor.name}</h3>
+        <p className="mt-2 text-sm font-semibold text-brand-deepBlue">{tutor.subject}</p>
+        <p className="mt-1 text-sm text-slate-600">{tutor.role}</p>
+        <button
+          className="mt-4 rounded-full border border-brand-marble px-3 py-1.5 text-xs font-semibold text-brand-deepBlue transition hover:border-brand-aegean hover:bg-brand-parchment focus:outline-none focus:ring-2 focus:ring-brand-aegean/50"
+          type="button"
+          aria-controls={bioId}
+          aria-expanded={isBioVisible}
+          onClick={() => setIsBioVisible((current) => !current)}
+          onFocus={() => setIsBioVisible(true)}
+        >
+          {isBioVisible ? 'Hide bio' : 'Read bio'}
+        </button>
+      </div>
+    </article>
   );
 }
 
