@@ -12,7 +12,7 @@ export function TutorSubmissionsRoute() {
     <DashboardShell title="Tutor Submissions" subtitle="Review, mark, and return learner submissions for assignments created by this tutor." section="tutor">
       <Card>
         <h2 className="text-xl font-semibold text-slate-950">Submission review queue</h2>
-        <p className="mt-1 text-sm text-slate-600">Tutor access is scoped through Supabase policies to submissions on assignments created by the current tutor profile.</p>
+        <p className="mt-1 text-sm text-slate-600">Review learner work for assignments linked to your tutor account.</p>
         {loading ? <p className="mt-4 text-sm text-slate-600">Loading submissions...</p> : null}
         {error ? (
           <div className="mt-4">

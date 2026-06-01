@@ -9,14 +9,14 @@ export function ProtectedRoute({ roles, children }: { roles: UserRole[]; childre
   const location = useLocation();
 
   if (auth.loading) {
-    return <GuardMessage title="Checking access" description="Loading your Supabase session and role profile..." />;
+    return <GuardMessage title="Checking access" description="Loading your account access..." />;
   }
 
   if (!auth.configured) {
     return (
       <GuardMessage
-        title="Supabase setup required"
-        description="Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then sign in with a user linked to a profiles row."
+        title="Access temporarily unavailable"
+        description="The portal sign-in service is unavailable. Please contact support if you need urgent access."
       />
     );
   }
@@ -29,7 +29,7 @@ export function ProtectedRoute({ roles, children }: { roles: UserRole[]; childre
     return (
       <GuardMessage
         title="Profile missing"
-        description="The signed-in Supabase user does not have a matching profiles row yet."
+        description="Your account setup is incomplete. Please contact support so we can finish linking your profile."
       />
     );
   }

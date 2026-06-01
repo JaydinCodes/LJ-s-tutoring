@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading: false,
         session: null,
         profile: null,
-        error: 'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.',
+        error: 'The sign-in service is temporarily unavailable. Please contact support if you need urgent access.',
       });
       return;
     }
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading: false,
         session: null,
         profile: null,
-        error: error instanceof Error ? error.message : 'Could not load Supabase session.',
+        error: error instanceof Error ? error.message : 'Could not load your account session.',
       });
     }
   }, []);

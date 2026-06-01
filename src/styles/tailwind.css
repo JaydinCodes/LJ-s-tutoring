@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :focus-visible {
+    outline: 2px solid theme('colors.brand.gold');
+    outline-offset: 3px;
+  }
+}
+
 :root {
   color-scheme: light;
 }
@@ -38,4 +45,14 @@ textarea {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.split-title .word {
+  display: inline-block;
+  overflow: hidden;
+}
+
+.split-title .char {
+  display: inline-block;
+  will-change: transform, opacity;
 }

@@ -44,7 +44,7 @@ async function getCurrentProfile() {
   }
   const authUserId = auth.user?.id;
   if (!authUserId) {
-    throw new Error('Sign in with Supabase before using this workflow.');
+    throw new Error('Sign in before using this workflow.');
   }
 
   const result = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
@@ -53,7 +53,7 @@ async function getCurrentProfile() {
   }
   const profile = result.data as Profile | null;
   if (!profile) {
-    throw new Error('No profile is linked to the current Supabase user.');
+    throw new Error('No profile is linked to the current account.');
   }
 
   return profile;

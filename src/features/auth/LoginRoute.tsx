@@ -67,14 +67,14 @@ export function LoginRoute() {
           <Link className="inline-flex items-center rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold text-slate-200" to="/">Project Odysseus</Link>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight md:text-6xl">Sign in to the React LMS.</h1>
           <p className="mt-5 max-w-xl text-sm leading-7 text-slate-300">
-            This sign-in uses Supabase Auth and redirects users by the role stored in `profiles.role`.
+            Access your learner, tutor, or admin dashboard with your Project Odysseus account.
           </p>
         </section>
         <Card className="text-slate-950">
           <h2 className="text-2xl font-semibold tracking-tight">Dashboard access</h2>
           {!auth.configured ? (
             <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-800">
-              Supabase env vars are missing. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` before this login can authenticate users.
+              Sign-in is temporarily unavailable. Please contact support if you need urgent access.
             </p>
           ) : null}
           <form className="mt-5 grid gap-4" onSubmit={(event) => void submitPassword(event)}>
@@ -82,7 +82,7 @@ export function LoginRoute() {
               <TextInput required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
             </FormField>
             <FormField label="Password">
-              <TextInput required type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your Supabase password" />
+              <TextInput required type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password" />
             </FormField>
             <div className="flex flex-wrap items-center gap-3">
               <button disabled={busy || !auth.configured} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">

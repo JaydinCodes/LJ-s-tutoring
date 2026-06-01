@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from '../features/auth/AuthProvider';
+import { SmoothScroll } from '../components/animations/SmoothScroll';
 import '../styles/tailwind.css';
 
 const rootNode = document.getElementById('root');
@@ -13,10 +14,12 @@ if (!rootNode) {
 
 ReactDOM.createRoot(rootNode).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </BrowserRouter>
+    <SmoothScroll>
+      <BrowserRouter>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </BrowserRouter>
+    </SmoothScroll>
   </React.StrictMode>,
 );

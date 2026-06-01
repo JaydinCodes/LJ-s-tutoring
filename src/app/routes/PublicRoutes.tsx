@@ -1,55 +1,70 @@
 import type { FormEvent, ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CountUpStat } from '../../components/animations/CountUpStat';
+import { Reveal, StaggerReveal } from '../../components/animations/Reveal';
+import { SplitHeroTitle } from '../../components/animations/SplitHeroTitle';
+import { StructuredData } from '../../components/seo/StructuredData';
+import { GreekDivider } from '../../components/ui/GreekDivider';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
+
 
 const tutors = [
   {
     name: 'Jaydin Morrison',
-    focus: 'Mathematics, exam preparation, confidence rebuilding',
+    subject: 'Mathematics',
+    role: 'Senior CAPS tutor',
+    bio: 'Jaydin helps learners rebuild confidence through patient explanations, exam-focused practice, and a clear plan for closing foundational gaps.',
     image: '/images/jaydin-morrison.jpg',
   },
   {
     name: 'Nicholas Dreyer',
-    focus: 'CAPS support, algebra, functions, structured revision',
+    subject: 'Physical Sciences',
+    role: 'Physics Tutor',
+    bio: 'Nicholas makes Physics feel less abstract by connecting the theory to clear examples, structured calculations, and the reasoning behind every formula.',
     image: '/images/nicholas-dreyer.png',
   },
   {
     name: 'Liam Newton',
-    focus: 'Problem solving, calculus foundations, learner momentum',
+    subject: 'Mathematics',
+    role: 'Problem-solving tutor',
+    bio: 'Liam focuses on problem-solving habits and calculus foundations, helping learners turn difficult questions into manageable steps and build momentum.',
     image: '/images/liam-newton.jpg',
   },
   {
     name: 'Logan Petrus',
-    focus: 'Data Handling, Financial Mathematics, Critical Thinking',
-    image: '/images/logan-petrus.jpeg'
-  }
+    subject: 'Mathematical Literacy',
+    role: 'Mathematical Literacy Tutor',
+    bio: 'Logan makes Mathematical Literacy practical and approachable, helping learners apply data handling, finance, and measurement skills with confidence.',
+    image: '/images/logan-petrus.jpeg',
+  },
 ];
 
 const stats = [
-  ['150+', 'Students helped'],
-  ['500+', 'Sessions delivered'],
-  ['Grade 8-12', 'CAPS Maths'],
-  ['Cape Town', 'Online and local support'],
+  {
+    value: 1,
+    suffix: '+',
+    label: 'Years of tutoring experience',
+  },
+  {
+    value: 100,
+    suffix: '+',
+    label: 'Learners supported',
+  },
+  {
+    value: 98,
+    suffix: '%',
+    label: 'Parent satisfaction',
+  },
+  {
+    value: 12,
+    label: 'CAPS grades covered',
+  },
 ];
 
-const programs = [
-  {
-    title: 'Grade 8-9 Foundations',
-    description: 'Close number sense, algebra, geometry, and study habit gaps before senior phase pressure builds.',
-  },
-  {
-    title: 'Grade 10-11 Momentum',
-    description: 'Structured CAPS support for functions, trigonometry, analytical geometry, probability, and exam technique.',
-  },
-  {
-    title: 'Matric Exam Preparation',
-    description: 'Focused revision, past-paper strategy, confidence rebuilding, and targeted support around weak topics.',
-  },
-  {
-    title: 'NGO Learner Rollout',
-    description: 'ProVision-ready tutoring operations, learner progress summaries, attendance visibility, and support tracking.',
-  },
-];
+
+
+
 
 const faqs = [
   {
@@ -98,8 +113,51 @@ const contactEmail = 'projectodysseus.maths@gmail.com';
 const whatsappNumber = '27679327754';
 const enquiryThrottleKey = 'po_react_enquiry_last_submit';
 const enquiryThrottleMs = 30000;
+const businessUrl = 'https://projectodysseus.live';
 const heroFallbackImage = '/images/odysseus-hero-fallback.png';
 const heroVideo = '/images/bg_video.mp4';
+
+const localBusinessSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'LocalBusiness',
+  '@id': `${businessUrl}/#business`,
+  name: 'Project Odysseus Tutoring',
+  description:
+    'CAPS tutoring support for Grade 8-12 learners in Cape Town, including Mathematics, Mathematical Literacy, and Physical Sciences.',
+  url: businessUrl,
+  image: `${businessUrl}/images/og-image-placeholder.svg`,
+  email: contactEmail,
+  telephone: `+${whatsappNumber}`,
+  areaServed: {
+    '@type': 'City',
+    name: 'Cape Town',
+  },
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Cape Town',
+    addressRegion: 'Western Cape',
+    addressCountry: 'ZA',
+  },
+  openingHoursSpecification: {
+    '@type': 'OpeningHoursSpecification',
+    dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'],
+    opens: '17:00',
+    closes: '20:00',
+  },
+};
+
+const faqPageSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((faq) => ({
+    '@type': 'Question',
+    name: faq.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.answer,
+    },
+  })),
+};
 
 type EnquiryFormState = {
   name: string;
@@ -124,6 +182,7 @@ const initialEnquiryForm: EnquiryFormState = {
 export function PublicHomeRoute() {
   return (
     <PublicLayout>
+      <StructuredData data={[localBusinessSchema, faqPageSchema]} />
       <section className="relative isolate overflow-hidden bg-brand-navy text-white">
         <img
           className="absolute inset-0 h-full w-full object-cover object-[63%_center]"
@@ -133,7 +192,7 @@ export function PublicHomeRoute() {
           fetchPriority="high"
         />
         <video
-          className="absolute inset-0 hidden h-full w-full object-cover object-[60%_center] opacity-75 sm:block"
+          className="absolute inset-0 hidden h-full w-full object-cover object-[60%_center] opacity-35 sm:block"
           src={heroVideo}
           poster={heroFallbackImage}
           autoPlay
@@ -142,52 +201,57 @@ export function PublicHomeRoute() {
           playsInline
           aria-hidden="true"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,_rgba(8,19,38,0.88)_0%,_rgba(8,19,38,0.72)_42%,_rgba(8,19,38,0.36)_100%)] sm:bg-[linear-gradient(90deg,_rgba(8,19,38,0.97)_0%,_rgba(8,19,38,0.78)_44%,_rgba(8,19,38,0.22)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.88)_48%,_rgba(15,23,42,0.62)_100%)] sm:bg-[linear-gradient(90deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.88)_48%,_rgba(15,23,42,0.62)_100%)]" />
         <div className="relative mx-auto flex min-h-[calc(100svh-4rem)] max-w-7xl flex-col justify-center px-4 pb-12 pt-16 sm:px-6 sm:py-20 lg:min-h-[86svh]">
-          <p className="max-w-full text-xs font-semibold uppercase tracking-[0.24em] text-amber-300 sm:text-sm sm:tracking-[0.32em]">Grade 8-12 CAPS Mathematics</p>
-          <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight sm:mt-5 sm:text-6xl md:text-7xl">Project Odysseus</h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-blue-50 sm:mt-6 sm:text-lg sm:leading-8">
-            Premium maths tutoring for Cape Town and South African learners, now shaped around the same React LMS experience students use for assignments, progress, results, and careers.
-          </p>
-          <div className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
-            <a className="inline-flex justify-center rounded-full bg-amber-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-amber-900/20 transition hover:bg-amber-300 sm:text-base" href="#enquiry">Send an enquiry</a>
+          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-brand-gold">GRADE 8–12 CAPS TUTORING</p>
+          <SplitHeroTitle className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight sm:mt-5 sm:text-6xl md:text-7xl">Project Odysseus</SplitHeroTitle>
+          <Reveal variant="oracle" delay={0.45} className="mt-5 max-w-2xl text-base leading-7 text-brand-parchment sm:mt-6 sm:text-lg sm:leading-8">
+              Targeted CAPS support for Mathematics, Mathematical Literacy, and Physical Sciences, from core concepts to exam prep.
+              We identify learning gaps, rebuild confidence, and keep every session focused on what each learner needs next.
+          </Reveal>
+          <Reveal variant="oracle" delay={0.6} className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
+            <a className="inline-flex justify-center rounded-full bg-brand-gold px-5 py-3 text-sm font-semibold text-brand-obsidian shadow-lg shadow-black/20 transition hover:bg-[#f7d24f] sm:text-base" href="#enquiry">Join Our Tutoring Programme</a>
+            <a className="inline-flex justify-center rounded-full border border-brand-aegean/70 bg-brand-aegean px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-brand-deepBlue sm:text-base" href="#tutors">Meet Our Tutors</a>
             <Link className="inline-flex justify-center rounded-full border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20 sm:text-base" to="/programs">View programs</Link>
-            <Link className="inline-flex justify-center rounded-full border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20 sm:text-base" to="/dashboard/login">Portal login</Link>
-          </div>
-          <div className="mt-8 grid max-w-4xl grid-cols-2 gap-3 sm:mt-10 lg:grid-cols-4">
-            {stats.map(([value, label]) => (
-              <div key={label} className="rounded-[1.25rem] border border-white/15 bg-white/10 p-4 backdrop-blur sm:rounded-[1.5rem] sm:p-5">
-                <p className="text-2xl font-semibold text-amber-300 sm:text-3xl">{value}</p>
-                <p className="mt-1 text-xs leading-5 text-blue-50 sm:text-sm">{label}</p>
+          </Reveal>
+          <StaggerReveal className="mt-8 grid max-w-4xl grid-cols-2 gap-3 sm:mt-10 lg:grid-cols-4" start="top 95%">
+            {stats.map(({ value, suffix, label }) => (
+              <div key={label} data-reveal-child className="rounded-[1.25rem] border border-brand-marble/15 bg-white/10 p-4 backdrop-blur sm:rounded-[1.5rem] sm:p-5">
+                <p className="text-2xl font-semibold text-brand-gold sm:text-3xl">
+                  <CountUpStat value={value} suffix={suffix} />
+                </p>
+                <p className="mt-1 text-xs leading-5 text-brand-parchment sm:text-sm">{label}</p>
               </div>
             ))}
-          </div>
+          </StaggerReveal>
         </div>
       </section>
 
-      <section className="bg-[linear-gradient(135deg,_#eef6ff_0%,_#f8fafc_48%,_#fff8e6_100%)] py-16">
+      <GreekDivider background="parchment" tone="gold" />
+
+      <Reveal as="section" className="bg-brand-parchment py-16">
         <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
           <div>
             <SectionIntro title="Tutoring that feels connected, not scattered" eyebrow="React LMS workflow">
               Students get direct maths support. Parents get clarity. Tutors get a review workflow. Admins get visibility. The public site now matches that same clean LMS identity.
             </SectionIntro>
-            <div className="mt-10 grid gap-4 md:grid-cols-3">
+            <StaggerReveal className="mt-10 grid gap-4 md:grid-cols-3">
               {[
                 ['Diagnose gaps', 'Baseline weak topics and turn them into focused study goals.'],
                 ['Assign focused work', 'Publish tasks, track submissions, and reduce homework ambiguity.'],
                 ['Track progress', 'Surface marks, feedback, attendance, and momentum in one place.'],
               ].map(([title, description], index) => (
-                <article key={title} className="rounded-[1.5rem] border border-white/80 bg-white/90 p-6 shadow-lg shadow-slate-200/60">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Step {index + 1}</p>
-                  <h3 className="mt-3 text-xl font-semibold text-slate-950">{title}</h3>
+                <article key={title} data-reveal-child className="rounded-[1.5rem] border border-brand-marble bg-white/90 p-6 shadow-lg shadow-slate-200/60">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-brand-aegean">Step {index + 1}</p>
+                  <h3 className="mt-3 text-xl font-semibold text-brand-obsidian">{title}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
                 </article>
               ))}
-            </div>
+            </StaggerReveal>
           </div>
           <aside className="space-y-4">
-            <div className="rounded-[1.5rem] bg-[linear-gradient(135deg,_#0f4db8_0%,_#1697df_100%)] p-5 text-white shadow-xl shadow-blue-900/20">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-100">Student snapshot</p>
+            <div className="rounded-[1.5rem] bg-brand-deepBlue p-5 text-white shadow-xl shadow-brand-navy/20">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-marble">Student snapshot</p>
               <h3 className="mt-3 text-2xl font-semibold">This week in Maths</h3>
               <div className="mt-5 grid gap-3">
                 {[
@@ -196,7 +260,7 @@ export function PublicHomeRoute() {
                   ['Progress', 'Functions improving'],
                 ].map(([label, value]) => (
                   <div key={label} className="flex items-center justify-between gap-4 rounded-2xl bg-white/12 px-4 py-3">
-                    <span className="text-sm text-blue-50">{label}</span>
+                    <span className="text-sm text-brand-parchment">{label}</span>
                     <span className="text-sm font-semibold">{value}</span>
                   </div>
                 ))}
@@ -208,17 +272,19 @@ export function PublicHomeRoute() {
                 ['Tutor dashboard', 'Classes, sessions, submissions, reports'],
                 ['Admin dashboard', 'Students, tutors, approvals, payments'],
               ].map(([title, description]) => (
-                <div key={title} className="rounded-2xl border border-white/80 bg-white/95 p-4 shadow-lg shadow-slate-200/50">
-                  <p className="font-semibold text-slate-950">{title}</p>
+                <div key={title} className="rounded-2xl border border-brand-marble bg-white/95 p-4 shadow-lg shadow-slate-200/50">
+                  <p className="font-semibold text-brand-obsidian">{title}</p>
                   <p className="mt-1 text-sm text-slate-600">{description}</p>
                 </div>
               ))}
             </div>
           </aside>
         </div>
-      </section>
+      </Reveal>
 
-      <section className="bg-white py-16">
+      <GreekDivider background="white" />
+
+      <Reveal as="section" variant="marble" className="bg-white py-16">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
             <div>
@@ -227,24 +293,19 @@ export function PublicHomeRoute() {
               </SectionIntro>
               <div className="mt-8 flex flex-wrap gap-3">
                 <a className="rounded-full bg-brand-navy px-5 py-3 text-sm font-semibold text-white" href="#enquiry">Book a first conversation</a>
-                <Link className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-800" to="/guides/matric-maths-mistakes-guide">Read the matric guide</Link>
+                <Link className="rounded-full border border-brand-marble px-5 py-3 text-sm font-semibold text-brand-obsidian" to="/guides/matric-maths-mistakes-guide">Read the matric guide</Link>
               </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              {programs.slice(0, 4).map((program) => (
-                <article key={program.title} className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-xl font-semibold text-slate-950">{program.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{program.description}</p>
-                </article>
-              ))}
-            </div>
+          
           </div>
         </div>
-      </section>
+      </Reveal>
 
       <TutorSection />
+      <GreekDivider background="white" tone="gold" />
       <GuideSection />
       <FaqSection />
+      <GreekDivider background="slate" tone="gold" />
       <BecomeTutorSection />
       <EnquirySection />
     </PublicLayout>
@@ -256,7 +317,7 @@ export function AboutRoute() {
     <PublicLayout>
       <section className="bg-slate-950 px-6 py-20 text-white">
         <div className="mx-auto max-w-4xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-300">About</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand-gold">About</p>
           <h1 className="mt-4 text-5xl font-semibold tracking-tight">Maths tutoring with operational discipline behind it.</h1>
           <p className="mt-6 text-lg leading-8 text-slate-200">
             Project Odysseus started as focused maths support and is becoming a full LMS-style platform for learners, tutors, admins, parents, and NGO partners.
@@ -269,19 +330,39 @@ export function AboutRoute() {
 }
 
 export function ProgramsRoute() {
+  const programmes = [
+    ['Grade 8-9 foundations', 'Strengthen core number skills, algebra, geometry, and problem-solving habits before gaps compound.'],
+    ['Grade 10-11 progression', 'Build confidence with functions, trigonometry, analytical geometry, and exam-style application.'],
+    ['Grade 12 exam preparation', 'Target weak topics, sharpen exam technique, and practise under realistic time pressure.'],
+  ];
+
   return (
     <PublicLayout>
-      <section className="bg-white px-6 py-20">
+      <section className="bg-brand-parchment px-6 py-20">
         <div className="mx-auto max-w-7xl">
-          <SectionIntro title="Programs" eyebrow="Grade 8-12 CAPS Maths">
-            Practical tutoring pathways for learners who need stronger fundamentals, better exam technique, or structured support through a partner rollout.
+          <SectionIntro title="CAPS tutoring programmes" eyebrow="Grade 8-12 support">
+            Focused tutoring plans for Mathematics, Mathematical Literacy, and Physical Sciences learners who need stronger foundations, clearer methods, and measurable progress.
           </SectionIntro>
-          <ProgramsSection compact />
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {programmes.map(([title, description]) => (
+              <article key={title} className="rounded-[1.5rem] border border-brand-marble bg-white p-6 shadow-sm shadow-slate-200/50">
+                <h2 className="text-xl font-semibold text-brand-obsidian">{title}</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{description}</p>
+              </article>
+            ))}
+          </div>
+          <a className="mt-8 inline-flex rounded-full bg-brand-navy px-5 py-3 text-sm font-semibold text-white" href="/#enquiry">
+            Ask about the right programme
+          </a>
         </div>
       </section>
     </PublicLayout>
   );
 }
+
+
+
+
 
 export function GuidesIndexRoute() {
   return (
@@ -346,7 +427,7 @@ export function PrivacyRoute() {
       <p>Project Odysseus processes learner and tutor data for tutoring operations, progress analytics, session workflows, and safety controls.</p>
       <p>Learner account data may include name, grade, guardian contact details, login email, tutor assignments, attendance/session records, learning progress, community activity, and support or privacy request history.</p>
       <p>Data is used only to provide tutoring services, maintain account security, support learner progress, meet operational/legal duties, and handle access, correction, deletion, or retention requests.</p>
-      <p>Operational cookies are used for authenticated portal access. Supabase and API configuration must use environment variables and only safe public configuration may be embedded in client pages.</p>
+      <p>Operational cookies are used for authenticated portal access. We limit browser-visible information to what is required for secure access and site functionality.</p>
     </LegalRoute>
   );
 }
@@ -363,20 +444,61 @@ export function TermsRoute() {
 }
 
 function PublicLayout({ children }: { children: ReactNode }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const closeMenu = () => setIsMenuOpen(false);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeMenu();
+    };
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isMenuOpen]);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <header className="sticky top-0 z-40 border-b border-white/70 bg-white/90 shadow-sm shadow-slate-200/60 backdrop-blur">
         <nav className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Link className="flex min-w-0 items-center gap-2 text-base font-semibold tracking-tight text-slate-950 sm:gap-3 sm:text-lg" to="/">
+          <Link className="flex min-w-0 items-center gap-2 rounded-lg text-base font-semibold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2 sm:gap-3 sm:text-lg" to="/" onClick={closeMenu}>
             <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-navy text-sm font-bold text-white">PO</span>
             <span className="truncate">Project Odysseus</span>
           </Link>
-          <div className="flex shrink-0 items-center gap-1 text-xs font-semibold sm:gap-2 sm:text-sm">
-            <Link className="hidden rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:inline-flex" to="/about">About</Link>
-            <Link className="rounded-full px-2.5 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:px-3" to="/programs">Programs</Link>
-            <a className="hidden rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 md:inline-flex" href="/#faq">FAQ</a>
-            <a className="hidden rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 lg:inline-flex" href="/#become-a-tutor">Tutor with us</a>
-            <Link className="rounded-full bg-brand-navy px-3 py-2 text-white shadow-sm transition hover:bg-blue-900 sm:px-4" to="/dashboard/login">Login</Link>
+          <div className="hidden items-center gap-2 text-sm font-semibold md:flex">
+            <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/about">About</Link>
+            <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/programs">Programs</Link>
+            <a className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" href="/#faq">FAQ</a>
+            <a className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" href="/#become-a-tutor">Tutor with us</a>
+            <Link className="rounded-full bg-brand-navy px-4 py-2 text-white shadow-sm transition hover:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/dashboard/login">Student Login</Link>
+          </div>
+          <button
+            className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-brand-navy shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2 md:hidden"
+            type="button"
+            aria-controls="public-mobile-menu"
+            aria-expanded={isMenuOpen}
+            aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            onClick={() => setIsMenuOpen((current) => !current)}
+          >
+            <span className="sr-only">{isMenuOpen ? 'Close menu' : 'Open menu'}</span>
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              {isMenuOpen ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
+            </svg>
+          </button>
+          <div
+            id="public-mobile-menu"
+            className={`absolute inset-x-0 top-full border-b border-slate-200 bg-white px-4 py-4 shadow-lg md:hidden ${
+              isMenuOpen ? 'block' : 'hidden'
+            }`}
+          >
+            <div className="mx-auto grid max-w-7xl gap-1 text-sm font-semibold">
+              <Link className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/about" onClick={closeMenu}>About</Link>
+              <Link className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/programs" onClick={closeMenu}>Programs</Link>
+              <a className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" href="/#faq" onClick={closeMenu}>FAQ</a>
+              <a className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" href="/#become-a-tutor" onClick={closeMenu}>Tutor with us</a>
+              <Link className="mt-2 rounded-lg bg-brand-navy px-4 py-3 text-center text-white hover:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/dashboard/login" onClick={closeMenu}>Student Login</Link>
+            </div>
           </div>
         </nav>
       </header>
@@ -396,96 +518,177 @@ function PublicLayout({ children }: { children: ReactNode }) {
 
 function TutorSection() {
   return (
-    <section className="bg-slate-50 py-16">
+    <Reveal as="section" id="tutors" className="bg-brand-parchment py-16">
       <div className="mx-auto max-w-7xl px-6">
         <SectionIntro title="Meet the tutors" eyebrow="Academic support">
           Preserve the strongest public-site trust signal while the LMS migration moves tutor operations into React.
         </SectionIntro>
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
+        <StaggerReveal className="mt-10 grid gap-4 md:grid-cols-3">
           {tutors.map((tutor) => (
-            <article key={tutor.name} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <img className="aspect-[4/3] w-full object-cover" src={tutor.image} alt={tutor.name} />
-              <div className="p-5">
-                <h3 className="text-xl font-semibold text-slate-950">{tutor.name}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{tutor.focus}</p>
-              </div>
-            </article>
+            <TutorCard key={tutor.name} tutor={tutor} />
           ))}
-        </div>
+        </StaggerReveal>
       </div>
-    </section>
+    </Reveal>
   );
 }
 
-function ProgramsSection({ compact = false }: { compact?: boolean }) {
+function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
+  const [isBioVisible, setIsBioVisible] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const bioId = `tutor-bio-${tutor.name.toLowerCase().replace(/\s+/g, '-')}`;
+  const transitionClass = prefersReducedMotion ? '' : 'transition duration-300 ease-out';
+
   return (
-    <section className={compact ? 'mt-10' : 'bg-white py-16'}>
-      <div className={compact ? '' : 'mx-auto max-w-7xl px-6'}>
-        {!compact ? (
-          <SectionIntro title="Programs" eyebrow="Learning pathways">
-            Structured maths support that maps naturally into assignments, progress records, and parent/NGO reporting.
-          </SectionIntro>
-        ) : null}
-        <div className="mt-10 grid gap-4 md:grid-cols-2">
-          {programs.map((program) => (
-            <article key={program.title} className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="text-xl font-semibold text-slate-950">{program.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{program.description}</p>
-            </article>
-          ))}
+    <article
+      data-reveal-child
+      className="group overflow-hidden rounded-[1.5rem] border border-brand-marble bg-white shadow-sm shadow-slate-200/50"
+    >
+      <div className="relative overflow-hidden">
+        <img
+          className={`aspect-[4/3] w-full object-cover ${transitionClass} ${prefersReducedMotion ? '' : 'group-hover:scale-[1.03]'}`}
+          src={tutor.image}
+          alt={`${tutor.name}, ${tutor.role} for ${tutor.subject}`}
+        />
+        <button
+          className="absolute inset-0 z-10 focus:outline-none focus:ring-4 focus:ring-inset focus:ring-brand-gold"
+          type="button"
+          aria-label={`Read ${tutor.name}'s bio`}
+          aria-controls={bioId}
+          aria-expanded={isBioVisible}
+          onClick={() => setIsBioVisible(true)}
+          onFocus={() => setIsBioVisible(true)}
+        />
+        <div
+          id={bioId}
+          className={`absolute inset-0 z-20 flex flex-col justify-end bg-brand-navy/90 p-5 text-white ${
+            isBioVisible ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+          } ${transitionClass} group-hover:pointer-events-auto group-hover:opacity-100`}
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">Tutor bio</p>
+          <p className="mt-3 text-sm leading-6 text-brand-parchment">{tutor.bio}</p>
+          <button
+            className="mt-4 w-fit rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-brand-gold"
+            type="button"
+            tabIndex={isBioVisible ? 0 : -1}
+            onClick={(event) => {
+              setIsBioVisible(false);
+              event.currentTarget.blur();
+            }}
+          >
+            Close bio
+          </button>
         </div>
       </div>
-    </section>
+      <div className="p-5">
+        <h3 className="text-xl font-semibold text-brand-obsidian">{tutor.name}</h3>
+        <p className="mt-2 text-sm font-semibold text-brand-deepBlue">{tutor.subject}</p>
+        <p className="mt-1 text-sm text-slate-600">{tutor.role}</p>
+        <button
+          className="mt-4 rounded-full border border-brand-marble px-3 py-1.5 text-xs font-semibold text-brand-deepBlue transition hover:border-brand-aegean hover:bg-brand-parchment focus:outline-none focus:ring-2 focus:ring-brand-aegean/50"
+          type="button"
+          aria-controls={bioId}
+          aria-expanded={isBioVisible}
+          onClick={() => setIsBioVisible((current) => !current)}
+          onFocus={() => setIsBioVisible(true)}
+        >
+          {isBioVisible ? 'Hide bio' : 'Read bio'}
+        </button>
+      </div>
+    </article>
   );
 }
+
+
+
+
 
 function GuideSection() {
   return (
-    <section className="bg-slate-50 py-16">
+    <Reveal as="section" variant="marble" className="bg-white py-16">
       <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
         <SectionIntro title="Matric maths guide" eyebrow="Free resource">
           Keep the useful lead-magnet path alive during the migration. Learners can still open the guide while future downloads and follow-ups move into onboarding and reporting workflows.
         </SectionIntro>
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-xl font-semibold text-slate-950">Common matric maths mistakes</h3>
+        <div className="rounded-[1.5rem] border border-brand-marble bg-brand-parchment p-6 shadow-sm">
+          <h3 className="text-xl font-semibold text-brand-obsidian">Common matric maths mistakes</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             A practical revision guide for avoiding avoidable marks lost in tests and exams.
           </p>
-          <Link className="mt-5 inline-flex rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">
+          <Link className="mt-5 inline-flex rounded-lg bg-brand-navy px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">
             Open guide
           </Link>
         </div>
       </div>
-    </section>
+    </Reveal>
   );
 }
 
 function FaqSection() {
   return (
-    <section id="faq" className="bg-white py-16">
+    <Reveal as="section" id="faq" variant="marble" className="bg-white py-16">
       <div className="mx-auto max-w-4xl px-6">
         <SectionIntro title="Frequently asked questions" eyebrow="Tutoring details">
           The core public-site answers are now available in React while the legacy landing page remains in the repository for comparison.
         </SectionIntro>
-        <div className="mt-10 grid gap-3">
-          {faqs.map((faq) => (
-            <details key={faq.question} className="rounded-lg border border-slate-200 bg-slate-50 p-5">
-              <summary className="cursor-pointer text-base font-semibold text-slate-950">{faq.question}</summary>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{faq.answer}</p>
-            </details>
-          ))}
+        <StaggerReveal className="mt-10 grid gap-3" staggerBy={0.08}>
+          {faqs.map((faq, index) => <FaqItem key={faq.question} faq={faq} index={index} />)}
+        </StaggerReveal>
+      </div>
+    </Reveal>
+  );
+}
+
+function FaqItem({ faq, index }: { faq: (typeof faqs)[number]; index: number }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const answerId = `faq-answer-${index}`;
+  const questionId = `faq-question-${index}`;
+
+  return (
+    <article data-reveal-child className="rounded-lg border border-brand-marble bg-brand-parchment">
+      <h3>
+        <button
+          id={questionId}
+          className="flex w-full items-center justify-between gap-4 rounded-lg px-5 py-4 text-left text-base font-semibold text-slate-950 transition hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-aegean"
+          type="button"
+          aria-controls={answerId}
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          <span>{faq.question}</span>
+          <svg
+            className={`h-5 w-5 shrink-0 text-brand-aegean transition-transform duration-200 motion-reduce:transition-none ${isOpen ? 'rotate-180' : ''}`}
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <path d="m5 7.5 5 5 5-5" />
+          </svg>
+        </button>
+      </h3>
+      <div
+        id={answerId}
+        className={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+        role="region"
+        aria-labelledby={questionId}
+        aria-hidden={!isOpen}
+      >
+        <div className="overflow-hidden">
+          <p className="px-5 pb-5 text-sm leading-6 text-slate-600">{faq.answer}</p>
         </div>
       </div>
-    </section>
+    </article>
   );
 }
 
 function BecomeTutorSection() {
   return (
-    <section id="become-a-tutor" className="bg-slate-950 py-16 text-white">
+    <Reveal as="section" id="become-a-tutor" className="bg-slate-950 py-16 text-white">
       <div className="mx-auto max-w-7xl px-6">
         <div className="max-w-3xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-300">Join our team</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-gold">Join our team</p>
           <h2 className="mt-3 text-4xl font-semibold tracking-tight">Passionate about maths? Teach with us.</h2>
           <p className="mt-4 text-sm leading-7 text-slate-300">
             We are looking for talented mathematics tutors who want flexible work, proper operational support, and a learner-first teaching culture.
@@ -494,14 +697,14 @@ function BecomeTutorSection() {
         <div className="mt-10 grid gap-4 lg:grid-cols-2">
           <div className="rounded-lg border border-white/10 bg-white/10 p-6">
             <h3 className="text-xl font-semibold">Why tutor with us</h3>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <StaggerReveal className="mt-5 grid gap-4 sm:grid-cols-2" staggerBy={0.08}>
               {tutorPerks.map(([title, description]) => (
-                <article key={title} className="rounded-lg border border-white/10 bg-slate-950/40 p-4">
+                <article key={title} data-reveal-child className="rounded-lg border border-white/10 bg-slate-950/40 p-4">
                   <h4 className="font-semibold text-white">{title}</h4>
                   <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p>
                 </article>
               ))}
-            </div>
+            </StaggerReveal>
           </div>
           <div className="rounded-lg border border-white/10 bg-white p-6 text-slate-950">
             <h3 className="text-xl font-semibold">What we look for</h3>
@@ -513,7 +716,7 @@ function BecomeTutorSection() {
               ))}
             </ul>
             <a
-              className="mt-6 inline-flex w-full justify-center rounded-lg bg-amber-400 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-amber-300"
+              className="mt-6 inline-flex w-full justify-center rounded-lg bg-brand-gold px-4 py-3 text-sm font-semibold text-brand-obsidian hover:bg-[#f7d24f]"
               href={`mailto:${contactEmail}?subject=${encodeURIComponent('Tutor Application - Project Odysseus')}`}
             >
               Apply now
@@ -522,7 +725,7 @@ function BecomeTutorSection() {
           </div>
         </div>
       </div>
-    </section>
+    </Reveal>
   );
 }
 
@@ -655,10 +858,10 @@ function EnquirySection() {
   }
 
   return (
-    <section id="enquiry" className="bg-slate-950 px-6 py-16 text-white">
+    <Reveal as="section" id="enquiry" className="bg-slate-950 px-6 py-16 text-white">
       <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,1fr)_480px] lg:items-start">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-300">Next step</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand-gold">Next step</p>
           <h2 className="mt-3 text-4xl font-semibold tracking-tight">Start with a focused learner conversation.</h2>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
             We tutor Monday to Thursday between 5pm and 8pm, with limited weekend slots. Tell us what support the learner needs and we will reply with the next practical step.
@@ -675,7 +878,7 @@ function EnquirySection() {
             </Link>
           </div>
         </div>
-        <form className="rounded-lg border border-white/10 bg-white/10 p-5 backdrop-blur" onSubmit={submitEnquiry}>
+        <form className="rounded-lg border border-white/10 bg-white/10 p-5 backdrop-blur" aria-describedby="enquiry-helper" onSubmit={submitEnquiry}>
           <h3 className="text-xl font-semibold text-white">Quick enquiry</h3>
           <div className="hidden" aria-hidden="true">
             <label htmlFor="enquiry-website">Website</label>
@@ -698,7 +901,9 @@ function EnquirySection() {
                 required
                 minLength={2}
                 maxLength={100}
-                className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300 focus:ring-2 focus:ring-amber-300/40"
+                autoComplete="name"
+                aria-describedby="enquiry-helper enquiry-status"
+                className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/40"
                 placeholder="John Smith"
                 value={form.name}
                 onChange={(event) => updateField('name', event.target.value)}
@@ -711,7 +916,9 @@ function EnquirySection() {
                 name="email"
                 type="email"
                 required
-                className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300 focus:ring-2 focus:ring-amber-300/40"
+                autoComplete="email"
+                aria-describedby="enquiry-helper enquiry-status"
+                className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/40"
                 placeholder="john@example.com"
                 value={form.email}
                 onChange={(event) => updateField('email', event.target.value)}
@@ -723,7 +930,8 @@ function EnquirySection() {
                 id="enquiry-grade"
                 name="grade"
                 required
-                className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-amber-300 focus:ring-2 focus:ring-amber-300/40"
+                aria-describedby="enquiry-helper enquiry-status"
+                className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/40"
                 value={form.grade}
                 onChange={(event) => updateField('grade', event.target.value)}
               >
@@ -742,41 +950,45 @@ function EnquirySection() {
                 name="message"
                 rows={4}
                 maxLength={2000}
-                className="resize-none rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300 focus:ring-2 focus:ring-amber-300/40"
+                aria-describedby="enquiry-helper enquiry-status"
+                className="resize-none rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/40"
                 placeholder="Tell us about the learner's goals or current challenge."
                 value={form.message}
                 onChange={(event) => updateField('message', event.target.value)}
               />
             </label>
           </div>
-          {status.message ? (
-            <p
-              className={`mt-4 rounded-lg px-3 py-2 text-sm ${
+          <p
+            id="enquiry-status"
+            className={
+              status.message
+                ? `mt-4 rounded-lg px-3 py-2 text-sm ${
                 status.tone === 'success'
                   ? 'bg-green-500/15 text-green-200'
                   : status.tone === 'error'
                     ? 'bg-red-500/15 text-red-200'
                     : 'bg-sky-500/15 text-sky-200'
-              }`}
-            >
-              {status.message}
-            </p>
-          ) : null}
+                  }`
+                : 'sr-only'
+            }
+            role={status.tone === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+          >
+            {status.message}
+          </p>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-5 w-full rounded-lg bg-amber-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-70"
+            className="mt-5 w-full rounded-lg bg-brand-gold px-4 py-3 text-sm font-semibold text-brand-obsidian transition hover:bg-[#f7d24f] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSubmitting ? 'Sending...' : 'Send enquiry'}
           </button>
-          {!hasFormspreeEndpoint ? (
-            <p className="mt-3 text-xs leading-5 text-slate-400">
-              Configure `VITE_PO_FORMSPREE_ENDPOINT` to submit directly from this React form. Until then, it opens a pre-filled email.
-            </p>
-          ) : null}
+          <p id="enquiry-helper" className="mt-3 text-xs leading-5 text-slate-400">
+            We reply within 24 hours, Monday to Thursday. If direct submission is unavailable, we will open a pre-filled email for you.
+          </p>
         </form>
       </div>
-    </section>
+    </Reveal>
   );
 }
 
@@ -794,7 +1006,6 @@ function LegalRoute({ title, children }: { title: string; children: ReactNode })
   );
 }
 
-// 
 function SectionIntro({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
   return (
     <div className="max-w-3xl">

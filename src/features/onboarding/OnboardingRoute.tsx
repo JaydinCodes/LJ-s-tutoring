@@ -74,7 +74,7 @@ export function OnboardingRoute({ role }: { role: Extract<UserRole, 'student' | 
       <Card>
         <h2 className="text-2xl font-semibold tracking-tight">{role === 'student' ? 'Student onboarding' : 'Tutor onboarding'}</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          This creates your `profiles` row and linked {role === 'student' ? '`students`' : '`tutors`'} row in Supabase.
+          Complete your details so we can prepare your {role} dashboard.
         </p>
         <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={(event) => void submit(event)}>
           <FormField label="Full name">
@@ -143,9 +143,9 @@ function OnboardingShell({ role, children }: { role: string; children: React.Rea
 function SetupRequired() {
   return (
     <Card>
-      <h2 className="text-xl font-semibold text-slate-950">Supabase setup required</h2>
+      <h2 className="text-xl font-semibold text-slate-950">Onboarding temporarily unavailable</h2>
       <p className="mt-2 text-sm leading-6 text-slate-600">
-        Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` before onboarding can create records.
+        We cannot complete account setup right now. Please contact support if you need urgent access.
       </p>
     </Card>
   );

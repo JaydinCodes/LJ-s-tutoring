@@ -206,7 +206,7 @@ export function AdminReconciliationRoute() {
 
 export function AdminResultsRoute() {
   return (
-    <DashboardShell title="Results Analytics" subtitle="Admin analytics route reserved for learner result aggregation after Supabase progress parity." section="admin">
+    <DashboardShell title="Results Analytics" subtitle="Learner result aggregation and reporting overview." section="admin">
       <Card>
         <div className="grid gap-4 xl:grid-cols-3">
           <Summary label="React route" value="Ready" />

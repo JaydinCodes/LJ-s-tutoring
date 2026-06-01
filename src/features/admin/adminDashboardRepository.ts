@@ -76,8 +76,8 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
 
   return {
     metrics: [
-      { label: 'Students', value: String(students.length), helper: 'Recent learner records from Supabase.', tone: 'teal' },
-      { label: 'Tutors', value: String(tutors.length), helper: 'Recent tutor records from Supabase.', tone: 'violet' },
+      { label: 'Students', value: String(students.length), helper: 'Recent learner records.', tone: 'teal' },
+      { label: 'Tutors', value: String(tutors.length), helper: 'Recent tutor records.', tone: 'violet' },
       { label: 'Assignments', value: String(assignments.length), helper: 'Recently created assignment records.', tone: 'amber' },
       { label: 'Outstanding payments', value: formatCurrency(outstanding), helper: 'Student payments not marked as paid.', tone: 'blue' },
     ],
