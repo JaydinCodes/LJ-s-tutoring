@@ -354,17 +354,17 @@ function PublicLayout({ children }: { children: ReactNode }) {
 
 function TutorSection() {
   return (
-    <section id="tutors" className="bg-slate-50 py-16">
+    <section id="tutors" className="bg-brand-parchment py-16">
       <div className="mx-auto max-w-7xl px-6">
         <SectionIntro title="Meet the tutors" eyebrow="Academic support">
           Preserve the strongest public-site trust signal while the LMS migration moves tutor operations into React.
         </SectionIntro>
         <div className="mt-10 grid gap-4 md:grid-cols-3">
           {tutors.map((tutor) => (
-            <article key={tutor.name} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <article key={tutor.name} className="overflow-hidden rounded-[1.5rem] border border-brand-marble bg-white shadow-sm shadow-slate-200/50">
               <img className="aspect-[4/3] w-full object-cover" src={tutor.image} alt={tutor.name} />
               <div className="p-5">
-                <h3 className="text-xl font-semibold text-slate-950">{tutor.name}</h3>
+                <h3 className="text-xl font-semibold text-brand-obsidian">{tutor.name}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{tutor.focus}</p>
               </div>
             </article>
@@ -381,17 +381,17 @@ function TutorSection() {
 
 function GuideSection() {
   return (
-    <section className="bg-slate-50 py-16">
+    <section className="bg-white py-16">
       <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
         <SectionIntro title="Matric maths guide" eyebrow="Free resource">
           Keep the useful lead-magnet path alive during the migration. Learners can still open the guide while future downloads and follow-ups move into onboarding and reporting workflows.
         </SectionIntro>
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-xl font-semibold text-slate-950">Common matric maths mistakes</h3>
+        <div className="rounded-[1.5rem] border border-brand-marble bg-brand-parchment p-6 shadow-sm">
+          <h3 className="text-xl font-semibold text-brand-obsidian">Common matric maths mistakes</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             A practical revision guide for avoiding avoidable marks lost in tests and exams.
           </p>
-          <Link className="mt-5 inline-flex rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">
+          <Link className="mt-5 inline-flex rounded-lg bg-brand-navy px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">
             Open guide
           </Link>
         </div>
@@ -409,7 +409,7 @@ function FaqSection() {
         </SectionIntro>
         <div className="mt-10 grid gap-3">
           {faqs.map((faq) => (
-            <details key={faq.question} className="rounded-lg border border-slate-200 bg-slate-50 p-5">
+            <details key={faq.question} className="rounded-lg border border-brand-marble bg-brand-parchment p-5">
               <summary className="cursor-pointer text-base font-semibold text-slate-950">{faq.question}</summary>
               <p className="mt-3 text-sm leading-6 text-slate-600">{faq.answer}</p>
             </details>
