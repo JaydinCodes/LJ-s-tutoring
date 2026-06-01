@@ -24,7 +24,7 @@ export function AdminTutorsRoute() {
           <div className="space-y-5">
             <DataTable<Tutor & { full_name?: string; email?: string }>
               rows={data.tutors}
-              empty="No Supabase tutor records are available yet."
+              empty="No tutor records are available yet."
               columns={[
                 { key: 'name', label: 'Tutor', render: (row) => <span className="font-semibold text-slate-950">{row.full_name || row.id}</span> },
                 { key: 'email', label: 'Email', render: (row) => row.email || 'Pending' },
@@ -74,7 +74,7 @@ function CreateTutorForm({ onCreated }: { onCreated: () => Promise<void> }) {
       setGrades('');
       setHourlyRate('');
       setStatus('pending');
-      setMessage('Tutor linked to Supabase roster.');
+      setMessage('Tutor added to the roster.');
       await onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create tutor record.');
@@ -88,12 +88,12 @@ function CreateTutorForm({ onCreated }: { onCreated: () => Promise<void> }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-slate-950">Link tutor</h2>
-          <p className="mt-1 text-sm text-slate-600">Creates an LMS profile and tutor record for an existing Supabase Auth user.</p>
+          <p className="mt-1 text-sm text-slate-600">Create a tutor profile for an existing account.</p>
         </div>
         <StatusBadge value="admin_only" />
       </div>
       <form className="mt-5 grid gap-4 lg:grid-cols-2" onSubmit={(event) => void submit(event)}>
-        <FormField label="Auth user ID"><TextInput required value={authUserId} onChange={(event) => setAuthUserId(event.target.value)} placeholder="Supabase auth.users id" /></FormField>
+        <FormField label="Account user ID"><TextInput required value={authUserId} onChange={(event) => setAuthUserId(event.target.value)} placeholder="Account user ID" /></FormField>
         <FormField label="Full name"><TextInput required value={fullName} onChange={(event) => setFullName(event.target.value)} /></FormField>
         <FormField label="Email"><TextInput required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></FormField>
         <FormField label="Phone"><TextInput value={phone} onChange={(event) => setPhone(event.target.value)} /></FormField>

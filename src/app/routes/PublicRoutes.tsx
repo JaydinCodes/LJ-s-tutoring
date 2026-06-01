@@ -378,7 +378,7 @@ export function PrivacyRoute() {
       <p>Project Odysseus processes learner and tutor data for tutoring operations, progress analytics, session workflows, and safety controls.</p>
       <p>Learner account data may include name, grade, guardian contact details, login email, tutor assignments, attendance/session records, learning progress, community activity, and support or privacy request history.</p>
       <p>Data is used only to provide tutoring services, maintain account security, support learner progress, meet operational/legal duties, and handle access, correction, deletion, or retention requests.</p>
-      <p>Operational cookies are used for authenticated portal access. Supabase and API configuration must use environment variables and only safe public configuration may be embedded in client pages.</p>
+      <p>Operational cookies are used for authenticated portal access. We limit browser-visible information to what is required for secure access and site functionality.</p>
     </LegalRoute>
   );
 }
@@ -844,11 +844,9 @@ function EnquirySection() {
           >
             {isSubmitting ? 'Sending...' : 'Send enquiry'}
           </button>
-          {!hasFormspreeEndpoint ? (
-            <p className="mt-3 text-xs leading-5 text-slate-400">
-              Configure `VITE_PO_FORMSPREE_ENDPOINT` to submit directly from this React form. Until then, it opens a pre-filled email.
-            </p>
-          ) : null}
+          <p className="mt-3 text-xs leading-5 text-slate-400">
+            We reply within 24 hours, Monday to Thursday. If direct submission is unavailable, we will open a pre-filled email for you.
+          </p>
         </form>
       </div>
     </Reveal>

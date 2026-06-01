@@ -38,7 +38,7 @@ export function AdminDashboardRoute() {
               <div className="mt-4">
                 <DataTable<Student & { full_name?: string; email?: string; ngo_partner?: string }>
                   rows={data.students.slice(0, 8)}
-                  empty="Student records will appear here after the Supabase student migration."
+                  empty="Student records will appear here after learners are added."
                   columns={[
                     { key: 'student', label: 'Student', render: (row) => row.full_name || row.id },
                     { key: 'grade', label: 'Grade', render: (row) => row.grade || 'Pending' },
@@ -54,7 +54,7 @@ export function AdminDashboardRoute() {
               <div className="mt-4">
                 <DataTable<Tutor & { full_name?: string; email?: string }>
                   rows={data.tutors.slice(0, 8)}
-                  empty="Tutor records will appear here after the Supabase tutor migration."
+                  empty="Tutor records will appear here after tutors are added."
                   columns={[
                     { key: 'tutor', label: 'Tutor', render: (row) => row.full_name || row.id },
                     { key: 'subjects', label: 'Subjects', render: (row) => row.subjects?.join(', ') || 'Pending' },
@@ -96,7 +96,7 @@ export function AdminDashboardRoute() {
                       <StatusBadge value={payment.status} />
                     </div>
                   ))}
-                  {!data.payments.length ? <EmptyState title="No payment records yet" description="Student and tutor payment records should move into Supabase tables before finance workflows are cut over." /> : null}
+                  {!data.payments.length ? <EmptyState title="No payment records yet" description="Student and tutor payment records will appear here once they are added." /> : null}
                 </div>
               </Card>
 

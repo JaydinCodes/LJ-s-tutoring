@@ -12,7 +12,7 @@ export function StudentAssignmentsRoute() {
   return (
     <DashboardShell
       title="Student Assignments"
-      subtitle="Learner assignment status from Supabase first, with the current LMS API as a migration fallback."
+      subtitle="Track assigned work, due dates, submissions, and tutor feedback."
       section="student"
     >
       <Card>

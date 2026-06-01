@@ -45,7 +45,7 @@ async function requireAdminProfile() {
   }
   const authUserId = auth.user?.id;
   if (!authUserId) {
-    throw new Error('Sign in with Supabase before managing roster records.');
+    throw new Error('Sign in before managing roster records.');
   }
 
   const result = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();

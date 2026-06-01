@@ -250,7 +250,7 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
       setCurriculum('CAPS');
       setDueDate('');
       setAttachment(null);
-      setMessage('Assignment published to Supabase.');
+      setMessage('Assignment published.');
       await onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create assignment.');
@@ -264,7 +264,7 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-slate-950">Create assignment</h2>
-          <p className="mt-1 text-sm text-slate-600">Publishes to Supabase `assignments`, creates/reuses `subjects`, and stores optional files in `assignment-files`.</p>
+          <p className="mt-1 text-sm text-slate-600">Publish learner work with a subject, grade, due date, and optional supporting file.</p>
         </div>
         <StatusBadge value="supabase_required" />
       </div>

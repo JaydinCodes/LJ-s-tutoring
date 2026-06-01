@@ -35,7 +35,7 @@ export const supabase = isSupabaseConfigured
 
 export function requireSupabase() {
   if (!supabase) {
-    throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+    throw new Error('The requested service is temporarily unavailable. Please contact support if the issue continues.');
   }
 
   return supabase;

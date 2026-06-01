@@ -14,7 +14,7 @@ export function AdminPaymentsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminDashboard, []);
 
   return (
-    <DashboardShell title="Payments" subtitle="Student payments and tutor payouts backed by Supabase." section="admin">
+    <DashboardShell title="Payments" subtitle="Manage student payments and tutor payouts." section="admin">
       <CreatePaymentForm
         students={data?.students || []}
         onCreated={reload}
@@ -92,7 +92,7 @@ function CreateTutorPaymentForm({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-slate-950">Create tutor payout</h2>
-          <p className="mt-1 text-sm text-slate-600">Creates a Supabase `tutor_payments` row for a tutor payment period.</p>
+          <p className="mt-1 text-sm text-slate-600">Record a tutor payout for the selected payment period.</p>
         </div>
         <StatusBadge value="admin_only" />
       </div>
@@ -169,7 +169,7 @@ function CreatePaymentForm({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-slate-950">Create student payment</h2>
-          <p className="mt-1 text-sm text-slate-600">Creates a Supabase `payments` row for a learner.</p>
+          <p className="mt-1 text-sm text-slate-600">Record a learner payment and its current status.</p>
         </div>
         <StatusBadge value="admin_only" />
       </div>

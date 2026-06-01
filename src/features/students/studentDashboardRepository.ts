@@ -139,7 +139,7 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
       parent: student.parent_name || undefined,
     },
     metrics: [
-      { label: 'Overall score', value: score == null ? '--' : `${score}%`, helper: 'Average from Supabase progress records.', tone: 'violet' },
+      { label: 'Overall score', value: score == null ? '--' : `${score}%`, helper: 'Average from recent progress records.', tone: 'violet' },
       { label: 'Assignments completed', value: String(submittedIds.size), helper: 'Submitted assignment records.', tone: 'teal' },
       { label: 'Open assignments', value: String(assignmentsWithSubjects.filter((item) => !submittedIds.has(item.id)).length), helper: 'Published work not yet submitted.', tone: 'amber' },
       { label: 'Classes', value: String(classes.length), helper: 'Current classes for this learner.', tone: 'blue' },
