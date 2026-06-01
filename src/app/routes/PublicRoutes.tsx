@@ -1,6 +1,7 @@
 import type { FormEvent, ReactNode } from 'react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CountUpStat } from '../../components/animations/CountUpStat';
 import { Reveal, StaggerReveal } from '../../components/animations/Reveal';
 import { SplitHeroTitle } from '../../components/animations/SplitHeroTitle';
 
@@ -29,24 +30,24 @@ const tutors = [
 ];
 
 const stats = [
-{
+  {
     value: 1,
-    suffix: "+",
-    label: "Years of tutoring experience",
+    suffix: '+',
+    label: 'Years of tutoring experience',
   },
   {
     value: 100,
-    suffix: "+",
-    label: "Learners supported",
+    suffix: '+',
+    label: 'Learners supported',
   },
   {
     value: 98,
-    suffix: "%",
-    label: "Parent satisfaction",
+    suffix: '%',
+    label: 'Parent satisfaction',
   },
   {
     value: 12,
-    label: "CAPS grades covered",
+    label: 'CAPS grades covered',
   },
 ];
 
@@ -148,9 +149,11 @@ export function PublicHomeRoute() {
             <a className="rounded-full border border-brand-aegean/70 bg-brand-aegean px-5 py-3 font-semibold text-white backdrop-blur transition hover:bg-brand-deepBlue" href="#tutors">Meet Our Tutors</a>
           </Reveal>
           <StaggerReveal className="mt-10 grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-4" start="top 95%">
-            {stats.map(([value, label]) => (
+            {stats.map(({ value, suffix, label }) => (
               <div key={label} data-reveal-child className="rounded-[1.5rem] border border-brand-marble/15 bg-white/10 p-5 backdrop-blur">
-                <p className="text-3xl font-semibold text-brand-gold">{value}</p>
+                <p className="text-3xl font-semibold text-brand-gold">
+                  <CountUpStat value={value} suffix={suffix} />
+                </p>
                 <p className="mt-1 text-sm text-brand-parchment">{label}</p>
               </div>
             ))}
