@@ -33,7 +33,6 @@ import {
   GuidesIndexRoute,
   MatricMathsMistakesGuideRoute,
   PrivacyRoute,
-  ProgramsRoute,
   PublicHomeRoute,
   TermsRoute,
 } from './routes/PublicRoutes';
@@ -47,7 +46,7 @@ export function App() {
       <Route path="/tutor/*" element={<Navigate to="/dashboard/tutor" replace />} />
       <Route path="/reports/*" element={<Navigate to="/dashboard/student/reports" replace />} />
       <Route path="/about" element={<AboutRoute />} />
-      <Route path="/programs" element={<ProgramsRoute />} />
+  
       <Route path="/guides" element={<GuidesIndexRoute />} />
       <Route path="/guides/matric-maths-mistakes-guide" element={<MatricMathsMistakesGuideRoute />} />
       <Route path="/privacy" element={<PrivacyRoute />} />

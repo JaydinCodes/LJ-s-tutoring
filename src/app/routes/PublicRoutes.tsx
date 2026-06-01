@@ -29,27 +29,12 @@ const stats = [
   ['150+', 'Students helped'],
   ['500+', 'Sessions delivered'],
   ['Grade 8-12', 'CAPS Maths'],
-  ['Cape Town', 'Online and local support'],
+  ['Cape Town', 'Online and local suFppport'],
 ];
 
-const programs = [
-  {
-    title: 'Grade 8-9 Foundations',
-    description: 'Close number sense, algebra, geometry, and study habit gaps before senior phase pressure builds.',
-  },
-  {
-    title: 'Grade 10-11 Momentum',
-    description: 'Structured CAPS support for functions, trigonometry, analytical geometry, probability, and exam technique.',
-  },
-  {
-    title: 'Matric Exam Preparation',
-    description: 'Focused revision, past-paper strategy, confidence rebuilding, and targeted support around weak topics.',
-  },
-  {
-    title: 'NGO Learner Rollout',
-    description: 'ProVision-ready tutoring operations, learner progress summaries, attendance visibility, and support tracking.',
-  },
-];
+
+
+
 
 const faqs = [
   {
@@ -134,15 +119,15 @@ export function PublicHomeRoute() {
         />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,_rgba(8,19,38,0.96)_0%,_rgba(8,19,38,0.76)_48%,_rgba(8,19,38,0.28)_100%)]" />
         <div className="relative mx-auto flex min-h-[86svh] max-w-7xl flex-col justify-center px-6 py-20">
-          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-amber-300">Grade 8-12 CAPS Mathematics</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-amber-300">GRADE 8–12 CAPS TUTORING</p>
           <h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl">Project Odysseus</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-blue-50">
-            Premium maths tutoring for Cape Town and South African learners, now shaped around the same React LMS experience students use for assignments, progress, results, and careers.
+              Targeted CAPS support for Mathematics, Mathematical Literacy, and Physical Sciences, from core concepts to exam prep.
+              We identify learning gaps, rebuild confidence, and keep every session focused on what each learner needs next.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a className="rounded-full bg-amber-400 px-5 py-3 font-semibold text-slate-950 shadow-lg shadow-amber-900/20 transition hover:bg-amber-300" href="#enquiry">Send an enquiry</a>
-            <Link className="rounded-full border border-white/30 bg-white/10 px-5 py-3 font-semibold text-white backdrop-blur transition hover:bg-white/20" to="/programs">View programs</Link>
-            <Link className="rounded-full border border-white/30 bg-white/10 px-5 py-3 font-semibold text-white backdrop-blur transition hover:bg-white/20" to="/dashboard/login">Portal login</Link>
+            <a className="rounded-full bg-amber-400 px-5 py-3 font-semibold text-slate-950 shadow-lg shadow-amber-900/20 transition hover:bg-amber-300" href="#enquiry">Join Our Tutoring Programme</a>
+            <a className="rounded-full border border-[#1F6F8B]/70 bg-[#1f6f8b] px-5 py-3 font-semibold text-slate-100 backdrop-blur transition hover:bg-[#1f6f8b]/20 hover:text-white" href="#tutors">Meet Our Tutors</a>
           </div>
           <div className="mt-10 grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map(([value, label]) => (
@@ -220,14 +205,7 @@ export function PublicHomeRoute() {
                 <Link className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-800" to="/guides/matric-maths-mistakes-guide">Read the matric guide</Link>
               </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              {programs.slice(0, 4).map((program) => (
-                <article key={program.title} className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-xl font-semibold text-slate-950">{program.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{program.description}</p>
-                </article>
-              ))}
-            </div>
+          
           </div>
         </div>
       </section>
@@ -258,20 +236,9 @@ export function AboutRoute() {
   );
 }
 
-export function ProgramsRoute() {
-  return (
-    <PublicLayout>
-      <section className="bg-white px-6 py-20">
-        <div className="mx-auto max-w-7xl">
-          <SectionIntro title="Programs" eyebrow="Grade 8-12 CAPS Maths">
-            Practical tutoring pathways for learners who need stronger fundamentals, better exam technique, or structured support through a partner rollout.
-          </SectionIntro>
-          <ProgramsSection compact />
-        </div>
-      </section>
-    </PublicLayout>
-  );
-}
+
+
+
 
 export function GuidesIndexRoute() {
   return (
@@ -363,10 +330,11 @@ function PublicLayout({ children }: { children: ReactNode }) {
           </Link>
           <div className="flex items-center gap-1 text-sm font-semibold sm:gap-2">
             <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950" to="/about">About</Link>
-            <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950" to="/programs">Programs</Link>
+          
+
             <a className="hidden rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:inline-flex" href="/#faq">FAQ</a>
             <a className="hidden rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 lg:inline-flex" href="/#become-a-tutor">Tutor with us</a>
-            <Link className="rounded-full bg-brand-navy px-4 py-2 text-white shadow-sm transition hover:bg-blue-900" to="/dashboard/login">Login</Link>
+            <Link className="rounded-full bg-brand-navy px-4 py-2 text-white shadow-sm transition hover:bg-blue-900" to="/dashboard/login">Student Login</Link>
           </div>
         </nav>
       </header>
@@ -386,7 +354,7 @@ function PublicLayout({ children }: { children: ReactNode }) {
 
 function TutorSection() {
   return (
-    <section className="bg-slate-50 py-16">
+    <section id="tutors" className="bg-slate-50 py-16">
       <div className="mx-auto max-w-7xl px-6">
         <SectionIntro title="Meet the tutors" eyebrow="Academic support">
           Preserve the strongest public-site trust signal while the LMS migration moves tutor operations into React.
@@ -407,27 +375,9 @@ function TutorSection() {
   );
 }
 
-function ProgramsSection({ compact = false }: { compact?: boolean }) {
-  return (
-    <section className={compact ? 'mt-10' : 'bg-white py-16'}>
-      <div className={compact ? '' : 'mx-auto max-w-7xl px-6'}>
-        {!compact ? (
-          <SectionIntro title="Programs" eyebrow="Learning pathways">
-            Structured maths support that maps naturally into assignments, progress records, and parent/NGO reporting.
-          </SectionIntro>
-        ) : null}
-        <div className="mt-10 grid gap-4 md:grid-cols-2">
-          {programs.map((program) => (
-            <article key={program.title} className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="text-xl font-semibold text-slate-950">{program.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{program.description}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
+
+
+
 
 function GuideSection() {
   return (
