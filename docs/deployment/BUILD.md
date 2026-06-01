@@ -2,7 +2,7 @@
 
 ## Static site build
 
-`npm run build:static` generates static React route shells into `dist/` and copies only the public assets required by the unified React app.
+`npm run build:static` generates static React route shells into `dist/` and copies only the public assets required by the unified React app. Public marketing routes include crawlable prerendered HTML inside `#root`; the React bundle replaces that fallback markup when it starts. Protected dashboard routes remain empty `noindex` shells.
 
 Generated/copied output includes:
 
@@ -11,7 +11,6 @@ Generated/copied output includes:
 - `assets/analytics.js`
 - `assets/analytics-module.js`
 - `assets/portal-config.js`
-- `assets/seo-index.js`
 - `assets/sw-register.js`
 - `assets/tailwind-input.css`
 - `sw.js`

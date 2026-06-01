@@ -311,6 +311,37 @@ export function AboutRoute() {
   );
 }
 
+export function ProgramsRoute() {
+  const programmes = [
+    ['Grade 8-9 foundations', 'Strengthen core number skills, algebra, geometry, and problem-solving habits before gaps compound.'],
+    ['Grade 10-11 progression', 'Build confidence with functions, trigonometry, analytical geometry, and exam-style application.'],
+    ['Grade 12 exam preparation', 'Target weak topics, sharpen exam technique, and practise under realistic time pressure.'],
+  ];
+
+  return (
+    <PublicLayout>
+      <section className="bg-brand-parchment px-6 py-20">
+        <div className="mx-auto max-w-7xl">
+          <SectionIntro title="CAPS tutoring programmes" eyebrow="Grade 8-12 support">
+            Focused tutoring plans for Mathematics, Mathematical Literacy, and Physical Sciences learners who need stronger foundations, clearer methods, and measurable progress.
+          </SectionIntro>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {programmes.map(([title, description]) => (
+              <article key={title} className="rounded-[1.5rem] border border-brand-marble bg-white p-6 shadow-sm shadow-slate-200/50">
+                <h2 className="text-xl font-semibold text-brand-obsidian">{title}</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{description}</p>
+              </article>
+            ))}
+          </div>
+          <a className="mt-8 inline-flex rounded-full bg-brand-navy px-5 py-3 text-sm font-semibold text-white" href="/#enquiry">
+            Ask about the right programme
+          </a>
+        </div>
+      </section>
+    </PublicLayout>
+  );
+}
+
 
 
 
