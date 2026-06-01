@@ -117,30 +117,30 @@ export function PublicHomeRoute() {
           playsInline
           aria-hidden="true"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,_rgba(8,19,38,0.96)_0%,_rgba(8,19,38,0.76)_48%,_rgba(8,19,38,0.28)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,_rgba(15,23,42,0.96)_0%,_rgba(15,23,42,0.78)_48%,_rgba(15,23,42,0.28)_100%)]" />
         <div className="relative mx-auto flex min-h-[86svh] max-w-7xl flex-col justify-center px-6 py-20">
-          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-amber-300">GRADE 8–12 CAPS TUTORING</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-brand-gold">GRADE 8–12 CAPS TUTORING</p>
           <h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl">Project Odysseus</h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-blue-50">
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-brand-parchment">
               Targeted CAPS support for Mathematics, Mathematical Literacy, and Physical Sciences, from core concepts to exam prep.
               We identify learning gaps, rebuild confidence, and keep every session focused on what each learner needs next.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a className="rounded-full bg-amber-400 px-5 py-3 font-semibold text-slate-950 shadow-lg shadow-amber-900/20 transition hover:bg-amber-300" href="#enquiry">Join Our Tutoring Programme</a>
-            <a className="rounded-full border border-[#1F6F8B]/70 bg-[#1f6f8b] px-5 py-3 font-semibold text-slate-100 backdrop-blur transition hover:bg-[#1f6f8b]/20 hover:text-white" href="#tutors">Meet Our Tutors</a>
+            <a className="rounded-full bg-brand-gold px-5 py-3 font-semibold text-brand-obsidian shadow-lg shadow-black/20 transition hover:bg-[#f7d24f]" href="#enquiry">Join Our Tutoring Programme</a>
+            <a className="rounded-full border border-brand-aegean/70 bg-brand-aegean px-5 py-3 font-semibold text-white backdrop-blur transition hover:bg-brand-deepBlue" href="#tutors">Meet Our Tutors</a>
           </div>
           <div className="mt-10 grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map(([value, label]) => (
-              <div key={label} className="rounded-[1.5rem] border border-white/15 bg-white/10 p-5 backdrop-blur">
-                <p className="text-3xl font-semibold text-amber-300">{value}</p>
-                <p className="mt-1 text-sm text-blue-50">{label}</p>
+              <div key={label} className="rounded-[1.5rem] border border-brand-marble/15 bg-white/10 p-5 backdrop-blur">
+                <p className="text-3xl font-semibold text-brand-gold">{value}</p>
+                <p className="mt-1 text-sm text-brand-parchment">{label}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-[linear-gradient(135deg,_#eef6ff_0%,_#f8fafc_48%,_#fff8e6_100%)] py-16">
+      <section className="bg-brand-parchment py-16">
         <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
           <div>
             <SectionIntro title="Tutoring that feels connected, not scattered" eyebrow="React LMS workflow">
@@ -152,17 +152,17 @@ export function PublicHomeRoute() {
                 ['Assign focused work', 'Publish tasks, track submissions, and reduce homework ambiguity.'],
                 ['Track progress', 'Surface marks, feedback, attendance, and momentum in one place.'],
               ].map(([title, description], index) => (
-                <article key={title} className="rounded-[1.5rem] border border-white/80 bg-white/90 p-6 shadow-lg shadow-slate-200/60">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Step {index + 1}</p>
-                  <h3 className="mt-3 text-xl font-semibold text-slate-950">{title}</h3>
+                <article key={title} className="rounded-[1.5rem] border border-brand-marble bg-white/90 p-6 shadow-lg shadow-slate-200/60">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-brand-aegean">Step {index + 1}</p>
+                  <h3 className="mt-3 text-xl font-semibold text-brand-obsidian">{title}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
                 </article>
               ))}
             </div>
           </div>
           <aside className="space-y-4">
-            <div className="rounded-[1.5rem] bg-[linear-gradient(135deg,_#0f4db8_0%,_#1697df_100%)] p-5 text-white shadow-xl shadow-blue-900/20">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-100">Student snapshot</p>
+            <div className="rounded-[1.5rem] bg-brand-deepBlue p-5 text-white shadow-xl shadow-brand-navy/20">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-marble">Student snapshot</p>
               <h3 className="mt-3 text-2xl font-semibold">This week in Maths</h3>
               <div className="mt-5 grid gap-3">
                 {[
@@ -171,7 +171,7 @@ export function PublicHomeRoute() {
                   ['Progress', 'Functions improving'],
                 ].map(([label, value]) => (
                   <div key={label} className="flex items-center justify-between gap-4 rounded-2xl bg-white/12 px-4 py-3">
-                    <span className="text-sm text-blue-50">{label}</span>
+                    <span className="text-sm text-brand-parchment">{label}</span>
                     <span className="text-sm font-semibold">{value}</span>
                   </div>
                 ))}
@@ -183,8 +183,8 @@ export function PublicHomeRoute() {
                 ['Tutor dashboard', 'Classes, sessions, submissions, reports'],
                 ['Admin dashboard', 'Students, tutors, approvals, payments'],
               ].map(([title, description]) => (
-                <div key={title} className="rounded-2xl border border-white/80 bg-white/95 p-4 shadow-lg shadow-slate-200/50">
-                  <p className="font-semibold text-slate-950">{title}</p>
+                <div key={title} className="rounded-2xl border border-brand-marble bg-white/95 p-4 shadow-lg shadow-slate-200/50">
+                  <p className="font-semibold text-brand-obsidian">{title}</p>
                   <p className="mt-1 text-sm text-slate-600">{description}</p>
                 </div>
               ))}
@@ -202,7 +202,7 @@ export function PublicHomeRoute() {
               </SectionIntro>
               <div className="mt-8 flex flex-wrap gap-3">
                 <a className="rounded-full bg-brand-navy px-5 py-3 text-sm font-semibold text-white" href="#enquiry">Book a first conversation</a>
-                <Link className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-800" to="/guides/matric-maths-mistakes-guide">Read the matric guide</Link>
+                <Link className="rounded-full border border-brand-marble px-5 py-3 text-sm font-semibold text-brand-obsidian" to="/guides/matric-maths-mistakes-guide">Read the matric guide</Link>
               </div>
             </div>
           
@@ -224,7 +224,7 @@ export function AboutRoute() {
     <PublicLayout>
       <section className="bg-slate-950 px-6 py-20 text-white">
         <div className="mx-auto max-w-4xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-300">About</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand-gold">About</p>
           <h1 className="mt-4 text-5xl font-semibold tracking-tight">Maths tutoring with operational discipline behind it.</h1>
           <p className="mt-6 text-lg leading-8 text-slate-200">
             Project Odysseus started as focused maths support and is becoming a full LMS-style platform for learners, tutors, admins, parents, and NGO partners.
@@ -425,7 +425,7 @@ function BecomeTutorSection() {
     <section id="become-a-tutor" className="bg-slate-950 py-16 text-white">
       <div className="mx-auto max-w-7xl px-6">
         <div className="max-w-3xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-300">Join our team</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-gold">Join our team</p>
           <h2 className="mt-3 text-4xl font-semibold tracking-tight">Passionate about maths? Teach with us.</h2>
           <p className="mt-4 text-sm leading-7 text-slate-300">
             We are looking for talented mathematics tutors who want flexible work, proper operational support, and a learner-first teaching culture.
@@ -453,7 +453,7 @@ function BecomeTutorSection() {
               ))}
             </ul>
             <a
-              className="mt-6 inline-flex w-full justify-center rounded-lg bg-amber-400 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-amber-300"
+              className="mt-6 inline-flex w-full justify-center rounded-lg bg-brand-gold px-4 py-3 text-sm font-semibold text-brand-obsidian hover:bg-[#f7d24f]"
               href={`mailto:${contactEmail}?subject=${encodeURIComponent('Tutor Application - Project Odysseus')}`}
             >
               Apply now
@@ -598,7 +598,7 @@ function EnquirySection() {
     <section id="enquiry" className="bg-slate-950 px-6 py-16 text-white">
       <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,1fr)_480px] lg:items-start">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-300">Next step</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand-gold">Next step</p>
           <h2 className="mt-3 text-4xl font-semibold tracking-tight">Start with a focused learner conversation.</h2>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
             We tutor Monday to Thursday between 5pm and 8pm, with limited weekend slots. Tell us what support the learner needs and we will reply with the next practical step.
@@ -638,7 +638,7 @@ function EnquirySection() {
                 required
                 minLength={2}
                 maxLength={100}
-                className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300 focus:ring-2 focus:ring-amber-300/40"
+                className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/40"
                 placeholder="John Smith"
                 value={form.name}
                 onChange={(event) => updateField('name', event.target.value)}
@@ -651,7 +651,7 @@ function EnquirySection() {
                 name="email"
                 type="email"
                 required
-                className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300 focus:ring-2 focus:ring-amber-300/40"
+                className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/40"
                 placeholder="john@example.com"
                 value={form.email}
                 onChange={(event) => updateField('email', event.target.value)}
@@ -663,7 +663,7 @@ function EnquirySection() {
                 id="enquiry-grade"
                 name="grade"
                 required
-                className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-amber-300 focus:ring-2 focus:ring-amber-300/40"
+                className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/40"
                 value={form.grade}
                 onChange={(event) => updateField('grade', event.target.value)}
               >
@@ -682,7 +682,7 @@ function EnquirySection() {
                 name="message"
                 rows={4}
                 maxLength={2000}
-                className="resize-none rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300 focus:ring-2 focus:ring-amber-300/40"
+                className="resize-none rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/40"
                 placeholder="Tell us about the learner's goals or current challenge."
                 value={form.message}
                 onChange={(event) => updateField('message', event.target.value)}
@@ -705,7 +705,7 @@ function EnquirySection() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-5 w-full rounded-lg bg-amber-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-70"
+            className="mt-5 w-full rounded-lg bg-brand-gold px-4 py-3 text-sm font-semibold text-brand-obsidian transition hover:bg-[#f7d24f] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSubmitting ? 'Sending...' : 'Send enquiry'}
           </button>

@@ -11,31 +11,24 @@ module.exports = {
     extend: {
       colors: {
         brand: {
+          navy: '#0f172a',
+          deepBlue: '#1e3a5f',
+          aegean: '#1F6F8B',
+          gold: '#f4c518',
+          parchment: '#f8f5ee',
+          marble: '#e2e8f0',
+          olympian: '#7c3aed',
+          ionian: '#0ea5e9',
+          spartan: '#dc2626',
+          laurel: '#064e3b',
+          obsidian: '#1c1917',
+
+          // legacy aliases so old UI does not break immediately
           dark: '#0f172a',
-          gold: '#9b6e00',
           light: '#f8fafc',
-          navy: '#091427',
           midnight: '#12203c',
           teal: '#14b8a6',
           violet: '#7c3aed',
-        },
-        green: {
-          400: '#4ade80',
-          500: '#008933',
-          600: '#007329',
-        },
-        blue: {
-          500: '#2563eb',
-        },
-        purple: {
-          500: '#9333ea',
-        },
-        amber: {
-          500: '#d97706',
-          600: '#b45309',
-        },
-        slate: {
-          500: '#475569',
         },
       },
       fontFamily: {
