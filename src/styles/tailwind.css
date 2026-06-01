@@ -29,6 +29,11 @@ body {
   background: #f8fafc;
 }
 
+.greek-display {
+  font-family: Georgia, Cambria, 'Times New Roman', serif;
+  letter-spacing: -0.025em;
+}
+
 @media (prefers-color-scheme: dark) {
   body {
     background: #020617;

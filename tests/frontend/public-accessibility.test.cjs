@@ -34,6 +34,22 @@ test('public navigation has an accessible mobile drawer and visible keyboard foc
   assert.match(tailwind, /outline: 2px solid theme\('colors\.brand\.gold'\)/);
 });
 
+test('public layout uses blurred navigation, Greek display accents, and a mobile WhatsApp CTA', () => {
+  const publicRoutes = read('src/app/routes/PublicRoutes.tsx');
+  const tailwind = read('src/styles/tailwind.css');
+
+  assert.match(publicRoutes, /backdrop-blur-xl/);
+  assert.match(publicRoutes, /supports-\[backdrop-filter\]:bg-white\/70/);
+  assert.match(publicRoutes, /WhatsApp us about tutoring/);
+  assert.match(publicRoutes, /aria-label="Ask about tutoring support on WhatsApp"/);
+  assert.match(publicRoutes, /bottom-\[calc\(0\.75rem\+env\(safe-area-inset-bottom\)\)\]/);
+  assert.match(publicRoutes, /md:hidden/);
+  assert.match(publicRoutes, /className="greek-display truncate text-xl"/);
+  assert.match(publicRoutes, /className="greek-display mt-3 text-4xl/);
+  assert.match(tailwind, /\.greek-display/);
+  assert.match(tailwind, /font-family: Georgia, Cambria, 'Times New Roman', serif/);
+});
+
 test('hero, tutor images, and enquiry form carry accessibility improvements', () => {
   const publicRoutes = read('src/app/routes/PublicRoutes.tsx');
 

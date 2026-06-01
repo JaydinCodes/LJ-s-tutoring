@@ -111,6 +111,9 @@ const tutorRequirements = [
 
 const contactEmail = 'projectodysseus.maths@gmail.com';
 const whatsappNumber = '27679327754';
+const whatsappEnquiryHref = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+  'Hi Project Odysseus. I would like to ask about tutoring support.',
+)}`;
 const enquiryThrottleKey = 'po_react_enquiry_last_submit';
 const enquiryThrottleMs = 30000;
 const businessUrl = 'https://projectodysseus.live';
@@ -204,7 +207,7 @@ export function PublicHomeRoute() {
         <div className="absolute inset-0 bg-[linear-gradient(180deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.88)_48%,_rgba(15,23,42,0.62)_100%)] sm:bg-[linear-gradient(90deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.88)_48%,_rgba(15,23,42,0.62)_100%)]" />
         <div className="relative mx-auto flex min-h-[calc(100svh-4rem)] max-w-7xl flex-col justify-center px-4 pb-12 pt-16 sm:px-6 sm:py-20 lg:min-h-[86svh]">
           <p className="text-sm font-semibold uppercase tracking-[0.32em] text-brand-gold">GRADE 8–12 CAPS TUTORING</p>
-          <SplitHeroTitle className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight sm:mt-5 sm:text-6xl md:text-7xl">Project Odysseus</SplitHeroTitle>
+          <SplitHeroTitle className="greek-display mt-4 max-w-4xl text-5xl font-semibold tracking-tight sm:mt-5 sm:text-7xl md:text-8xl">Project Odysseus</SplitHeroTitle>
           <Reveal variant="oracle" delay={0.45} className="mt-5 max-w-2xl text-base leading-7 text-brand-parchment sm:mt-6 sm:text-lg sm:leading-8">
               Targeted CAPS support for Mathematics, Mathematical Literacy, and Physical Sciences, from core concepts to exam prep.
               We identify learning gaps, rebuild confidence, and keep every session focused on what each learner needs next.
@@ -459,12 +462,12 @@ function PublicLayout({ children }: { children: ReactNode }) {
   }, [isMenuOpen]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
-      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/90 shadow-sm shadow-slate-200/60 backdrop-blur">
+    <div className="min-h-screen bg-slate-50 pb-24 text-slate-950 md:pb-0">
+      <header className="sticky top-0 z-40 border-b border-brand-navy/10 bg-white/80 shadow-sm shadow-brand-navy/10 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70">
         <nav className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link className="flex min-w-0 items-center gap-2 rounded-lg text-base font-semibold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2 sm:gap-3 sm:text-lg" to="/" onClick={closeMenu}>
             <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-navy text-sm font-bold text-white">PO</span>
-            <span className="truncate">Project Odysseus</span>
+            <span className="greek-display truncate text-xl">Project Odysseus</span>
           </Link>
           <div className="hidden items-center gap-2 text-sm font-semibold md:flex">
             <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/about">About</Link>
@@ -503,6 +506,18 @@ function PublicLayout({ children }: { children: ReactNode }) {
         </nav>
       </header>
       {children}
+      <a
+        className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 flex min-h-14 items-center justify-center gap-3 rounded-2xl border border-emerald-300/70 bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-2xl shadow-emerald-950/30 transition hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 md:hidden"
+        href={whatsappEnquiryHref}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Ask about tutoring support on WhatsApp"
+      >
+        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12.04 2a9.84 9.84 0 0 0-8.52 14.76L2 22l5.38-1.42A9.98 9.98 0 0 0 12.04 22 10 10 0 0 0 12.04 2Zm0 18.18a8.18 8.18 0 0 1-4.17-1.14l-.3-.18-3.2.84.86-3.1-.2-.32a8.02 8.02 0 0 1-1.25-4.32 8.22 8.22 0 1 1 8.26 8.22Zm4.5-6.16c-.25-.12-1.46-.72-1.69-.8-.22-.08-.39-.12-.55.13-.16.24-.63.8-.77.96-.14.16-.29.18-.53.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.23-1.46-1.37-1.7-.14-.25-.02-.38.1-.5.12-.1.25-.28.37-.42.13-.14.17-.24.25-.4.08-.16.04-.3-.02-.42-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.3-.23.25-.86.84-.86 2.05s.88 2.38 1 2.54c.12.16 1.73 2.64 4.19 3.7.59.25 1.04.4 1.4.52.59.19 1.12.16 1.54.1.47-.07 1.46-.6 1.67-1.17.2-.58.2-1.07.14-1.17-.06-.1-.22-.16-.47-.28Z" />
+        </svg>
+        WhatsApp us about tutoring
+      </a>
       <footer className="border-t border-slate-200 bg-white px-6 py-8">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 text-sm text-slate-600">
           <p>Project Odysseus</p>
@@ -1010,7 +1025,7 @@ function SectionIntro({ eyebrow, title, children }: { eyebrow: string; title: st
   return (
     <div className="max-w-3xl">
       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">{eyebrow}</p>
-      <h2 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">{title}</h2>
+      <h2 className="greek-display mt-3 text-4xl font-semibold tracking-tight text-slate-950">{title}</h2>
       <p className="mt-4 text-sm leading-7 text-slate-600">{children}</p>
     </div>
   );
