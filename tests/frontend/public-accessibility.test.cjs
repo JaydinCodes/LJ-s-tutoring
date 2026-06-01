@@ -37,7 +37,7 @@ test('public navigation has an accessible mobile drawer and visible keyboard foc
 test('hero, tutor images, and enquiry form carry accessibility improvements', () => {
   const publicRoutes = read('src/app/routes/PublicRoutes.tsx');
 
-  assert.match(publicRoutes, /object-cover opacity-35/);
+  assert.match(publicRoutes, /object-cover[^"]*opacity-35/);
   assert.match(publicRoutes, /rgba\(15,23,42,0\.62\)_100%/);
   assert.match(publicRoutes, /alt=\{`\$\{tutor\.name\}, \$\{tutor\.role\} for \$\{tutor\.subject\}`\}/);
   assert.match(publicRoutes, /aria-describedby="enquiry-helper"/);

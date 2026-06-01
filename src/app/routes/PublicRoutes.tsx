@@ -114,6 +114,8 @@ const whatsappNumber = '27679327754';
 const enquiryThrottleKey = 'po_react_enquiry_last_submit';
 const enquiryThrottleMs = 30000;
 const businessUrl = 'https://projectodysseus.live';
+const heroFallbackImage = '/images/odysseus-hero-fallback.png';
+const heroVideo = '/images/bg_video.mp4';
 
 const localBusinessSchema = {
   '@context': 'https://schema.org',
@@ -181,35 +183,44 @@ export function PublicHomeRoute() {
   return (
     <PublicLayout>
       <StructuredData data={[localBusinessSchema, faqPageSchema]} />
-      <section className="relative overflow-hidden bg-brand-navy text-white">
+      <section className="relative isolate overflow-hidden bg-brand-navy text-white">
+        <img
+          className="absolute inset-0 h-full w-full object-cover object-[63%_center]"
+          src={heroFallbackImage}
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+        />
         <video
-          className="absolute inset-0 h-full w-full object-cover opacity-35"
-          src="./images/e_b_e_bc_f_cb_b_mp_.mp4"
+          className="absolute inset-0 hidden h-full w-full object-cover object-[60%_center] opacity-35 sm:block"
+          src={heroVideo}
+          poster={heroFallbackImage}
           autoPlay
           muted
           loop
           playsInline
           aria-hidden="true"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.88)_48%,_rgba(15,23,42,0.62)_100%)]" />
-        <div className="relative mx-auto flex min-h-[86svh] max-w-7xl flex-col justify-center px-6 py-20">
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.88)_48%,_rgba(15,23,42,0.62)_100%)] sm:bg-[linear-gradient(90deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.88)_48%,_rgba(15,23,42,0.62)_100%)]" />
+        <div className="relative mx-auto flex min-h-[calc(100svh-4rem)] max-w-7xl flex-col justify-center px-4 pb-12 pt-16 sm:px-6 sm:py-20 lg:min-h-[86svh]">
           <p className="text-sm font-semibold uppercase tracking-[0.32em] text-brand-gold">GRADE 8–12 CAPS TUTORING</p>
-          <SplitHeroTitle className="mt-5 max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl">Project Odysseus</SplitHeroTitle>
-          <Reveal variant="oracle" delay={0.45} className="mt-6 max-w-2xl text-lg leading-8 text-brand-parchment">
+          <SplitHeroTitle className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight sm:mt-5 sm:text-6xl md:text-7xl">Project Odysseus</SplitHeroTitle>
+          <Reveal variant="oracle" delay={0.45} className="mt-5 max-w-2xl text-base leading-7 text-brand-parchment sm:mt-6 sm:text-lg sm:leading-8">
               Targeted CAPS support for Mathematics, Mathematical Literacy, and Physical Sciences, from core concepts to exam prep.
               We identify learning gaps, rebuild confidence, and keep every session focused on what each learner needs next.
           </Reveal>
-          <Reveal variant="oracle" delay={0.6} className="mt-8 flex flex-wrap gap-3">
-            <a className="rounded-full bg-brand-gold px-5 py-3 font-semibold text-brand-obsidian shadow-lg shadow-black/20 transition hover:bg-[#f7d24f]" href="#enquiry">Join Our Tutoring Programme</a>
-            <a className="rounded-full border border-brand-aegean/70 bg-brand-aegean px-5 py-3 font-semibold text-white backdrop-blur transition hover:bg-brand-deepBlue" href="#tutors">Meet Our Tutors</a>
+          <Reveal variant="oracle" delay={0.6} className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
+            <a className="inline-flex justify-center rounded-full bg-brand-gold px-5 py-3 text-sm font-semibold text-brand-obsidian shadow-lg shadow-black/20 transition hover:bg-[#f7d24f] sm:text-base" href="#enquiry">Join Our Tutoring Programme</a>
+            <a className="inline-flex justify-center rounded-full border border-brand-aegean/70 bg-brand-aegean px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-brand-deepBlue sm:text-base" href="#tutors">Meet Our Tutors</a>
+            <Link className="inline-flex justify-center rounded-full border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20 sm:text-base" to="/programs">View programs</Link>
           </Reveal>
-          <StaggerReveal className="mt-10 grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-4" start="top 95%">
+          <StaggerReveal className="mt-8 grid max-w-4xl grid-cols-2 gap-3 sm:mt-10 lg:grid-cols-4" start="top 95%">
             {stats.map(({ value, suffix, label }) => (
-              <div key={label} data-reveal-child className="rounded-[1.5rem] border border-brand-marble/15 bg-white/10 p-5 backdrop-blur">
-                <p className="text-3xl font-semibold text-brand-gold">
+              <div key={label} data-reveal-child className="rounded-[1.25rem] border border-brand-marble/15 bg-white/10 p-4 backdrop-blur sm:rounded-[1.5rem] sm:p-5">
+                <p className="text-2xl font-semibold text-brand-gold sm:text-3xl">
                   <CountUpStat value={value} suffix={suffix} />
                 </p>
-                <p className="mt-1 text-sm text-brand-parchment">{label}</p>
+                <p className="mt-1 text-xs leading-5 text-brand-parchment sm:text-sm">{label}</p>
               </div>
             ))}
           </StaggerReveal>
@@ -450,13 +461,14 @@ function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <header className="sticky top-0 z-40 border-b border-white/70 bg-white/90 shadow-sm shadow-slate-200/60 backdrop-blur">
-        <nav className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link className="flex items-center gap-3 rounded-lg text-lg font-semibold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/" onClick={closeMenu}>
+        <nav className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link className="flex min-w-0 items-center gap-2 rounded-lg text-base font-semibold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2 sm:gap-3 sm:text-lg" to="/" onClick={closeMenu}>
             <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-navy text-sm font-bold text-white">PO</span>
-            <span>Project Odysseus</span>
+            <span className="truncate">Project Odysseus</span>
           </Link>
           <div className="hidden items-center gap-2 text-sm font-semibold md:flex">
             <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/about">About</Link>
+            <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/programs">Programs</Link>
             <a className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" href="/#faq">FAQ</a>
             <a className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" href="/#become-a-tutor">Tutor with us</a>
             <Link className="rounded-full bg-brand-navy px-4 py-2 text-white shadow-sm transition hover:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/dashboard/login">Student Login</Link>
@@ -482,6 +494,7 @@ function PublicLayout({ children }: { children: ReactNode }) {
           >
             <div className="mx-auto grid max-w-7xl gap-1 text-sm font-semibold">
               <Link className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/about" onClick={closeMenu}>About</Link>
+              <Link className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/programs" onClick={closeMenu}>Programs</Link>
               <a className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" href="/#faq" onClick={closeMenu}>FAQ</a>
               <a className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" href="/#become-a-tutor" onClick={closeMenu}>Tutor with us</a>
               <Link className="mt-2 rounded-lg bg-brand-navy px-4 py-3 text-center text-white hover:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/dashboard/login" onClick={closeMenu}>Student Login</Link>
