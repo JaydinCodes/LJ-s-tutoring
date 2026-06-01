@@ -19,7 +19,6 @@ const assetCopyTargets = [
   'analytics.js',
   'analytics-module.js',
   'portal-config.js',
-  'seo-index.js',
   'sw-register.js',
   'tailwind-input.css',
   path.join('lib', 'sanitize.js'),
@@ -153,7 +152,6 @@ function reactShell(route) {
     ? ''
     : `    <script defer src="/assets/portal-config.js"></script>
     <script defer src="/assets/analytics.js"></script>
-    <script defer src="/assets/seo-index.js"></script>
     <script defer src="/assets/sw-register.js"></script>
 `;
   const openGraph = meta

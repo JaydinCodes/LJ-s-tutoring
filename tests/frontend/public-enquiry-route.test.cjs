@@ -43,3 +43,18 @@ test('React public routes include guide pages', () => {
   assert.ok(publicRoutes.includes('Misreading the question'), 'React matric guide must carry legacy guide content');
   assert.ok(publicRoutes.includes('Skipping algebra steps'), 'React matric guide must carry legacy guide content');
 });
+
+test('React landing page owns accurate LocalBusiness and FAQPage structured data', () => {
+  const publicRoutes = fs.readFileSync(path.join(root, 'src', 'app', 'routes', 'PublicRoutes.tsx'), 'utf8');
+  const structuredData = fs.readFileSync(path.join(root, 'src', 'components', 'seo', 'StructuredData.tsx'), 'utf8');
+  const buildStatic = fs.readFileSync(path.join(root, 'scripts', 'build-static.js'), 'utf8');
+
+  assert.ok(publicRoutes.includes("'@type': 'LocalBusiness'"), 'landing page must expose LocalBusiness JSON-LD');
+  assert.ok(publicRoutes.includes("'@type': 'FAQPage'"), 'landing page must expose FAQPage JSON-LD');
+  assert.ok(publicRoutes.includes('mainEntity: faqs.map'), 'FAQPage schema must derive from the visible FAQ content');
+  assert.ok(publicRoutes.includes("name: 'Cape Town'"), 'LocalBusiness schema must include Cape Town service area');
+  assert.ok(publicRoutes.includes('<StructuredData data={[localBusinessSchema, faqPageSchema]} />'), 'landing page must inject the schema payload');
+  assert.ok(structuredData.includes('type="application/ld+json"'), 'StructuredData component must render JSON-LD scripts');
+  assert.ok(!publicRoutes.includes('aggregateRating'), 'landing page schema must not publish unsupported ratings');
+  assert.ok(!buildStatic.includes('seo-index.js'), 'static shells must not load the stale schema injector');
+});

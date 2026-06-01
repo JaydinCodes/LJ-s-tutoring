@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { CountUpStat } from '../../components/animations/CountUpStat';
 import { Reveal, StaggerReveal } from '../../components/animations/Reveal';
 import { SplitHeroTitle } from '../../components/animations/SplitHeroTitle';
+import { StructuredData } from '../../components/seo/StructuredData';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 
 
@@ -111,6 +112,49 @@ const contactEmail = 'projectodysseus.maths@gmail.com';
 const whatsappNumber = '27679327754';
 const enquiryThrottleKey = 'po_react_enquiry_last_submit';
 const enquiryThrottleMs = 30000;
+const businessUrl = 'https://projectodysseus.live';
+
+const localBusinessSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'LocalBusiness',
+  '@id': `${businessUrl}/#business`,
+  name: 'Project Odysseus Tutoring',
+  description:
+    'CAPS tutoring support for Grade 8-12 learners in Cape Town, including Mathematics, Mathematical Literacy, and Physical Sciences.',
+  url: businessUrl,
+  image: `${businessUrl}/images/og-image-placeholder.svg`,
+  email: contactEmail,
+  telephone: `+${whatsappNumber}`,
+  areaServed: {
+    '@type': 'City',
+    name: 'Cape Town',
+  },
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Cape Town',
+    addressRegion: 'Western Cape',
+    addressCountry: 'ZA',
+  },
+  openingHoursSpecification: {
+    '@type': 'OpeningHoursSpecification',
+    dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'],
+    opens: '17:00',
+    closes: '20:00',
+  },
+};
+
+const faqPageSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((faq) => ({
+    '@type': 'Question',
+    name: faq.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.answer,
+    },
+  })),
+};
 
 type EnquiryFormState = {
   name: string;
@@ -135,6 +179,7 @@ const initialEnquiryForm: EnquiryFormState = {
 export function PublicHomeRoute() {
   return (
     <PublicLayout>
+      <StructuredData data={[localBusinessSchema, faqPageSchema]} />
       <section className="relative overflow-hidden bg-brand-navy text-white">
         <video
           className="absolute inset-0 h-full w-full object-cover opacity-45"
