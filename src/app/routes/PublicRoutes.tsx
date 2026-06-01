@@ -1,6 +1,8 @@
 import type { FormEvent, ReactNode } from 'react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Reveal, StaggerReveal } from '../../components/animations/Reveal';
+import { SplitHeroTitle } from '../../components/animations/SplitHeroTitle';
 
 const tutors = [
   {
@@ -120,45 +122,45 @@ export function PublicHomeRoute() {
         <div className="absolute inset-0 bg-[linear-gradient(90deg,_rgba(15,23,42,0.96)_0%,_rgba(15,23,42,0.78)_48%,_rgba(15,23,42,0.28)_100%)]" />
         <div className="relative mx-auto flex min-h-[86svh] max-w-7xl flex-col justify-center px-6 py-20">
           <p className="text-sm font-semibold uppercase tracking-[0.32em] text-brand-gold">GRADE 8–12 CAPS TUTORING</p>
-          <h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl">Project Odysseus</h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-brand-parchment">
+          <SplitHeroTitle className="mt-5 max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl">Project Odysseus</SplitHeroTitle>
+          <Reveal variant="oracle" delay={0.45} className="mt-6 max-w-2xl text-lg leading-8 text-brand-parchment">
               Targeted CAPS support for Mathematics, Mathematical Literacy, and Physical Sciences, from core concepts to exam prep.
               We identify learning gaps, rebuild confidence, and keep every session focused on what each learner needs next.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          </Reveal>
+          <Reveal variant="oracle" delay={0.6} className="mt-8 flex flex-wrap gap-3">
             <a className="rounded-full bg-brand-gold px-5 py-3 font-semibold text-brand-obsidian shadow-lg shadow-black/20 transition hover:bg-[#f7d24f]" href="#enquiry">Join Our Tutoring Programme</a>
             <a className="rounded-full border border-brand-aegean/70 bg-brand-aegean px-5 py-3 font-semibold text-white backdrop-blur transition hover:bg-brand-deepBlue" href="#tutors">Meet Our Tutors</a>
-          </div>
-          <div className="mt-10 grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          </Reveal>
+          <StaggerReveal className="mt-10 grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-4" start="top 95%">
             {stats.map(([value, label]) => (
-              <div key={label} className="rounded-[1.5rem] border border-brand-marble/15 bg-white/10 p-5 backdrop-blur">
+              <div key={label} data-reveal-child className="rounded-[1.5rem] border border-brand-marble/15 bg-white/10 p-5 backdrop-blur">
                 <p className="text-3xl font-semibold text-brand-gold">{value}</p>
                 <p className="mt-1 text-sm text-brand-parchment">{label}</p>
               </div>
             ))}
-          </div>
+          </StaggerReveal>
         </div>
       </section>
 
-      <section className="bg-brand-parchment py-16">
+      <Reveal as="section" className="bg-brand-parchment py-16">
         <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
           <div>
             <SectionIntro title="Tutoring that feels connected, not scattered" eyebrow="React LMS workflow">
               Students get direct maths support. Parents get clarity. Tutors get a review workflow. Admins get visibility. The public site now matches that same clean LMS identity.
             </SectionIntro>
-            <div className="mt-10 grid gap-4 md:grid-cols-3">
+            <StaggerReveal className="mt-10 grid gap-4 md:grid-cols-3">
               {[
                 ['Diagnose gaps', 'Baseline weak topics and turn them into focused study goals.'],
                 ['Assign focused work', 'Publish tasks, track submissions, and reduce homework ambiguity.'],
                 ['Track progress', 'Surface marks, feedback, attendance, and momentum in one place.'],
               ].map(([title, description], index) => (
-                <article key={title} className="rounded-[1.5rem] border border-brand-marble bg-white/90 p-6 shadow-lg shadow-slate-200/60">
+                <article key={title} data-reveal-child className="rounded-[1.5rem] border border-brand-marble bg-white/90 p-6 shadow-lg shadow-slate-200/60">
                   <p className="text-sm font-semibold uppercase tracking-wide text-brand-aegean">Step {index + 1}</p>
                   <h3 className="mt-3 text-xl font-semibold text-brand-obsidian">{title}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
                 </article>
               ))}
-            </div>
+            </StaggerReveal>
           </div>
           <aside className="space-y-4">
             <div className="rounded-[1.5rem] bg-brand-deepBlue p-5 text-white shadow-xl shadow-brand-navy/20">
@@ -191,9 +193,9 @@ export function PublicHomeRoute() {
             </div>
           </aside>
         </div>
-      </section>
+      </Reveal>
 
-      <section className="bg-white py-16">
+      <Reveal as="section" variant="marble" className="bg-white py-16">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
             <div>
@@ -208,7 +210,7 @@ export function PublicHomeRoute() {
           
           </div>
         </div>
-      </section>
+      </Reveal>
 
       <TutorSection />
       <GuideSection />
@@ -354,14 +356,14 @@ function PublicLayout({ children }: { children: ReactNode }) {
 
 function TutorSection() {
   return (
-    <section id="tutors" className="bg-brand-parchment py-16">
+    <Reveal as="section" id="tutors" className="bg-brand-parchment py-16">
       <div className="mx-auto max-w-7xl px-6">
         <SectionIntro title="Meet the tutors" eyebrow="Academic support">
           Preserve the strongest public-site trust signal while the LMS migration moves tutor operations into React.
         </SectionIntro>
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
+        <StaggerReveal className="mt-10 grid gap-4 md:grid-cols-3">
           {tutors.map((tutor) => (
-            <article key={tutor.name} className="overflow-hidden rounded-[1.5rem] border border-brand-marble bg-white shadow-sm shadow-slate-200/50">
+            <article key={tutor.name} data-reveal-child className="overflow-hidden rounded-[1.5rem] border border-brand-marble bg-white shadow-sm shadow-slate-200/50">
               <img className="aspect-[4/3] w-full object-cover" src={tutor.image} alt={tutor.name} />
               <div className="p-5">
                 <h3 className="text-xl font-semibold text-brand-obsidian">{tutor.name}</h3>
@@ -369,9 +371,9 @@ function TutorSection() {
               </div>
             </article>
           ))}
-        </div>
+        </StaggerReveal>
       </div>
-    </section>
+    </Reveal>
   );
 }
 
@@ -381,7 +383,7 @@ function TutorSection() {
 
 function GuideSection() {
   return (
-    <section className="bg-white py-16">
+    <Reveal as="section" variant="marble" className="bg-white py-16">
       <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
         <SectionIntro title="Matric maths guide" eyebrow="Free resource">
           Keep the useful lead-magnet path alive during the migration. Learners can still open the guide while future downloads and follow-ups move into onboarding and reporting workflows.
@@ -396,33 +398,33 @@ function GuideSection() {
           </Link>
         </div>
       </div>
-    </section>
+    </Reveal>
   );
 }
 
 function FaqSection() {
   return (
-    <section id="faq" className="bg-white py-16">
+    <Reveal as="section" id="faq" variant="marble" className="bg-white py-16">
       <div className="mx-auto max-w-4xl px-6">
         <SectionIntro title="Frequently asked questions" eyebrow="Tutoring details">
           The core public-site answers are now available in React while the legacy landing page remains in the repository for comparison.
         </SectionIntro>
-        <div className="mt-10 grid gap-3">
+        <StaggerReveal className="mt-10 grid gap-3" staggerBy={0.08}>
           {faqs.map((faq) => (
-            <details key={faq.question} className="rounded-lg border border-brand-marble bg-brand-parchment p-5">
+            <details key={faq.question} data-reveal-child className="rounded-lg border border-brand-marble bg-brand-parchment p-5">
               <summary className="cursor-pointer text-base font-semibold text-slate-950">{faq.question}</summary>
               <p className="mt-3 text-sm leading-6 text-slate-600">{faq.answer}</p>
             </details>
           ))}
-        </div>
+        </StaggerReveal>
       </div>
-    </section>
+    </Reveal>
   );
 }
 
 function BecomeTutorSection() {
   return (
-    <section id="become-a-tutor" className="bg-slate-950 py-16 text-white">
+    <Reveal as="section" id="become-a-tutor" className="bg-slate-950 py-16 text-white">
       <div className="mx-auto max-w-7xl px-6">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-gold">Join our team</p>
@@ -434,14 +436,14 @@ function BecomeTutorSection() {
         <div className="mt-10 grid gap-4 lg:grid-cols-2">
           <div className="rounded-lg border border-white/10 bg-white/10 p-6">
             <h3 className="text-xl font-semibold">Why tutor with us</h3>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <StaggerReveal className="mt-5 grid gap-4 sm:grid-cols-2" staggerBy={0.08}>
               {tutorPerks.map(([title, description]) => (
-                <article key={title} className="rounded-lg border border-white/10 bg-slate-950/40 p-4">
+                <article key={title} data-reveal-child className="rounded-lg border border-white/10 bg-slate-950/40 p-4">
                   <h4 className="font-semibold text-white">{title}</h4>
                   <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p>
                 </article>
               ))}
-            </div>
+            </StaggerReveal>
           </div>
           <div className="rounded-lg border border-white/10 bg-white p-6 text-slate-950">
             <h3 className="text-xl font-semibold">What we look for</h3>
@@ -462,7 +464,7 @@ function BecomeTutorSection() {
           </div>
         </div>
       </div>
-    </section>
+    </Reveal>
   );
 }
 
@@ -595,7 +597,7 @@ function EnquirySection() {
   }
 
   return (
-    <section id="enquiry" className="bg-slate-950 px-6 py-16 text-white">
+    <Reveal as="section" id="enquiry" className="bg-slate-950 px-6 py-16 text-white">
       <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,1fr)_480px] lg:items-start">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand-gold">Next step</p>
@@ -716,7 +718,7 @@ function EnquirySection() {
           ) : null}
         </form>
       </div>
-    </section>
+    </Reveal>
   );
 }
 
