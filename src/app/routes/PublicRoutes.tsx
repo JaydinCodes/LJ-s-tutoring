@@ -5,6 +5,7 @@ import { CountUpStat } from '../../components/animations/CountUpStat';
 import { Reveal, StaggerReveal } from '../../components/animations/Reveal';
 import { SplitHeroTitle } from '../../components/animations/SplitHeroTitle';
 import { StructuredData } from '../../components/seo/StructuredData';
+import { GreekDivider } from '../../components/ui/GreekDivider';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 
 
@@ -215,6 +216,8 @@ export function PublicHomeRoute() {
         </div>
       </section>
 
+      <GreekDivider background="parchment" tone="gold" />
+
       <Reveal as="section" className="bg-brand-parchment py-16">
         <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
           <div>
@@ -268,6 +271,8 @@ export function PublicHomeRoute() {
         </div>
       </Reveal>
 
+      <GreekDivider background="white" />
+
       <Reveal as="section" variant="marble" className="bg-white py-16">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
@@ -286,8 +291,10 @@ export function PublicHomeRoute() {
       </Reveal>
 
       <TutorSection />
+      <GreekDivider background="white" tone="gold" />
       <GuideSection />
       <FaqSection />
+      <GreekDivider background="slate" tone="gold" />
       <BecomeTutorSection />
       <EnquirySection />
     </PublicLayout>
