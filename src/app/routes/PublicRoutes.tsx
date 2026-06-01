@@ -367,6 +367,7 @@ function PublicLayout({ children }: { children: ReactNode }) {
             <a className="hidden rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:inline-flex" href="/#faq">FAQ</a>
             <a className="hidden rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 lg:inline-flex" href="/#become-a-tutor">Tutor with us</a>
             <Link className="rounded-full bg-brand-navy px-4 py-2 text-white shadow-sm transition hover:bg-blue-900" to="/dashboard/login">Login</Link>
+
           </div>
         </nav>
       </header>
@@ -784,6 +785,7 @@ function LegalRoute({ title, children }: { title: string; children: ReactNode })
   );
 }
 
+// 
 function SectionIntro({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
   return (
     <div className="max-w-3xl">
