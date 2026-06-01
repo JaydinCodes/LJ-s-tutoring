@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Reveal, StaggerReveal } from '../../components/animations/Reveal';
 import { SplitHeroTitle } from '../../components/animations/SplitHeroTitle';
 
+
 const tutors = [
   {
     name: 'Jaydin Morrison',
@@ -28,10 +29,25 @@ const tutors = [
 ];
 
 const stats = [
-  ['150+', 'Students helped'],
-  ['500+', 'Sessions delivered'],
-  ['Grade 8-12', 'CAPS Maths'],
-  ['Cape Town', 'Online and local suFppport'],
+{
+    value: 1,
+    suffix: "+",
+    label: "Years of tutoring experience",
+  },
+  {
+    value: 100,
+    suffix: "+",
+    label: "Learners supported",
+  },
+  {
+    value: 98,
+    suffix: "%",
+    label: "Parent satisfaction",
+  },
+  {
+    value: 12,
+    label: "CAPS grades covered",
+  },
 ];
 
 
