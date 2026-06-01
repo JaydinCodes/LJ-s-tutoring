@@ -1,5 +1,5 @@
 import type { FormEvent, ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CountUpStat } from '../../components/animations/CountUpStat';
 import { Reveal, StaggerReveal } from '../../components/animations/Reveal';
@@ -183,7 +183,7 @@ export function PublicHomeRoute() {
       <StructuredData data={[localBusinessSchema, faqPageSchema]} />
       <section className="relative overflow-hidden bg-brand-navy text-white">
         <video
-          className="absolute inset-0 h-full w-full object-cover opacity-45"
+          className="absolute inset-0 h-full w-full object-cover opacity-35"
           src="./images/e_b_e_bc_f_cb_b_mp_.mp4"
           autoPlay
           muted
@@ -191,7 +191,7 @@ export function PublicHomeRoute() {
           playsInline
           aria-hidden="true"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,_rgba(15,23,42,0.96)_0%,_rgba(15,23,42,0.78)_48%,_rgba(15,23,42,0.28)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.88)_48%,_rgba(15,23,42,0.62)_100%)]" />
         <div className="relative mx-auto flex min-h-[86svh] max-w-7xl flex-col justify-center px-6 py-20">
           <p className="text-sm font-semibold uppercase tracking-[0.32em] text-brand-gold">GRADE 8–12 CAPS TUTORING</p>
           <SplitHeroTitle className="mt-5 max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl">Project Odysseus</SplitHeroTitle>
@@ -433,21 +433,59 @@ export function TermsRoute() {
 }
 
 function PublicLayout({ children }: { children: ReactNode }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const closeMenu = () => setIsMenuOpen(false);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeMenu();
+    };
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isMenuOpen]);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <header className="sticky top-0 z-40 border-b border-white/70 bg-white/90 shadow-sm shadow-slate-200/60 backdrop-blur">
         <nav className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link className="flex items-center gap-3 text-lg font-semibold tracking-tight text-slate-950" to="/">
+          <Link className="flex items-center gap-3 rounded-lg text-lg font-semibold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/" onClick={closeMenu}>
             <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-navy text-sm font-bold text-white">PO</span>
             <span>Project Odysseus</span>
           </Link>
-          <div className="flex items-center gap-1 text-sm font-semibold sm:gap-2">
-            <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950" to="/about">About</Link>
-          
-
-            <a className="hidden rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:inline-flex" href="/#faq">FAQ</a>
-            <a className="hidden rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 lg:inline-flex" href="/#become-a-tutor">Tutor with us</a>
-            <Link className="rounded-full bg-brand-navy px-4 py-2 text-white shadow-sm transition hover:bg-blue-900" to="/dashboard/login">Student Login</Link>
+          <div className="hidden items-center gap-2 text-sm font-semibold md:flex">
+            <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/about">About</Link>
+            <a className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" href="/#faq">FAQ</a>
+            <a className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" href="/#become-a-tutor">Tutor with us</a>
+            <Link className="rounded-full bg-brand-navy px-4 py-2 text-white shadow-sm transition hover:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/dashboard/login">Student Login</Link>
+          </div>
+          <button
+            className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-brand-navy shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2 md:hidden"
+            type="button"
+            aria-controls="public-mobile-menu"
+            aria-expanded={isMenuOpen}
+            aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            onClick={() => setIsMenuOpen((current) => !current)}
+          >
+            <span className="sr-only">{isMenuOpen ? 'Close menu' : 'Open menu'}</span>
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              {isMenuOpen ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
+            </svg>
+          </button>
+          <div
+            id="public-mobile-menu"
+            className={`absolute inset-x-0 top-full border-b border-slate-200 bg-white px-4 py-4 shadow-lg md:hidden ${
+              isMenuOpen ? 'block' : 'hidden'
+            }`}
+          >
+            <div className="mx-auto grid max-w-7xl gap-1 text-sm font-semibold">
+              <Link className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/about" onClick={closeMenu}>About</Link>
+              <a className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" href="/#faq" onClick={closeMenu}>FAQ</a>
+              <a className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" href="/#become-a-tutor" onClick={closeMenu}>Tutor with us</a>
+              <Link className="mt-2 rounded-lg bg-brand-navy px-4 py-3 text-center text-white hover:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/dashboard/login" onClick={closeMenu}>Student Login</Link>
+            </div>
           </div>
         </nav>
       </header>
@@ -497,7 +535,7 @@ function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
         <img
           className={`aspect-[4/3] w-full object-cover ${transitionClass} ${prefersReducedMotion ? '' : 'group-hover:scale-[1.03]'}`}
           src={tutor.image}
-          alt={tutor.name}
+          alt={`${tutor.name}, ${tutor.role} for ${tutor.subject}`}
         />
         <button
           className="absolute inset-0 z-10 focus:outline-none focus:ring-4 focus:ring-inset focus:ring-brand-gold"
@@ -581,15 +619,54 @@ function FaqSection() {
           The core public-site answers are now available in React while the legacy landing page remains in the repository for comparison.
         </SectionIntro>
         <StaggerReveal className="mt-10 grid gap-3" staggerBy={0.08}>
-          {faqs.map((faq) => (
-            <details key={faq.question} data-reveal-child className="rounded-lg border border-brand-marble bg-brand-parchment p-5">
-              <summary className="cursor-pointer text-base font-semibold text-slate-950">{faq.question}</summary>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{faq.answer}</p>
-            </details>
-          ))}
+          {faqs.map((faq, index) => <FaqItem key={faq.question} faq={faq} index={index} />)}
         </StaggerReveal>
       </div>
     </Reveal>
+  );
+}
+
+function FaqItem({ faq, index }: { faq: (typeof faqs)[number]; index: number }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const answerId = `faq-answer-${index}`;
+  const questionId = `faq-question-${index}`;
+
+  return (
+    <article data-reveal-child className="rounded-lg border border-brand-marble bg-brand-parchment">
+      <h3>
+        <button
+          id={questionId}
+          className="flex w-full items-center justify-between gap-4 rounded-lg px-5 py-4 text-left text-base font-semibold text-slate-950 transition hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-aegean"
+          type="button"
+          aria-controls={answerId}
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          <span>{faq.question}</span>
+          <svg
+            className={`h-5 w-5 shrink-0 text-brand-aegean transition-transform duration-200 motion-reduce:transition-none ${isOpen ? 'rotate-180' : ''}`}
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <path d="m5 7.5 5 5 5-5" />
+          </svg>
+        </button>
+      </h3>
+      <div
+        id={answerId}
+        className={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+        role="region"
+        aria-labelledby={questionId}
+        aria-hidden={!isOpen}
+      >
+        <div className="overflow-hidden">
+          <p className="px-5 pb-5 text-sm leading-6 text-slate-600">{faq.answer}</p>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -788,7 +865,7 @@ function EnquirySection() {
             </Link>
           </div>
         </div>
-        <form className="rounded-lg border border-white/10 bg-white/10 p-5 backdrop-blur" onSubmit={submitEnquiry}>
+        <form className="rounded-lg border border-white/10 bg-white/10 p-5 backdrop-blur" aria-describedby="enquiry-helper" onSubmit={submitEnquiry}>
           <h3 className="text-xl font-semibold text-white">Quick enquiry</h3>
           <div className="hidden" aria-hidden="true">
             <label htmlFor="enquiry-website">Website</label>
@@ -811,6 +888,8 @@ function EnquirySection() {
                 required
                 minLength={2}
                 maxLength={100}
+                autoComplete="name"
+                aria-describedby="enquiry-helper enquiry-status"
                 className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/40"
                 placeholder="John Smith"
                 value={form.name}
@@ -824,6 +903,8 @@ function EnquirySection() {
                 name="email"
                 type="email"
                 required
+                autoComplete="email"
+                aria-describedby="enquiry-helper enquiry-status"
                 className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/40"
                 placeholder="john@example.com"
                 value={form.email}
@@ -836,6 +917,7 @@ function EnquirySection() {
                 id="enquiry-grade"
                 name="grade"
                 required
+                aria-describedby="enquiry-helper enquiry-status"
                 className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/40"
                 value={form.grade}
                 onChange={(event) => updateField('grade', event.target.value)}
@@ -855,6 +937,7 @@ function EnquirySection() {
                 name="message"
                 rows={4}
                 maxLength={2000}
+                aria-describedby="enquiry-helper enquiry-status"
                 className="resize-none rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/40"
                 placeholder="Tell us about the learner's goals or current challenge."
                 value={form.message}
@@ -862,19 +945,24 @@ function EnquirySection() {
               />
             </label>
           </div>
-          {status.message ? (
-            <p
-              className={`mt-4 rounded-lg px-3 py-2 text-sm ${
+          <p
+            id="enquiry-status"
+            className={
+              status.message
+                ? `mt-4 rounded-lg px-3 py-2 text-sm ${
                 status.tone === 'success'
                   ? 'bg-green-500/15 text-green-200'
                   : status.tone === 'error'
                     ? 'bg-red-500/15 text-red-200'
                     : 'bg-sky-500/15 text-sky-200'
-              }`}
-            >
-              {status.message}
-            </p>
-          ) : null}
+                  }`
+                : 'sr-only'
+            }
+            role={status.tone === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+          >
+            {status.message}
+          </p>
           <button
             type="submit"
             disabled={isSubmitting}
@@ -882,7 +970,7 @@ function EnquirySection() {
           >
             {isSubmitting ? 'Sending...' : 'Send enquiry'}
           </button>
-          <p className="mt-3 text-xs leading-5 text-slate-400">
+          <p id="enquiry-helper" className="mt-3 text-xs leading-5 text-slate-400">
             We reply within 24 hours, Monday to Thursday. If direct submission is unavailable, we will open a pre-filled email for you.
           </p>
         </form>
