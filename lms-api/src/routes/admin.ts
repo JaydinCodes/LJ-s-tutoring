@@ -1793,13 +1793,31 @@ export async function adminRoutes(app: FastifyInstance) {
       : `la.created_at desc`;
     const res = await pool.query(
       `select la.*, t.full_name as tutor_name, st.full_name as student_name,
-              count(sub.id)::int as submission_count
+              coalesce(history.submission_count, 0)::int as submission_count,
+              coalesce(history.submission_versions, '[]'::json) as submission_versions
        from learning_assignments la
        join tutor_profiles t on t.id = la.tutor_id
        join students st on st.id = la.student_id
-       left join assignment_submissions sub on sub.assignment_id = la.id
+       left join lateral (
+         select count(versioned.id)::int as submission_count,
+                json_agg(
+           json_build_object(
+             'id', versioned.id,
+             'status', versioned.status,
+             'submitted_at', versioned.submitted_at,
+             'original_filename', versioned.original_filename,
+             'mime_type', versioned.mime_type,
+             'size_bytes', versioned.size_bytes,
+             'version_number', versioned.version_number,
+             'is_latest', versioned.is_latest,
+             'file_url', versioned.file_url
+           )
+           order by versioned.is_latest desc, versioned.version_number desc, versioned.submitted_at desc
+         ) as submission_versions
+         from assignment_submissions versioned
+         where versioned.assignment_id = la.id
+       ) history on true
        ${where}
-       group by la.id, t.full_name, st.full_name
        order by ${order}`,
       params
     );

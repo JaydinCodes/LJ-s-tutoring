@@ -74,9 +74,15 @@ export interface AssignmentSubmission {
   assignment_id: string;
   student_id: string;
   file_url?: string | null;
+  storage_key?: string | null;
+  original_filename?: string | null;
+  mime_type?: string | null;
+  size_bytes?: number | null;
   text_answer?: string | null;
   submitted_at?: string | null;
   status: SubmissionStatus | string;
+  version_number?: number | null;
+  is_latest?: boolean | null;
   marks_awarded?: number | null;
   feedback?: string | null;
 }

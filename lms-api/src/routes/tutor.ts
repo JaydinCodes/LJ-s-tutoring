@@ -711,9 +711,28 @@ export async function tutorRoutes(app: FastifyInstance) {
   app.get('/tutor/learning-assignments', async (req, reply) => {
     const tutorId = req.user!.tutorId!;
     const res = await pool.query(
-      `select la.*, st.full_name as student_name
+      `select la.*, st.full_name as student_name,
+              coalesce(history.submission_versions, '[]'::json) as submission_versions
        from learning_assignments la
        join students st on st.id = la.student_id
+       left join lateral (
+         select json_agg(
+           json_build_object(
+             'id', sub.id,
+             'status', sub.status,
+             'submitted_at', sub.submitted_at,
+             'original_filename', sub.original_filename,
+             'mime_type', sub.mime_type,
+             'size_bytes', sub.size_bytes,
+             'version_number', sub.version_number,
+             'is_latest', sub.is_latest,
+             'file_url', sub.file_url
+           )
+           order by sub.is_latest desc, sub.version_number desc, sub.submitted_at desc
+         ) as submission_versions
+         from assignment_submissions sub
+         where sub.assignment_id = la.id
+       ) history on true
        where la.tutor_id = $1
        order by coalesce(la.due_date, la.created_at::date) desc, la.created_at desc`,
       [tutorId]

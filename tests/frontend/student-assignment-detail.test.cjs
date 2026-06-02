@@ -29,7 +29,7 @@ test('assignment detail page shows instructions, due date, topic, status, feedba
   assert.ok(detail.includes('assignment.subject || assignment.subject_id'), 'topic must use real assignment subject data');
   assert.ok(detail.includes('formatDueDate(assignment.due_date, dueDelta)'), 'due date must be formatted from assignment data');
   assert.ok(detail.includes('submission?.feedback'), 'feedback must come from the learner submission');
-  assert.ok(detail.includes('SubmissionHistory submission={submission} assignment={assignment}'), 'submission history must render from real submission data');
+  assert.ok(detail.includes('SubmissionHistory submissions={submissionHistory} assignment={assignment}'), 'submission history must render from real submission data');
 });
 
 test('assignment upload workflow lives on detail page and disables closed or archived work', () => {

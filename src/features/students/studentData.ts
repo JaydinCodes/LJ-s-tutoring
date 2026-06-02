@@ -90,7 +90,10 @@ export function normalizeStudentData(
   }
 
   for (const submission of data.submissions) {
-    submissionsByAssignmentId.set(submission.assignment_id, submission);
+    const current = submissionsByAssignmentId.get(submission.assignment_id);
+    if (!current || isNewerSubmission(submission, current)) {
+      submissionsByAssignmentId.set(submission.assignment_id, submission);
+    }
     submittedAssignmentIds.add(submission.assignment_id);
   }
 
@@ -232,6 +235,17 @@ export function normalizeStudentResults(items: ResultsItem[]): NormalizedStudent
   }
 
   return { resultsById, resultsBySubject, topicMasteryByKey };
+}
+
+function isNewerSubmission(left: AssignmentSubmission, right: AssignmentSubmission) {
+  if (left.is_latest && !right.is_latest) return true;
+  if (!left.is_latest && right.is_latest) return false;
+
+  const leftVersion = Number(left.version_number || 0);
+  const rightVersion = Number(right.version_number || 0);
+  if (leftVersion !== rightVersion) return leftVersion > rightVersion;
+
+  return new Date(left.submitted_at || 0).getTime() > new Date(right.submitted_at || 0).getTime();
 }
 
 export function selectResultSubjects(data: NormalizedStudentResults) {

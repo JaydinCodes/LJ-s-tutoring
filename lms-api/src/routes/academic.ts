@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
@@ -36,6 +37,11 @@ function toDateOnly(value: Date) {
 function safeFilename(value: string) {
   const base = path.basename(value || 'submission').replace(/[^a-zA-Z0-9._-]/g, '_');
   return base.slice(0, 160) || 'submission';
+}
+
+function stableSubmissionObjectName(mimetype: string) {
+  const extension = mimetype === 'application/pdf' ? '.pdf' : mimetype === 'image/png' ? '.png' : '.jpg';
+  return `submission${extension}`;
 }
 
 function publicUploadPath(key: string) {
@@ -1243,7 +1249,8 @@ export async function academicRoutes(app: FastifyInstance) {
               la.due_date, la.status, la.created_at, la.published_at,
               t.full_name as tutor_name,
               sub.id as submission_id, sub.status as submission_status, sub.submitted_at,
-              sub.original_filename, sub.mime_type, sub.size_bytes,
+              sub.original_filename, sub.mime_type, sub.size_bytes, sub.version_number, sub.is_latest,
+              coalesce(history.submission_versions, '[]'::json) as submission_versions,
               10 as max_file_size_mb,
               array['pdf','jpg','jpeg','png'] as allowed_file_types
        from learning_assignments la
@@ -1252,10 +1259,28 @@ export async function academicRoutes(app: FastifyInstance) {
          select *
          from assignment_submissions s
          where s.assignment_id = la.id and s.student_id = $1
-         order by s.submitted_at desc
+         order by s.is_latest desc, s.version_number desc, s.submitted_at desc
          limit 1
        ) sub on true
-       where la.student_id = $1 and la.status in ('published','submitted','reviewed')
+       left join lateral (
+         select json_agg(
+           json_build_object(
+             'id', s.id,
+             'status', s.status,
+             'submitted_at', s.submitted_at,
+             'original_filename', s.original_filename,
+             'mime_type', s.mime_type,
+             'size_bytes', s.size_bytes,
+             'version_number', s.version_number,
+             'is_latest', s.is_latest,
+             'file_url', s.file_url
+           )
+           order by s.is_latest desc, s.version_number desc, s.submitted_at desc
+         ) as submission_versions
+         from assignment_submissions s
+         where s.assignment_id = la.id and s.student_id = $1
+       ) history on true
+       where la.student_id = $1 and la.status in ('published','submitted','reviewed','closed','marked')
        order by coalesce(la.due_date, la.created_at::date) asc, la.created_at desc`,
       [studentId]
     );
@@ -1272,7 +1297,8 @@ export async function academicRoutes(app: FastifyInstance) {
               la.due_date, la.status, la.created_at, la.published_at,
               t.full_name as tutor_name,
               sub.id as submission_id, sub.status as submission_status, sub.submitted_at,
-              sub.original_filename, sub.mime_type, sub.size_bytes,
+              sub.original_filename, sub.mime_type, sub.size_bytes, sub.version_number, sub.is_latest,
+              coalesce(history.submission_versions, '[]'::json) as submission_versions,
               10 as max_file_size_mb,
               array['pdf','jpg','jpeg','png'] as allowed_file_types
        from learning_assignments la
@@ -1281,10 +1307,28 @@ export async function academicRoutes(app: FastifyInstance) {
          select *
          from assignment_submissions s
          where s.assignment_id = la.id and s.student_id = $1
-         order by s.submitted_at desc
+         order by s.is_latest desc, s.version_number desc, s.submitted_at desc
          limit 1
        ) sub on true
-       where la.student_id = $1 and la.status in ('published','submitted','reviewed')
+       left join lateral (
+         select json_agg(
+           json_build_object(
+             'id', s.id,
+             'status', s.status,
+             'submitted_at', s.submitted_at,
+             'original_filename', s.original_filename,
+             'mime_type', s.mime_type,
+             'size_bytes', s.size_bytes,
+             'version_number', s.version_number,
+             'is_latest', s.is_latest,
+             'file_url', s.file_url
+           )
+           order by s.is_latest desc, s.version_number desc, s.submitted_at desc
+         ) as submission_versions
+         from assignment_submissions s
+         where s.assignment_id = la.id and s.student_id = $1
+       ) history on true
+       where la.student_id = $1 and la.status in ('published','submitted','reviewed','closed','marked')
        order by coalesce(la.due_date, la.created_at::date) asc, la.created_at desc`,
       [studentId]
     );
@@ -1302,10 +1346,17 @@ export async function academicRoutes(app: FastifyInstance) {
     const assignmentRes = await pool.query(
       `select id, student_id, title, subject, due_date, status
         from learning_assignments
-        where id = $1 and student_id = $2 and status in ('published','submitted','reviewed')`,
+        where id = $1 and student_id = $2 and status <> 'draft'`,
       [params.data.id, studentId]
     );
     if (Number(assignmentRes.rowCount || 0) === 0) return reply.code(404).send({ error: 'assignment_not_found' });
+    const assignment = assignmentRes.rows[0];
+    if (assignment.status === 'closed' || assignment.status === 'archived') {
+      return reply.code(409).send({
+        error: 'assignment_locked',
+        message: 'This assignment is closed or archived and no longer accepts uploads.',
+      });
+    }
 
     const file = await (req as any).file();
     if (!file) return reply.code(400).send({ error: 'file_required' });
@@ -1327,32 +1378,61 @@ export async function academicRoutes(app: FastifyInstance) {
       return reply.code(413).send({ error: 'file_too_large', maxBytes: SUBMISSION_MAX_BYTES });
     }
 
-    const dir = await ensureUploadDir('submissions', studentId, params.data.id);
-    const key = path.posix.join('submissions', studentId, params.data.id, `${Date.now()}-${originalFilename}`);
-    await fs.writeFile(path.join(dir, path.basename(key)), buffer, { flag: 'wx' });
+    const submissionId = crypto.randomUUID();
+    const objectName = stableSubmissionObjectName(file.mimetype);
+    const dir = await ensureUploadDir('submissions', studentId, params.data.id, submissionId);
+    const key = path.posix.join('submissions', studentId, params.data.id, submissionId, objectName);
+    await fs.writeFile(path.join(dir, objectName), buffer, { flag: 'wx' });
 
-    const dueDate = assignmentRes.rows[0].due_date ? new Date(assignmentRes.rows[0].due_date) : null;
+    const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
     const status = dueDate && Date.now() > dueDate.getTime() + DAY_MS - 1 ? 'late' : 'submitted';
-    const res = await pool.query(
-      `insert into assignment_submissions
-       (assignment_id, student_id, file_key, file_url, original_filename, mime_type, size_bytes, status)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)
-       returning *`,
-      [params.data.id, studentId, key, publicUploadPath(key), originalFilename, file.mimetype, buffer.length, status]
-    );
+    const client = await pool.connect();
+    let submission;
+    try {
+      await client.query('begin');
+      await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [`${params.data.id}:${studentId}`]);
+      const versionRes = await client.query(
+        `select version_number
+         from assignment_submissions
+         where assignment_id = $1 and student_id = $2
+         for update`,
+        [params.data.id, studentId]
+      );
+      const nextVersion = Math.max(0, ...versionRes.rows.map((row) => Number(row.version_number || 0))) + 1;
+      await client.query(
+        `update assignment_submissions
+         set is_latest = false, updated_at = now()
+         where assignment_id = $1 and student_id = $2 and is_latest = true`,
+        [params.data.id, studentId]
+      );
+      const res = await client.query(
+        `insert into assignment_submissions
+         (id, assignment_id, student_id, file_key, file_url, original_filename, mime_type, size_bytes, status, version_number, is_latest)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
+         returning *`,
+        [submissionId, params.data.id, studentId, key, publicUploadPath(key), originalFilename, file.mimetype, buffer.length, status, nextVersion]
+      );
+      submission = res.rows[0];
+      await client.query('commit');
+    } catch (err) {
+      await client.query('rollback');
+      throw err;
+    } finally {
+      client.release();
+    }
 
     await createStudentNotification(pool, {
       studentId,
       type: 'assignment_submission_received',
       title: 'Assignment submission received',
-      body: `We received your submission for ${assignmentRes.rows[0].title || assignmentRes.rows[0].subject || 'this assignment'}.`,
+      body: `We received version ${submission.version_number} for ${assignment.title || assignment.subject || 'this assignment'}.`,
       link: '/dashboard/assignments/',
       entityType: 'learning_assignment',
       entityId: params.data.id,
-      metadata: { status },
+      metadata: { status, versionNumber: submission.version_number, isLatest: submission.is_latest },
     });
 
-    return reply.code(201).send({ submission: res.rows[0] });
+    return reply.code(201).send({ submission });
   });
 
   app.get('/student/tutors', {

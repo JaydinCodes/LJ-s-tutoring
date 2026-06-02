@@ -78,13 +78,19 @@ create table if not exists public.assignment_submissions (
   id uuid primary key default gen_random_uuid(),
   assignment_id uuid not null references public.assignments(id) on delete cascade,
   student_id uuid not null references public.students(id) on delete cascade,
+  storage_key text,
   file_url text,
+  original_filename text,
+  mime_type text,
+  size_bytes bigint,
   text_answer text,
-  submitted_at timestamptz,
-  status public.submission_status not null default 'not_submitted',
+  submitted_at timestamptz not null default now(),
+  status public.submission_status not null default 'submitted',
+  version_number integer not null default 1,
+  is_latest boolean not null default true,
   marks_awarded numeric(8, 2),
   feedback text,
-  unique (assignment_id, student_id)
+  unique (assignment_id, student_id, version_number)
 );
 
 create table if not exists public.student_progress (
@@ -143,6 +149,11 @@ create index if not exists idx_profiles_role on public.profiles(role);
 create index if not exists idx_students_ngo_partner on public.students(ngo_partner_id);
 create index if not exists idx_assignments_due_date on public.assignments(due_date);
 create index if not exists idx_submissions_student on public.assignment_submissions(student_id);
+create unique index if not exists idx_submissions_latest_assignment_student
+  on public.assignment_submissions(assignment_id, student_id)
+  where is_latest;
+create index if not exists idx_submissions_assignment_versions
+  on public.assignment_submissions(assignment_id, student_id, version_number desc);
 create index if not exists idx_progress_student_recorded on public.student_progress(student_id, recorded_at desc);
 create index if not exists idx_payments_student_status on public.payments(student_id, status);
 create index if not exists idx_classes_tutor on public.classes(tutor_id);
@@ -288,6 +299,14 @@ using (
 create policy "submissions_student_insert_self"
 on public.assignment_submissions for insert
 with check (
+  status = 'submitted'
+  and is_latest = true
+  and exists (
+    select 1 from public.assignments a
+    where a.id = assignment_id
+      and a.status = 'published'
+  )
+  and
   student_id in (
     select s.id from public.students s
     join public.profiles p on p.id = s.profile_id
@@ -298,6 +317,15 @@ with check (
 create policy "submissions_student_update_self"
 on public.assignment_submissions for update
 using (
+  false
+)
+with check (
+  false
+);
+
+create policy "submissions_student_mark_previous_versions"
+on public.assignment_submissions for update
+using (
   student_id in (
     select s.id from public.students s
     join public.profiles p on p.id = s.profile_id
@@ -305,6 +333,9 @@ using (
   )
 )
 with check (
+  status in ('submitted', 'returned')
+  and is_latest = false
+  and
   student_id in (
     select s.id from public.students s
     join public.profiles p on p.id = s.profile_id
@@ -420,6 +451,7 @@ on storage.objects for insert
 with check (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
+  and (storage.foldername(name))[3] is not null
   and (storage.foldername(name))[1] in (
     select s.id::text from public.students s
     join public.profiles p on p.id = s.profile_id
@@ -432,6 +464,7 @@ on storage.objects for update
 using (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
+  and (storage.foldername(name))[3] is not null
   and (storage.foldername(name))[1] in (
     select s.id::text from public.students s
     join public.profiles p on p.id = s.profile_id

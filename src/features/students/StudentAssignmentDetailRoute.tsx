@@ -20,6 +20,11 @@ export function StudentAssignmentDetailRoute() {
   const studentData = data ? normalizeStudentData(data) : null;
   const assignment = assignmentId ? studentData?.assignmentsById.get(assignmentId) : null;
   const submission = assignmentId ? studentData?.submissionsByAssignmentId.get(assignmentId) : undefined;
+  const submissionHistory = assignmentId
+    ? [...(data?.submissions || [])]
+      .filter((item) => item.assignment_id === assignmentId)
+      .sort(compareSubmissionVersions)
+    : [];
 
   return (
     <PageShell
@@ -40,7 +45,7 @@ export function StudentAssignmentDetailRoute() {
           <EmptyState title="Assignment not found" description="This assignment may have been removed, archived, or assigned to a different learner." />
         </Card>
       ) : null}
-      {assignment ? <AssignmentDetailWorkspace assignment={assignment} submission={submission} /> : null}
+      {assignment ? <AssignmentDetailWorkspace assignment={assignment} submission={submission} submissionHistory={submissionHistory} /> : null}
     </PageShell>
   );
 }
@@ -48,9 +53,11 @@ export function StudentAssignmentDetailRoute() {
 function AssignmentDetailWorkspace({
   assignment,
   submission,
+  submissionHistory,
 }: {
   assignment: Assignment;
   submission?: AssignmentSubmission;
+  submissionHistory: AssignmentSubmission[];
 }) {
   const status = calculateAssignmentStatus({ assignment, submission });
   const dueDelta = daysUntil(assignment.due_date);
@@ -119,7 +126,7 @@ function AssignmentDetailWorkspace({
 
       <Card>
         <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Submission History</h2>
-        {submission ? <SubmissionHistory submission={submission} assignment={assignment} /> : (
+        {submissionHistory.length ? <SubmissionHistory submissions={submissionHistory} assignment={assignment} /> : (
           <EmptyState title="No submission history" description="Your first upload will create the submission record for this assignment." />
         )}
       </Card>
@@ -137,28 +144,48 @@ function DetailMetric({ label, value }: { label: string; value: string }) {
 }
 
 function SubmissionHistory({
-  submission,
+  submissions,
   assignment,
 }: {
-  submission: AssignmentSubmission;
+  submissions: AssignmentSubmission[];
   assignment: Assignment;
 }) {
-  const status = calculateAssignmentStatus({ assignment, submission });
-
   return (
-    <TimelineCard title={`Submitted ${formatDate(submission.submitted_at)}`} meta={submission.file_url || submission.text_answer || 'Submission saved.'}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <StatusBadge value={status} />
-        {submission.marks_awarded != null ? <p className="text-sm font-semibold text-teal-700">Mark: {submission.marks_awarded}%</p> : null}
-      </div>
-      {submission.text_answer ? <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-brand-marble">{submission.text_answer}</p> : null}
-      {submission.file_url ? (
-        <a className="mt-3 inline-flex break-all text-sm font-semibold text-brand-aegean hover:text-brand-gold" href={submission.file_url} rel="noreferrer" target="_blank">
-          Open submitted file
-        </a>
-      ) : null}
-    </TimelineCard>
+    <div className="mt-4 space-y-3">
+      {submissions.map((submission) => {
+        const status = calculateAssignmentStatus({ assignment, submission });
+        return (
+          <TimelineCard
+            key={submission.id}
+            title={`Version ${submission.version_number || 1} - submitted ${formatDate(submission.submitted_at)}`}
+            meta={submission.original_filename || submission.file_url || submission.text_answer || 'Submission saved.'}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge value={status} />
+                {submission.is_latest ? <span className="rounded-full bg-brand-gold/20 px-3 py-1 text-xs font-semibold text-brand-obsidian">Latest version</span> : null}
+              </div>
+              {submission.marks_awarded != null ? <p className="text-sm font-semibold text-teal-700">Mark: {submission.marks_awarded}%</p> : null}
+            </div>
+            {submission.text_answer ? <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-brand-marble">{submission.text_answer}</p> : null}
+            {submission.file_url ? (
+              <a className="mt-3 inline-flex break-all text-sm font-semibold text-brand-aegean hover:text-brand-gold" href={submission.file_url} rel="noreferrer" target="_blank">
+                Open submitted file
+              </a>
+            ) : null}
+          </TimelineCard>
+        );
+      })}
+    </div>
   );
+}
+
+function compareSubmissionVersions(left: AssignmentSubmission, right: AssignmentSubmission) {
+  if (left.is_latest && !right.is_latest) return -1;
+  if (!left.is_latest && right.is_latest) return 1;
+  const versionDelta = Number(right.version_number || 0) - Number(left.version_number || 0);
+  if (versionDelta !== 0) return versionDelta;
+  return new Date(right.submitted_at || 0).getTime() - new Date(left.submitted_at || 0).getTime();
 }
 
 function formatDueDate(value?: string | null, delta?: number | null) {

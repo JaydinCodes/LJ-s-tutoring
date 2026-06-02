@@ -25,9 +25,31 @@ interface LegacyDashboard {
 }
 
 interface LegacyAssignments {
-  assignments?: Assignment[];
-  items?: Assignment[];
+  assignments?: LegacyAssignment[];
+  items?: LegacyAssignment[];
 }
+
+type LegacyAssignment = Assignment & {
+  submission_id?: string;
+  submission_status?: string;
+  submitted_at?: string;
+  original_filename?: string;
+  mime_type?: string;
+  size_bytes?: number;
+  version_number?: number;
+  is_latest?: boolean;
+  submission_versions?: Array<{
+    id: string;
+    status?: string;
+    submitted_at?: string;
+    original_filename?: string;
+    mime_type?: string;
+    size_bytes?: number;
+    version_number?: number;
+    is_latest?: boolean;
+    file_url?: string;
+  }>;
+};
 
 interface LegacyResults {
   results?: Array<{ percentage?: number }>;
@@ -60,22 +82,39 @@ async function loadFromApi(): Promise<StudentDashboardView> {
   const assignments = assignmentsPayload.assignments || assignmentsPayload.items || [];
   const results = resultsPayload.results || resultsPayload.items || [];
   const submissions = assignments
-    .filter((item) => (item as Assignment & { submission_id?: string }).submission_id)
-    .map((item) => {
-      const legacy = item as Assignment & {
-        submission_id?: string;
-        submission_status?: string;
-        submitted_at?: string;
-        original_filename?: string;
-      };
-      return {
-        id: legacy.submission_id || `${legacy.id}-submission`,
-        assignment_id: legacy.id,
+    .flatMap((item) => {
+      const versions = item.submission_versions || [];
+      if (versions.length) {
+        return versions.map((version) => ({
+          id: version.id,
+          assignment_id: item.id,
+          student_id: 'current',
+          file_url: version.file_url || null,
+          original_filename: version.original_filename || null,
+          mime_type: version.mime_type || null,
+          size_bytes: version.size_bytes ?? null,
+          submitted_at: version.submitted_at || null,
+          status: version.status || 'submitted',
+          version_number: version.version_number ?? null,
+          is_latest: version.is_latest ?? false,
+        } as AssignmentSubmission));
+      }
+      if (!item.submission_id) {
+        return [];
+      }
+      return [{
+        id: item.submission_id || `${item.id}-submission`,
+        assignment_id: item.id,
         student_id: 'current',
-        file_url: legacy.original_filename || null,
-        submitted_at: legacy.submitted_at || null,
-        status: legacy.submission_status || 'submitted',
-      } as AssignmentSubmission;
+        file_url: item.original_filename || null,
+        original_filename: item.original_filename || null,
+        mime_type: item.mime_type || null,
+        size_bytes: item.size_bytes ?? null,
+        submitted_at: item.submitted_at || null,
+        status: item.submission_status || 'submitted',
+        version_number: item.version_number ?? null,
+        is_latest: item.is_latest ?? true,
+      } as AssignmentSubmission];
     });
   const completed = submissions.filter((item) => ['submitted', 'late', 'reviewed', 'marked'].includes(String(item.status || '').toLowerCase())).length;
   const attendanceRate = dashboard.attendance?.total ? Math.round(((dashboard.attendance.attended || 0) / dashboard.attendance.total) * 100) : 0;
