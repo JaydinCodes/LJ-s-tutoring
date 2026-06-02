@@ -28,6 +28,9 @@ export function StudentWelcomeCard({
   dailyInsight: DailyInsight;
 }) {
   const dueDelta = daysUntil(nextAssignment?.due_date);
+  const nextExam = data.examCalendar?.nextExam;
+  const nextExamDelta = daysUntil(nextExam?.examDate);
+  const academicStatus = data.dailyInsightContext?.currentAcademicStatus || data.supportStatus?.label || 'Awaiting results';
 
   return (
     <GreekHeroCard
@@ -35,18 +38,29 @@ export function StudentWelcomeCard({
       title={`Welcome back, ${data.profile.name || 'Student'}`}
       description={dailyInsight.message}
     >
-      <div className={`rounded-2xl border px-4 py-3 text-sm leading-6 ${dailyInsightToneClasses[dailyInsight.tone]}`}>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em]">{dailyInsight.eyebrow}</p>
-        <p className="mt-1">{dailyInsight.action}</p>
-        <p className="mt-1 text-xs opacity-80">Visible assignment completion: {completionRate}%.</p>
-      </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <HeroMetric label="Grade" value={data.profile.grade || 'Pending'} />
-        <HeroMetric label="School" value={data.profile.school || 'Pending'} />
-        <HeroMetric
-          label="Next due"
-          value={nextAssignment ? dueDelta === null ? 'Date pending' : dueDelta === 0 ? 'Today' : dueDelta > 0 ? `${dueDelta} days` : 'Overdue' : 'Clear'}
-        />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-stretch">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <HeroMetric label="Learner" value={data.profile.name || 'Student'} helper="Your personal dashboard" />
+          <HeroMetric label="Grade" value={data.profile.grade || 'Pending'} helper="Current academic level" />
+          <HeroMetric label="School" value={data.profile.school || 'Pending'} helper="Learning context" />
+          <HeroMetric label="Next task" value={nextAssignment?.title || 'Clear'} helper={formatTaskDue(nextAssignment?.due_date, dueDelta)} />
+          <HeroMetric label="Next exam" value={nextExam?.subject || 'Not scheduled'} helper={formatExamDue(nextExam?.title, nextExam?.examDate, nextExamDelta)} />
+          <HeroMetric label="Academic status" value={academicStatus} helper={data.supportStatus?.recommendedAction || "Use today's plan to keep moving."} />
+        </div>
+
+        <div className={`relative overflow-hidden rounded-3xl border p-5 text-sm leading-6 shadow-lg shadow-brand-navy/20 ${dailyInsightToneClasses[dailyInsight.tone]}`}>
+          <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-brand-gold/20 blur-xl" aria-hidden="true" />
+          {/* Oracle Insight keeps the recommendation distinct from the raw status tiles. */}
+          <div className="relative">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em]">Oracle Insight</p>
+            <h3 className="mt-2 text-xl font-semibold text-white">{dailyInsight.eyebrow}</h3>
+            <p className="mt-2 text-brand-parchment">{dailyInsight.action}</p>
+            <div className="mt-4 rounded-2xl border border-white/15 bg-white/10 p-3 text-xs text-brand-parchment">
+              <p>Completion: {completionRate}%</p>
+              <p className="mt-1">Today's seed: {dailyInsight.seed}</p>
+            </div>
+          </div>
+        </div>
       </div>
     </GreekHeroCard>
   );
@@ -60,13 +74,31 @@ const dailyInsightToneClasses: Record<DailyInsight['tone'], string> = {
   urgent: 'border-red-300/70 bg-red-950/30 text-red-50',
 };
 
-function HeroMetric({ label, value }: { label: string; value: string }) {
+function HeroMetric({ label, value, helper }: { label: string; value: string; helper: string }) {
   return (
-    <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
+    <div className="min-w-0 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">{label}</p>
-      <p className="mt-2 text-lg font-semibold">{value}</p>
+      <p className="mt-2 truncate text-lg font-semibold">{value}</p>
+      <p className="mt-1 line-clamp-2 text-xs leading-5 text-brand-parchment">{helper}</p>
     </div>
   );
+}
+
+function formatTaskDue(value?: string | null, delta?: number | null) {
+  if (!value) return 'No due date on the next task.';
+  if (delta === 0) return `Due today, ${formatDate(value)}.`;
+  if (typeof delta === 'number' && delta < 0) return `${Math.abs(delta)} day${Math.abs(delta) === 1 ? '' : 's'} overdue.`;
+  if (typeof delta === 'number') return `Due in ${delta} day${delta === 1 ? '' : 's'} on ${formatDate(value)}.`;
+  return `Due ${formatDate(value)}.`;
+}
+
+function formatExamDue(title?: string | null, value?: string | null, delta?: number | null) {
+  if (!value) return 'No exam date has been added yet.';
+  const prefix = title ? `${title}: ` : '';
+  if (delta === 0) return `${prefix}exam today.`;
+  if (typeof delta === 'number' && delta > 0) return `${prefix}${delta} day${delta === 1 ? '' : 's'} to prepare.`;
+  if (typeof delta === 'number' && delta < 0) return `${prefix}exam date has passed.`;
+  return `${prefix}${formatDate(value)}.`;
 }
 
 export function ProgressSummaryCards({

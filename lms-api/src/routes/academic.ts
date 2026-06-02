@@ -1061,7 +1061,10 @@ export async function academicRoutes(app: FastifyInstance) {
       // The client derives the rotating message without persisting presentation state.
       dailyInsightContext: {
         studentId,
+        nextExamTitle: examEvents[0]?.title ?? null,
+        nextExamSubject: examEvents[0]?.subject ?? null,
         nextExamDate: examEvents[0]?.examDate ?? null,
+        currentAcademicStatus: supportStatus.label,
         attendanceRate,
         streakDays: Number(streak.current || 0),
       },

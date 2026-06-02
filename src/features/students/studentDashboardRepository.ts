@@ -8,8 +8,17 @@ interface LegacyDashboard {
   attendance?: { attended?: number; total?: number };
   streak?: { current?: number };
   progressSnapshot?: Array<{ topic: string; completion: number }>;
-  examCalendar?: { nextExam?: { examDate?: string } | null };
-  dailyInsightContext?: { studentId?: string; nextExamDate?: string; attendanceRate?: number; streakDays?: number };
+  examCalendar?: StudentDashboardView['examCalendar'];
+  supportStatus?: StudentDashboardView['supportStatus'];
+  dailyInsightContext?: {
+    studentId?: string;
+    nextExamTitle?: string;
+    nextExamSubject?: string;
+    nextExamDate?: string;
+    currentAcademicStatus?: string;
+    attendanceRate?: number;
+    streakDays?: number;
+  };
 }
 
 interface LegacyAssignments {
@@ -27,6 +36,15 @@ function average(values: number[]) {
     return null;
   }
   return Math.round(values.reduce((total, value) => total + value, 0) / values.length);
+}
+
+function academicStatus(score: number | null) {
+  if (score == null) return 'Awaiting results';
+  if (score >= 80) return 'Excellent progress';
+  if (score >= 70) return 'Strong progress';
+  if (score >= 50) return 'On track';
+  if (score >= 40) return 'Needs support';
+  return 'Urgent support';
 }
 
 async function loadFromApi(): Promise<StudentDashboardView> {
@@ -84,9 +102,14 @@ async function loadFromApi(): Promise<StudentDashboardView> {
     })),
     classes: [],
     submissions,
+    examCalendar: dashboard.examCalendar,
+    supportStatus: dashboard.supportStatus,
     dailyInsightContext: {
       studentId: dashboard.dailyInsightContext?.studentId || dashboard.profile?.id || 'current',
+      nextExamTitle: dashboard.dailyInsightContext?.nextExamTitle || dashboard.examCalendar?.nextExam?.title,
+      nextExamSubject: dashboard.dailyInsightContext?.nextExamSubject || dashboard.examCalendar?.nextExam?.subject,
       nextExamDate: dashboard.dailyInsightContext?.nextExamDate || dashboard.examCalendar?.nextExam?.examDate,
+      currentAcademicStatus: dashboard.dailyInsightContext?.currentAcademicStatus || dashboard.supportStatus?.label || academicStatus(score),
       attendanceRate: dashboard.dailyInsightContext?.attendanceRate ?? attendanceRate,
       averageScore: score ?? undefined,
       streakDays: dashboard.dailyInsightContext?.streakDays ?? dashboard.streak?.current ?? 0,
@@ -157,8 +180,15 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     progress,
     classes,
     submissions,
+    supportStatus: {
+      band: score == null ? 'awaiting_results' : score >= 50 ? 'on_track' : 'needs_support',
+      label: academicStatus(score),
+      explanation: 'Based on available progress records.',
+      recommendedAction: 'Keep using the next task and progress summary to guide study time.',
+    },
     dailyInsightContext: {
       studentId: student.id,
+      currentAcademicStatus: academicStatus(score),
       averageScore: score ?? undefined,
     },
   };

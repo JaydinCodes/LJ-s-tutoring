@@ -102,17 +102,29 @@ export function GreekHeroCard({
   description: string;
   children?: ReactNode;
 }) {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
-    <section className="relative overflow-hidden rounded-[1.5rem] border border-brand-aegean/50 bg-[linear-gradient(135deg,_#0f172a_0%,_#1e3a5f_58%,_#1F6F8B_100%)] p-6 text-white shadow-xl shadow-brand-navy/20 sm:p-8">
+    <motion.section
+      className="group relative overflow-hidden rounded-[1.5rem] border border-brand-aegean/50 bg-[linear-gradient(135deg,_#0f172a_0%,_#1e3a5f_54%,_#1F6F8B_100%)] p-5 text-white shadow-xl shadow-brand-navy/20 sm:p-8"
+      whileHover={prefersReducedMotion ? undefined : { y: -2 }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
+    >
       <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full border border-brand-gold/25 bg-brand-gold/10" />
+      <div className="absolute left-6 top-6 h-24 w-24 rounded-full bg-brand-marble/10 blur-2xl" />
       <div className="absolute bottom-0 left-0 h-2 w-full bg-[repeating-linear-gradient(90deg,_#f4c518_0,_#f4c518_18px,_transparent_18px,_transparent_30px)] opacity-70" />
+      {/* The shine is transform-only and disabled for reduced-motion users. */}
+      <div
+        className="pointer-events-none absolute inset-y-0 -left-1/3 hidden w-1/3 rotate-12 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 transition duration-700 motion-safe:group-hover:translate-x-[420%] motion-safe:group-hover:opacity-50 motion-reduce:hidden sm:block"
+        aria-hidden="true"
+      />
       <div className="relative">
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-gold">{eyebrow}</p>
         <h2 className="greek-display mt-3 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-brand-parchment">{description}</p>
         {children ? <div className="mt-6">{children}</div> : null}
       </div>
-    </section>
+    </motion.section>
   );
 }
 

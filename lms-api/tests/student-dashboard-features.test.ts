@@ -144,7 +144,13 @@ describe('Student dashboard LMS features', () => {
     expect(body.goals[0]).toMatchObject({ title: 'Improve algebra baseline' });
     expect(body.attendance.items[0]).toMatchObject({ attendance_status: 'present' });
     expect(body.examCalendar.nextExam).toMatchObject({ subject: 'Math', examDate: '2099-06-15' });
-    expect(body.dailyInsightContext).toMatchObject({ studentId: student.id, nextExamDate: '2099-06-15' });
+    expect(body.dailyInsightContext).toMatchObject({
+      studentId: student.id,
+      nextExamTitle: 'Term mathematics exam',
+      nextExamSubject: 'Math',
+      nextExamDate: '2099-06-15',
+      currentAcademicStatus: 'Urgent Support'
+    });
     expect(body.latestReport).toBeTruthy();
     expect(body.notificationsUnreadCount).toBeGreaterThan(0);
     expect(body.notifications.some((notification: any) => notification.type === 'baseline_assessment_created')).toBe(true);

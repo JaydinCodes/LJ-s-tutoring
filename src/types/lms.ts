@@ -146,9 +146,32 @@ export interface StudentDashboardView {
   progress: StudentProgress[];
   classes: ClassRecord[];
   submissions: AssignmentSubmission[];
+  examCalendar?: {
+    items: Array<{
+      id: string;
+      subject: string;
+      title: string;
+      examDate: string;
+    }>;
+    nextExam?: {
+      id: string;
+      subject: string;
+      title: string;
+      examDate: string;
+    } | null;
+  };
+  supportStatus?: {
+    band: string;
+    label: string;
+    explanation: string;
+    recommendedAction: string;
+  };
   dailyInsightContext?: {
     studentId: string;
+    nextExamTitle?: string;
+    nextExamSubject?: string;
     nextExamDate?: string;
+    currentAcademicStatus?: string;
     attendanceRate?: number;
     averageScore?: number;
     streakDays?: number;
