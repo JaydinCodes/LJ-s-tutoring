@@ -10,8 +10,8 @@ import {
   calculateAssignmentStatus,
   daysUntil,
   getAssignmentStatusLabel,
-  sortAssignmentsByPriority,
 } from '../assignments/assignmentStatus';
+import { selectCompletionRate, selectDueTasks, type NormalizedStudentData } from './studentData';
 import { useSubmitStudentAssignmentMutation } from './studentQueries';
 
 export function StudentWelcomeCard({
@@ -59,25 +59,24 @@ function HeroMetric({ label, value }: { label: string; value: string }) {
 }
 
 export function ProgressSummaryCards({
-  assignments,
+  studentData,
   submissions,
   progress,
 }: {
-  assignments: Assignment[];
+  studentData: NormalizedStudentData;
   submissions: AssignmentSubmission[];
   progress: StudentProgress[];
 }) {
-  const submittedIds = new Set(submissions.map((submission) => submission.assignment_id));
   const marked = submissions.filter((submission) => submission.status === 'marked' || submission.marks_awarded != null).length;
   const averageScore = progress.length
     ? Math.round(progress.reduce((total, item) => total + Number(item.score || 0), 0) / progress.length)
     : null;
-  const completionRate = assignments.length ? Math.round((submittedIds.size / assignments.length) * 100) : 0;
+  const completionRate = selectCompletionRate(studentData);
 
   return (
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <SummaryCard label="Completion rate" value={`${completionRate}%`} helper={`${submittedIds.size} of ${assignments.length} assignments submitted.`} tone="blue" />
-      <SummaryCard label="Outstanding" value={String(Math.max(0, assignments.length - submittedIds.size))} helper="Assignments still requiring learner action." tone="amber" />
+      <SummaryCard label="Completion rate" value={`${completionRate}%`} helper={`${studentData.submittedAssignmentIds.size} of ${studentData.assignmentsById.size} assignments submitted.`} tone="blue" />
+      <SummaryCard label="Outstanding" value={String(studentData.dueTasks.size)} helper="Assignments still requiring learner action." tone="amber" />
       <SummaryCard label="Marked" value={String(marked)} helper="Submissions with marks or released feedback." tone="teal" />
       <SummaryCard label="Average score" value={averageScore == null ? '--' : `${averageScore}%`} helper="Average from available progress records." tone="slate" />
     </section>
@@ -102,24 +101,21 @@ function SummaryCard({ label, value, helper, tone }: { label: string; value: str
 }
 
 export function AssignmentsDueSection({
-  assignments,
-  submissionsByAssignment,
+  studentData,
   limit,
 }: {
-  assignments: Assignment[];
-  submissionsByAssignment: Map<string, AssignmentSubmission>;
+  studentData: NormalizedStudentData;
   limit?: number;
 }) {
-  const sorted = useMemo(() => sortAssignmentsByPriority(assignments, submissionsByAssignment), [assignments, submissionsByAssignment]);
-  const visible = limit ? sorted.slice(0, limit) : sorted;
+  const visible = useMemo(() => selectDueTasks(studentData, limit), [studentData, limit]);
 
   return (
     <div className="space-y-4">
-      {visible.map((assignment) => (
+      {visible.map((task) => (
         <AssignmentDueCard
-          key={assignment.id}
-          assignment={assignment}
-          submission={submissionsByAssignment.get(assignment.id)}
+          key={task.assignmentId}
+          assignment={task.assignment}
+          submission={task.submission}
         />
       ))}
       {!visible.length ? (

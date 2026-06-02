@@ -9,6 +9,7 @@ import {
   type StudentResultTopic,
   type SubjectBreakdownItem,
 } from './studentResultsRepository';
+import { normalizeStudentResults, selectResults, selectResultSubjects } from './studentData';
 import { useStudentResultsQuery } from './studentQueries';
 
 type SortKey = 'date' | 'percentage' | 'subject';
@@ -34,18 +35,12 @@ export function StudentResultsRoute() {
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [query, setQuery] = useState('');
 
-  const subjects = useMemo(() => ['all', ...(data?.subjectBreakdown.map((item) => item.subject) || [])], [data]);
-  const filteredItems = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    return [...(data?.items || [])]
-      .filter((item) => subjectFilter === 'all' || item.subject === subjectFilter)
-      .filter((item) => !normalizedQuery || [item.title, item.subject, item.feedbackSummary].some((value) => String(value || '').toLowerCase().includes(normalizedQuery)))
-      .sort((a, b) => {
-        if (sortKey === 'percentage') return b.percentage - a.percentage;
-        if (sortKey === 'subject') return a.subject.localeCompare(b.subject) || a.title.localeCompare(b.title);
-        return new Date(b.completedAt || b.markedAt || 0).getTime() - new Date(a.completedAt || a.markedAt || 0).getTime();
-      });
-  }, [data?.items, query, sortKey, subjectFilter]);
+  const normalizedResults = useMemo(() => normalizeStudentResults(data?.items || []), [data?.items]);
+  const subjects = useMemo(() => selectResultSubjects(normalizedResults), [normalizedResults]);
+  const filteredItems = useMemo(
+    () => selectResults(normalizedResults, { query, sort: sortKey, subject: subjectFilter }),
+    [normalizedResults, query, sortKey, subjectFilter],
+  );
 
   return (
     <DashboardShell

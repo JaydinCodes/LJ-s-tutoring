@@ -1,12 +1,13 @@
+import { useMemo } from 'react';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { AssignmentsDueSection, SubmittedAssignmentsList } from './StudentDashboardComponents';
+import { normalizeStudentData } from './studentData';
 import { useStudentDashboardQuery } from './studentQueries';
 
 export function StudentAssignmentsRoute() {
   const { data, loading, error, refetching, reload } = useStudentDashboardQuery();
-  const submissionByAssignment = new Map((data?.submissions || []).map((item) => [item.assignment_id, item]));
-  const assignmentsById = new Map((data?.assignments || []).map((item) => [item.id, item]));
+  const studentData = useMemo(() => data ? normalizeStudentData(data) : null, [data]);
 
   return (
     <DashboardShell
@@ -26,12 +27,11 @@ export function StudentAssignmentsRoute() {
         ) : null}
         {data ? (
           <AssignmentsDueSection
-            assignments={data.assignments}
-            submissionsByAssignment={submissionByAssignment}
+            studentData={studentData!}
           />
         ) : null}
       </Card>
-      {data ? <SubmittedAssignmentsList assignmentsById={assignmentsById} submissions={data.submissions} /> : null}
+      {data ? <SubmittedAssignmentsList assignmentsById={studentData!.assignmentsById} submissions={data.submissions} /> : null}
     </DashboardShell>
   );
 }

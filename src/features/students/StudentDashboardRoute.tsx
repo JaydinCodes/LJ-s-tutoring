@@ -1,7 +1,7 @@
+import { useMemo } from 'react';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { sortAssignmentsByPriority } from '../assignments/assignmentStatus';
 import {
   AssignmentsDueSection,
   LatestResultsCard,
@@ -9,15 +9,14 @@ import {
   StudentWelcomeCard,
   SubmittedAssignmentsList,
 } from './StudentDashboardComponents';
+import { normalizeStudentData, selectCompletionRate, selectDueTasks } from './studentData';
 import { useStudentDashboardQuery } from './studentQueries';
 
 export function StudentDashboardRoute() {
   const { data, loading, error, refetching, reload } = useStudentDashboardQuery();
-  const submissionsByAssignment = new Map((data?.submissions || []).map((item) => [item.assignment_id, item]));
-  const assignmentsById = new Map((data?.assignments || []).map((item) => [item.id, item]));
-  const sortedAssignments = data ? sortAssignmentsByPriority(data.assignments, submissionsByAssignment) : [];
-  const submittedIds = new Set((data?.submissions || []).map((item) => item.assignment_id));
-  const completionRate = data?.assignments.length ? Math.round((submittedIds.size / data.assignments.length) * 100) : 0;
+  const studentData = useMemo(() => data ? normalizeStudentData(data) : null, [data]);
+  const nextAssignment = studentData ? selectDueTasks(studentData, 1)[0]?.assignment : undefined;
+  const completionRate = studentData ? selectCompletionRate(studentData) : 0;
 
   return (
     <DashboardShell
@@ -36,8 +35,8 @@ export function StudentDashboardRoute() {
       ) : null}
       {data ? (
         <>
-          <StudentWelcomeCard data={data} nextAssignment={sortedAssignments[0]} completionRate={completionRate} />
-          <ProgressSummaryCards assignments={data.assignments} submissions={data.submissions} progress={data.progress} />
+          <StudentWelcomeCard data={data} nextAssignment={nextAssignment} completionRate={completionRate} />
+          <ProgressSummaryCards studentData={studentData!} submissions={data.submissions} progress={data.progress} />
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
             <div className="space-y-4">
@@ -50,8 +49,7 @@ export function StudentDashboardRoute() {
                 </div>
                 <div className="mt-5">
                   <AssignmentsDueSection
-                    assignments={data.assignments}
-                    submissionsByAssignment={submissionsByAssignment}
+                    studentData={studentData!}
                     limit={4}
                   />
                 </div>
@@ -77,8 +75,8 @@ export function StudentDashboardRoute() {
             </div>
 
             <aside className="space-y-4">
-              <LatestResultsCard assignmentsById={assignmentsById} submissions={data.submissions} />
-              <SubmittedAssignmentsList assignmentsById={assignmentsById} submissions={data.submissions} />
+              <LatestResultsCard assignmentsById={studentData!.assignmentsById} submissions={data.submissions} />
+              <SubmittedAssignmentsList assignmentsById={studentData!.assignmentsById} submissions={data.submissions} />
               <Card>
                 <h2 className="text-xl font-semibold text-slate-950">Profile</h2>
                 <dl className="mt-4 grid gap-3 text-sm">
