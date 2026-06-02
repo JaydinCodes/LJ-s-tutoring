@@ -10,6 +10,7 @@ import {
   SubmittedAssignmentsList,
 } from './StudentDashboardComponents';
 import { normalizeStudentData, selectCompletionRate, selectDueTasks } from './studentData';
+import { selectDailyInsight } from './studentDailyInsight';
 import { useStudentDashboardQuery } from './studentQueries';
 
 export function StudentDashboardRoute() {
@@ -17,6 +18,7 @@ export function StudentDashboardRoute() {
   const studentData = useMemo(() => data ? normalizeStudentData(data) : null, [data]);
   const nextAssignment = studentData ? selectDueTasks(studentData, 1)[0]?.assignment : undefined;
   const completionRate = studentData ? selectCompletionRate(studentData) : 0;
+  const dailyInsight = useMemo(() => data && studentData ? selectDailyInsight(data, studentData) : null, [data, studentData]);
 
   return (
     <PageShell
@@ -31,7 +33,7 @@ export function StudentDashboardRoute() {
       ) : null}
       {data ? (
         <>
-          <StudentWelcomeCard data={data} nextAssignment={nextAssignment} completionRate={completionRate} />
+          <StudentWelcomeCard data={data} nextAssignment={nextAssignment} completionRate={completionRate} dailyInsight={dailyInsight!} />
           <ProgressSummaryCards studentData={studentData!} submissions={data.submissions} progress={data.progress} />
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">

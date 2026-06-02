@@ -13,16 +13,19 @@ import {
   getAssignmentStatusLabel,
 } from '../assignments/assignmentStatus';
 import { selectCompletionRate, selectDueTasks, type NormalizedStudentData } from './studentData';
+import type { DailyInsight } from './studentDailyInsight';
 import { useSubmitStudentAssignmentMutation } from './studentQueries';
 
 export function StudentWelcomeCard({
   data,
   nextAssignment,
   completionRate,
+  dailyInsight,
 }: {
   data: StudentDashboardView;
   nextAssignment?: Assignment;
   completionRate: number;
+  dailyInsight: DailyInsight;
 }) {
   const dueDelta = daysUntil(nextAssignment?.due_date);
 
@@ -30,8 +33,13 @@ export function StudentWelcomeCard({
     <GreekHeroCard
       eyebrow="Learning voyage"
       title={`Welcome back, ${data.profile.name || 'Student'}`}
-      description={`You have completed ${completionRate}% of visible assignments. Keep the next due item in view and submit with confidence.`}
+      description={dailyInsight.message}
     >
+      <div className={`rounded-2xl border px-4 py-3 text-sm leading-6 ${dailyInsightToneClasses[dailyInsight.tone]}`}>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em]">{dailyInsight.eyebrow}</p>
+        <p className="mt-1">{dailyInsight.action}</p>
+        <p className="mt-1 text-xs opacity-80">Visible assignment completion: {completionRate}%.</p>
+      </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <HeroMetric label="Grade" value={data.profile.grade || 'Pending'} />
         <HeroMetric label="School" value={data.profile.school || 'Pending'} />
@@ -43,6 +51,14 @@ export function StudentWelcomeCard({
     </GreekHeroCard>
   );
 }
+
+const dailyInsightToneClasses: Record<DailyInsight['tone'], string> = {
+  steady: 'border-white/20 bg-white/10 text-brand-parchment',
+  momentum: 'border-brand-aegean/60 bg-brand-aegean/20 text-brand-parchment',
+  focus: 'border-brand-gold/60 bg-brand-gold/15 text-brand-parchment',
+  revision: 'border-brand-gold/70 bg-brand-gold/20 text-brand-parchment',
+  urgent: 'border-red-300/70 bg-red-950/30 text-red-50',
+};
 
 function HeroMetric({ label, value }: { label: string; value: string }) {
   return (

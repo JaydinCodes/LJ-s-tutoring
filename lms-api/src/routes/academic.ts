@@ -861,6 +861,15 @@ export async function academicRoutes(app: FastifyInstance) {
       [studentId]
     );
 
+    const examCalendarRes = await pool.query(
+      `select id, subject, title, exam_date
+       from student_exam_events
+       where student_id = $1 and exam_date >= $2::date
+       order by exam_date asc, created_at desc
+       limit 8`,
+      [studentId, today]
+    );
+
     const attendanceRes = await pool.query(
       `select s.id, s.date, s.start_time, a.subject, t.full_name as tutor_name,
               coalesce(s.attendance_status,
@@ -905,6 +914,15 @@ export async function academicRoutes(app: FastifyInstance) {
     const weakestTopic = [...topics].sort((a, b) => a.completion - b.completion)[0] ?? null;
     const weekStats = weekStatsRes.rows[0] ?? { sessions_attended: 0, minutes_studied: 0 };
     const streak = streakRes.rows[0] ?? { current: 0, longest: 0, last_credited_date: null, xp: 0 };
+    const attendedSessions = attendanceRes.rows.filter((row) => ['present', 'late'].includes(String(row.attendance_status))).length;
+    const recordedSessions = attendanceRes.rows.filter((row) => String(row.attendance_status) !== 'scheduled').length;
+    const attendanceRate = recordedSessions ? Math.round((attendedSessions / recordedSessions) * 100) : 0;
+    const examEvents = examCalendarRes.rows.map((row) => ({
+      id: row.id,
+      subject: row.subject,
+      title: row.title,
+      examDate: toDateOnly(new Date(row.exam_date)),
+    }));
 
     const scoreRes = await pool.query(
       `select score_date, risk_score, momentum_score, reasons_json, recommended_actions_json
@@ -998,7 +1016,7 @@ export async function academicRoutes(app: FastifyInstance) {
 
     return reply.send({
       profile: toPublicStudentProfile(profileRow),
-      greeting: 'Welcome back, Jaydin — let’s keep the streak alive.',
+      greeting: `Welcome back, ${profileRow.full_name}.`,
       today: upcoming,
       thisWeek: {
         minutesStudied: Number(weekStats.minutes_studied || 0),
@@ -1033,8 +1051,19 @@ export async function academicRoutes(app: FastifyInstance) {
       supportStatus,
       attendance: {
         items: attendanceRes.rows,
-        attended: attendanceRes.rows.filter((row) => ['present', 'late'].includes(String(row.attendance_status))).length,
-        total: attendanceRes.rows.filter((row) => String(row.attendance_status) !== 'scheduled').length,
+        attended: attendedSessions,
+        total: recordedSessions,
+      },
+      examCalendar: {
+        items: examEvents,
+        nextExam: examEvents[0] ?? null,
+      },
+      // The client derives the rotating message without persisting presentation state.
+      dailyInsightContext: {
+        studentId,
+        nextExamDate: examEvents[0]?.examDate ?? null,
+        attendanceRate,
+        streakDays: Number(streak.current || 0),
       },
       goals: goalsRes.rows.map((row) => ({
         ...row,

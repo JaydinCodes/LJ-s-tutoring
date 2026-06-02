@@ -160,6 +160,17 @@ export const LearningGoalSchema = z.object({
 
 export const UpdateLearningGoalSchema = LearningGoalSchema.omit({ studentId: true }).partial();
 
+export const StudentExamEventSchema = z.object({
+  studentId: z.string().uuid(),
+  subject: z.string().trim().min(1).max(120),
+  title: z.string().trim().min(1).max(180),
+  examDate: DateString,
+});
+
+export const StudentExamEventsQuerySchema = z.object({
+  studentId: z.string().uuid().optional(),
+});
+
 export const AssignmentSchema = z.object({
   tutorId: z.string().uuid(),
   studentId: z.string().uuid(),

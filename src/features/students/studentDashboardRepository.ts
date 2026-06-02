@@ -3,11 +3,13 @@ import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, StudentDashboardView, StudentProgress } from '../../types/lms';
 
 interface LegacyDashboard {
-  profile?: { name?: string; grade?: string; school?: string; guardian?: { name?: string }; partnerAffiliation?: string };
+  profile?: { id?: string; name?: string; grade?: string; school?: string; guardian?: { name?: string }; partnerAffiliation?: string };
   academicProfile?: { grade?: string; school?: string };
   attendance?: { attended?: number; total?: number };
   streak?: { current?: number };
   progressSnapshot?: Array<{ topic: string; completion: number }>;
+  examCalendar?: { nextExam?: { examDate?: string } | null };
+  dailyInsightContext?: { studentId?: string; nextExamDate?: string; attendanceRate?: number; streakDays?: number };
 }
 
 interface LegacyAssignments {
@@ -82,6 +84,13 @@ async function loadFromApi(): Promise<StudentDashboardView> {
     })),
     classes: [],
     submissions,
+    dailyInsightContext: {
+      studentId: dashboard.dailyInsightContext?.studentId || dashboard.profile?.id || 'current',
+      nextExamDate: dashboard.dailyInsightContext?.nextExamDate || dashboard.examCalendar?.nextExam?.examDate,
+      attendanceRate: dashboard.dailyInsightContext?.attendanceRate ?? attendanceRate,
+      averageScore: score ?? undefined,
+      streakDays: dashboard.dailyInsightContext?.streakDays ?? dashboard.streak?.current ?? 0,
+    },
   };
 }
 
@@ -148,6 +157,10 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     progress,
     classes,
     submissions,
+    dailyInsightContext: {
+      studentId: student.id,
+      averageScore: score ?? undefined,
+    },
   };
 }
 

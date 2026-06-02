@@ -146,6 +146,13 @@ export interface StudentDashboardView {
   progress: StudentProgress[];
   classes: ClassRecord[];
   submissions: AssignmentSubmission[];
+  dailyInsightContext?: {
+    studentId: string;
+    nextExamDate?: string;
+    attendanceRate?: number;
+    averageScore?: number;
+    streakDays?: number;
+  };
 }
 
 export interface AdminDashboardView {
