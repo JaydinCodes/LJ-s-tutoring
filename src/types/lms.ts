@@ -146,6 +146,21 @@ export interface StudentDashboardView {
   progress: StudentProgress[];
   classes: ClassRecord[];
   submissions: AssignmentSubmission[];
+  recommendedNext?: {
+    title: string;
+    description: string;
+    action: string;
+  } | null;
+  recommendedQuiz?: {
+    id: string;
+    title: string;
+    topic: string;
+    estimatedMinutes?: number;
+  } | null;
+  careerGoals?: Array<{
+    goalId: string;
+    alignmentScore?: number | null;
+  }>;
   examCalendar?: {
     items: Array<{
       id: string;

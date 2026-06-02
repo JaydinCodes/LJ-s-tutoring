@@ -10,6 +10,9 @@ interface LegacyDashboard {
   progressSnapshot?: Array<{ topic: string; completion: number }>;
   examCalendar?: StudentDashboardView['examCalendar'];
   supportStatus?: StudentDashboardView['supportStatus'];
+  recommendedNext?: StudentDashboardView['recommendedNext'];
+  recommendedQuiz?: StudentDashboardView['recommendedQuiz'];
+  careerGoals?: StudentDashboardView['careerGoals'];
   dailyInsightContext?: {
     studentId?: string;
     nextExamTitle?: string;
@@ -77,6 +80,9 @@ async function loadFromApi(): Promise<StudentDashboardView> {
   const completed = submissions.filter((item) => ['submitted', 'late', 'reviewed', 'marked'].includes(String(item.status || '').toLowerCase())).length;
   const attendanceRate = dashboard.attendance?.total ? Math.round(((dashboard.attendance.attended || 0) / dashboard.attendance.total) * 100) : 0;
   const score = average(results.map((item) => Number(item.percentage)).filter(Number.isFinite));
+  const weakestProgress = (dashboard.progressSnapshot || [])
+    .filter((item) => Number.isFinite(Number(item.completion)))
+    .sort((left, right) => Number(left.completion) - Number(right.completion) || left.topic.localeCompare(right.topic))[0];
 
   return {
     profile: {
@@ -102,6 +108,14 @@ async function loadFromApi(): Promise<StudentDashboardView> {
     })),
     classes: [],
     submissions,
+    recommendedNext: dashboard.recommendedNext,
+    recommendedQuiz: dashboard.recommendedQuiz || (weakestProgress ? {
+      id: `quiz-${weakestProgress.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'focus'}`,
+      title: `${weakestProgress.topic} quick check`,
+      topic: weakestProgress.topic,
+      estimatedMinutes: 12,
+    } : null),
+    careerGoals: dashboard.careerGoals || [],
     examCalendar: dashboard.examCalendar,
     supportStatus: dashboard.supportStatus,
     dailyInsightContext: {
@@ -162,6 +176,9 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     ...assignment,
     subject: assignment.subject || (assignment.subject_id ? subjectNameById.get(assignment.subject_id) : undefined),
   }));
+  const weakestProgress = [...progress]
+    .filter((item) => Number.isFinite(Number(item.score)))
+    .sort((left, right) => Number(left.score) - Number(right.score) || left.topic.localeCompare(right.topic))[0];
 
   return {
     profile: {
@@ -180,6 +197,18 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     progress,
     classes,
     submissions,
+    recommendedNext: weakestProgress ? {
+      title: `Recommended next: ${weakestProgress.topic}`,
+      description: `Spend one focused block on ${weakestProgress.topic}.`,
+      action: 'Open progress',
+    } : null,
+    recommendedQuiz: weakestProgress ? {
+      id: `quiz-${weakestProgress.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'focus'}`,
+      title: `${weakestProgress.topic} quick check`,
+      topic: weakestProgress.topic,
+      estimatedMinutes: 12,
+    } : null,
+    careerGoals: [],
     supportStatus: {
       band: score == null ? 'awaiting_results' : score >= 50 ? 'on_track' : 'needs_support',
       label: academicStatus(score),

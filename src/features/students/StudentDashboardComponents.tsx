@@ -14,6 +14,7 @@ import {
   getAssignmentStatusLabel,
 } from '../assignments/assignmentStatus';
 import { selectDueTasks, type NormalizedStudentData } from './studentData';
+import { sortBattlePlanForDisplay, type BattlePlanItem } from './studentBattlePlan';
 import type { DailyInsight } from './studentDailyInsight';
 import { useSubmitStudentAssignmentMutation } from './studentQueries';
 
@@ -216,6 +217,68 @@ function ActionMetricCard({
         </article>
       </Link>
     </StaggerItem>
+  );
+}
+
+export function TodayBattlePlan({ items }: { items: BattlePlanItem[] }) {
+  const [completedIds, setCompletedIds] = useState<Set<string>>(() => new Set());
+  const visibleItems = useMemo(() => sortBattlePlanForDisplay(items, completedIds), [items, completedIds]);
+
+  function toggleComplete(itemId: string) {
+    setCompletedIds((current) => {
+      const next = new Set(current);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  }
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-aegean dark:text-brand-gold">Today's Battle Plan</p>
+          <h2 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-100">3 to 5 focused actions, in order</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-brand-marble">Start at the top. Completed actions move down so the next useful step stays visible.</p>
+        </div>
+        <p className="rounded-full bg-brand-parchment px-3 py-1 text-xs font-semibold text-brand-obsidian dark:bg-brand-navy dark:text-brand-parchment">{items.length} actions</p>
+      </div>
+
+      <StaggerGrid className="mt-5 grid gap-3">
+        {visibleItems.map((item, index) => {
+          const isCompleted = completedIds.has(item.id);
+          return (
+            <StaggerItem key={item.id}>
+              <article className={`rounded-2xl border p-4 transition ${isCompleted ? 'border-slate-200 bg-slate-50 opacity-70 dark:border-slate-800 dark:bg-slate-900' : 'border-brand-marble bg-white dark:border-brand-marble/20 dark:bg-brand-obsidian'}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-aegean dark:text-brand-gold">Step {index + 1} - {item.kind}</p>
+                    <h3 className={`mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100 ${isCompleted ? 'line-through' : ''}`}>{item.title}</h3>
+                  </div>
+                  <span className="rounded-full bg-brand-parchment px-3 py-1 text-xs font-semibold text-brand-obsidian dark:bg-brand-navy dark:text-brand-parchment">{item.estimatedMinutes} min</span>
+                </div>
+                {!isCompleted ? (
+                  <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-brand-marble">{item.description}</p>
+                ) : (
+                  <p className="mt-3 text-sm font-semibold text-slate-500 dark:text-brand-marble">Marked complete for this page load.</p>
+                )}
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <Link className="rounded-full border border-brand-aegean/50 px-4 py-2 text-sm font-semibold text-brand-navy transition hover:bg-brand-parchment dark:text-brand-parchment dark:hover:bg-brand-navy" to={item.to}>
+                    Open action
+                  </Link>
+                  <button className="rounded-full bg-brand-navy px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-deepBlue dark:bg-brand-aegean" type="button" onClick={() => toggleComplete(item.id)}>
+                    {isCompleted ? 'Mark active' : 'Mark complete'}
+                  </button>
+                </div>
+              </article>
+            </StaggerItem>
+          );
+        })}
+      </StaggerGrid>
+    </Card>
   );
 }
 

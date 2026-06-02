@@ -8,8 +8,10 @@ import {
   ProgressSummaryCards,
   StudentWelcomeCard,
   SubmittedAssignmentsList,
+  TodayBattlePlan,
 } from './StudentDashboardComponents';
 import { normalizeStudentData, selectCompletionRate, selectDueTasks } from './studentData';
+import { selectTodayBattlePlan } from './studentBattlePlan';
 import { selectDailyInsight } from './studentDailyInsight';
 import { useStudentDashboardQuery } from './studentQueries';
 
@@ -19,6 +21,7 @@ export function StudentDashboardRoute() {
   const nextAssignment = studentData ? selectDueTasks(studentData, 1)[0]?.assignment : undefined;
   const completionRate = studentData ? selectCompletionRate(studentData) : 0;
   const dailyInsight = useMemo(() => data && studentData ? selectDailyInsight(data, studentData) : null, [data, studentData]);
+  const battlePlan = useMemo(() => data && studentData ? selectTodayBattlePlan(data, studentData) : [], [data, studentData]);
 
   return (
     <PageShell
@@ -35,6 +38,7 @@ export function StudentDashboardRoute() {
         <>
           <StudentWelcomeCard data={data} nextAssignment={nextAssignment} completionRate={completionRate} dailyInsight={dailyInsight!} />
           <ProgressSummaryCards data={data} studentData={studentData!} progress={data.progress} />
+          <TodayBattlePlan items={battlePlan} />
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
             <div className="space-y-4">

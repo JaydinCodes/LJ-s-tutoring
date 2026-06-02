@@ -1004,6 +1004,14 @@ export async function academicRoutes(app: FastifyInstance) {
           description: 'Complete a short practice set to start your streak.',
           action: 'Do practice'
         };
+    const recommendedQuiz = weakestTopic
+      ? {
+          id: `quiz-${String(weakestTopic.topic).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'focus'}`,
+          title: `${weakestTopic.topic} quick check`,
+          topic: weakestTopic.topic,
+          estimatedMinutes: 12,
+        }
+      : null;
 
       const scoreDrivenRecommendation = score?.recommendedActions?.[0];
       const goalRecommendation = careerGoals[0]
@@ -1093,6 +1101,7 @@ export async function academicRoutes(app: FastifyInstance) {
             action: 'Open recommendation'
           }
         : (goalRecommendation || recommendedNext),
+      recommendedQuiz,
       predictiveScore: score,
       careerGoals,
     });
