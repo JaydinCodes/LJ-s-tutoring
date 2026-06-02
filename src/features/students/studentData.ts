@@ -54,6 +54,7 @@ export interface NormalizedStudentData {
   assignmentsById: Map<string, AssignmentItem>;
   submissionsByAssignmentId: Map<string, AssignmentSubmission>;
   submittedAssignmentIds: Set<string>;
+  assignmentBuckets: Map<string, AssignmentItem[]>;
   dueTasks: PriorityQueue<StudentTask>;
 }
 
@@ -97,8 +98,69 @@ export function normalizeStudentData(
     assignmentsById,
     submissionsByAssignmentId,
     submittedAssignmentIds,
+    assignmentBuckets: selectAssignmentStatusBuckets(assignmentsById, submissionsByAssignmentId, now),
     dueTasks: selectDueTaskQueue(assignmentsById, submissionsByAssignmentId, now),
   };
+}
+
+export type AssignmentStatusBucket = 'due-now' | 'submitted' | 'marked' | 'archived';
+
+export const assignmentStatusBucketOrder: AssignmentStatusBucket[] = ['due-now', 'submitted', 'marked', 'archived'];
+
+export function selectAssignmentStatusBuckets(
+  assignmentsById: Map<string, AssignmentItem>,
+  submissionsByAssignmentId: Map<string, AssignmentSubmission>,
+  now = new Date(),
+) {
+  const buckets = new Map<string, AssignmentItem[]>();
+  for (const bucket of assignmentStatusBucketOrder) {
+    buckets.set(bucket, []);
+  }
+
+  for (const assignment of assignmentsById.values()) {
+    const submission = submissionsByAssignmentId.get(assignment.id);
+    const status = calculateAssignmentStatus({ assignment, submission, now });
+    const bucket = getAssignmentStatusBucket(status);
+    buckets.set(bucket, [...(buckets.get(bucket) || []), assignment]);
+  }
+
+  // Keep each tab deterministic: most urgent items first, then due date, then title.
+  for (const [bucket, items] of buckets) {
+    buckets.set(bucket, [...items].sort((left, right) => compareAssignmentsForBucket(left, right, submissionsByAssignmentId, now)));
+  }
+
+  return buckets;
+}
+
+export function getAssignmentStatusBucket(status: AssignmentLifecycleStatus): AssignmentStatusBucket {
+  if (status === 'archived' || status === 'closed' || status === 'draft') {
+    return 'archived';
+  }
+  if (status === 'marked') {
+    return 'marked';
+  }
+  if (status === 'submitted' || status === 'under_review' || status === 'late_submitted') {
+    return 'submitted';
+  }
+  return 'due-now';
+}
+
+function compareAssignmentsForBucket(
+  left: AssignmentItem,
+  right: AssignmentItem,
+  submissionsByAssignmentId: Map<string, AssignmentSubmission>,
+  now: Date,
+) {
+  const leftStatus = calculateAssignmentStatus({ assignment: left, submission: submissionsByAssignmentId.get(left.id), now });
+  const rightStatus = calculateAssignmentStatus({ assignment: right, submission: submissionsByAssignmentId.get(right.id), now });
+  const priorityDelta = getAssignmentPriority(leftStatus) - getAssignmentPriority(rightStatus);
+  if (priorityDelta !== 0) return priorityDelta;
+
+  const dueDelta = (parseDate(left.due_date)?.getTime() ?? Number.MAX_SAFE_INTEGER)
+    - (parseDate(right.due_date)?.getTime() ?? Number.MAX_SAFE_INTEGER);
+  if (dueDelta !== 0) return dueDelta;
+
+  return left.title.localeCompare(right.title);
 }
 
 export function selectDueTaskQueue(
