@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 import { useMemo, useState } from 'react';
-import { GreekHeroCard, InsightCard, MetricCard, PremiumButton, StaggerGrid, StaggerItem, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
+import { Link } from 'react-router-dom';
+import { GreekHeroCard, InsightCard, PremiumButton, StaggerGrid, StaggerItem, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
@@ -12,7 +13,7 @@ import {
   daysUntil,
   getAssignmentStatusLabel,
 } from '../assignments/assignmentStatus';
-import { selectCompletionRate, selectDueTasks, type NormalizedStudentData } from './studentData';
+import { selectDueTasks, type NormalizedStudentData } from './studentData';
 import type { DailyInsight } from './studentDailyInsight';
 import { useSubmitStudentAssignmentMutation } from './studentQueries';
 
@@ -57,7 +58,7 @@ export function StudentWelcomeCard({
             <p className="mt-2 text-brand-parchment">{dailyInsight.action}</p>
             <div className="mt-4 rounded-2xl border border-white/15 bg-white/10 p-3 text-xs text-brand-parchment">
               <p>Completion: {completionRate}%</p>
-              <p className="mt-1">Today's seed: {dailyInsight.seed}</p>
+              <p className="mt-1">This recommendation stays stable today and refreshes tomorrow.</p>
             </div>
           </div>
         </div>
@@ -102,47 +103,130 @@ function formatExamDue(title?: string | null, value?: string | null, delta?: num
 }
 
 export function ProgressSummaryCards({
+  data,
   studentData,
-  submissions,
   progress,
 }: {
+  data: StudentDashboardView;
   studentData: NormalizedStudentData;
-  submissions: AssignmentSubmission[];
   progress: StudentProgress[];
 }) {
-  const marked = submissions.filter((submission) => submission.status === 'marked' || submission.marks_awarded != null).length;
   const averageScore = progress.length
     ? Math.round(progress.reduce((total, item) => total + Number(item.score || 0), 0) / progress.length)
     : null;
-  const completionRate = selectCompletionRate(studentData);
+  const dueTasks = selectDueTasks(studentData);
+  const nextTask = dueTasks[0];
+  const weakestTopic = progress.length
+    ? [...progress].sort((left, right) => Number(left.score || 0) - Number(right.score || 0) || left.topic.localeCompare(right.topic))[0]
+    : null;
+  const streakDays = data.dailyInsightContext?.streakDays ?? 0;
+  const nextExam = data.examCalendar?.nextExam;
+  const nextExamDays = daysUntil(nextExam?.examDate);
 
   return (
-    <StaggerGrid className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <SummaryCard label="Completion rate" value={`${completionRate}%`} helper={`${studentData.submittedAssignmentIds.size} of ${studentData.assignmentsById.size} assignments submitted.`} tone="blue" />
-      <SummaryCard label="Outstanding" value={String(studentData.dueTasks.size)} helper="Assignments still requiring learner action." tone="amber" />
-      <SummaryCard label="Marked" value={String(marked)} helper="Submissions with marks or released feedback." tone="teal" />
-      <SummaryCard label="Average score" value={averageScore == null ? '--' : `${averageScore}%`} helper="Average from available progress records." tone="slate" />
+    <StaggerGrid className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <ActionMetricCard
+        label="Next Due"
+        value={nextTask ? nextTask.assignment.title : 'Clear'}
+        explanation={nextTask ? `${getAssignmentStatusLabel(nextTask.status)} - ${dueText(nextTask.assignment.due_date, daysUntil(nextTask.assignment.due_date))}` : 'No urgent assignment is blocking today. Use the time for review or exam prep.'}
+        action={nextTask ? 'Open assignment detail' : 'View assignments'}
+        to={nextTask ? `/dashboard/student/assignments/${nextTask.assignmentId}` : '/dashboard/student/assignments'}
+        tone="urgent"
+      />
+      <ActionMetricCard
+        label="Open Assignments"
+        value={String(dueTasks.length)}
+        explanation={dueTasks.length ? 'These are ordered by overdue work, due-soon pressure, and returned corrections.' : 'Your visible assignment queue is clear right now.'}
+        action="Plan assignment work"
+        to="/dashboard/student/assignments"
+        tone="gold"
+      />
+      <ActionMetricCard
+        label="Average Score"
+        value={averageScore == null ? '--' : `${averageScore}%`}
+        explanation={averageScore == null ? 'Results will appear once marks or progress records are available.' : 'Use recent performance to decide whether to consolidate or push ahead.'}
+        action="Review results"
+        to="/dashboard/student/results"
+        tone="navy"
+      />
+      <ActionMetricCard
+        label="Weakest Topic"
+        value={weakestTopic?.topic || 'Pending'}
+        explanation={weakestTopic ? `${weakestTopic.score}% mastery. Start here if you only have one focused study block today.` : 'Progress records will identify the best topic to practise first.'}
+        action="Open progress"
+        to="/dashboard/student/progress"
+        tone="aegean"
+      />
+      <ActionMetricCard
+        label="Study Streak"
+        value={`${streakDays} day${streakDays === 1 ? '' : 's'}`}
+        explanation={streakDays ? 'Keep the habit alive with one meaningful task before the day gets busy.' : 'Start the streak with one short, completed learning block.'}
+        action="Check progress"
+        to="/dashboard/student/progress"
+        tone="marble"
+      />
+      {nextExam ? (
+        <ActionMetricCard
+          label="Exam Readiness"
+          value={nextExamDays == null ? 'Scheduled' : `${nextExamDays} day${nextExamDays === 1 ? '' : 's'}`}
+          explanation={`${nextExam.subject}: ${nextExam.title}. ${weakestTopic ? `Pair revision with ${weakestTopic.topic}.` : 'Use progress records to choose revision topics.'}`}
+          action="Build revision plan"
+          to="/dashboard/student/progress"
+          tone="gold"
+        />
+      ) : null}
     </StaggerGrid>
   );
 }
 
-function SummaryCard({ label, value, helper, tone }: { label: string; value: string; helper: string; tone: 'blue' | 'amber' | 'teal' | 'slate' }) {
-  const metricTone = ({
-    blue: 'navy',
-    amber: 'gold',
-    teal: 'aegean',
-    slate: 'marble',
-  } as const)[tone];
+function ActionMetricCard({
+  label,
+  value,
+  explanation,
+  action,
+  to,
+  tone,
+}: {
+  label: string;
+  value: string;
+  explanation: string;
+  action: string;
+  to: string;
+  tone: 'urgent' | 'gold' | 'navy' | 'aegean' | 'marble';
+}) {
+  const toneClass = {
+    urgent: 'border-red-200 bg-red-50/90 text-red-950 hover:border-red-300 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-50',
+    gold: 'border-brand-gold/50 bg-brand-gold/15 text-brand-obsidian hover:border-brand-gold dark:border-brand-gold/60 dark:bg-brand-gold/20 dark:text-brand-parchment',
+    navy: 'border-brand-navy/15 bg-brand-navy text-white hover:border-brand-gold/70 dark:border-brand-marble/20 dark:bg-brand-navy',
+    aegean: 'border-brand-aegean/30 bg-brand-aegean/10 text-brand-obsidian hover:border-brand-aegean dark:border-brand-aegean/60 dark:bg-brand-aegean/20 dark:text-brand-parchment',
+    marble: 'border-brand-marble bg-white/95 text-brand-obsidian hover:border-brand-aegean/50 dark:border-brand-marble/20 dark:bg-brand-obsidian dark:text-brand-parchment',
+  }[tone];
+  const mutedClass = tone === 'navy'
+    ? 'text-brand-parchment'
+    : 'text-slate-600 dark:text-brand-marble';
 
-  return <StaggerItem><MetricCard label={label} value={value} helper={helper} tone={metricTone} /></StaggerItem>;
+  return (
+    <StaggerItem>
+      <Link className={`group block h-full rounded-[1.5rem] border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${toneClass}`} to={to}>
+        <article className="flex h-full flex-col">
+          <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${mutedClass}`}>{label}</p>
+          <h3 className="mt-3 line-clamp-2 text-2xl font-semibold tracking-tight">{value}</h3>
+          <p className={`mt-3 flex-1 text-sm leading-6 ${mutedClass}`}>{explanation}</p>
+          <p className="mt-4 text-sm font-semibold text-brand-aegean group-hover:text-brand-gold dark:text-brand-gold">{action}</p>
+        </article>
+      </Link>
+    </StaggerItem>
+  );
 }
 
 export function AssignmentsDueSection({
   studentData,
   limit,
+  selectedAssignmentId,
 }: {
   studentData: NormalizedStudentData;
   limit?: number;
+  selectedAssignmentId?: string;
 }) {
   const visible = useMemo(() => selectDueTasks(studentData, limit), [studentData, limit]);
 
@@ -153,6 +237,7 @@ export function AssignmentsDueSection({
           <AssignmentDueCard
             assignment={task.assignment}
             submission={task.submission}
+            isSelected={task.assignmentId === selectedAssignmentId}
           />
         </StaggerItem>
       ))}
@@ -169,29 +254,34 @@ export function AssignmentsDueSection({
 export function AssignmentDueCard({
   assignment,
   submission,
+  isSelected = false,
 }: {
   assignment: Assignment;
   submission?: AssignmentSubmission;
+  isSelected?: boolean;
 }) {
   const status = calculateAssignmentStatus({ assignment, submission });
   const dueDelta = daysUntil(assignment.due_date);
   const isClosed = assignment.status === 'closed' || assignment.status === 'archived';
 
   return (
-    <InsightCard
-      title={assignment.title}
-      description={[assignment.grade, dueText(assignment.due_date, dueDelta)].filter(Boolean).join(' | ')}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-aegean dark:text-brand-gold">{assignment.subject || assignment.subject_id || 'Subject pending'}</p>
-        <StatusBadge value={status} />
-      </div>
-      {assignment.description ? (
-        <p className="mt-4 rounded-2xl bg-brand-parchment/70 p-4 text-sm leading-6 text-slate-700 dark:bg-brand-navy/70 dark:text-brand-marble">{assignment.description}</p>
-      ) : null}
-      {submission ? <SubmissionPreview submission={submission} /> : null}
-      <AssignmentUploadPanel assignment={assignment} submission={submission} disabled={isClosed} />
-    </InsightCard>
+    <div id={`assignment-${assignment.id}`} className={isSelected ? 'rounded-[1.7rem] ring-4 ring-brand-gold/40' : undefined}>
+      <InsightCard
+        title={assignment.title}
+        description={[assignment.grade, dueText(assignment.due_date, dueDelta)].filter(Boolean).join(' | ')}
+      >
+        {isSelected ? <p className="mb-3 rounded-full bg-brand-gold/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-obsidian dark:text-brand-parchment">Selected assignment detail</p> : null}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-aegean dark:text-brand-gold">{assignment.subject || assignment.subject_id || 'Subject pending'}</p>
+          <StatusBadge value={status} />
+        </div>
+        {assignment.description ? (
+          <p className="mt-4 rounded-2xl bg-brand-parchment/70 p-4 text-sm leading-6 text-slate-700 dark:bg-brand-navy/70 dark:text-brand-marble">{assignment.description}</p>
+        ) : null}
+        {submission ? <SubmissionPreview submission={submission} /> : null}
+        <AssignmentUploadPanel assignment={assignment} submission={submission} disabled={isClosed} />
+      </InsightCard>
+    </div>
   );
 }
 

@@ -34,7 +34,7 @@ export function StudentDashboardRoute() {
       {data ? (
         <>
           <StudentWelcomeCard data={data} nextAssignment={nextAssignment} completionRate={completionRate} dailyInsight={dailyInsight!} />
-          <ProgressSummaryCards studentData={studentData!} submissions={data.submissions} progress={data.progress} />
+          <ProgressSummaryCards data={data} studentData={studentData!} progress={data.progress} />
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
             <div className="space-y-4">

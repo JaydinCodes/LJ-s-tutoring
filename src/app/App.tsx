@@ -61,6 +61,7 @@ export function App() {
       <Route path="/onboarding/tutor" element={<OnboardingRoute role="tutor" />} />
       <Route path="/dashboard/student" element={<ProtectedRoute roles={['student']}><StudentDashboardRoute /></ProtectedRoute>} />
       <Route path="/dashboard/student/assignments" element={<ProtectedRoute roles={['student']}><StudentAssignmentsRoute /></ProtectedRoute>} />
+      <Route path="/dashboard/student/assignments/:assignmentId" element={<ProtectedRoute roles={['student']}><StudentAssignmentsRoute /></ProtectedRoute>} />
       <Route path="/dashboard/student/progress" element={<ProtectedRoute roles={['student']}><StudentProgressRoute /></ProtectedRoute>} />
       <Route path="/dashboard/student/results" element={<ProtectedRoute roles={['student']}><StudentResultsRoute /></ProtectedRoute>} />
       <Route path="/dashboard/student/careers" element={<ProtectedRoute roles={['student']}><StudentCareersRoute /></ProtectedRoute>} />

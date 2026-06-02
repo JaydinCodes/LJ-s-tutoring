@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { ErrorState, PageShell, SkeletonCard } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { AssignmentsDueSection, SubmittedAssignmentsList } from './StudentDashboardComponents';
@@ -7,6 +8,7 @@ import { useStudentDashboardQuery } from './studentQueries';
 
 export function StudentAssignmentsRoute() {
   const { data, loading, error, refetching, reload } = useStudentDashboardQuery();
+  const { assignmentId } = useParams();
   const studentData = useMemo(() => data ? normalizeStudentData(data) : null, [data]);
 
   return (
@@ -24,6 +26,7 @@ export function StudentAssignmentsRoute() {
         {data ? (
           <AssignmentsDueSection
             studentData={studentData!}
+            selectedAssignmentId={assignmentId}
           />
         ) : null}
       </Card>
