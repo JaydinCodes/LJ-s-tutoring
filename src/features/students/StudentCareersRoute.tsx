@@ -1,8 +1,7 @@
 import type { FormEvent } from 'react';
 import { useState } from 'react';
-import { DashboardShell } from '../../components/dashboard/DashboardShell';
+import { EmptyState, ErrorState, GreekHeroCard, InsightCard, MetricCard, PageShell, PremiumButton, SkeletonCard, StaggerGrid, StaggerItem } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
-import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextArea } from '../../components/ui/FormField';
 import { apiPost } from '../../lib/api/client';
 import { useStudentCareersQuery } from './studentQueries';
@@ -50,31 +49,23 @@ export function StudentCareersRoute() {
   }
 
   return (
-    <DashboardShell
+    <PageShell
       title="Careers"
       subtitle="Career pathways, subject planning, and focused AI support where it adds practical value."
       section="student"
     >
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="space-y-4">
-          <Card>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-700">Odie Careers</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-950">Explore real pathways</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Career guidance stays separate from daily dashboard work so learners can focus on goals, subject choices, and readiness planning.</p>
-          </Card>
+          <GreekHeroCard
+            eyebrow="Odie Careers"
+            title="Explore real pathways"
+            description="Career guidance stays separate from daily dashboard work so learners can focus on goals, subject choices, and readiness planning."
+          />
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <h2 className="text-lg font-semibold text-slate-950">Career catalogue</h2>
-              <p className="mt-2 text-3xl font-semibold text-slate-950">{data?.careers?.length || 0}</p>
-              <p className="mt-1 text-sm text-slate-600">Careers available through the careers API.</p>
-            </Card>
-            <Card>
-              <h2 className="text-lg font-semibold text-slate-950">Supported subjects</h2>
-              <p className="mt-2 text-3xl font-semibold text-slate-950">{data?.supportedSubjects?.length || 0}</p>
-              <p className="mt-1 text-sm text-slate-600">Subject inputs recognised by the pathway tools.</p>
-            </Card>
-          </div>
+          <StaggerGrid className="grid gap-4 md:grid-cols-2">
+            <StaggerItem><MetricCard label="Career catalogue" value={String(data?.careers?.length || 0)} helper="Careers available through the careers API." tone="aegean" /></StaggerItem>
+            <StaggerItem><MetricCard label="Supported subjects" value={String(data?.supportedSubjects?.length || 0)} helper="Subject inputs recognised by the pathway tools." tone="gold" /></StaggerItem>
+          </StaggerGrid>
 
           <Card>
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -82,19 +73,18 @@ export function StudentCareersRoute() {
                 <h2 className="text-xl font-semibold text-slate-950">Popular pathways</h2>
                 <p className="mt-1 text-sm text-slate-600">Loaded from the existing careers service during the React consolidation.</p>
               </div>
-              <button disabled={refetching} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" onClick={() => void reload()}>{refetching ? 'Refreshing...' : 'Refresh'}</button>
+              <PremiumButton disabled={refetching} onClick={() => void reload()}>{refetching ? 'Refreshing...' : 'Refresh'}</PremiumButton>
             </div>
-            {loading ? <p className="mt-4 text-sm text-slate-600">Loading careers...</p> : null}
-            {error ? <p className="mt-4 text-sm font-semibold text-red-700">{error}</p> : null}
-            <div className="mt-5 grid gap-3">
+            {loading ? <div className="mt-4"><SkeletonCard /></div> : null}
+            {error ? <div className="mt-4"><ErrorState title="Careers unavailable" description={error} onRetry={() => void reload()} /></div> : null}
+            <StaggerGrid className="mt-5 grid gap-3">
               {(data?.careers || []).slice(0, 8).map((career) => (
-                <div key={career.id} className="rounded-lg border border-slate-200 p-4">
-                  <p className="font-semibold text-slate-950">{career.title}</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">{career.description || career.category || 'Career insight available in the careers service.'}</p>
-                </div>
+                <StaggerItem key={career.id}>
+                  <InsightCard title={career.title} description={career.description || career.category || 'Career insight available in the careers service.'} />
+                </StaggerItem>
               ))}
               {data && !data.careers?.length ? <EmptyState title="No careers loaded" description="Refresh once the careers overview endpoint is available." /> : null}
-            </div>
+            </StaggerGrid>
           </Card>
         </div>
 
@@ -112,16 +102,15 @@ export function StudentCareersRoute() {
             <FormField label="Message">
               <TextArea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ask about a career pathway, APS target, or subject choice..." />
             </FormField>
-            <button
+            <PremiumButton
               type="submit"
               disabled={busy || !message.trim()}
-              className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busy ? 'Sending...' : 'Send'}
-            </button>
+            </PremiumButton>
           </form>
         </Card>
       </section>
-    </DashboardShell>
+    </PageShell>
   );
 }

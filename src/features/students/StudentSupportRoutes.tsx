@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react';
 import { useState } from 'react';
-import { DashboardShell } from '../../components/dashboard/DashboardShell';
+import { ErrorState, PageShell, PremiumButton } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -98,7 +98,7 @@ export function StudentCommunityRoute() {
   }
 
   return (
-    <DashboardShell
+    <PageShell
       title="Community"
       subtitle="Moderated study rooms, weekly challenges, and peer Q&A migrated from the legacy student page."
       section="student"
@@ -111,7 +111,7 @@ export function StudentCommunityRoute() {
                 <h2 className="text-xl font-semibold text-slate-950">Study rooms</h2>
                 <p className="mt-1 text-sm text-slate-600">Join a focused subject room before reading or posting messages.</p>
               </div>
-              <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Refresh</button>
+              <PremiumButton onClick={() => void reload()}>Refresh</PremiumButton>
             </div>
             {loading ? <p className="mt-4 text-sm text-slate-600">Loading community...</p> : null}
             {error ? <p className="mt-4 text-sm font-semibold text-red-700">{error}</p> : null}
@@ -142,9 +142,9 @@ export function StudentCommunityRoute() {
               <FormField label="Subject"><TextInput required value={roomSubject} onChange={(event) => setRoomSubject(event.target.value)} placeholder="Mathematics" /></FormField>
               <FormField label="Grade"><TextInput value={roomGrade} onChange={(event) => setRoomGrade(event.target.value)} placeholder="Grade 11" /></FormField>
               <div className="md:col-span-2">
-                <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" type="submit">
+                <PremiumButton disabled={busy} type="submit">
                   {busy ? 'Saving...' : 'Create room'}
-                </button>
+                </PremiumButton>
               </div>
             </form>
           </Card>
@@ -185,9 +185,9 @@ export function StudentCommunityRoute() {
               <FormField label="Message">
                 <TextArea value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} placeholder="Ask a focused study question or share a worked step..." />
               </FormField>
-              <button disabled={busy || !activeRoom || !message.trim()} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
+              <PremiumButton disabled={busy || !activeRoom || !message.trim()} type="submit">
                 {busy ? 'Sending...' : 'Send message'}
-              </button>
+              </PremiumButton>
             </form>
           </Card>
 
@@ -211,7 +211,7 @@ export function StudentCommunityRoute() {
           </Card>
         </aside>
       </section>
-    </DashboardShell>
+    </PageShell>
   );
 }
 
@@ -254,7 +254,7 @@ export function StudentReportsRoute() {
   }
 
   return (
-    <DashboardShell
+    <PageShell
       title="Reports"
       subtitle="Learner reporting foundation for parent and NGO summaries."
       section="student"
@@ -265,17 +265,13 @@ export function StudentReportsRoute() {
             <h2 className="text-xl font-semibold text-slate-950">Report snapshot</h2>
             <p className="mt-1 text-sm text-slate-600">Current learner data that feeds weekly reports for parents and NGO partners.</p>
           </div>
-          <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" type="button" onClick={() => void generateReport()}>
+          <PremiumButton disabled={busy} type="button" onClick={() => void generateReport()}>
             {busy ? 'Working...' : 'Generate this week'}
-          </button>
+          </PremiumButton>
         </div>
         {loading ? <p className="mt-4 text-sm text-slate-600">Loading report data...</p> : null}
         {error ? (
-          <div className="mt-4">
-            <h2 className="text-lg font-semibold text-slate-950">Reports unavailable</h2>
-            <p className="mt-2 text-sm text-slate-600">{error}</p>
-            <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Retry</button>
-          </div>
+          <div className="mt-4"><ErrorState title="Reports unavailable" description={error} onRetry={() => void reload()} /></div>
         ) : null}
         {message ? <p className="mt-4 text-sm font-semibold text-emerald-700">{message}</p> : null}
         {reportError ? <p className="mt-4 text-sm font-semibold text-red-700">{reportError}</p> : null}
@@ -316,7 +312,7 @@ export function StudentReportsRoute() {
           )}
         </Card>
       </section>
-    </DashboardShell>
+    </PageShell>
   );
 }
 

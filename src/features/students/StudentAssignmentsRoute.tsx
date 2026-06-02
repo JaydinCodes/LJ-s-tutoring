@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { DashboardShell } from '../../components/dashboard/DashboardShell';
+import { ErrorState, PageShell, SkeletonCard } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { AssignmentsDueSection, SubmittedAssignmentsList } from './StudentDashboardComponents';
 import { normalizeStudentData } from './studentData';
@@ -10,20 +10,16 @@ export function StudentAssignmentsRoute() {
   const studentData = useMemo(() => data ? normalizeStudentData(data) : null, [data]);
 
   return (
-    <DashboardShell
+    <PageShell
       title="Student Assignments"
       subtitle="Track assigned work, due dates, submissions, and tutor feedback."
       section="student"
     >
       <Card>
-        {loading ? <p className="text-sm text-slate-600">Loading assignments...</p> : null}
+        {loading ? <SkeletonCard /> : null}
         {refetching ? <p className="text-sm font-semibold text-blue-700">Refreshing assignments...</p> : null}
         {error ? (
-          <div>
-            <h2 className="text-lg font-semibold text-slate-950">Assignments unavailable</h2>
-            <p className="mt-2 text-sm text-slate-600">{error}</p>
-            <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Retry</button>
-          </div>
+          <ErrorState title="Assignments unavailable" description={error} onRetry={() => void reload()} />
         ) : null}
         {data ? (
           <AssignmentsDueSection
@@ -32,6 +28,6 @@ export function StudentAssignmentsRoute() {
         ) : null}
       </Card>
       {data ? <SubmittedAssignmentsList assignmentsById={studentData!.assignmentsById} submissions={data.submissions} /> : null}
-    </DashboardShell>
+    </PageShell>
   );
 }

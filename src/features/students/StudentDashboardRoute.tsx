@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { DashboardShell } from '../../components/dashboard/DashboardShell';
+import { AnimatedProgressBar, ErrorState, InsightCard, PageShell, SkeletonCard, StaggerGrid, StaggerItem, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import {
@@ -19,7 +19,7 @@ export function StudentDashboardRoute() {
   const completionRate = studentData ? selectCompletionRate(studentData) : 0;
 
   return (
-    <DashboardShell
+    <PageShell
       title="Student Dashboard"
       subtitle="A React-first learner view for assignments, progress, class context, and submission status."
       section="student"
@@ -27,11 +27,7 @@ export function StudentDashboardRoute() {
       {refetching ? <p className="text-sm font-semibold text-blue-700">Refreshing dashboard...</p> : null}
       {loading ? <DashboardSkeleton /> : null}
       {error ? (
-        <Card>
-          <h2 className="text-lg font-semibold text-slate-950">Dashboard unavailable</h2>
-          <p className="mt-2 text-sm text-slate-600">{error}</p>
-          <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Retry</button>
-        </Card>
+        <ErrorState title="Dashboard unavailable" description={error} onRetry={() => void reload()} />
       ) : null}
       {data ? (
         <>
@@ -57,20 +53,22 @@ export function StudentDashboardRoute() {
 
               <Card>
                 <h2 className="text-xl font-semibold text-slate-950">Progress summary</h2>
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <StaggerGrid className="mt-4 grid gap-3 md:grid-cols-2">
                   {data.progress.slice(0, 6).map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-slate-200 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-semibold text-slate-950">{item.topic}</p>
-                        <p className="text-sm font-semibold text-teal-700">{item.score}%</p>
-                      </div>
-                      <div className="mt-3 h-2 rounded-full bg-slate-100">
-                        <div className="h-2 rounded-full bg-teal-500" style={{ width: `${Math.max(0, Math.min(100, item.score))}%` }} />
-                      </div>
-                    </div>
+                    <StaggerItem key={item.id}>
+                      <InsightCard title={item.topic}>
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm text-slate-600 dark:text-brand-marble">Topic mastery</p>
+                          <p className="text-sm font-semibold text-brand-aegean dark:text-brand-gold">{item.score}%</p>
+                        </div>
+                        <div className="mt-3">
+                          <AnimatedProgressBar value={item.score} />
+                        </div>
+                      </InsightCard>
+                    </StaggerItem>
                   ))}
                   {!data.progress.length ? <EmptyState title="No progress records yet" description="Progress records should move into the student_progress table during data migration." /> : null}
-                </div>
+                </StaggerGrid>
               </Card>
             </div>
 
@@ -87,10 +85,7 @@ export function StudentDashboardRoute() {
                     ['Parent', data.profile.parent || 'Pending'],
                     ['NGO partner', data.profile.ngoPartner || 'Direct / pending'],
                   ].map(([label, value]) => (
-                    <div key={label} className="flex justify-between gap-4 rounded-2xl bg-slate-50 px-3 py-2">
-                      <dt className="text-slate-500">{label}</dt>
-                      <dd className="font-semibold text-slate-900">{value}</dd>
-                    </div>
+                    <TimelineCard key={label} title={label} meta={value} />
                   ))}
                 </dl>
               </Card>
@@ -111,20 +106,20 @@ export function StudentDashboardRoute() {
           </section>
         </>
       ) : null}
-    </DashboardShell>
+    </PageShell>
   );
 }
 
 function DashboardSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="h-64 animate-pulse rounded-[2rem] bg-blue-100" />
+      <SkeletonCard className="h-64" />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[0, 1, 2, 3].map((item) => <div key={item} className="h-36 animate-pulse rounded-[1.5rem] bg-white/80" />)}
+        {[0, 1, 2, 3].map((item) => <SkeletonCard key={item} />)}
       </div>
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
-        <div className="h-96 animate-pulse rounded-[1.5rem] bg-white/80" />
-        <div className="h-96 animate-pulse rounded-[1.5rem] bg-white/80" />
+        <SkeletonCard className="h-96" />
+        <SkeletonCard className="h-96" />
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { DashboardShell } from '../../components/dashboard/DashboardShell';
+import { AnimatedProgressBar, ErrorState, InsightCard, MetricCard, PageShell, ProgressRing, SkeletonCard, StaggerGrid, StaggerItem } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { formatDate } from '../../lib/utils/format';
@@ -43,22 +43,22 @@ export function StudentResultsRoute() {
   );
 
   return (
-    <DashboardShell
+    <PageShell
       title="Results"
       subtitle="Private academic analytics for your marks, trends, strengths, and anonymous class context."
       section="student"
     >
-      {loading ? <Card>Loading results dashboard...</Card> : null}
+      {loading ? <SkeletonCard /> : null}
       {refetching ? <Card>Refreshing results dashboard...</Card> : null}
-      {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+      {error ? <ErrorState title="Results unavailable" description={error} onRetry={() => void reload()} /> : null}
       {data ? (
         <>
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <StaggerGrid className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <KpiCard label="Overall Score" value={formatPercent(data.summary.overallPercentage)} helper={`${formatMark(data.summary.totalMarksObtained)} / ${formatMark(data.summary.totalMarksAvailable)} total marks`} tone="teal" />
             <KpiCard label="Assessment Average" value={formatPercent(data.summary.averageAcrossAssessments)} helper={`${data.items.length} completed assessment${data.items.length === 1 ? '' : 's'}`} tone="violet" />
             <KpiCard label="Class Average" value={formatPercent(data.summary.classAverage)} helper={data.summary.differenceFromClassAverage == null ? 'Anonymous aggregate only' : `${data.summary.differenceFromClassAverage >= 0 ? '+' : ''}${formatPercent(data.summary.differenceFromClassAverage)} difference`} tone="amber" />
             <KpiCard label="Academic Status" value={data.summary.currentAcademicStatus} helper={data.classAnalytics.positioning} tone="blue" />
-          </section>
+          </StaggerGrid>
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
             <Card>
@@ -67,12 +67,12 @@ export function StudentResultsRoute() {
                   <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Subject breakdown</h2>
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Performance grouped by subject, calculated from your own released results.</p>
                 </div>
-                <DoughnutScore value={data.summary.overallPercentage} />
+                <ProgressRing value={data.summary.overallPercentage} label="Overall score" />
               </div>
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                {data.subjectBreakdown.map((item, index) => <SubjectCard key={item.subject} item={item} color={chartPalette[index % chartPalette.length]} />)}
+              <StaggerGrid className="mt-5 grid gap-3 md:grid-cols-2">
+                {data.subjectBreakdown.map((item, index) => <StaggerItem key={item.subject}><SubjectCard item={item} color={chartPalette[index % chartPalette.length]} /></StaggerItem>)}
                 {!data.subjectBreakdown.length ? <EmptyState title="No subject data yet" description="Subject performance appears after marked results are released." /> : null}
-              </div>
+              </StaggerGrid>
             </Card>
 
             <Card>
@@ -145,39 +145,28 @@ export function StudentResultsRoute() {
           </Card>
         </>
       ) : null}
-    </DashboardShell>
+    </PageShell>
   );
 }
 
 function KpiCard({ label, value, helper, tone }: { label: string; value: string; helper: string; tone: 'teal' | 'violet' | 'amber' | 'blue' }) {
-  const accent = {
-    teal: 'border-teal-200 bg-teal-50 dark:border-teal-900 dark:bg-teal-950/40',
-    violet: 'border-violet-200 bg-violet-50 dark:border-violet-900 dark:bg-violet-950/40',
-    amber: 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40',
-    blue: 'border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/40',
-  }[tone];
-  return (
-    <article className={`rounded-[1.5rem] border p-5 shadow-sm ${accent}`}>
-      <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{label}</p>
-      <p className="mt-3 min-h-10 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{helper}</p>
-    </article>
-  );
+  const metricTone = ({
+    teal: 'aegean',
+    violet: 'navy',
+    amber: 'gold',
+    blue: 'marble',
+  } as const)[tone];
+  return <StaggerItem><MetricCard label={label} value={value} helper={helper} tone={metricTone} /></StaggerItem>;
 }
-
 function SubjectCard({ item, color }: { item: SubjectBreakdownItem; color: string }) {
-  const score = clampPercent(item.score);
   return (
-    <article className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+    <InsightCard title={item.subject}>
       <div className="flex items-center justify-between gap-3">
-        <p className="font-semibold text-slate-950 dark:text-slate-100">{item.subject}</p>
         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatPercent(item.score)}</p>
       </div>
-      <div className="mt-3 h-2 rounded-full bg-slate-100 dark:bg-slate-800">
-        <div className="h-2 rounded-full" style={{ width: `${score}%`, backgroundColor: color }} />
-      </div>
+      <div className="mt-3"><AnimatedProgressBar value={item.score} color={color} /></div>
       <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{item.assessments} assessment{item.assessments === 1 ? '' : 's'} - {formatMark(item.marksObtained)} / {formatMark(item.marksAvailable)} marks</p>
-    </article>
+    </InsightCard>
   );
 }
 
@@ -201,16 +190,6 @@ function InsightList({ title, items, empty, tone }: { title: string; items: Stud
         ))}
         {!items.length ? <p className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{empty}</p> : null}
       </div>
-    </div>
-  );
-}
-
-function DoughnutScore({ value }: { value: number | null }) {
-  const score = clampPercent(value);
-  const background = `conic-gradient(#0f766e ${score * 3.6}deg, #e2e8f0 0deg)`;
-  return (
-    <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full" style={{ background }}>
-      <div className="grid h-14 w-14 place-items-center rounded-full bg-white text-sm font-bold text-slate-950 dark:bg-slate-900 dark:text-slate-100">{formatPercent(value)}</div>
     </div>
   );
 }
@@ -281,9 +260,7 @@ function HorizontalBars({ items, empty }: { items: Array<{ label: string; value:
             <span className="font-semibold text-slate-900 dark:text-slate-100">{item.label}</span>
             <span className="text-slate-600 dark:text-slate-300">{formatPercent(item.value)} - {item.helper}</span>
           </div>
-          <div className="mt-2 h-2 rounded-full bg-slate-100 dark:bg-slate-800">
-            <div className="h-2 rounded-full" style={{ width: `${clampPercent(item.value)}%`, backgroundColor: chartPalette[index % chartPalette.length] }} />
-          </div>
+          <div className="mt-2"><AnimatedProgressBar value={clampPercent(item.value)} color={chartPalette[index % chartPalette.length]} /></div>
         </div>
       ))}
     </div>
@@ -322,15 +299,5 @@ function AssessmentTable({ items }: { items: StudentResultItem[] }) {
         </table>
       </div>
     </div>
-  );
-}
-
-function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => Promise<void> }) {
-  return (
-    <Card>
-      <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Results unavailable</h2>
-      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{message}</p>
-      <button className="mt-4 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-950" onClick={() => void onRetry()}>Retry</button>
-    </Card>
   );
 }

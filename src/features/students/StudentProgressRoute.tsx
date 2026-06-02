@@ -1,4 +1,4 @@
-import { DashboardShell } from '../../components/dashboard/DashboardShell';
+import { ErrorState, PageShell, SkeletonCard, StaggerGrid, StaggerItem } from '../../components/dashboard/DashboardDesignSystem';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
@@ -10,25 +10,21 @@ export function StudentProgressRoute() {
   const { data, loading, error, refetching, reload } = useStudentDashboardQuery();
 
   return (
-    <DashboardShell
+    <PageShell
       title="Student Progress"
       subtitle="Subject, topic, score, and cognitive-level tracking for learner support and reporting."
       section="student"
     >
       {data ? (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {data.metrics.map((metric) => <StatCard key={metric.label} metric={metric} />)}
-        </section>
+        <StaggerGrid className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {data.metrics.map((metric) => <StaggerItem key={metric.label}><StatCard metric={metric} /></StaggerItem>)}
+        </StaggerGrid>
       ) : null}
       <Card>
-        {loading ? <p className="text-sm text-slate-600">Loading progress...</p> : null}
+        {loading ? <SkeletonCard /> : null}
         {refetching ? <p className="text-sm font-semibold text-blue-700">Refreshing progress...</p> : null}
         {error ? (
-          <div>
-            <h2 className="text-lg font-semibold text-slate-950">Progress unavailable</h2>
-            <p className="mt-2 text-sm text-slate-600">{error}</p>
-            <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Retry</button>
-          </div>
+          <ErrorState title="Progress unavailable" description={error} onRetry={() => void reload()} />
         ) : null}
         {data ? (
           <DataTable<StudentProgress>
@@ -44,6 +40,6 @@ export function StudentProgressRoute() {
           />
         ) : null}
       </Card>
-    </DashboardShell>
+    </PageShell>
   );
 }

@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
 import { useMemo, useState } from 'react';
+import { GreekHeroCard, InsightCard, MetricCard, PremiumButton, StaggerGrid, StaggerItem, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
@@ -26,17 +27,11 @@ export function StudentWelcomeCard({
   const dueDelta = daysUntil(nextAssignment?.due_date);
 
   return (
-    <section className="relative overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,_#081326_0%,_#0f4db8_54%,_#1697df_100%)] p-6 text-white shadow-2xl shadow-blue-900/20 sm:p-8">
-      <div className="absolute right-6 top-6 hidden h-28 w-28 rounded-[2rem] border border-white/20 bg-white/10 shadow-2xl backdrop-blur md:block">
-        <div className="grid h-full place-items-center text-4xl font-black text-amber-200">O</div>
-      </div>
-      <p className="text-xs font-semibold uppercase tracking-[0.32em] text-blue-100">Learning voyage</p>
-      <h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">
-        Welcome back, {data.profile.name || 'Student'}
-      </h2>
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-blue-50">
-        You have completed {completionRate}% of visible assignments. Keep the next due item in view and submit with confidence.
-      </p>
+    <GreekHeroCard
+      eyebrow="Learning voyage"
+      title={`Welcome back, ${data.profile.name || 'Student'}`}
+      description={`You have completed ${completionRate}% of visible assignments. Keep the next due item in view and submit with confidence.`}
+    >
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <HeroMetric label="Grade" value={data.profile.grade || 'Pending'} />
         <HeroMetric label="School" value={data.profile.school || 'Pending'} />
@@ -45,7 +40,7 @@ export function StudentWelcomeCard({
           value={nextAssignment ? dueDelta === null ? 'Date pending' : dueDelta === 0 ? 'Today' : dueDelta > 0 ? `${dueDelta} days` : 'Overdue' : 'Clear'}
         />
       </div>
-    </section>
+    </GreekHeroCard>
   );
 }
 
@@ -74,30 +69,24 @@ export function ProgressSummaryCards({
   const completionRate = selectCompletionRate(studentData);
 
   return (
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <StaggerGrid className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <SummaryCard label="Completion rate" value={`${completionRate}%`} helper={`${studentData.submittedAssignmentIds.size} of ${studentData.assignmentsById.size} assignments submitted.`} tone="blue" />
       <SummaryCard label="Outstanding" value={String(studentData.dueTasks.size)} helper="Assignments still requiring learner action." tone="amber" />
       <SummaryCard label="Marked" value={String(marked)} helper="Submissions with marks or released feedback." tone="teal" />
       <SummaryCard label="Average score" value={averageScore == null ? '--' : `${averageScore}%`} helper="Average from available progress records." tone="slate" />
-    </section>
+    </StaggerGrid>
   );
 }
 
 function SummaryCard({ label, value, helper, tone }: { label: string; value: string; helper: string; tone: 'blue' | 'amber' | 'teal' | 'slate' }) {
-  const toneClass = {
-    blue: 'bg-blue-50 border-blue-100',
-    amber: 'bg-amber-50 border-amber-100',
-    teal: 'bg-teal-50 border-teal-100',
-    slate: 'bg-white border-slate-100',
-  }[tone];
+  const metricTone = ({
+    blue: 'navy',
+    amber: 'gold',
+    teal: 'aegean',
+    slate: 'marble',
+  } as const)[tone];
 
-  return (
-    <article className={`rounded-[1.5rem] border p-5 shadow-sm ${toneClass}`}>
-      <p className="text-sm font-medium text-slate-600">{label}</p>
-      <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{helper}</p>
-    </article>
-  );
+  return <StaggerItem><MetricCard label={label} value={value} helper={helper} tone={metricTone} /></StaggerItem>;
 }
 
 export function AssignmentsDueSection({
@@ -110,13 +99,14 @@ export function AssignmentsDueSection({
   const visible = useMemo(() => selectDueTasks(studentData, limit), [studentData, limit]);
 
   return (
-    <div className="space-y-4">
+    <StaggerGrid className="space-y-4">
       {visible.map((task) => (
-        <AssignmentDueCard
-          key={task.assignmentId}
-          assignment={task.assignment}
-          submission={task.submission}
-        />
+        <StaggerItem key={task.assignmentId}>
+          <AssignmentDueCard
+            assignment={task.assignment}
+            submission={task.submission}
+          />
+        </StaggerItem>
       ))}
       {!visible.length ? (
         <EmptyState
@@ -124,7 +114,7 @@ export function AssignmentsDueSection({
           description="Published assignments will appear here automatically once tutors or admins create them."
         />
       ) : null}
-    </div>
+    </StaggerGrid>
   );
 }
 
@@ -140,23 +130,20 @@ export function AssignmentDueCard({
   const isClosed = assignment.status === 'closed' || assignment.status === 'archived';
 
   return (
-    <article className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">{assignment.subject || assignment.subject_id || 'Subject pending'}</p>
-          <h3 className="mt-2 text-xl font-semibold text-slate-950">{assignment.title}</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            {[assignment.grade, dueText(assignment.due_date, dueDelta)].filter(Boolean).join(' | ')}
-          </p>
-        </div>
+    <InsightCard
+      title={assignment.title}
+      description={[assignment.grade, dueText(assignment.due_date, dueDelta)].filter(Boolean).join(' | ')}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-aegean dark:text-brand-gold">{assignment.subject || assignment.subject_id || 'Subject pending'}</p>
         <StatusBadge value={status} />
       </div>
       {assignment.description ? (
-        <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700">{assignment.description}</p>
+        <p className="mt-4 rounded-2xl bg-brand-parchment/70 p-4 text-sm leading-6 text-slate-700 dark:bg-brand-navy/70 dark:text-brand-marble">{assignment.description}</p>
       ) : null}
       {submission ? <SubmissionPreview submission={submission} /> : null}
       <AssignmentUploadPanel assignment={assignment} submission={submission} disabled={isClosed} />
-    </article>
+    </InsightCard>
   );
 }
 
@@ -178,15 +165,13 @@ function dueText(value?: string | null, delta?: number | null) {
 
 function SubmissionPreview({ submission }: { submission: AssignmentSubmission }) {
   return (
-    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+    <TimelineCard title={`Submitted ${formatDate(submission.submitted_at)}`} meta={submission.feedback || 'Waiting for tutor feedback.'}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p><span className="font-semibold text-slate-950">Submitted:</span> {formatDate(submission.submitted_at)}</p>
         <StatusBadge value={calculateAssignmentStatus({ assignment: { status: 'published', due_date: null }, submission })} />
       </div>
-      {submission.file_url ? <p className="mt-2 break-all"><span className="font-semibold text-slate-950">File:</span> <span className="font-mono text-xs">{submission.file_url}</span></p> : null}
-      {submission.marks_awarded != null ? <p className="mt-2"><span className="font-semibold text-slate-950">Mark:</span> {submission.marks_awarded}%</p> : null}
-      {submission.feedback ? <p className="mt-3 rounded-xl bg-white p-3"><span className="font-semibold text-slate-950">Feedback:</span> {submission.feedback}</p> : null}
-    </div>
+      {submission.file_url ? <p className="mt-2 break-all text-sm text-slate-600 dark:text-brand-marble"><span className="font-semibold">File:</span> <span className="font-mono text-xs">{submission.file_url}</span></p> : null}
+      {submission.marks_awarded != null ? <p className="mt-2 text-sm font-semibold text-brand-aegean dark:text-brand-gold">Mark: {submission.marks_awarded}%</p> : null}
+    </TimelineCard>
   );
 }
 
@@ -263,13 +248,12 @@ export function AssignmentUploadPanel({
         </label>
       ) : null}
       <div className="flex flex-wrap items-center gap-3">
-        <button
+        <PremiumButton
           disabled={disabled || busy}
-          className="rounded-full bg-brand-navy px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-60"
           type="submit"
         >
           {busy ? 'Uploading...' : submission ? 'Update submission' : 'Upload submission'}
-        </button>
+        </PremiumButton>
         {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
         {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
       </div>
@@ -325,26 +309,24 @@ export function SubmittedAssignmentsList({
           <p className="mt-1 text-sm text-slate-600">Status, timestamps, marks, and feedback for work already sent in.</p>
         </div>
       </div>
-      <div className="mt-5 space-y-3">
+      <StaggerGrid className="mt-5 space-y-3">
         {submissions.slice(0, 6).map((submission) => {
           const assignment = assignmentsById.get(submission.assignment_id);
           const status = calculateAssignmentStatus({ assignment: assignment || { status: 'published', due_date: null, id: '', title: '', created_at: '' }, submission });
           return (
-            <div key={submission.id} className="rounded-2xl border border-slate-200 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-slate-950">{assignment?.title || submission.assignment_id}</p>
-                  <p className="mt-1 text-sm text-slate-600">Submitted {formatDate(submission.submitted_at)}</p>
+            <StaggerItem key={submission.id}>
+              <TimelineCard title={assignment?.title || submission.assignment_id} meta={`Submitted ${formatDate(submission.submitted_at)}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <StatusBadge value={status} />
                 </div>
-                <StatusBadge value={status} />
-              </div>
-              {submission.marks_awarded != null ? <p className="mt-3 text-sm font-semibold text-teal-700">Mark: {submission.marks_awarded}%</p> : null}
-              {submission.feedback ? <p className="mt-2 text-sm leading-6 text-slate-600">{submission.feedback}</p> : null}
-            </div>
+                {submission.marks_awarded != null ? <p className="mt-3 text-sm font-semibold text-teal-700">Mark: {submission.marks_awarded}%</p> : null}
+                {submission.feedback ? <p className="mt-2 text-sm leading-6 text-slate-600">{submission.feedback}</p> : null}
+              </TimelineCard>
+            </StaggerItem>
           );
         })}
         {!submissions.length ? <EmptyState title="No submissions yet" description="Once you upload work, the confirmation and review status will appear here." /> : null}
-      </div>
+      </StaggerGrid>
     </Card>
   );
 }
@@ -362,20 +344,18 @@ export function LatestResultsCard({
     <Card>
       <h2 className="text-xl font-semibold text-slate-950">Latest results</h2>
       <p className="mt-1 text-sm text-slate-600">Marks and feedback released by tutors or admins.</p>
-      <div className="mt-5 space-y-3">
+      <StaggerGrid className="mt-5 space-y-3">
         {marked.slice(0, 3).map((submission) => (
-          <div key={submission.id} className="rounded-2xl bg-slate-50 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold text-slate-950">{assignmentsById.get(submission.assignment_id)?.title || submission.assignment_id}</p>
-                <p className="mt-1 text-sm text-slate-600">{submission.feedback || 'No written feedback supplied.'}</p>
+          <StaggerItem key={submission.id}>
+            <TimelineCard title={assignmentsById.get(submission.assignment_id)?.title || submission.assignment_id} meta={submission.feedback || 'No written feedback supplied.'}>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-lg font-semibold text-teal-700">{submission.marks_awarded == null ? '--' : `${submission.marks_awarded}%`}</p>
               </div>
-              <p className="text-lg font-semibold text-teal-700">{submission.marks_awarded == null ? '--' : `${submission.marks_awarded}%`}</p>
-            </div>
-          </div>
+            </TimelineCard>
+          </StaggerItem>
         ))}
         {!marked.length ? <EmptyState title="No marked assignments yet" description="Results will appear here once feedback is released." /> : null}
-      </div>
+      </StaggerGrid>
     </Card>
   );
 }
