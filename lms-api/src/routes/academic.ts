@@ -124,6 +124,62 @@ function scoreBucket(score: number | null | undefined) {
 
 const SCORE_BUCKETS = ['0-29%', '30-39%', '40-49%', '50-59%', '60-69%', '70-79%', '80-100%'];
 
+type CognitiveLevelName = 'Knowledge' | 'Routine Procedure' | 'Complex Procedure' | 'Problem Solving';
+
+interface StudentResultAnalyticsResponse {
+  studentId: string;
+  generatedAt: string;
+  resultCount: number;
+  overallAverage: number | null;
+  subjectAverages: Array<{ subject: string; average: number | null; marksObtained: number; marksAvailable: number; resultCount: number }>;
+  topicAverages: Array<{ subject: string; topic: string; average: number | null; support: number }>;
+  cognitiveBreakdown: Array<{ level: CognitiveLevelName; average: number | null; support: number; weak: boolean }>;
+  trendPoints: Array<{ resultId: string; subject: string; completedAt: string; percentage: number }>;
+  classComparison: {
+    available: boolean;
+    privacyThreshold: number;
+    classSize: number;
+    classAverage: number | null;
+    differenceFromClassAverage: number | null;
+    percentile: number | null;
+  };
+}
+
+const COGNITIVE_LEVELS: CognitiveLevelName[] = ['Knowledge', 'Routine Procedure', 'Complex Procedure', 'Problem Solving'];
+
+function normalizeCognitiveLevelName(value: string): CognitiveLevelName | null {
+  const normalized = value.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+  return COGNITIVE_LEVELS.find((level) => level.toLowerCase() === normalized) ?? null;
+}
+
+function normalizeCognitiveBreakdown(value: any) {
+  const parsed = normalizeJson(value, {});
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return [];
+
+  return Object.entries(parsed)
+    .map(([rawLevel, rawPayload]) => {
+      const level = normalizeCognitiveLevelName(rawLevel);
+      if (!level) return null;
+      const payload = typeof rawPayload === 'number'
+        ? { score: rawPayload }
+        : rawPayload && typeof rawPayload === 'object' && !Array.isArray(rawPayload)
+          ? rawPayload as Record<string, unknown>
+          : {};
+      const marksObtained = Number(payload.score ?? payload.marksObtained ?? payload.obtained);
+      const marksAvailable = Number(payload.total ?? payload.marksAvailable);
+      const percentage = Number(payload.percentage ?? (
+        Number.isFinite(marksObtained) && Number.isFinite(marksAvailable) && marksAvailable > 0
+          ? (marksObtained / marksAvailable) * 100
+          : marksObtained
+      ));
+      return {
+        level,
+        score: Number.isFinite(percentage) ? percentage : null,
+      };
+    })
+    .filter(Boolean) as Array<{ level: CognitiveLevelName; score: number | null }>;
+}
+
 function classPositioning(percentile: number | null, ownAverage: number | null, classAverage: number | null) {
   if (percentile == null || ownAverage == null || classAverage == null) {
     return 'Class comparison is available once enough anonymous results exist.';
@@ -132,6 +188,167 @@ function classPositioning(percentile: number | null, ownAverage: number | null, 
   if (ownAverage > classAverage) return 'You performed above the class average.';
   if (percentile >= 40) return 'You are in the middle performance band.';
   return 'You are below the class average and should prioritise the improvement areas.';
+}
+
+async function buildStudentResultsAnalytics(studentId: string): Promise<StudentResultAnalyticsResponse> {
+  const [studentRes, resultRes] = await Promise.all([
+    pool.query(`select grade from students where id = $1`, [studentId]),
+    pool.query(
+      `select id, subject, grade, score, total, percentage, topic_breakdown_json,
+              cognitive_breakdown_json, completed_at
+       from baseline_assessments
+       where student_id = $1
+       order by completed_at desc
+       limit 100`,
+      [studentId]
+    ),
+  ]);
+
+  const results = resultRes.rows.map((row) => ({
+    id: String(row.id),
+    subject: String(row.subject),
+    grade: row.grade as string | null,
+    score: Number(row.score),
+    total: Number(row.total),
+    percentage: Number(row.percentage),
+    topicBreakdown: normalizeTopicBreakdown(row.topic_breakdown_json),
+    cognitiveBreakdown: normalizeCognitiveBreakdown(row.cognitive_breakdown_json),
+    completedAt: row.completed_at,
+  }));
+
+  const totalMarksObtained = results.reduce((total, item) => total + item.score, 0);
+  const totalMarksAvailable = results.reduce((total, item) => total + item.total, 0);
+  const overallAverage = totalMarksAvailable > 0
+    ? roundMetric((totalMarksObtained / totalMarksAvailable) * 100, 1)
+    : roundMetric(average(results.map((item) => item.percentage)), 1);
+
+  const bySubject = new Map<string, typeof results>();
+  for (const item of results) {
+    bySubject.set(item.subject, [...(bySubject.get(item.subject) ?? []), item]);
+  }
+
+  const subjectAverages = [...bySubject.entries()]
+    .map(([subject, subjectItems]) => {
+      const marksObtained = subjectItems.reduce((total, item) => total + item.score, 0);
+      const marksAvailable = subjectItems.reduce((total, item) => total + item.total, 0);
+      return {
+        subject,
+        average: roundMetric(marksAvailable > 0 ? (marksObtained / marksAvailable) * 100 : average(subjectItems.map((item) => item.percentage)), 1),
+        marksObtained: roundMetric(marksObtained, 1) ?? 0,
+        marksAvailable: roundMetric(marksAvailable, 1) ?? 0,
+        resultCount: subjectItems.length,
+      };
+    })
+    .sort((left, right) => left.subject.localeCompare(right.subject));
+
+  const topicGroups = new Map<string, Array<{ score: number; subject: string; topic: string }>>();
+  for (const item of results) {
+    for (const rawTopic of item.topicBreakdown) {
+      const topic = String((rawTopic as any).topic ?? (rawTopic as any).name ?? 'Topic');
+      const score = Number((rawTopic as any).score ?? (rawTopic as any).percentage);
+      if (!Number.isFinite(score)) continue;
+      const key = `${item.subject}::${topic}`;
+      topicGroups.set(key, [...(topicGroups.get(key) ?? []), { subject: item.subject, topic, score }]);
+    }
+  }
+  const topicAverages = [...topicGroups.values()]
+    .map((items) => ({
+      subject: items[0].subject,
+      topic: items[0].topic,
+      average: roundMetric(average(items.map((item) => item.score)), 1),
+      support: items.length,
+    }))
+    .sort((left, right) => left.subject.localeCompare(right.subject) || left.topic.localeCompare(right.topic));
+
+  const cognitiveBreakdown = COGNITIVE_LEVELS.map((level) => {
+    const scores = results
+      .flatMap((item) => item.cognitiveBreakdown)
+      .filter((item) => item.level === level && item.score != null)
+      .map((item) => Number(item.score));
+    const levelAverage = roundMetric(average(scores), 1);
+    return {
+      level,
+      average: levelAverage,
+      support: scores.length,
+      weak: levelAverage != null && levelAverage < 50,
+    };
+  });
+
+  const trendPoints = [...results]
+    .sort((left, right) => new Date(left.completedAt).getTime() - new Date(right.completedAt).getTime())
+    .map((item) => ({
+      resultId: item.id,
+      subject: item.subject,
+      completedAt: new Date(item.completedAt).toISOString(),
+      percentage: roundMetric(item.percentage, 1) ?? 0,
+    }));
+
+  let classComparison: StudentResultAnalyticsResponse['classComparison'] = {
+    available: false,
+    privacyThreshold: CLASS_ANALYTICS_PRIVACY_THRESHOLD,
+    classSize: 0,
+    classAverage: null,
+    differenceFromClassAverage: null,
+    percentile: null,
+  };
+
+  const subjects = subjectAverages.map((item) => item.subject);
+  if (subjects.length) {
+    const ownGrade = studentRes.rows[0]?.grade ?? results.find((item) => item.grade)?.grade ?? null;
+    const classParams = [subjects, ownGrade];
+    // Keep class comparison aggregate-only; individual learner rows never leave this function.
+    const classFilter = `
+      b.subject = any($1::text[])
+      and ($2::text is null or b.grade = $2::text)
+    `;
+    const [classSummaryRes, studentAverageRes] = await Promise.all([
+      pool.query(
+        `select count(distinct b.student_id)::int as class_size,
+                round(avg(b.percentage)::numeric, 2) as class_average
+         from baseline_assessments b
+         where ${classFilter}`,
+        classParams
+      ),
+      pool.query(
+        `select b.student_id, round(avg(b.percentage)::numeric, 2) as average
+         from baseline_assessments b
+         where ${classFilter}
+         group by b.student_id`,
+        classParams
+      ),
+    ]);
+    const classSize = Number(classSummaryRes.rows[0]?.class_size ?? 0);
+    if (classSize >= CLASS_ANALYTICS_PRIVACY_THRESHOLD) {
+      const classAverage = roundMetric(Number(classSummaryRes.rows[0]?.class_average), 1);
+      // Percentile is derived server-side so the response stays anonymous and stable.
+      const studentAverages = studentAverageRes.rows.map((row) => Number(row.average)).filter(Number.isFinite);
+      const percentile = overallAverage == null || !studentAverages.length
+        ? null
+        : roundMetric((studentAverages.filter((score) => score <= overallAverage).length / studentAverages.length) * 100, 0);
+      classComparison = {
+        available: true,
+        privacyThreshold: CLASS_ANALYTICS_PRIVACY_THRESHOLD,
+        classSize,
+        classAverage,
+        differenceFromClassAverage: overallAverage == null || classAverage == null ? null : roundMetric(overallAverage - classAverage, 1),
+        percentile,
+      };
+    } else {
+      classComparison = { ...classComparison, classSize };
+    }
+  }
+
+  return {
+    studentId,
+    generatedAt: new Date().toISOString(),
+    resultCount: results.length,
+    overallAverage,
+    subjectAverages,
+    topicAverages,
+    cognitiveBreakdown,
+    trendPoints,
+    classComparison,
+  };
 }
 
 function setPrivateNoStore(reply: any) {
@@ -489,6 +706,15 @@ export async function academicRoutes(app: FastifyInstance) {
       source: 'mock_fallback',
       studentId,
     });
+  });
+
+  app.get('/student/results/analytics', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    setPrivateNoStore(reply);
+    return reply.send(await buildStudentResultsAnalytics(studentId));
   });
 
   app.get('/student/results', {
