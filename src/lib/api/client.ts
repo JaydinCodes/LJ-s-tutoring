@@ -83,6 +83,69 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export async function apiPut<T>(path: string, body?: unknown): Promise<T> {
+  const response = await fetch(`${resolveApiBase()}${path}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+    },
+    body: body == null ? undefined : JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const responseBody = await response.text();
+    throw new Error(responseBody || `request_failed:${response.status}`);
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(`api_non_json_response:${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export async function apiStreamText(
+  path: string,
+  body: unknown,
+  onChunk: (chunk: string) => void,
+  signal?: AbortSignal,
+) {
+  const response = await fetch(`${resolveApiBase()}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    signal,
+    headers: {
+      accept: 'text/plain',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const responseBody = await response.text();
+    throw new Error(responseBody || `request_failed:${response.status}`);
+  }
+
+  if (!response.body) {
+    throw new Error('api_stream_unavailable');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    if (chunk) onChunk(chunk);
+  }
+
+  const finalChunk = decoder.decode();
+  if (finalChunk) onChunk(finalChunk);
+}
+
 export async function optionalApiGet<T>(path: string, fallback: T): Promise<T> {
   try {
     return await apiGet<T>(path);

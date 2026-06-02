@@ -43,6 +43,18 @@ create table if not exists public.students (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.student_career_profiles (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null unique references public.students(id) on delete cascade,
+  interests_json jsonb not null default '[]'::jsonb,
+  preferred_subjects_json jsonb not null default '[]'::jsonb,
+  target_careers_json jsonb not null default '[]'::jsonb,
+  aps_target integer check (aps_target is null or (aps_target >= 0 and aps_target <= 60)),
+  saved_careers_json jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.tutors (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null unique references public.profiles(id) on delete cascade,
@@ -147,6 +159,7 @@ create table if not exists public.class_enrollments (
 
 create index if not exists idx_profiles_role on public.profiles(role);
 create index if not exists idx_students_ngo_partner on public.students(ngo_partner_id);
+create index if not exists idx_student_career_profiles_student_updated on public.student_career_profiles(student_id, updated_at desc);
 create index if not exists idx_assignments_due_date on public.assignments(due_date);
 create index if not exists idx_submissions_student on public.assignment_submissions(student_id);
 create unique index if not exists idx_submissions_latest_assignment_student
@@ -160,6 +173,7 @@ create index if not exists idx_classes_tutor on public.classes(tutor_id);
 
 alter table public.profiles enable row level security;
 alter table public.students enable row level security;
+alter table public.student_career_profiles enable row level security;
 alter table public.tutors enable row level security;
 alter table public.ngo_partners enable row level security;
 alter table public.subjects enable row level security;
@@ -228,6 +242,33 @@ create policy "admin_full_access_students"
 on public.students for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
+
+create policy "students_select_own_career_profile"
+on public.student_career_profiles for select
+using (
+  student_id in (
+    select s.id from public.students s
+    join public.profiles p on p.id = s.profile_id
+    where p.auth_user_id = auth.uid()
+  )
+);
+
+create policy "students_upsert_own_career_profile"
+on public.student_career_profiles for all
+using (
+  student_id in (
+    select s.id from public.students s
+    join public.profiles p on p.id = s.profile_id
+    where p.auth_user_id = auth.uid()
+  )
+)
+with check (
+  student_id in (
+    select s.id from public.students s
+    join public.profiles p on p.id = s.profile_id
+    where p.auth_user_id = auth.uid()
+  )
+);
 
 create policy "tutors_select_self_or_admin"
 on public.tutors for select

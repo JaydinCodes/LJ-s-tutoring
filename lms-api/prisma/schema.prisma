@@ -410,8 +410,26 @@ model Student {
   baselineAssessments BaselineAssessment[]
   learningGoals LearningGoal[]
   examEvents StudentExamEvent[]
+  careerProfile StudentCareerProfile?
 
   @@map("students")
+}
+
+model StudentCareerProfile {
+  id                    String   @id @default(uuid()) @db.Uuid
+  studentId             String   @unique @map("student_id") @db.Uuid
+  interestsJson         Json     @default("[]") @map("interests_json")
+  preferredSubjectsJson Json     @default("[]") @map("preferred_subjects_json")
+  targetCareersJson     Json     @default("[]") @map("target_careers_json")
+  apsTarget             Int?     @map("aps_target")
+  savedCareersJson      Json     @default("[]") @map("saved_careers_json")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, updatedAt(sort: Desc)])
+  @@map("student_career_profiles")
 }
 
 model StudyActivityEvent {

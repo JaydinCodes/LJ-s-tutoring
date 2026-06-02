@@ -513,6 +513,14 @@ export const OdieCareersEligibilityRequestSchema = z.object({
   subjects: z.array(StudentSubjectResultSchema).min(1).max(20),
 });
 
+export const StudentCareerProfileUpdateSchema = z.object({
+  interests: z.array(z.string().trim().min(1).max(80)).max(20).optional().default([]),
+  preferredSubjects: z.array(z.string().trim().min(1).max(120)).max(20).optional().default([]),
+  targetCareers: z.array(z.string().trim().min(1).max(120)).max(20).optional().default([]),
+  apsTarget: z.coerce.number().int().min(0).max(60).nullable().optional().default(null),
+  savedCareers: z.array(z.string().trim().min(1).max(120)).max(50).optional().default([]),
+});
+
 
 export const OdieReadinessPlanQuerySchema = z.object({
   careerId: z.string().trim().min(1).max(120),

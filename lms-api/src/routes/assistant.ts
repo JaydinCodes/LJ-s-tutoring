@@ -35,7 +35,10 @@ const CAREERS_ODIE_SYSTEM_PROMPT = [
   'Help with career pathways, subject choices, APS planning, study plans, entry-level readiness, portfolio evidence, and practical next steps.',
   'Use a friendly but direct coaching style. Ask for grade, subjects, marks, interests, and location when needed.',
   'For South African STEM, technology, finance, and engineering pathways, prefer NSC Mathematics over Mathematical Literacy unless the learner is asking about a pathway where Mathematical Literacy is explicitly accepted.',
+  'Do not pretend to be a university admissions officer, bursary committee, employer, or official representative.',
+  'Label uncertain advice clearly and encourage learners to verify current requirements on official institution pages.',
   'Do not invent admission requirements, salaries, or guaranteed outcomes. When facts are uncertain, say what the learner should verify with the institution or employer.',
+  'Never reveal, infer, or reference another student’s private data.',
   'Keep answers concise, structured, and action-oriented.',
 ].join('\n');
 
@@ -86,6 +89,96 @@ function getAccessKeyFromRequest(req: any) {
 
 const ALLOWED_ROLES = new Set(['STUDENT', 'TUTOR', 'ADMIN']);
 
+function toProviderMessages(systemPrompt: string, history: Array<{ role: 'user' | 'assistant'; content: string }>, message: string) {
+  return [
+    { role: 'system', content: systemPrompt },
+    ...history.slice(-8),
+    { role: 'user', content: message },
+  ];
+}
+
+async function readAssistantError(response: Response) {
+  const text = await response.text();
+  if (!text) return response.statusText || 'request_failed';
+  try {
+    const parsed = JSON.parse(text) as { error?: { message?: string } | string; message?: string };
+    if (typeof parsed.error === 'string') return parsed.error;
+    if (parsed.error && typeof parsed.error === 'object' && parsed.error.message) return parsed.error.message;
+    if (parsed.message) return parsed.message;
+  } catch {
+    return text.slice(0, 300);
+  }
+  return response.statusText || 'request_failed';
+}
+
+function extractGroqDelta(payload: string) {
+  try {
+    const parsed = JSON.parse(payload) as { choices?: Array<{ delta?: { content?: string } }> };
+    return parsed.choices?.[0]?.delta?.content ?? '';
+  } catch {
+    return '';
+  }
+}
+
+async function streamGroqCareersResponse(input: {
+  apiKey: string;
+  model: string;
+  message: string;
+  history: Array<{ role: 'user' | 'assistant'; content: string }>;
+  requestId?: string;
+  signal: AbortSignal;
+  onChunk: (chunk: string) => void;
+}) {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    signal: input.signal,
+    headers: {
+      Authorization: `Bearer ${input.apiKey}`,
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      'X-Request-Id': input.requestId ?? '',
+    },
+    body: JSON.stringify({
+      model: input.model,
+      messages: toProviderMessages(CAREERS_ODIE_SYSTEM_PROMPT, input.history, input.message),
+      max_tokens: 900,
+      temperature: 0.35,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readAssistantError(response));
+  }
+
+  if (!response.body) {
+    throw new Error('groq_stream_unavailable');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    // Groq streams OpenAI-compatible SSE frames; only delta content is proxied to the browser.
+    const events = buffer.split('\n\n');
+    buffer = events.pop() ?? '';
+
+    for (const event of events) {
+      for (const line of event.split('\n')) {
+        if (!line.startsWith('data:')) continue;
+        const payload = line.replace(/^data:\s*/, '').trim();
+        if (!payload || payload === '[DONE]') continue;
+        const delta = extractGroqDelta(payload);
+        if (delta) input.onChunk(delta);
+      }
+    }
+  }
+}
+
 export async function assistantRoutes(app: FastifyInstance) {
   const assistantEnabled = isAssistantEnabled(process.env);
   const config = loadAssistantConfig();
@@ -108,6 +201,9 @@ export async function assistantRoutes(app: FastifyInstance) {
     });
     app.post('/assistant/chat', disabledHandler);
     app.post('/assistant/document', disabledHandler);
+    app.post('/assistant/public-chat', disabledHandler);
+    app.post('/assistant/careers-chat', disabledHandler);
+    app.post('/assistant/careers-chat/stream', disabledHandler);
     app.log.warn({ event: 'assistant.disabled' }, 'assistant.disabled');
     return;
   }
@@ -189,9 +285,68 @@ export async function assistantRoutes(app: FastifyInstance) {
     return reply.send({ text: result.text, metadata: result.metadata });
   });
 
+  app.post('/assistant/careers-chat/stream', {
+    config: {
+      rateLimit: {
+        max: 20,
+        timeWindow: '1 minute',
+      },
+    },
+  }, async (req, reply) => {
+    setPrivateNoStore(reply);
+    const parsed = PublicChatSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    }
+    if (!config.groqApiKey) {
+      return reply.code(503).send({ error: 'groq_not_configured' });
+    }
+
+    const controller = new AbortController();
+    req.raw.on('close', () => controller.abort());
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'private, no-store, max-age=0',
+      'X-Accel-Buffering': 'no',
+    });
+
+    try {
+      await streamGroqCareersResponse({
+        apiKey: config.groqApiKey,
+        model: config.groqModel,
+        message: parsed.data.message,
+        history: parsed.data.history,
+        requestId: req.id,
+        signal: controller.signal,
+        onChunk: (chunk) => reply.raw.write(chunk),
+      });
+      reply.raw.end();
+      req.log.info({
+        event: 'assistant.careers_chat.stream.completed',
+        provider: 'groq',
+        model: config.groqModel,
+        requestId: req.id,
+      }, 'assistant.careers_chat.stream.completed');
+    } catch (error) {
+      if (!reply.raw.writableEnded) {
+        if (!controller.signal.aborted) {
+          reply.raw.write('\n\nOdie could not finish that response. Please try again in a moment.');
+        }
+        reply.raw.end();
+      }
+      if (!controller.signal.aborted) {
+        req.log.warn({
+          event: 'assistant.careers_chat.stream.failed',
+          requestId: req.id,
+          error: error instanceof Error ? error.message : String(error),
+        }, 'assistant.careers_chat.stream.failed');
+      }
+    }
+  });
+
   app.addHook('preHandler', async (req: any, reply) => {
     // Status endpoint stays publicly available so the UI can hide entry points.
-    if (req.routeOptions?.url === '/assistant/status' || req.routeOptions?.url === '/assistant/public-chat' || req.routeOptions?.url === '/assistant/careers-chat') return;
+    if (req.routeOptions?.url === '/assistant/status' || req.routeOptions?.url === '/assistant/public-chat' || req.routeOptions?.url === '/assistant/careers-chat' || req.routeOptions?.url === '/assistant/careers-chat/stream') return;
 
     if (devBypass) return;
 

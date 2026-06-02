@@ -7,7 +7,9 @@ import {
   OdieReadinessCompleteBodySchema,
   OdieReadinessMilestoneParamSchema,
   OdieReadinessPlanQuerySchema,
+  StudentCareerProfileUpdateSchema,
 } from '../lib/schemas.js';
+import { pool } from '../db/pool.js';
 import {
   completeReadinessMilestone,
   evaluateStudentProfile,
@@ -40,12 +42,89 @@ function resolveReadinessStudentId(req: any, fallbackStudentId?: string) {
   return null;
 }
 
+const emptyCareerProfile = {
+  interests: [],
+  preferredSubjects: [],
+  targetCareers: [],
+  apsTarget: null,
+  savedCareers: [],
+};
+
+function normalizeCareerProfile(row: any) {
+  if (!row) return emptyCareerProfile;
+  return {
+    interests: Array.isArray(row.interests_json) ? row.interests_json : [],
+    preferredSubjects: Array.isArray(row.preferred_subjects_json) ? row.preferred_subjects_json : [],
+    targetCareers: Array.isArray(row.target_careers_json) ? row.target_careers_json : [],
+    apsTarget: row.aps_target == null ? null : Number(row.aps_target),
+    savedCareers: Array.isArray(row.saved_careers_json) ? row.saved_careers_json : [],
+  };
+}
+
+async function getStudentCareerProfile(studentId: string) {
+  // The profile is optional by design; first-time learners get an empty cockpit state.
+  const res = await pool.query(
+    `select interests_json, preferred_subjects_json, target_careers_json, aps_target, saved_careers_json
+     from student_career_profiles
+     where student_id = $1
+     limit 1`,
+    [studentId]
+  );
+  return normalizeCareerProfile(res.rows[0]);
+}
+
 export async function odieCareersRoutes(app: FastifyInstance) {
   app.get('/odie-careers/overview', {
     preHandler: odieCareersPreHandler(app),
-  }, async (_req, reply) => {
+  }, async (req, reply) => {
     setPrivateNoStore(reply);
-    return reply.send(getOdieCareersOverview());
+    const studentId = resolveReadinessStudentId(req);
+    const profile = studentId ? await getStudentCareerProfile(studentId) : emptyCareerProfile;
+    return reply.send({ ...getOdieCareersOverview(), profile });
+  });
+
+  app.get('/odie-careers/profile', {
+    preHandler: odieCareersPreHandler(app),
+  }, async (req, reply) => {
+    setPrivateNoStore(reply);
+    const studentId = resolveReadinessStudentId(req);
+    if (!studentId) return reply.code(401).send({ error: 'unauthorized' });
+    return reply.send({ profile: await getStudentCareerProfile(studentId) });
+  });
+
+  app.put('/odie-careers/profile', {
+    preHandler: odieCareersPreHandler(app),
+  }, async (req, reply) => {
+    setPrivateNoStore(reply);
+    const studentId = resolveReadinessStudentId(req);
+    if (!studentId) return reply.code(401).send({ error: 'unauthorized' });
+    const parsed = StudentCareerProfileUpdateSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    }
+    const profile = parsed.data;
+    await pool.query(
+      `insert into student_career_profiles (
+          student_id, interests_json, preferred_subjects_json, target_careers_json, aps_target, saved_careers_json
+       )
+       values ($1, $2::jsonb, $3::jsonb, $4::jsonb, $5, $6::jsonb)
+       on conflict (student_id) do update set
+          interests_json = excluded.interests_json,
+          preferred_subjects_json = excluded.preferred_subjects_json,
+          target_careers_json = excluded.target_careers_json,
+          aps_target = excluded.aps_target,
+          saved_careers_json = excluded.saved_careers_json,
+          updated_at = now()`,
+      [
+        studentId,
+        JSON.stringify(profile.interests),
+        JSON.stringify(profile.preferredSubjects),
+        JSON.stringify(profile.targetCareers),
+        profile.apsTarget,
+        JSON.stringify(profile.savedCareers),
+      ]
+    );
+    return reply.send({ profile });
   });
 
   app.get('/odie-careers/careers', {
