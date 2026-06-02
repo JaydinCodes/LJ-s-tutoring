@@ -24,7 +24,7 @@ import { StudentAssignmentsRoute } from '../features/students/StudentAssignments
 import { StudentCareersRoute } from '../features/students/StudentCareersRoute';
 import { StudentDashboardRoute } from '../features/students/StudentDashboardRoute';
 import { StudentProgressRoute } from '../features/students/StudentProgressRoute';
-import { StudentResultsRoute } from '../features/students/StudentResultsRoute';
+import { StudentResultDetailRoute, StudentResultsRoute, StudentResultsSubjectRoute } from '../features/students/StudentResultsRoute';
 import { StudentCommunityRoute, StudentReportsRoute } from '../features/students/StudentSupportRoutes';
 import { TutorClassesRoute } from '../features/tutors/TutorClassesRoute';
 import { TutorDashboardRoute } from '../features/tutors/TutorDashboardRoute';
@@ -49,6 +49,9 @@ export function App() {
         <Route path="/admin/*" element={<Navigate to="/dashboard/admin" replace />} />
         <Route path="/student/assignments" element={<Navigate to="/dashboard/student/assignments" replace />} />
         <Route path="/student/assignments/:assignmentId" element={<ProtectedRoute roles={['student']}><StudentAssignmentDetailRoute /></ProtectedRoute>} />
+        <Route path="/student/results" element={<ProtectedRoute roles={['student']}><StudentResultsRoute /></ProtectedRoute>} />
+        <Route path="/student/results/subjects/:subject" element={<ProtectedRoute roles={['student']}><StudentResultsSubjectRoute /></ProtectedRoute>} />
+        <Route path="/student/results/:resultId" element={<ProtectedRoute roles={['student']}><StudentResultDetailRoute /></ProtectedRoute>} />
         <Route path="/student/*" element={<Navigate to="/dashboard/student" replace />} />
         <Route path="/tutor/*" element={<Navigate to="/dashboard/tutor" replace />} />
         <Route path="/reports/*" element={<Navigate to="/dashboard/student/reports" replace />} />
@@ -70,6 +73,8 @@ export function App() {
         <Route path="/dashboard/student/assignments/:assignmentId" element={<ProtectedRoute roles={['student']}><StudentAssignmentDetailRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/progress" element={<ProtectedRoute roles={['student']}><StudentProgressRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/results" element={<ProtectedRoute roles={['student']}><StudentResultsRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/student/results/subjects/:subject" element={<ProtectedRoute roles={['student']}><StudentResultsSubjectRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/student/results/:resultId" element={<ProtectedRoute roles={['student']}><StudentResultDetailRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/careers" element={<ProtectedRoute roles={['student']}><StudentCareersRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/community" element={<ProtectedRoute roles={['student']}><StudentCommunityRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/reports" element={<ProtectedRoute roles={['student']}><StudentReportsRoute /></ProtectedRoute>} />

@@ -34,8 +34,8 @@ test('student UI consumes pure normalized selectors instead of rebuilding route-
   assert.ok(dashboard.includes('normalizeStudentData(data)'));
   assert.ok(dashboard.includes('selectDueTasks(studentData, 1)'));
   assert.ok(assignments.includes('normalizeStudentData(data)'));
-  assert.ok(results.includes('normalizeStudentResults(data?.items || [])'));
-  assert.ok(results.includes('selectResults(normalizedResults'));
+  assert.ok(results.includes('releasedResults(data?.items || [])'));
+  assert.ok(results.includes('groupBySubject(items)'));
   assert.ok(!dashboard.includes('new Map('), 'dashboard route must not rebuild indexes');
   assert.ok(!dashboard.includes('new Set('), 'dashboard route must not rebuild submitted ID sets');
   assert.ok(!assignments.includes('new Map('), 'assignments route must not rebuild indexes');

@@ -1,20 +1,19 @@
-import { useMemo, useState } from 'react';
-import { AnimatedProgressBar, ErrorState, InsightCard, MetricCard, PageShell, ProgressRing, SkeletonCard, StaggerGrid, StaggerItem } from '../../components/dashboard/DashboardDesignSystem';
+import { Link, useParams } from 'react-router-dom';
+import { AnimatedProgressBar, ErrorState, PageShell, ProgressRing, SkeletonCard, StaggerGrid, StaggerItem } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { formatDate } from '../../lib/utils/format';
 import {
+  cognitiveLevelOrder,
   type ClassDistributionBucket,
+  type CognitiveLevelName,
+  type StudentResultCognitiveLevel,
   type StudentResultItem,
   type StudentResultTopic,
-  type SubjectBreakdownItem,
 } from './studentResultsRepository';
-import { normalizeStudentResults, selectResults, selectResultSubjects } from './studentData';
 import { useStudentResultsQuery } from './studentQueries';
 
-type SortKey = 'date' | 'percentage' | 'subject';
-
-const chartPalette = ['#0f766e', '#7c3aed', '#d97706', '#2563eb', '#be123c', '#4f46e5'];
+const chartPalette = ['#071b3a', '#0f8aa6', '#d6a84f', '#f5efe3'];
 
 function formatPercent(value: number | null | undefined) {
   return value == null || !Number.isFinite(Number(value)) ? '--' : `${Number(value).toFixed(Number.isInteger(value) ? 0 : 1)}%`;
@@ -24,280 +23,442 @@ function formatMark(value: number | null | undefined) {
   return value == null || !Number.isFinite(Number(value)) ? '--' : Number(value).toFixed(Number.isInteger(value) ? 0 : 1);
 }
 
-function clampPercent(value: number | null | undefined) {
-  if (value == null || !Number.isFinite(Number(value))) return 0;
-  return Math.max(0, Math.min(100, Number(value)));
+function releasedResults(items: StudentResultItem[]) {
+  return items.filter((item) => Number.isFinite(Number(item.percentage)));
+}
+
+function sortByDate(items: StudentResultItem[]) {
+  return [...items].sort((left, right) => new Date(right.completedAt || right.markedAt || 0).getTime() - new Date(left.completedAt || left.markedAt || 0).getTime());
+}
+
+function getBestSubject(items: StudentResultItem[]) {
+  const bySubject = groupBySubject(items);
+  return [...bySubject.entries()]
+    .map(([subject, subjectItems]) => ({ subject, average: average(subjectItems.map((item) => item.percentage)), count: subjectItems.length }))
+    .filter((item) => item.average != null)
+    .sort((left, right) => Number(right.average) - Number(left.average) || left.subject.localeCompare(right.subject))[0] || null;
+}
+
+function getWeakestTopic(items: StudentResultItem[]) {
+  return items
+    .flatMap((item) => item.topicBreakdown.map((topic) => ({ ...topic, subject: topic.subject || item.subject })))
+    .filter((topic) => Number.isFinite(Number(topic.score)))
+    .sort((left, right) => Number(left.score) - Number(right.score) || left.topic.localeCompare(right.topic))[0] || null;
+}
+
+function groupBySubject(items: StudentResultItem[]) {
+  const bySubject = new Map<string, StudentResultItem[]>();
+  for (const item of items) {
+    bySubject.set(item.subject, [...(bySubject.get(item.subject) || []), item]);
+  }
+  return bySubject;
+}
+
+function average(values: number[]) {
+  const finite = values.filter(Number.isFinite);
+  return finite.length ? Math.round((finite.reduce((total, value) => total + value, 0) / finite.length) * 10) / 10 : null;
+}
+
+function consistencyScore(items: StudentResultItem[]) {
+  if (items.length < 2) return null;
+  const scores = items.map((item) => item.percentage);
+  const avg = average(scores);
+  if (avg == null) return null;
+  const variance = scores.reduce((total, score) => total + (score - avg) ** 2, 0) / scores.length;
+  return Math.max(0, Math.round(100 - Math.sqrt(variance)));
+}
+
+function trendLabel(items: StudentResultItem[]) {
+  const chronological = [...items].sort((left, right) => new Date(left.completedAt || left.markedAt || 0).getTime() - new Date(right.completedAt || right.markedAt || 0).getTime());
+  if (chronological.length < 2) return 'Needs two marks';
+  const first = chronological[0].percentage;
+  const latest = chronological[chronological.length - 1].percentage;
+  const delta = Math.round((latest - first) * 10) / 10;
+  return `${delta >= 0 ? '+' : ''}${delta}%`;
 }
 
 export function StudentResultsRoute() {
   const { data, loading, error, refetching, reload } = useStudentResultsQuery();
-  const [subjectFilter, setSubjectFilter] = useState('all');
-  const [sortKey, setSortKey] = useState<SortKey>('date');
-  const [query, setQuery] = useState('');
-
-  const normalizedResults = useMemo(() => normalizeStudentResults(data?.items || []), [data?.items]);
-  const subjects = useMemo(() => selectResultSubjects(normalizedResults), [normalizedResults]);
-  const filteredItems = useMemo(
-    () => selectResults(normalizedResults, { query, sort: sortKey, subject: subjectFilter }),
-    [normalizedResults, query, sortKey, subjectFilter],
-  );
+  const items = releasedResults(data?.items || []);
+  const latest = sortByDate(items)[0] || null;
+  const bestSubject = getBestSubject(items);
+  const weakestTopic = getWeakestTopic(items);
+  const consistency = consistencyScore(items);
 
   return (
     <PageShell
-      title="Results"
-      subtitle="Private academic analytics for your marks, trends, strengths, and anonymous class context."
+      title="Results Overview"
+      subtitle="A private summary of released marks, trends, strengths, and anonymous class context."
       section="student"
     >
       {loading ? <SkeletonCard /> : null}
-      {refetching ? <Card>Refreshing results dashboard...</Card> : null}
+      {refetching ? <Card>Refreshing results overview...</Card> : null}
       {error ? <ErrorState title="Results unavailable" description={error} onRetry={() => void reload()} /> : null}
       {data ? (
-        <>
-          <StaggerGrid className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <KpiCard label="Overall Score" value={formatPercent(data.summary.overallPercentage)} helper={`${formatMark(data.summary.totalMarksObtained)} / ${formatMark(data.summary.totalMarksAvailable)} total marks`} tone="teal" />
-            <KpiCard label="Assessment Average" value={formatPercent(data.summary.averageAcrossAssessments)} helper={`${data.items.length} completed assessment${data.items.length === 1 ? '' : 's'}`} tone="violet" />
-            <KpiCard label="Class Average" value={formatPercent(data.summary.classAverage)} helper={data.summary.differenceFromClassAverage == null ? 'Anonymous aggregate only' : `${data.summary.differenceFromClassAverage >= 0 ? '+' : ''}${formatPercent(data.summary.differenceFromClassAverage)} difference`} tone="amber" />
-            <KpiCard label="Academic Status" value={data.summary.currentAcademicStatus} helper={data.classAnalytics.positioning} tone="blue" />
+        <div className="space-y-5">
+          <Card>
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-center">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-aegean dark:text-brand-gold">Results oracle</p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-brand-obsidian dark:text-brand-parchment">Your mark movement, simplified</h2>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 dark:text-brand-marble">
+                  This overview uses released learner results only. Class analytics stay anonymous and are hidden until the privacy threshold is met.
+                </p>
+              </div>
+              <ProgressRing value={data.summary.overallPercentage} label="Overall average" />
+            </div>
+          </Card>
+
+          <StaggerGrid className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <PremiumResultMetric label="Overall Average" value={formatPercent(data.summary.averageAcrossAssessments)} explanation="Mean percentage across released results." tone="navy" />
+            <PremiumResultMetric label="Best Subject" value={bestSubject ? bestSubject.subject : 'Pending'} explanation={bestSubject ? `${formatPercent(bestSubject.average)} across ${bestSubject.count} result${bestSubject.count === 1 ? '' : 's'}.` : 'Appears once at least one subject has a released mark.'} tone="aegean" to={bestSubject ? `/student/results/subjects/${encodeURIComponent(bestSubject.subject)}` : undefined} />
+            <PremiumResultMetric label="Weakest Topic" value={weakestTopic?.topic || 'Pending'} explanation={weakestTopic ? `${formatPercent(weakestTopic.score)}. Use this as your next practice target.` : 'Topic-level data appears when released results include topic breakdowns.'} tone="gold" />
+            <PremiumResultMetric label="Latest Mark" value={latest ? formatPercent(latest.percentage) : '--'} explanation={latest ? `${latest.subject}: ${latest.title}.` : 'Latest released result appears here.'} tone="marble" to={latest ? `/student/results/${latest.id}` : undefined} />
+            <PremiumResultMetric label="Mark Trend" value={trendLabel(items)} explanation={items.length < 2 ? 'Needs at least two released marks to show movement.' : 'Change from earliest released result to latest released result.'} tone="navy" />
+            <PremiumResultMetric label="Consistency Score" value={consistency == null ? '--' : `${consistency}/100`} explanation={consistency == null ? 'Needs at least two results.' : 'Higher means marks are steadier across assessments.'} tone="aegean" />
           </StaggerGrid>
 
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
             <Card>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Subject breakdown</h2>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Performance grouped by subject, calculated from your own released results.</p>
+                  <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Mark Trend</h2>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Movement over time from your released results only.</p>
                 </div>
-                <ProgressRing value={data.summary.overallPercentage} label="Overall score" />
+                <span className="rounded-full bg-brand-parchment px-3 py-1 text-xs font-semibold text-brand-obsidian">{items.length} result{items.length === 1 ? '' : 's'}</span>
               </div>
-              <StaggerGrid className="mt-5 grid gap-3 md:grid-cols-2">
-                {data.subjectBreakdown.map((item, index) => <StaggerItem key={item.subject}><SubjectCard item={item} color={chartPalette[index % chartPalette.length]} /></StaggerItem>)}
-                {!data.subjectBreakdown.length ? <EmptyState title="No subject data yet" description="Subject performance appears after marked results are released." /> : null}
-              </StaggerGrid>
+              <LearnerTrendChart items={items} />
             </Card>
 
             <Card>
-              <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Strengths and focus areas</h2>
-              <div className="mt-5 grid gap-4">
-                <InsightList title="Strong Areas" items={data.strengths.topics.length ? data.strengths.topics : data.strengths.subjects.map(subjectAsTopic)} empty="Strong topics will appear after more results." tone="strong" />
-                <InsightList title="Needs Improvement" items={data.improvementAreas.topics.length ? data.improvementAreas.topics : data.improvementAreas.subjects.map(subjectAsTopic)} empty="Improvement areas will appear after more results." tone="focus" />
-              </div>
-            </Card>
-          </section>
-
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-            <Card>
-              <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Anonymous class overview</h2>
-              {data.classAnalytics.available && data.classAnalytics.overview ? (
-                <>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <MiniMetric label="Class Average" value={formatPercent(data.classAnalytics.overview.classAverage)} />
-                    <MiniMetric label="Highest Score" value={formatPercent(data.classAnalytics.overview.highestScore)} />
-                    <MiniMetric label="Lowest Score" value={formatPercent(data.classAnalytics.overview.lowestScore)} />
-                    <MiniMetric label="Pass Rate" value={formatPercent(data.classAnalytics.overview.passRate)} />
-                    <MiniMetric label="Learners" value={String(data.classAnalytics.overview.numberOfLearners)} />
-                    <MiniMetric label="Assessments" value={String(data.classAnalytics.overview.assessmentCount)} />
-                  </div>
-                  <p className="mt-4 rounded-2xl bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-900 dark:bg-teal-950/40 dark:text-teal-100">{data.classAnalytics.positioning}</p>
-                </>
-              ) : (
-                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-4 text-sm leading-6 text-slate-600 dark:border-slate-700 dark:text-slate-300">
-                  Anonymous class analytics are hidden until at least {data.classAnalytics.privacyThreshold} learners are represented.
-                </div>
-              )}
-            </Card>
-
-            <Card>
-              <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Mark distribution</h2>
-              <DistributionChart buckets={data.classAnalytics.distribution} />
-            </Card>
-          </section>
-
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <Card>
-              <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Class trend</h2>
-              <LineChart points={data.classAnalytics.trends.map((point) => ({ label: formatDate(point.period), value: point.average ?? 0 }))} empty="Class trends will appear once aggregate history is available." />
-            </Card>
-            <Card>
-              <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Subject-wide trends</h2>
-              <HorizontalBars items={data.classAnalytics.subjectTrends.map((item) => ({ label: item.subject, value: item.average ?? 0, helper: `${item.assessments} assessments` }))} empty="Subject-wide anonymous trends are not available yet." />
+              <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Anonymous Class Context</h2>
+              <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">No classmate names or individual marks are shown.</p>
+              <ClassAnalyticsSummary data={data.classAnalytics} buckets={data.classAnalytics.distribution} />
             </Card>
           </section>
 
           <Card>
-            <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Assessment history</h2>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Only your own assessments, marks, and feedback are shown here.</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <input className="h-10 rounded-2xl border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter feedback" />
-                <select className="h-10 rounded-2xl border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
-                  {subjects.map((subject) => <option key={subject} value={subject}>{subject === 'all' ? 'All subjects' : subject}</option>)}
-                </select>
-                <select className="h-10 rounded-2xl border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
-                  <option value="date">Newest first</option>
-                  <option value="percentage">Highest mark</option>
-                  <option value="subject">Subject</option>
-                </select>
+                <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Subjects</h2>
+                <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Open a subject to see all released results for that subject.</p>
               </div>
             </div>
-            <AssessmentTable items={filteredItems} />
+            <SubjectSummaryGrid items={items} />
           </Card>
-        </>
+        </div>
       ) : null}
     </PageShell>
   );
 }
 
-function KpiCard({ label, value, helper, tone }: { label: string; value: string; helper: string; tone: 'teal' | 'violet' | 'amber' | 'blue' }) {
-  const metricTone = ({
-    teal: 'aegean',
-    violet: 'navy',
-    amber: 'gold',
-    blue: 'marble',
-  } as const)[tone];
-  return <StaggerItem><MetricCard label={label} value={value} helper={helper} tone={metricTone} /></StaggerItem>;
-}
-function SubjectCard({ item, color }: { item: SubjectBreakdownItem; color: string }) {
+export function StudentResultDetailRoute() {
+  const { resultId } = useParams();
+  const { data, loading, error, reload } = useStudentResultsQuery();
+  const result = releasedResults(data?.items || []).find((item) => item.id === resultId) || null;
+
   return (
-    <InsightCard title={item.subject}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatPercent(item.score)}</p>
-      </div>
-      <div className="mt-3"><AnimatedProgressBar value={item.score} color={color} /></div>
-      <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{item.assessments} assessment{item.assessments === 1 ? '' : 's'} - {formatMark(item.marksObtained)} / {formatMark(item.marksAvailable)} marks</p>
-    </InsightCard>
+    <PageShell title="Result Detail" subtitle="Full private mark breakdown and practice guidance for one released result." section="student">
+      <BackToResults />
+      {loading ? <SkeletonCard /> : null}
+      {error ? <ErrorState title="Result unavailable" description={error} onRetry={() => void reload()} /> : null}
+      {data && !result ? <Card><EmptyState title="Result not found" description="This result is not available for the signed-in learner." /></Card> : null}
+      {result ? <ResultDetail result={result} /> : null}
+    </PageShell>
   );
 }
 
-function subjectAsTopic(item: SubjectBreakdownItem): StudentResultTopic {
-  return { topic: item.subject, subject: 'Subject', score: item.score ?? 0 };
+export function StudentResultsSubjectRoute() {
+  const { subject } = useParams();
+  const decodedSubject = decodeURIComponent(subject || '');
+  const { data, loading, error, reload } = useStudentResultsQuery();
+  const items = releasedResults(data?.items || []).filter((item) => item.subject === decodedSubject);
+
+  return (
+    <PageShell title={`${decodedSubject || 'Subject'} Results`} subtitle="All released results for this subject, shown only for the signed-in learner." section="student">
+      <BackToResults />
+      {loading ? <SkeletonCard /> : null}
+      {error ? <ErrorState title="Subject results unavailable" description={error} onRetry={() => void reload()} /> : null}
+      {data ? (
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-aegean dark:text-brand-gold">Subject archive</p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-100">{decodedSubject}</h2>
+              <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">{items.length} released result{items.length === 1 ? '' : 's'} for this subject.</p>
+            </div>
+            <ProgressRing value={average(items.map((item) => item.percentage))} label="Subject average" />
+          </div>
+          <ResultList items={items} emptyTitle="No released results for this subject" />
+        </Card>
+      ) : null}
+    </PageShell>
+  );
 }
 
-function InsightList({ title, items, empty, tone }: { title: string; items: StudentResultTopic[]; empty: string; tone: 'strong' | 'focus' }) {
-  return (
-    <div>
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{title}</h3>
-      <div className="mt-3 space-y-2">
-        {items.slice(0, 4).map((item) => (
-          <div key={`${item.subject}-${item.topic}`} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2 dark:bg-slate-900">
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{item.topic}</span>
-              {item.subject ? <span className="text-xs text-slate-500 dark:text-slate-400">{item.subject}</span> : null}
-            </span>
-            <span className={`text-sm font-semibold ${tone === 'strong' ? 'text-teal-700 dark:text-teal-300' : 'text-amber-700 dark:text-amber-300'}`}>{formatPercent(item.score)}</span>
-          </div>
-        ))}
-        {!items.length ? <p className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{empty}</p> : null}
+function PremiumResultMetric({
+  label,
+  value,
+  explanation,
+  tone,
+  to,
+}: {
+  label: string;
+  value: string;
+  explanation: string;
+  tone: 'navy' | 'aegean' | 'gold' | 'marble';
+  to?: string;
+}) {
+  const toneClass = {
+    navy: 'border-brand-navy bg-brand-navy text-white',
+    aegean: 'border-brand-aegean/40 bg-brand-aegean/10 text-brand-obsidian dark:text-brand-parchment',
+    gold: 'border-brand-gold/60 bg-brand-gold/15 text-brand-obsidian dark:text-brand-parchment',
+    marble: 'border-brand-marble bg-white text-brand-obsidian dark:bg-brand-obsidian dark:text-brand-parchment',
+  }[tone];
+  const content = (
+    <article className={`h-full rounded-[1.6rem] border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${toneClass}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-75">{label}</p>
+      <h3 className="mt-3 text-3xl font-semibold tracking-tight">{value}</h3>
+      <p className="mt-3 text-sm leading-6 opacity-80">{explanation}</p>
+    </article>
+  );
+
+  return <StaggerItem>{to ? <Link to={to}>{content}</Link> : content}</StaggerItem>;
+}
+
+function LearnerTrendChart({ items }: { items: StudentResultItem[] }) {
+  const chronological = [...items].sort((left, right) => new Date(left.completedAt || left.markedAt || 0).getTime() - new Date(right.completedAt || right.markedAt || 0).getTime());
+  if (!chronological.length) return <EmptyState title="No released marks yet" description="Your trend chart appears after your first released result." />;
+  if (chronological.length === 1) {
+    return (
+      <div className="mt-5 rounded-[1.5rem] border border-brand-marble bg-brand-parchment/60 p-5">
+        <p className="text-sm font-semibold text-brand-obsidian">First mark recorded: {formatPercent(chronological[0].percentage)}</p>
+        <p className="mt-2 text-sm text-slate-600">A trend line needs at least two released marks.</p>
       </div>
+    );
+  }
+
+  const width = 640;
+  const height = 220;
+  const pad = 24;
+  const coords = chronological.map((item, index) => {
+    const x = pad + (index / Math.max(1, chronological.length - 1)) * (width - pad * 2);
+    const y = height - pad - (item.percentage / 100) * (height - pad * 2);
+    return { ...item, x, y };
+  });
+
+  return (
+    <div className="mt-5 overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-brand-navy via-brand-deepBlue to-brand-aegean p-4 text-brand-parchment">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-64 w-full" role="img" aria-label="Learner mark movement over time">
+        <polyline fill="none" stroke="#d6a84f" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" points={coords.map((point) => `${point.x},${point.y}`).join(' ')} />
+        {coords.map((point) => <circle key={point.id} cx={point.x} cy={point.y} r="5" fill="#f5efe3" />)}
+      </svg>
+      <div className="flex justify-between gap-3 text-xs">
+        <span>{formatDate(chronological[0].completedAt || chronological[0].markedAt)}</span>
+        <span>{formatDate(chronological[chronological.length - 1].completedAt || chronological[chronological.length - 1].markedAt)}</span>
+      </div>
+    </div>
+  );
+}
+
+function ClassAnalyticsSummary({ data, buckets }: { data: { available: boolean; privacyThreshold: number; overview: { classAverage: number | null; numberOfLearners: number } | null; positioning: string }; buckets: ClassDistributionBucket[] }) {
+  if (!data.available || !data.overview) {
+    return (
+      <div className="mt-4 rounded-2xl border border-dashed border-brand-marble p-4 text-sm leading-6 text-slate-600 dark:text-brand-marble">
+        Anonymous class analytics are hidden until at least {data.privacyThreshold} learners are represented.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MiniMetric label="Class average" value={formatPercent(data.overview.classAverage)} />
+        <MiniMetric label="Learners" value={String(data.overview.numberOfLearners)} />
+      </div>
+      <DistributionBars buckets={buckets} />
+      <p className="rounded-2xl bg-brand-parchment px-4 py-3 text-sm font-semibold text-brand-obsidian">{data.positioning}</p>
+    </div>
+  );
+}
+
+function DistributionBars({ buckets }: { buckets: ClassDistributionBucket[] }) {
+  const max = Math.max(1, ...buckets.map((bucket) => bucket.count));
+  return (
+    <div className="flex h-32 items-end gap-2 rounded-2xl bg-brand-parchment/60 p-3">
+      {buckets.map((bucket) => (
+        <div key={bucket.range} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+          <div className="flex h-20 w-full items-end">
+            <div className={`w-full rounded-t-md ${bucket.isLearnerBucket ? 'bg-brand-gold' : 'bg-brand-aegean/30'}`} style={{ height: `${Math.max(8, (bucket.count / max) * 100)}%` }} />
+          </div>
+          <span className="text-[10px] font-semibold text-slate-600">{bucket.range}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SubjectSummaryGrid({ items }: { items: StudentResultItem[] }) {
+  const bySubject = groupBySubject(items);
+  const subjects = [...bySubject.entries()];
+  if (!subjects.length) return <EmptyState title="No subject summaries yet" description="Subject summaries appear when released results are available." />;
+
+  return (
+    <StaggerGrid className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {subjects.map(([subject, subjectItems], index) => {
+        const subjectAverage = average(subjectItems.map((item) => item.percentage));
+        return (
+          <StaggerItem key={subject}>
+            <Link className="block rounded-[1.5rem] border border-brand-marble bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-gold hover:shadow-lg dark:bg-brand-obsidian" to={`/student/results/subjects/${encodeURIComponent(subject)}`}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">{subject}</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-100">{formatPercent(subjectAverage)}</p>
+              <div className="mt-3"><AnimatedProgressBar value={subjectAverage || 0} color={chartPalette[index % chartPalette.length]} /></div>
+              <p className="mt-3 text-sm text-slate-600 dark:text-brand-marble">{subjectItems.length} released result{subjectItems.length === 1 ? '' : 's'}</p>
+            </Link>
+          </StaggerItem>
+        );
+      })}
+    </StaggerGrid>
+  );
+}
+
+function ResultDetail({ result }: { result: StudentResultItem }) {
+  return (
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <Card>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-aegean dark:text-brand-gold">Released result</p>
+        <h1 className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{result.title}</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-brand-marble">{result.subject} - {formatDate(result.completedAt || result.markedAt)}</p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <MiniMetric label="Mark" value={`${formatMark(result.score)} / ${formatMark(result.total)}`} />
+          <MiniMetric label="Percentage" value={formatPercent(result.percentage)} />
+          <MiniMetric label="Band" value={result.levelBand || 'Pending'} />
+        </div>
+        <section className="mt-6">
+          <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Topic Breakdown</h2>
+          <TopicBreakdown topics={result.topicBreakdown} />
+        </section>
+      </Card>
+
+      <aside className="space-y-5">
+        <Card>
+          <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Cognitive Level Breakdown</h2>
+          <CognitiveBreakdown levels={result.cognitiveBreakdown} />
+        </Card>
+        <Card>
+          <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Practice Recommendation</h2>
+          <PracticeRecommendation levels={result.cognitiveBreakdown} fallbackSteps={result.recommendedNextSteps} />
+        </Card>
+      </aside>
+
+      <Card>
+        <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Feedback</h2>
+        <p className="mt-3 rounded-2xl bg-brand-parchment/70 p-4 text-sm leading-7 text-slate-700 dark:bg-brand-navy/70 dark:text-brand-marble">{result.feedbackSummary || 'No written feedback supplied.'}</p>
+      </Card>
+    </div>
+  );
+}
+
+function CognitiveBreakdown({ levels }: { levels: StudentResultCognitiveLevel[] }) {
+  const byLevel = new Map(levels.map((item) => [item.level, item]));
+  if (!levels.length) return <EmptyState title="No cognitive data yet" description="Older results may not include CAPS cognitive-level marks." />;
+
+  return (
+    <div className="mt-4 space-y-3">
+      {cognitiveLevelOrder.map((level) => {
+        const item = byLevel.get(level);
+        const score = item?.score ?? null;
+        const weak = score != null && score < 50;
+        return (
+          <div key={level} className={`rounded-2xl border p-3 ${weak ? 'border-amber-300 bg-amber-50 text-amber-950' : 'border-brand-marble bg-white dark:bg-brand-obsidian'}`}>
+            <div className="flex justify-between gap-3 text-sm font-semibold">
+              <span>{level}</span>
+              <span>{formatPercent(score)}</span>
+            </div>
+            <div className="mt-2"><AnimatedProgressBar value={score || 0} color={weak ? '#d97706' : '#0f8aa6'} /></div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PracticeRecommendation({ levels, fallbackSteps }: { levels: StudentResultCognitiveLevel[]; fallbackSteps: string[] }) {
+  const weak = [...levels].filter((item) => item.score != null && item.score < 50).sort((left, right) => Number(left.score) - Number(right.score))[0];
+  if (weak) {
+    return (
+      <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-brand-marble">
+        Practice more {questionTypeForLevel(weak.level)} questions first. This targets {weak.level}, currently at {formatPercent(weak.score)}.
+      </p>
+    );
+  }
+  if (fallbackSteps.length) {
+    return <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-600 dark:text-brand-marble">{fallbackSteps.map((step) => <li key={step}>{step}</li>)}</ul>;
+  }
+  return <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-brand-marble">Keep a balanced revision mix: definitions, routine drills, multi-step questions, and one problem-solving question.</p>;
+}
+
+function questionTypeForLevel(level: CognitiveLevelName) {
+  const map: Record<CognitiveLevelName, string> = {
+    Knowledge: 'definition, fact recall, and formula recognition',
+    'Routine Procedure': 'standard method and substitution',
+    'Complex Procedure': 'multi-step application',
+    'Problem Solving': 'unfamiliar, exam-style problem-solving',
+  };
+  return map[level] || 'targeted practice';
+}
+
+function TopicBreakdown({ topics }: { topics: StudentResultTopic[] }) {
+  if (!topics.length) return <EmptyState title="No topic breakdown" description="Older results may only include the overall mark." />;
+  return (
+    <div className="mt-4 space-y-3">
+      {topics.map((topic, index) => (
+        <div key={`${topic.subject}-${topic.topic}`} className="rounded-2xl bg-brand-parchment/60 p-3">
+          <div className="flex justify-between gap-3 text-sm font-semibold text-brand-obsidian">
+            <span>{topic.topic}</span>
+            <span>{formatPercent(topic.score)}</span>
+          </div>
+          <div className="mt-2"><AnimatedProgressBar value={topic.score} color={chartPalette[index % chartPalette.length]} /></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ResultList({ items, emptyTitle }: { items: StudentResultItem[]; emptyTitle: string }) {
+  if (!items.length) return <EmptyState title={emptyTitle} description="Released results will appear here once available." />;
+  return (
+    <div className="mt-5 space-y-3">
+      {sortByDate(items).map((item) => (
+        <Link key={item.id} className="block rounded-[1.5rem] border border-brand-marble bg-white p-4 transition hover:border-brand-gold hover:shadow-lg dark:bg-brand-obsidian" to={`/student/results/${item.id}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold text-slate-950 dark:text-slate-100">{item.title}</p>
+              <p className="text-sm text-slate-600 dark:text-brand-marble">{formatDate(item.completedAt || item.markedAt)}</p>
+            </div>
+            <p className="text-xl font-semibold text-brand-aegean dark:text-brand-gold">{formatPercent(item.percentage)}</p>
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-900">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+    <div className="rounded-2xl bg-brand-parchment/70 p-3 dark:bg-brand-navy/60">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">{label}</p>
       <p className="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">{value}</p>
     </div>
   );
 }
 
-function DistributionChart({ buckets }: { buckets: ClassDistributionBucket[] }) {
-  const max = Math.max(1, ...buckets.map((bucket) => bucket.count));
+function BackToResults() {
   return (
-    <div className="mt-5 flex h-64 items-end gap-2 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900">
-      {buckets.map((bucket) => (
-        <div key={bucket.range} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-          <div className="flex h-44 w-full items-end">
-            <div
-              className={`w-full rounded-t-md ${bucket.isLearnerBucket ? 'bg-teal-600' : 'bg-slate-300 dark:bg-slate-700'}`}
-              style={{ height: `${Math.max(8, (bucket.count / max) * 100)}%` }}
-              title={`${bucket.range}: ${bucket.count}`}
-            />
-          </div>
-          <span className="text-center text-[11px] font-semibold text-slate-600 dark:text-slate-300">{bucket.range}</span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">{bucket.count}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function LineChart({ points, empty }: { points: Array<{ label: string; value: number }>; empty: string }) {
-  if (points.length < 2) return <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{empty}</p>;
-  const width = 640;
-  const height = 220;
-  const pad = 24;
-  const max = Math.max(100, ...points.map((point) => point.value));
-  const min = Math.min(0, ...points.map((point) => point.value));
-  const coords = points.map((point, index) => {
-    const x = pad + (index / Math.max(1, points.length - 1)) * (width - pad * 2);
-    const y = height - pad - ((point.value - min) / Math.max(1, max - min)) * (height - pad * 2);
-    return { ...point, x, y };
-  });
-  return (
-    <div className="mt-4 overflow-hidden rounded-2xl bg-slate-50 p-3 dark:bg-slate-900">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-64 w-full" role="img" aria-label="Class average trend">
-        <polyline fill="none" stroke="#0f766e" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" points={coords.map((point) => `${point.x},${point.y}`).join(' ')} />
-        {coords.map((point) => <circle key={point.label} cx={point.x} cy={point.y} r="5" fill="#7c3aed" />)}
-      </svg>
-      <div className="flex justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
-        <span>{points[0].label}</span>
-        <span>{points[points.length - 1].label}</span>
-      </div>
-    </div>
-  );
-}
-
-function HorizontalBars({ items, empty }: { items: Array<{ label: string; value: number; helper: string }>; empty: string }) {
-  if (!items.length) return <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{empty}</p>;
-  return (
-    <div className="mt-4 space-y-3">
-      {items.map((item, index) => (
-        <div key={item.label}>
-          <div className="flex justify-between gap-3 text-sm">
-            <span className="font-semibold text-slate-900 dark:text-slate-100">{item.label}</span>
-            <span className="text-slate-600 dark:text-slate-300">{formatPercent(item.value)} - {item.helper}</span>
-          </div>
-          <div className="mt-2"><AnimatedProgressBar value={clampPercent(item.value)} color={chartPalette[index % chartPalette.length]} /></div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function AssessmentTable({ items }: { items: StudentResultItem[] }) {
-  if (!items.length) return <div className="mt-5"><EmptyState title="No results match" description="Try changing the filter or wait for marked assessments to be released." /></div>;
-  return (
-    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-            <tr>
-              <th className="px-4 py-3">Assignment</th>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Mark</th>
-              <th className="px-4 py-3">Percentage</th>
-              <th className="px-4 py-3">Feedback</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
-            {items.map((item) => (
-              <tr key={item.id}>
-                <td className="px-4 py-3">
-                  <p className="font-semibold text-slate-950 dark:text-slate-100">{item.title}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{item.subject}</p>
-                </td>
-                <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{formatDate(item.completedAt || item.markedAt || item.submittedAt)}</td>
-                <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{formatMark(item.score)} / {formatMark(item.total)}</td>
-                <td className="px-4 py-3 font-semibold text-teal-700 dark:text-teal-300">{formatPercent(item.percentage)}</td>
-                <td className="max-w-md px-4 py-3 text-slate-700 dark:text-slate-300">{item.feedbackSummary || 'No written feedback supplied.'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="mb-4">
+      <Link className="text-sm font-semibold text-brand-aegean hover:text-brand-gold dark:text-brand-gold" to="/student/results">
+        Back to results overview
+      </Link>
     </div>
   );
 }
