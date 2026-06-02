@@ -2,13 +2,12 @@ import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
-import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatDate } from '../../lib/utils/format';
 import type { StudentProgress } from '../../types/lms';
-import { loadStudentDashboard } from './studentDashboardRepository';
+import { useStudentDashboardQuery } from './studentQueries';
 
 export function StudentProgressRoute() {
-  const { data, loading, error, reload } = useAsyncResource(loadStudentDashboard, []);
+  const { data, loading, error, refetching, reload } = useStudentDashboardQuery();
 
   return (
     <DashboardShell
@@ -23,6 +22,7 @@ export function StudentProgressRoute() {
       ) : null}
       <Card>
         {loading ? <p className="text-sm text-slate-600">Loading progress...</p> : null}
+        {refetching ? <p className="text-sm font-semibold text-blue-700">Refreshing progress...</p> : null}
         {error ? (
           <div>
             <h2 className="text-lg font-semibold text-slate-950">Progress unavailable</h2>

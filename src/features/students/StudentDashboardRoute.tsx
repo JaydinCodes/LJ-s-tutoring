@@ -1,7 +1,6 @@
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { sortAssignmentsByPriority } from '../assignments/assignmentStatus';
 import {
   AssignmentsDueSection,
@@ -10,10 +9,10 @@ import {
   StudentWelcomeCard,
   SubmittedAssignmentsList,
 } from './StudentDashboardComponents';
-import { loadStudentDashboard } from './studentDashboardRepository';
+import { useStudentDashboardQuery } from './studentQueries';
 
 export function StudentDashboardRoute() {
-  const { data, loading, error, reload } = useAsyncResource(loadStudentDashboard, []);
+  const { data, loading, error, refetching, reload } = useStudentDashboardQuery();
   const submissionsByAssignment = new Map((data?.submissions || []).map((item) => [item.assignment_id, item]));
   const assignmentsById = new Map((data?.assignments || []).map((item) => [item.id, item]));
   const sortedAssignments = data ? sortAssignmentsByPriority(data.assignments, submissionsByAssignment) : [];
@@ -26,6 +25,7 @@ export function StudentDashboardRoute() {
       subtitle="A React-first learner view for assignments, progress, class context, and submission status."
       section="student"
     >
+      {refetching ? <p className="text-sm font-semibold text-blue-700">Refreshing dashboard...</p> : null}
       {loading ? <DashboardSkeleton /> : null}
       {error ? (
         <Card>
@@ -52,7 +52,6 @@ export function StudentDashboardRoute() {
                   <AssignmentsDueSection
                     assignments={data.assignments}
                     submissionsByAssignment={submissionsByAssignment}
-                    onSubmitted={reload}
                     limit={4}
                   />
                 </div>

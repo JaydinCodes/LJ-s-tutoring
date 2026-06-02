@@ -4,23 +4,8 @@ import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextArea } from '../../components/ui/FormField';
-import { useAsyncResource } from '../../hooks/useAsyncResource';
-import { apiPost, optionalApiGet } from '../../lib/api/client';
-import careersDataset from '../../../lms-api/data/odie-careers/careers.v1.json';
-import coursesDataset from '../../../lms-api/data/odie-careers/courses.v1.json';
-
-interface CareerOverview {
-  careers?: Array<{ id: string; title: string; description?: string; category?: string }>;
-  supportedSubjects?: string[];
-}
-
-async function loadCareersOverview() {
-  const fallback = {
-    careers: careersDataset.careers,
-    supportedSubjects: coursesDataset.supportedSubjects,
-  };
-  return optionalApiGet<CareerOverview>('/odie-careers/overview', fallback);
-}
+import { apiPost } from '../../lib/api/client';
+import { useStudentCareersQuery } from './studentQueries';
 
 async function askCareersAssistant(message: string, history: Array<{ role: 'user' | 'assistant'; text: string }>) {
   return apiPost<{ message?: string; text?: string }>('/assistant/careers-chat', {
@@ -37,7 +22,7 @@ async function askCareersAssistant(message: string, history: Array<{ role: 'user
 }
 
 export function StudentCareersRoute() {
-  const { data, loading, error, reload } = useAsyncResource(loadCareersOverview, []);
+  const { data, loading, error, refetching, reload } = useStudentCareersQuery();
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [chat, setChat] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([
@@ -97,7 +82,7 @@ export function StudentCareersRoute() {
                 <h2 className="text-xl font-semibold text-slate-950">Popular pathways</h2>
                 <p className="mt-1 text-sm text-slate-600">Loaded from the existing careers service during the React consolidation.</p>
               </div>
-              <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Refresh</button>
+              <button disabled={refetching} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" onClick={() => void reload()}>{refetching ? 'Refreshing...' : 'Refresh'}</button>
             </div>
             {loading ? <p className="mt-4 text-sm text-slate-600">Loading careers...</p> : null}
             {error ? <p className="mt-4 text-sm font-semibold text-red-700">{error}</p> : null}

@@ -2,15 +2,14 @@ import { useMemo, useState } from 'react';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatDate } from '../../lib/utils/format';
 import {
-  loadStudentResultsAnalytics,
   type ClassDistributionBucket,
   type StudentResultItem,
   type StudentResultTopic,
   type SubjectBreakdownItem,
 } from './studentResultsRepository';
+import { useStudentResultsQuery } from './studentQueries';
 
 type SortKey = 'date' | 'percentage' | 'subject';
 
@@ -30,7 +29,7 @@ function clampPercent(value: number | null | undefined) {
 }
 
 export function StudentResultsRoute() {
-  const { data, loading, error, reload } = useAsyncResource(loadStudentResultsAnalytics, []);
+  const { data, loading, error, refetching, reload } = useStudentResultsQuery();
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [query, setQuery] = useState('');
@@ -55,6 +54,7 @@ export function StudentResultsRoute() {
       section="student"
     >
       {loading ? <Card>Loading results dashboard...</Card> : null}
+      {refetching ? <Card>Refreshing results dashboard...</Card> : null}
       {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
       {data ? (
         <>

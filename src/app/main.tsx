@@ -1,9 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from '../features/auth/AuthProvider';
 import { SmoothScroll } from '../components/animations/SmoothScroll';
+import { queryClient } from '../lib/query/client';
 import '../styles/tailwind.css';
 
 const rootNode = document.getElementById('root');
@@ -14,12 +16,14 @@ if (!rootNode) {
 
 ReactDOM.createRoot(rootNode).render(
   <React.StrictMode>
-    <SmoothScroll>
-      <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
-    </SmoothScroll>
+    <QueryClientProvider client={queryClient}>
+      <SmoothScroll>
+        <BrowserRouter>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </BrowserRouter>
+      </SmoothScroll>
+    </QueryClientProvider>
   </React.StrictMode>,
 );

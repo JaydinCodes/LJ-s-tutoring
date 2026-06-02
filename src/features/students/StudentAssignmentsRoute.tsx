@@ -1,11 +1,10 @@
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
-import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { AssignmentsDueSection, SubmittedAssignmentsList } from './StudentDashboardComponents';
-import { loadStudentDashboard } from './studentDashboardRepository';
+import { useStudentDashboardQuery } from './studentQueries';
 
 export function StudentAssignmentsRoute() {
-  const { data, loading, error, reload } = useAsyncResource(loadStudentDashboard, []);
+  const { data, loading, error, refetching, reload } = useStudentDashboardQuery();
   const submissionByAssignment = new Map((data?.submissions || []).map((item) => [item.assignment_id, item]));
   const assignmentsById = new Map((data?.assignments || []).map((item) => [item.id, item]));
 
@@ -17,6 +16,7 @@ export function StudentAssignmentsRoute() {
     >
       <Card>
         {loading ? <p className="text-sm text-slate-600">Loading assignments...</p> : null}
+        {refetching ? <p className="text-sm font-semibold text-blue-700">Refreshing assignments...</p> : null}
         {error ? (
           <div>
             <h2 className="text-lg font-semibold text-slate-950">Assignments unavailable</h2>
@@ -28,7 +28,6 @@ export function StudentAssignmentsRoute() {
           <AssignmentsDueSection
             assignments={data.assignments}
             submissionsByAssignment={submissionByAssignment}
-            onSubmitted={reload}
           />
         ) : null}
       </Card>

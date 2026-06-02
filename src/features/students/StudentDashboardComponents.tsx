@@ -12,7 +12,7 @@ import {
   getAssignmentStatusLabel,
   sortAssignmentsByPriority,
 } from '../assignments/assignmentStatus';
-import { submitAssignment } from '../assignments/assignmentMutations';
+import { useSubmitStudentAssignmentMutation } from './studentQueries';
 
 export function StudentWelcomeCard({
   data,
@@ -104,12 +104,10 @@ function SummaryCard({ label, value, helper, tone }: { label: string; value: str
 export function AssignmentsDueSection({
   assignments,
   submissionsByAssignment,
-  onSubmitted,
   limit,
 }: {
   assignments: Assignment[];
   submissionsByAssignment: Map<string, AssignmentSubmission>;
-  onSubmitted: () => Promise<void>;
   limit?: number;
 }) {
   const sorted = useMemo(() => sortAssignmentsByPriority(assignments, submissionsByAssignment), [assignments, submissionsByAssignment]);
@@ -122,7 +120,6 @@ export function AssignmentsDueSection({
           key={assignment.id}
           assignment={assignment}
           submission={submissionsByAssignment.get(assignment.id)}
-          onSubmitted={onSubmitted}
         />
       ))}
       {!visible.length ? (
@@ -138,11 +135,9 @@ export function AssignmentsDueSection({
 export function AssignmentDueCard({
   assignment,
   submission,
-  onSubmitted,
 }: {
   assignment: Assignment;
   submission?: AssignmentSubmission;
-  onSubmitted: () => Promise<void>;
 }) {
   const status = calculateAssignmentStatus({ assignment, submission });
   const dueDelta = daysUntil(assignment.due_date);
@@ -164,7 +159,7 @@ export function AssignmentDueCard({
         <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700">{assignment.description}</p>
       ) : null}
       {submission ? <SubmissionPreview submission={submission} /> : null}
-      <AssignmentUploadPanel assignment={assignment} submission={submission} disabled={isClosed} onSubmitted={onSubmitted} />
+      <AssignmentUploadPanel assignment={assignment} submission={submission} disabled={isClosed} />
     </article>
   );
 }
@@ -203,19 +198,18 @@ export function AssignmentUploadPanel({
   assignment,
   submission,
   disabled,
-  onSubmitted,
 }: {
   assignment: Assignment;
   submission?: AssignmentSubmission;
   disabled?: boolean;
-  onSubmitted: () => Promise<void>;
 }) {
   const [textAnswer, setTextAnswer] = useState(submission?.text_answer || '');
   const [file, setFile] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resubmissionConfirmed, setResubmissionConfirmed] = useState(false);
+  const submitAssignmentMutation = useSubmitStudentAssignmentMutation();
+  const busy = submitAssignmentMutation.isPending;
   const needsConfirmation = Boolean(submission);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -229,17 +223,13 @@ export function AssignmentUploadPanel({
       return;
     }
 
-    setBusy(true);
     try {
-      await submitAssignment({ assignmentId: assignment.id, textAnswer, file });
+      await submitAssignmentMutation.mutateAsync({ assignmentId: assignment.id, textAnswer, file });
       setFile(null);
       setResubmissionConfirmed(false);
       setMessage(submission ? 'Resubmission saved.' : 'Submission saved.');
-      await onSubmitted();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not submit assignment.');
-    } finally {
-      setBusy(false);
     }
   }
 
