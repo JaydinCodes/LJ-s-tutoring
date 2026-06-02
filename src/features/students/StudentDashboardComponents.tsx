@@ -1,10 +1,12 @@
 import type { FormEvent } from 'react';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useDropzone, type FileRejection } from 'react-dropzone';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { GreekHeroCard, InsightCard, PremiumButton, StaggerGrid, StaggerItem, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
+import { FormField, TextArea } from '../../components/ui/FormField';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { formatDate } from '../../lib/utils/format';
 import type { Assignment, AssignmentSubmission, StudentDashboardView, StudentProgress } from '../../types/lms';
@@ -392,12 +394,56 @@ export function AssignmentUploadPanel({
 }) {
   const [textAnswer, setTextAnswer] = useState(submission?.text_answer || '');
   const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resubmissionConfirmed, setResubmissionConfirmed] = useState(false);
   const submitAssignmentMutation = useSubmitStudentAssignmentMutation();
   const busy = submitAssignmentMutation.isPending;
   const needsConfirmation = Boolean(submission);
+  const isImagePreview = file ? ['image/jpeg', 'image/png'].includes(file.type) : false;
+
+  const setSelectedFile = useCallback((nextFile: File | null) => {
+    setFile(nextFile);
+    setFileError(nextFile ? getClientFileError(nextFile) : null);
+    setMessage(null);
+    setError(null);
+  }, []);
+
+  const onDropAccepted = useCallback((acceptedFiles: File[]) => {
+    setSelectedFile(acceptedFiles[0] || null);
+  }, [setSelectedFile]);
+
+  const onDropRejected = useCallback((rejections: FileRejection[]) => {
+    const rejectedFile = rejections[0]?.file || null;
+    setFile(null);
+    setFileError(formatDropzoneError(rejections[0]) || (rejectedFile ? getClientFileError(rejectedFile) : 'Upload PDF, JPG, or PNG files only.'));
+    setMessage(null);
+    setError(null);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    accept: acceptedUploadTypes,
+    disabled: disabled || busy,
+    maxFiles: 1,
+    maxSize: maxUploadBytes,
+    multiple: false,
+    noClick: true,
+    onDropAccepted,
+    onDropRejected,
+  });
+
+  useEffect(() => {
+    if (!file || !isImagePreview) {
+      setPreviewUrl(null);
+      return undefined;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(file);
+    setPreviewUrl(nextPreviewUrl);
+    return () => URL.revokeObjectURL(nextPreviewUrl);
+  }, [file, isImagePreview]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -405,18 +451,25 @@ export function AssignmentUploadPanel({
     setError(null);
 
     const validation = validateSubmissionInput({ file, textAnswer, hasSubmission: Boolean(submission), resubmissionConfirmed });
-    if (validation) {
-      setError(validation);
+    const clientFileError = file ? getClientFileError(file) : '';
+    if (fileError || clientFileError || validation) {
+      const nextError = fileError || clientFileError || validation;
+      setError(nextError);
+      toast.error(nextError);
       return;
     }
 
     try {
       await submitAssignmentMutation.mutateAsync({ assignmentId: assignment.id, textAnswer, file });
       setFile(null);
+      setFileError(null);
       setResubmissionConfirmed(false);
       setMessage(submission ? 'Resubmission saved.' : 'Submission saved.');
+      toast.success(submission ? 'Resubmission saved.' : 'Submission uploaded.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not submit assignment.');
+      const nextError = err instanceof Error ? err.message : 'Could not submit assignment.';
+      setError(nextError);
+      toast.error(nextError);
     }
   }
 
@@ -433,14 +486,41 @@ export function AssignmentUploadPanel({
           placeholder="Type a note or answer..."
         />
       </FormField>
-      <FormField label="Upload file" hint="PDF, JPG, or PNG up to 10 MB.">
-        <TextInput
-          disabled={disabled || busy}
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-          onChange={(event) => setFile(event.target.files?.[0] || null)}
-        />
+      <FormField label="Upload file" hint="Drag PDF, JPG, or PNG files here. Maximum file size is 10 MB.">
+        <div
+          {...getRootProps()}
+          className={`rounded-[1.5rem] border-2 border-dashed p-5 transition ${isDragActive ? 'border-brand-gold bg-brand-gold/10' : 'border-brand-aegean/30 bg-brand-parchment/40'} ${disabled || busy ? 'cursor-not-allowed opacity-60' : 'cursor-default hover:border-brand-aegean'}`}
+        >
+          <input {...getInputProps()} />
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center">
+            <div>
+              <p className="text-sm font-semibold text-slate-950">{isDragActive ? 'Drop the file here' : 'Drag your file into this dropzone'}</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">PDF, JPG, or PNG only. Validation happens before the upload starts.</p>
+              <button
+                className="mt-4 rounded-full border border-brand-aegean/50 px-4 py-2 text-sm font-semibold text-brand-navy transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={disabled || busy}
+                type="button"
+                onClick={open}
+              >
+                Choose file
+              </button>
+            </div>
+            <FilePreview file={file} previewUrl={previewUrl} isImagePreview={isImagePreview} />
+          </div>
+        </div>
+        {fileError ? <p className="mt-2 text-sm font-semibold text-red-700">{fileError}</p> : null}
       </FormField>
+      {busy ? (
+        <div className="rounded-2xl bg-brand-parchment/80 p-3" role="status" aria-live="polite">
+          <div className="flex items-center justify-between gap-3 text-sm font-semibold text-brand-obsidian">
+            <span>Uploading assignment...</span>
+            <span>Working</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
+            <div className="h-full w-2/3 animate-pulse rounded-full bg-brand-aegean" />
+          </div>
+        </div>
+      ) : null}
       {needsConfirmation ? (
         <label className="flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
           <input
@@ -467,6 +547,76 @@ export function AssignmentUploadPanel({
   );
 }
 
+const maxUploadBytes = 10 * 1024 * 1024;
+const allowedMime = ['application/pdf', 'image/jpeg', 'image/png'];
+const allowedExt = ['pdf', 'jpg', 'jpeg', 'png'];
+const acceptedUploadTypes = {
+  'application/pdf': ['.pdf'],
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+};
+
+function FilePreview({
+  file,
+  previewUrl,
+  isImagePreview,
+}: {
+  file: File | null;
+  previewUrl: string | null;
+  isImagePreview: boolean;
+}) {
+  if (!file) {
+    return (
+      <div className="rounded-2xl border border-brand-marble bg-white/80 p-4 text-center text-sm text-slate-500">
+        No file selected
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-brand-marble bg-white shadow-sm">
+      {isImagePreview && previewUrl ? (
+        <img className="h-28 w-full object-cover" src={previewUrl} alt={`Preview of ${file.name}`} />
+      ) : (
+        <div className="flex h-28 items-center justify-center bg-brand-navy text-sm font-semibold uppercase tracking-[0.2em] text-brand-parchment">PDF</div>
+      )}
+      <div className="p-3">
+        <p className="truncate text-sm font-semibold text-slate-950">{file.name}</p>
+        <p className="mt-1 text-xs text-slate-500">{formatFileSize(file.size)}</p>
+      </div>
+    </div>
+  );
+}
+
+function formatDropzoneError(rejection?: FileRejection) {
+  const code = rejection?.errors[0]?.code;
+  if (code === 'file-too-large') {
+    return 'File must be 10 MB or smaller.';
+  }
+  if (code === 'file-invalid-type') {
+    return 'Upload PDF, JPG, or PNG files only.';
+  }
+  return '';
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+  return `${Math.round((bytes / (1024 * 1024)) * 10) / 10} MB`;
+}
+
+function getClientFileError(file: File) {
+  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+  if (!allowedExt.includes(ext) || (file.type && !allowedMime.includes(file.type))) {
+    return 'Upload PDF, JPG, or PNG files only.';
+  }
+  if (file.size > maxUploadBytes) {
+    return 'File must be 10 MB or smaller.';
+  }
+  return '';
+}
+
 function validateSubmissionInput({
   file,
   textAnswer,
@@ -487,17 +637,7 @@ function validateSubmissionInput({
   if (!file) {
     return '';
   }
-  const maxBytes = 10 * 1024 * 1024;
-  const allowedMime = ['application/pdf', 'image/jpeg', 'image/png'];
-  const allowedExt = ['pdf', 'jpg', 'jpeg', 'png'];
-  const ext = file.name.split('.').pop()?.toLowerCase() || '';
-  if (file.size > maxBytes) {
-    return 'File must be 10 MB or smaller.';
-  }
-  if ((file.type && !allowedMime.includes(file.type)) || !allowedExt.includes(ext)) {
-    return 'Upload PDF, JPG, or PNG files only.';
-  }
-  return '';
+  return getClientFileError(file);
 }
 
 export function SubmittedAssignmentsList({
