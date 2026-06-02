@@ -18,6 +18,7 @@ import { AdminTutorsRoute } from '../features/admin/AdminTutorsRoute';
 import { LoginRoute } from '../features/auth/LoginRoute';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { OnboardingRoute } from '../features/onboarding/OnboardingRoute';
+import { StudentAssignmentDetailRoute } from '../features/students/StudentAssignmentDetailRoute';
 import { StudentAssignmentsRoute } from '../features/students/StudentAssignmentsRoute';
 import { StudentCareersRoute } from '../features/students/StudentCareersRoute';
 import { StudentDashboardRoute } from '../features/students/StudentDashboardRoute';
@@ -43,6 +44,8 @@ export function App() {
     <Routes>
       <Route path="/" element={<PublicHomeRoute />} />
       <Route path="/admin/*" element={<Navigate to="/dashboard/admin" replace />} />
+      <Route path="/student/assignments" element={<Navigate to="/dashboard/student/assignments" replace />} />
+      <Route path="/student/assignments/:assignmentId" element={<ProtectedRoute roles={['student']}><StudentAssignmentDetailRoute /></ProtectedRoute>} />
       <Route path="/student/*" element={<Navigate to="/dashboard/student" replace />} />
       <Route path="/tutor/*" element={<Navigate to="/dashboard/tutor" replace />} />
       <Route path="/reports/*" element={<Navigate to="/dashboard/student/reports" replace />} />
@@ -61,7 +64,7 @@ export function App() {
       <Route path="/onboarding/tutor" element={<OnboardingRoute role="tutor" />} />
       <Route path="/dashboard/student" element={<ProtectedRoute roles={['student']}><StudentDashboardRoute /></ProtectedRoute>} />
       <Route path="/dashboard/student/assignments" element={<ProtectedRoute roles={['student']}><StudentAssignmentsRoute /></ProtectedRoute>} />
-      <Route path="/dashboard/student/assignments/:assignmentId" element={<ProtectedRoute roles={['student']}><StudentAssignmentsRoute /></ProtectedRoute>} />
+      <Route path="/dashboard/student/assignments/:assignmentId" element={<ProtectedRoute roles={['student']}><StudentAssignmentDetailRoute /></ProtectedRoute>} />
       <Route path="/dashboard/student/progress" element={<ProtectedRoute roles={['student']}><StudentProgressRoute /></ProtectedRoute>} />
       <Route path="/dashboard/student/results" element={<ProtectedRoute roles={['student']}><StudentResultsRoute /></ProtectedRoute>} />
       <Route path="/dashboard/student/careers" element={<ProtectedRoute roles={['student']}><StudentCareersRoute /></ProtectedRoute>} />

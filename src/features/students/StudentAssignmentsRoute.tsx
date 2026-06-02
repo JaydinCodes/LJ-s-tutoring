@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import { ErrorState, PageShell, SkeletonCard, StaggerGrid, StaggerItem } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { AssignmentDueCard } from './StudentDashboardComponents';
-import { assignmentStatusBucketOrder, normalizeStudentData, type AssignmentStatusBucket } from './studentData';
+import { normalizeStudentData, type AssignmentStatusBucket } from './studentData';
 import { useStudentDashboardQuery } from './studentQueries';
 
 const assignmentTabs: Array<{
@@ -46,28 +45,10 @@ const assignmentTabs: Array<{
 
 export function StudentAssignmentsRoute() {
   const { data, loading, error, refetching, reload } = useStudentDashboardQuery();
-  const { assignmentId } = useParams();
   const studentData = useMemo(() => data ? normalizeStudentData(data) : null, [data]);
   const [activeBucket, setActiveBucket] = useState<AssignmentStatusBucket>('due-now');
-  const selectedBucket = useMemo(() => {
-    if (!studentData || !assignmentId) return null;
-
-    for (const bucket of assignmentStatusBucketOrder) {
-      if ((studentData.assignmentBuckets.get(bucket) || []).some((assignment) => assignment.id === assignmentId)) {
-        return bucket;
-      }
-    }
-
-    return null;
-  }, [assignmentId, studentData]);
   const activeTab = assignmentTabs.find((tab) => tab.key === activeBucket) || assignmentTabs[0];
   const activeAssignments = studentData?.assignmentBuckets.get(activeBucket) || [];
-
-  useEffect(() => {
-    if (selectedBucket) {
-      setActiveBucket(selectedBucket);
-    }
-  }, [selectedBucket]);
 
   return (
     <PageShell
@@ -130,7 +111,6 @@ export function StudentAssignmentsRoute() {
                     <AssignmentDueCard
                       assignment={assignment}
                       submission={studentData.submissionsByAssignmentId.get(assignment.id)}
-                      isSelected={assignment.id === assignmentId}
                     />
                   </StaggerItem>
                 ))}

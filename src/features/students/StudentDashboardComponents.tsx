@@ -325,7 +325,6 @@ export function AssignmentDueCard({
 }) {
   const status = calculateAssignmentStatus({ assignment, submission });
   const dueDelta = daysUntil(assignment.due_date);
-  const isClosed = assignment.status === 'closed' || assignment.status === 'archived';
 
   return (
     <div id={`assignment-${assignment.id}`} className={isSelected ? 'rounded-[1.7rem] ring-4 ring-brand-gold/40' : undefined}>
@@ -339,10 +338,16 @@ export function AssignmentDueCard({
           <StatusBadge value={status} />
         </div>
         {assignment.description ? (
-          <p className="mt-4 rounded-2xl bg-brand-parchment/70 p-4 text-sm leading-6 text-slate-700 dark:bg-brand-navy/70 dark:text-brand-marble">{assignment.description}</p>
+          <p className="mt-4 line-clamp-3 rounded-2xl bg-brand-parchment/70 p-4 text-sm leading-6 text-slate-700 dark:bg-brand-navy/70 dark:text-brand-marble">{assignment.description}</p>
         ) : null}
-        {submission ? <SubmissionPreview submission={submission} /> : null}
-        <AssignmentUploadPanel assignment={assignment} submission={submission} disabled={isClosed} />
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-600 dark:text-brand-marble">
+            {submission ? `Last submitted ${formatDate(submission.submitted_at)}.` : 'Open the detail page to read instructions and submit work.'}
+          </p>
+          <Link className="rounded-full bg-brand-navy px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-deepBlue dark:bg-brand-aegean" to={`/student/assignments/${assignment.id}`}>
+            Open assignment
+          </Link>
+        </div>
       </InsightCard>
     </div>
   );

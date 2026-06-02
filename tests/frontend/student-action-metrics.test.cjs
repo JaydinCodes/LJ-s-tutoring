@@ -28,15 +28,15 @@ test('student dashboard replaces flat stats with actionable metric cards', () =>
 test('action metric cards link to the correct student pages', () => {
   const source = read('src', 'features', 'students', 'StudentDashboardComponents.tsx');
   const app = read('src', 'app', 'App.tsx');
-  const assignments = read('src', 'features', 'students', 'StudentAssignmentsRoute.tsx');
+  const detail = read('src', 'features', 'students', 'StudentAssignmentDetailRoute.tsx');
 
   assert.ok(source.includes('`/dashboard/student/assignments/${nextTask.assignmentId}`'), 'Next Due must link to assignment detail');
   assert.ok(source.includes("to=\"/dashboard/student/assignments\""), 'Open Assignments must link to assignments');
   assert.ok(source.includes("to=\"/dashboard/student/results\""), 'Average Score must link to results');
   assert.ok(source.includes("to=\"/dashboard/student/progress\""), 'Weakest Topic and study cards must link to progress');
   assert.ok(app.includes('path="/dashboard/student/assignments/:assignmentId"'), 'assignment detail route must exist');
-  assert.ok(assignments.includes('useParams()'), 'assignments route must read the selected assignment id');
-  assert.ok(source.includes('Selected assignment detail'), 'selected assignment must be visibly identified');
+  assert.ok(detail.includes('useParams()'), 'assignment detail route must read the selected assignment id');
+  assert.ok(detail.includes('Back to assignment list'), 'detail route must let students return to the list');
 });
 
 test('exam readiness is conditional on real exam data', () => {

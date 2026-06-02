@@ -41,6 +41,7 @@ test('assignments page renders status tabs instead of one long assignment list',
 
 test('assignment tabs provide helpful empty states and preserve detail linking', () => {
   const route = read('src', 'features', 'students', 'StudentAssignmentsRoute.tsx');
+  const cards = read('src', 'features', 'students', 'StudentDashboardComponents.tsx');
 
   for (const emptyTitle of [
     'No assignments need action',
@@ -51,7 +52,8 @@ test('assignment tabs provide helpful empty states and preserve detail linking',
     assert.ok(route.includes(`emptyTitle: '${emptyTitle}'`), `${emptyTitle} empty state must be present`);
   }
 
-  assert.ok(route.includes('selectedBucket'), 'selected assignment links must activate the owning tab');
-  assert.ok(route.includes('isSelected={assignment.id === assignmentId}'), 'selected assignment detail must remain highlighted');
+  assert.ok(!route.includes('useParams()'), 'assignment list must not double as the detail route');
   assert.ok(route.includes('submission={studentData.submissionsByAssignmentId.get(assignment.id)}'), 'cards must still show real submission state');
+  assert.ok(cards.includes('to={`/student/assignments/${assignment.id}`'), 'assignment cards must link to the detail page');
+  assert.ok(cards.includes('Open assignment'), 'assignment cards must expose a clear detail action');
 });
