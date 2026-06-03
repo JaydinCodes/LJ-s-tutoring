@@ -378,13 +378,11 @@ export async function buildApp() {
   });
 
   app.get('/health', async (_req, reply) => {
-    const start = Date.now();
-    try {
-      await pool.query('select 1');
-      return reply.send({ ok: true, db: { ok: true, latencyMs: Date.now() - start } });
-    } catch {
-      return reply.code(503).send({ ok: false, db: { ok: false, latencyMs: Date.now() - start } });
-    }
+    return reply.send({
+      ok: true,
+      service: 'lms-api',
+      uptimeSeconds: Math.round(process.uptime()),
+    });
   });
 
   app.get('/metrics', async (_req, reply) => {
