@@ -33,9 +33,10 @@ test('assignments page renders status tabs instead of one long assignment list',
   assert.ok(route.includes('role="tablist"'), 'tabs must use tablist semantics');
   assert.ok(route.includes('role="tab"'), 'each bucket control must be a tab');
   assert.ok(route.includes('role="tabpanel"'), 'active bucket must render in a tab panel');
-  assert.ok(route.includes('studentData.assignmentBuckets.get(tab.key)'), 'tab counts must come from normalized buckets');
+  assert.ok(route.includes('export function AssignmentSegmentedControl'), 'tabs must live in a reusable segmented control');
+  assert.ok(route.includes('const count = buckets.get(tab.key)?.length || 0'), 'tab counts must come from normalized buckets');
   assert.ok(route.includes('studentData?.assignmentBuckets.get(activeBucket)'), 'active list must come from the selected bucket');
-  assert.ok(route.includes('sm:grid-cols-2 lg:grid-cols-4'), 'tabs must collapse cleanly on mobile and expand on larger screens');
+  assert.ok(route.includes('grid-cols-4'), 'segmented control must fit all statuses in one mobile-first control');
   assert.ok(!route.includes('SubmittedAssignmentsList'), 'submitted work should not be a separate long list below the tabs');
 });
 
@@ -54,6 +55,9 @@ test('assignment tabs provide helpful empty states and preserve detail linking',
 
   assert.ok(!route.includes('useParams()'), 'assignment list must not double as the detail route');
   assert.ok(route.includes('submission={studentData.submissionsByAssignmentId.get(assignment.id)}'), 'cards must still show real submission state');
-  assert.ok(cards.includes('to={`/student/assignments/${assignment.id}`'), 'assignment cards must link to the detail page');
-  assert.ok(cards.includes('Open assignment'), 'assignment cards must expose a clear detail action');
+  assert.ok(route.includes('export function AssignmentRow'), 'assignment list must render row-based assignment items');
+  assert.ok(route.includes('export function AssignmentDetailDrawer'), 'desktop assignment preview drawer must be available');
+  assert.ok(route.includes('to={`/student/assignments/${assignment.id}`'), 'assignment rows must link to the detail page');
+  assert.ok(route.includes('Open assignment'), 'assignment drawer must expose a clear detail action');
+  assert.ok(cards.includes('to={`/student/assignments/${assignment.id}`'), 'existing dashboard assignment card detail links must be preserved');
 });

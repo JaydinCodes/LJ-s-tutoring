@@ -1,10 +1,10 @@
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDropzone, type FileRejection } from 'react-dropzone';
-import { Brain, Clock, ScrollText, Sparkles, Target, TrendingUp, Trophy, UploadCloud, type LucideIcon } from 'lucide-react';
+import { BookOpen, Brain, CheckCircle2, Clock, ScrollText, Sparkles, Target, TrendingUp, Trophy, UploadCloud, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { GreekHeroCard, InsightCard, PremiumButton, StaggerGrid, StaggerItem, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
+import { AnimatedProgressBar, GreekHeroCard, InsightCard, PremiumButton, StaggerGrid, StaggerItem, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextArea } from '../../components/ui/FormField';
@@ -20,6 +20,214 @@ import { selectDueTasks, type NormalizedStudentData } from './studentData';
 import { sortBattlePlanForDisplay, type BattlePlanItem } from './studentBattlePlan';
 import type { DailyInsight } from './studentDailyInsight';
 import { useSubmitStudentAssignmentMutation } from './studentQueries';
+
+export function TodayOdyssey({
+  data,
+  nextAssignment,
+  completionRate,
+  dailyInsight,
+  battlePlan,
+}: {
+  data: StudentDashboardView;
+  nextAssignment?: Assignment;
+  completionRate: number;
+  dailyInsight: DailyInsight;
+  battlePlan: BattlePlanItem[];
+}) {
+  const dueDelta = daysUntil(nextAssignment?.due_date);
+  const nextExam = data.examCalendar?.nextExam;
+  const nextExamDelta = daysUntil(nextExam?.examDate);
+  const firstAction = battlePlan[0];
+  const academicStatus = data.dailyInsightContext?.currentAcademicStatus || data.supportStatus?.label || 'Building rhythm';
+
+  return (
+    <section className="academy-major-surface relative overflow-hidden">
+      <div className="absolute inset-x-6 top-0 h-px greek-keyline" aria-hidden="true" />
+      <div className="relative">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-academy-gold">Today&apos;s Odyssey</p>
+        <div className="mt-3 grid gap-5 lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-end">
+          <div>
+            <h2 className="font-display text-4xl font-semibold leading-tight tracking-normal text-white sm:text-5xl">
+              {data.profile.name ? `Good to see you, ${data.profile.name.split(' ')[0]}` : 'Good to see you'}
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-academy-parchment">{dailyInsight.message}</p>
+          </div>
+          <div className="rounded-ios-lg border border-white/15 bg-white/10 p-4 shadow-academy-inset backdrop-blur-xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-gold">Current status</p>
+            <p className="mt-2 text-2xl font-semibold text-white">{academicStatus}</p>
+            <p className="mt-2 text-sm leading-6 text-academy-parchment">{completionRate}% assignment completion</p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <OdysseySignal label="Next task" value={nextAssignment?.title || 'Queue clear'} helper={formatTaskDue(nextAssignment?.due_date, dueDelta)} />
+          <OdysseySignal label="Next exam" value={nextExam?.subject || 'Not scheduled'} helper={formatExamDue(nextExam?.title, nextExam?.examDate, nextExamDelta)} />
+          <OdysseySignal label="Focus" value={dailyInsight.eyebrow} helper={dailyInsight.action} />
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-gold">Primary action</p>
+            <p className="mt-1 text-base font-semibold text-white">{firstAction?.title || 'Open your next learning step'}</p>
+          </div>
+          <Link className="academy-btn academy-btn-gold w-full sm:w-auto" to={firstAction?.to || '/dashboard/student/assignments'}>
+            {firstAction ? 'Start now' : 'Open assignments'}
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OdysseySignal({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <div className="min-w-0 border-t border-white/[0.12] pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">{label}</p>
+      <p className="mt-2 truncate text-lg font-semibold text-white">{value}</p>
+      <p className="mt-1 line-clamp-2 text-xs leading-5 text-academy-parchment">{helper}</p>
+    </div>
+  );
+}
+
+export function LearningTimeline({ items }: { items: BattlePlanItem[] }) {
+  const [completedIds, setCompletedIds] = useState<Set<string>>(() => new Set());
+  const visibleItems = useMemo(() => sortBattlePlanForDisplay(items, completedIds), [items, completedIds]);
+
+  function toggleComplete(itemId: string) {
+    setCompletedIds((current) => {
+      const next = new Set(current);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  }
+
+  return (
+    <section aria-labelledby="learning-timeline-title" className="space-y-3">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Learning path</p>
+          <h2 id="learning-timeline-title" className="mt-1 text-2xl font-semibold tracking-normal text-academy-ink dark:text-academy-parchment">
+            What should I do today?
+          </h2>
+        </div>
+        <span className="academy-chip shrink-0">{items.length} steps</span>
+      </div>
+
+      <div className="relative">
+        <div className="absolute left-4 top-5 hidden h-[calc(100%-2.5rem)] w-px bg-gradient-to-b from-academy-gold via-academy-aegean/35 to-transparent sm:block" aria-hidden="true" />
+        <div className="space-y-2">
+          {!visibleItems.length ? (
+            <EmptyState
+              title="No learning path yet"
+              description="Once assignments, marks, or topic progress arrive, this becomes a short ordered plan for the day."
+              actionLabel="Open progress"
+              actionHref="/dashboard/student/progress"
+              icon={Brain}
+            />
+          ) : null}
+          {visibleItems.map((item, index) => {
+            const isCompleted = completedIds.has(item.id);
+            return (
+              <article key={item.id} className={`relative rounded-ios-lg border border-transparent py-3 pl-0 transition duration-fluid ease-ios sm:pl-10 ${isCompleted ? 'opacity-60' : ''}`}>
+                <span className={`mb-2 grid h-8 w-8 place-items-center rounded-full border text-xs font-bold sm:absolute sm:left-0 sm:top-4 ${isCompleted ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200' : 'border-academy-gold/30 bg-academy-gold/[0.12] text-academy-navy dark:text-academy-gold'}`}>
+                  {isCompleted ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : index + 1}
+                </span>
+                <div className="rounded-ios-lg border border-white/70 bg-white/[0.58] p-4 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.045]">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">{item.kind}</p>
+                      <h3 className={`mt-1 text-lg font-semibold text-academy-ink dark:text-academy-parchment ${isCompleted ? 'line-through' : ''}`}>{item.title}</h3>
+                    </div>
+                    <span className="rounded-full bg-slate-950/[0.04] px-3 py-1 text-xs font-semibold text-academy-muted dark:bg-white/[0.06]">{item.estimatedMinutes} min</span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-academy-muted">{isCompleted ? 'Marked complete for this page load.' : item.description}</p>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <Link className="academy-btn academy-btn-outline min-h-10 px-4" to={item.to}>Open</Link>
+                    <button className="academy-btn academy-btn-primary min-h-10 px-4" type="button" onClick={() => toggleComplete(item.id)}>
+                      {isCompleted ? 'Mark active' : 'Done'}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function SubjectProgressBands({ progress }: { progress: StudentProgress[] }) {
+  const bands = useMemo(() => getSubjectProgressBands(progress), [progress]);
+
+  return (
+    <section aria-labelledby="subject-progress-title" className="space-y-3">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Subject bands</p>
+        <h2 id="subject-progress-title" className="mt-1 text-2xl font-semibold tracking-normal text-academy-ink dark:text-academy-parchment">
+          Progress by subject
+        </h2>
+      </div>
+
+      <div className="divide-y divide-slate-950/5 rounded-ios-lg border border-white/70 bg-white/[0.46] px-4 shadow-academy-inset backdrop-blur-xl dark:divide-white/10 dark:border-white/10 dark:bg-white/[0.035]">
+        {!bands.length ? (
+          <div className="py-4">
+            <EmptyState
+              title="No progress snapshot yet"
+              description="Topic mastery appears here as soon as marks or progress records are available."
+              actionLabel="Open assignments"
+              actionHref="/dashboard/student/assignments"
+              icon={BookOpen}
+            />
+          </div>
+        ) : null}
+        {bands.map((band) => (
+          <div key={band.subject} className="py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h3 className="truncate text-base font-semibold text-academy-ink dark:text-academy-parchment">{band.subject}</h3>
+                <p className="mt-1 text-sm leading-6 text-academy-muted">
+                  {band.weakestTopic ? `Next focus: ${band.weakestTopic}` : `${band.topicCount} topic${band.topicCount === 1 ? '' : 's'} recorded`}
+                </p>
+              </div>
+              <p className="shrink-0 text-lg font-semibold text-academy-aegean dark:text-academy-gold">{band.average}%</p>
+            </div>
+            <div className="mt-3">
+              <AnimatedProgressBar value={band.average} color={band.color} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function getSubjectProgressBands(progress: StudentProgress[]) {
+  const grouped = new Map<string, StudentProgress[]>();
+  for (const item of progress) {
+    const subject = item.subject || item.subject_id || 'General study';
+    grouped.set(subject, [...(grouped.get(subject) || []), item]);
+  }
+
+  return [...grouped.entries()]
+    .map(([subject, items], index) => {
+      const scores = items.map((item) => Number(item.score || 0));
+      const average = scores.length ? Math.round(scores.reduce((total, score) => total + score, 0) / scores.length) : 0;
+      const weakest = [...items].sort((left, right) => Number(left.score || 0) - Number(right.score || 0) || left.topic.localeCompare(right.topic))[0];
+      return {
+        subject,
+        average,
+        weakestTopic: weakest?.topic,
+        topicCount: items.length,
+        color: ['#1F6F8B', '#f4c518', '#1e3a5f', '#0f8aa6'][index % 4],
+      };
+    })
+    .sort((left, right) => left.average - right.average || left.subject.localeCompare(right.subject));
+}
 
 export function StudentWelcomeCard({
   data,

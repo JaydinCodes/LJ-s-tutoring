@@ -58,7 +58,10 @@ test('student pages use PageShell and shared dashboard primitives', () => {
     'StudentCareersRoute.tsx',
     'StudentSupportRoutes.tsx',
   ];
-  const joined = primaryRoutes.map((file) => read('src', 'features', 'students', file)).join('\n');
+  const joined = [
+    ...primaryRoutes.map((file) => read('src', 'features', 'students', file)),
+    read('src', 'features', 'students', 'StudentDashboardComponents.tsx'),
+  ].join('\n');
 
   for (const file of primaryRoutes) {
     const source = read('src', 'features', 'students', file);

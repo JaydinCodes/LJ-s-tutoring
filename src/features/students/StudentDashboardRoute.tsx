@@ -1,15 +1,9 @@
 import { useMemo } from 'react';
-import { BookOpen, Brain } from 'lucide-react';
-import { AnimatedProgressBar, ErrorState, InsightCard, PageShell, SkeletonCard, StaggerGrid, StaggerItem, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
-import { Card } from '../../components/ui/Card';
-import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState, PageShell, SkeletonCard } from '../../components/dashboard/DashboardDesignSystem';
 import {
-  AssignmentsDueSection,
-  LatestResultsCard,
-  ProgressSummaryCards,
-  StudentWelcomeCard,
-  SubmittedAssignmentsList,
-  TodayBattlePlan,
+  LearningTimeline,
+  SubjectProgressBands,
+  TodayOdyssey,
 } from './StudentDashboardComponents';
 import { normalizeStudentData, selectCompletionRate, selectDueTasks } from './studentData';
 import { selectTodayBattlePlan } from './studentBattlePlan';
@@ -26,108 +20,27 @@ export function StudentDashboardRoute() {
 
   return (
     <PageShell
-      title="Student Dashboard"
-      subtitle="A React-first learner view for assignments, progress, class context, and submission status."
+      title="Today"
+      subtitle="Your next useful learning step, ordered by urgency, revision value, and momentum."
       section="student"
     >
-      {refetching ? <p className="text-sm font-semibold text-blue-700">Refreshing dashboard...</p> : null}
+      {refetching ? <p className="academy-chip w-fit text-academy-aegean dark:text-academy-gold">Refreshing today&apos;s plan...</p> : null}
       {loading ? <DashboardSkeleton /> : null}
       {error ? (
         <ErrorState title="Dashboard unavailable" description={error} onRetry={() => void reload()} />
       ) : null}
       {data ? (
-        <>
-          <StudentWelcomeCard data={data} nextAssignment={nextAssignment} completionRate={completionRate} dailyInsight={dailyInsight!} />
-          <ProgressSummaryCards data={data} studentData={studentData!} progress={data.progress} />
-          <TodayBattlePlan items={battlePlan} />
-
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
-            <div className="space-y-4">
-              <Card>
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-semibold text-slate-950">Assignments due</h2>
-                    <p className="mt-1 text-sm text-slate-600">Priority ordered by overdue, due soon, review state, and released marks.</p>
-                  </div>
-                </div>
-                <div className="mt-5">
-                  <AssignmentsDueSection
-                    studentData={studentData!}
-                    limit={4}
-                  />
-                </div>
-              </Card>
-
-              <Card>
-                <h2 className="text-xl font-semibold text-slate-950">Progress summary</h2>
-                <StaggerGrid className="mt-4 grid gap-3 md:grid-cols-2">
-                  {data.progress.slice(0, 6).map((item) => (
-                    <StaggerItem key={item.id}>
-                      <InsightCard title={item.topic}>
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm text-slate-600 dark:text-brand-marble">Topic mastery</p>
-                          <p className="text-sm font-semibold text-brand-aegean dark:text-brand-gold">{item.score}%</p>
-                        </div>
-                        <div className="mt-3">
-                          <AnimatedProgressBar value={item.score} />
-                        </div>
-                      </InsightCard>
-                    </StaggerItem>
-                  ))}
-                  {!data.progress.length ? (
-                    <EmptyState
-                      title="No progress snapshot yet"
-                      description="As soon as marks or topic mastery arrive, this space becomes your study compass. For now, focus on the next assignment."
-                      actionLabel="Open assignments"
-                      actionHref="/dashboard/student/assignments"
-                      icon={Brain}
-                    />
-                  ) : null}
-                </StaggerGrid>
-              </Card>
-            </div>
-
-            <aside className="space-y-4">
-              <LatestResultsCard assignmentsById={studentData!.assignmentsById} submissions={data.submissions} />
-              <SubmittedAssignmentsList assignmentsById={studentData!.assignmentsById} submissions={data.submissions} />
-              <Card>
-                <h2 className="text-xl font-semibold text-slate-950">Profile</h2>
-                <dl className="mt-4 grid gap-3 text-sm">
-                  {[
-                    ['Name', data.profile.name],
-                    ['Grade', data.profile.grade || 'Pending'],
-                    ['School', data.profile.school || 'Pending'],
-                    ['Parent', data.profile.parent || 'Pending'],
-                    ['NGO partner', data.profile.ngoPartner || 'Direct / pending'],
-                  ].map(([label, value]) => (
-                    <TimelineCard key={label} title={label} meta={value} />
-                  ))}
-                </dl>
-              </Card>
-
-              <Card>
-                <h2 className="text-xl font-semibold text-slate-950">Classes</h2>
-                <div className="mt-4 space-y-3">
-                  {data.classes.map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-slate-200 p-3">
-                      <p className="font-semibold">{item.subject || 'Class'}</p>
-                      <p className="mt-1 text-sm text-slate-600">{[item.day_of_week, item.start_time, item.location].filter(Boolean).join(' | ') || 'Schedule pending'}</p>
-                    </div>
-                  ))}
-                  {!data.classes.length ? (
-                    <EmptyState
-                      title="No class schedule yet"
-                      description="Your subject and lesson details will appear here once they are linked to your learner profile."
-                      actionLabel="Open resources"
-                      actionHref="/dashboard/student/reports"
-                      icon={BookOpen}
-                    />
-                  ) : null}
-                </div>
-              </Card>
-            </aside>
-          </section>
-        </>
+        <div className="space-y-6">
+          <TodayOdyssey
+            data={data}
+            nextAssignment={nextAssignment}
+            completionRate={completionRate}
+            dailyInsight={dailyInsight!}
+            battlePlan={battlePlan}
+          />
+          <LearningTimeline items={battlePlan} />
+          <SubjectProgressBands progress={data.progress} />
+        </div>
       ) : null}
     </PageShell>
   );
@@ -135,15 +48,10 @@ export function StudentDashboardRoute() {
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <SkeletonCard className="h-72" />
+      {[0, 1, 2].map((item) => <SkeletonCard key={item} className="h-24" />)}
       <SkeletonCard className="h-64" />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[0, 1, 2, 3].map((item) => <SkeletonCard key={item} />)}
-      </div>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
-        <SkeletonCard className="h-96" />
-        <SkeletonCard className="h-96" />
-      </div>
     </div>
   );
 }

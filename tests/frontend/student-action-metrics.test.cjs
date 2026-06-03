@@ -9,18 +9,19 @@ function read(...segments) {
   return fs.readFileSync(path.join(root, ...segments), 'utf8');
 }
 
-test('student dashboard replaces flat stats with actionable metric cards', () => {
+test('student dashboard replaces flat stats with a focused today flow', () => {
   const source = read('src', 'features', 'students', 'StudentDashboardComponents.tsx');
   const route = read('src', 'features', 'students', 'StudentDashboardRoute.tsx');
 
-  for (const label of ['Next Due', 'Open Assignments', 'Average Score', 'Weakest Topic', 'Study Streak', 'Exam Readiness']) {
-    assert.ok(source.includes(`label="${label}"`), `${label} card must be rendered`);
+  for (const component of ['TodayOdyssey', 'LearningTimeline', 'SubjectProgressBands']) {
+    assert.ok(source.includes(`export function ${component}`), `${component} must be exported`);
+    assert.ok(route.includes(`<${component}`), `${component} must be rendered by the dashboard route`);
   }
 
-  assert.ok(source.includes('function ActionMetricCard'), 'cards must use the actionable card component');
-  assert.ok(source.includes('explanation:'), 'cards must carry explanations');
-  assert.ok(source.includes('action:'), 'cards must carry action labels');
-  assert.ok(route.includes('<ProgressSummaryCards data={data}'), 'dashboard route must pass full learner state into metric cards');
+  assert.ok(source.includes("Today's Odyssey") || source.includes('Today&apos;s Odyssey'), 'dashboard must lead with the Today Odyssey surface');
+  assert.ok(source.includes('What should I do today?'), 'dashboard must frame the main learner question');
+  assert.ok(source.includes('Progress by subject'), 'dashboard must render subject progress bands');
+  assert.ok(route.includes('battlePlan={battlePlan}'), 'dashboard route must pass learner state into Today Odyssey');
   assert.ok(!source.includes('label="Completion rate"'), 'old flat completion metric must be removed');
   assert.ok(!source.includes('label="Marked"'), 'old flat marked metric must be removed');
 });
