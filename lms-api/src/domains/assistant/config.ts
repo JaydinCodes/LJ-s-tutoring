@@ -45,8 +45,7 @@ export function loadAssistantConfig(env: NodeJS.ProcessEnv = process.env): Assis
     openRouterApiKey: parsed.OPENROUTER_API_KEY,
     openRouterModel: parsed.OPENROUTER_MODEL,
     groqApiKey: parsed.GROQ_API_KEY,
-    // Existing deployments often store the online LLM model as DEFAULT_MODEL.
-    groqModel: parsed.DEFAULT_MODEL || parsed.GROQ_MODEL,
+    groqModel: parsed.GROQ_MODEL,
     lmStudioBaseUrl: parsed.LMSTUDIO_BASE_URL,
     lmStudioModel: parsed.LMSTUDIO_MODEL,
     maxTokens: parsed.MAX_TOKENS,
