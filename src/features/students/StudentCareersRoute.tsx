@@ -1,9 +1,7 @@
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Compass, GraduationCap, Sparkles, Target } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
-import { EmptyState, ErrorState, GreekHeroCard, InsightCard, MetricCard, PageShell, PremiumButton, SkeletonCard, StaggerGrid, StaggerItem } from '../../components/dashboard/DashboardDesignSystem';
-import { Card } from '../../components/ui/Card';
+import { Bookmark, Compass, GraduationCap, MapPinned, MessageCircle, Send, Sparkles, Target, X } from 'lucide-react';
+import { EmptyState, ErrorState, PageShell, SkeletonCard } from '../../components/dashboard/DashboardDesignSystem';
 import { FormField, TextArea, TextInput, inputClassName } from '../../components/ui/FormField';
 import { apiStreamText } from '../../lib/api/client';
 import { saveCareerProfile, type CareerSummary, type StudentCareerProfile } from './studentCareersRepository';
@@ -30,7 +28,6 @@ function formatCurrency(value?: number) {
 }
 
 function latestCareerMetric(career: CareerSummary) {
-  // Salary and growth copy should only appear when the backend dataset supplied it.
   if (!career.salaryRange && !career.growthLabel && !career.demandLabel && !career.forecast) return null;
   return {
     salary: formatCurrency(career.salaryRange?.median),
@@ -83,58 +80,10 @@ function FilterChip({ active, children, onClick }: { active: boolean; children: 
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-        active
-          ? 'border-brand-gold bg-brand-gold text-brand-obsidian'
-          : 'border-white/70 bg-white/62 text-brand-navy shadow-sm backdrop-blur-xl hover:bg-white/85 dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment dark:hover:bg-white/[0.08]'
-      }`}
+      className={`academy-chip ${active ? 'bg-academy-gold text-academy-ink dark:text-academy-ink' : ''}`}
     >
       {children}
     </button>
-  );
-}
-
-function CareerCard({
-  career,
-  saved,
-  onToggleSave,
-}: {
-  career: CareerSummary;
-  saved: boolean;
-  onToggleSave: () => void;
-}) {
-  const prefersReducedMotion = useReducedMotion();
-  const metrics = latestCareerMetric(career);
-
-  return (
-    <motion.article
-      className="group rounded-[1.6rem] border border-white/70 bg-white/70 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-2xl transition hover:border-brand-gold/55 dark:border-white/10 dark:bg-white/[0.05]"
-      whileHover={prefersReducedMotion ? undefined : { y: -3 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-aegean">{career.category || 'Pathway'}</p>
-          <h3 className="mt-2 text-lg font-semibold text-brand-obsidian dark:text-brand-parchment">{career.title}</h3>
-        </div>
-        <button
-          type="button"
-          onClick={onToggleSave}
-          className={`rounded-full border px-3 py-1 text-xs font-semibold shadow-sm ${saved ? 'border-brand-gold bg-brand-gold text-brand-obsidian' : 'border-white/70 bg-white/65 text-brand-navy dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment'}`}
-        >
-          {saved ? 'Saved' : 'Save'}
-        </button>
-      </div>
-      <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-brand-marble">{career.description || 'Explore this pathway and compare subject fit before choosing a next step.'}</p>
-      {metrics ? (
-        <div className="mt-4 grid gap-2 rounded-2xl border border-white/70 bg-white/55 p-3 text-xs text-brand-obsidian backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-parchment sm:grid-cols-3">
-          {metrics.salary ? <span>Median salary: {metrics.salary}</span> : null}
-          {metrics.growth ? <span>Growth: {metrics.growth}</span> : null}
-          {metrics.demand ? <span>Demand: {metrics.demand}</span> : null}
-        </div>
-      ) : null}
-      {metrics?.forecast ? <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-brand-marble">{metrics.forecast}</p> : null}
-    </motion.article>
   );
 }
 
@@ -142,6 +91,7 @@ export function StudentCareersRoute() {
   const { data, loading, error, refetching, reload } = useStudentCareersQuery();
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [odieOpen, setOdieOpen] = useState(false);
   const [filters, setFilters] = useState({ interest: '', subject: '', category: '' });
   const [profile, setProfile] = useState<StudentCareerProfile>(emptyProfile);
   const [profileBusy, setProfileBusy] = useState(false);
@@ -153,6 +103,18 @@ export function StudentCareersRoute() {
   useEffect(() => {
     if (data?.profile) setProfile(data.profile);
   }, [data?.profile]);
+
+  useEffect(() => {
+    function openFromHash() {
+      if (window.location.hash === '#odie-career-assistant') {
+        setOdieOpen(true);
+      }
+    }
+
+    openFromHash();
+    window.addEventListener('hashchange', openFromHash);
+    return () => window.removeEventListener('hashchange', openFromHash);
+  }, []);
 
   const categories = useMemo(() => [...new Set((data?.careers || []).map((career) => career.category).filter(Boolean) as string[])].sort(), [data?.careers]);
   const savedCareers = useMemo(
@@ -187,6 +149,10 @@ export function StudentCareersRoute() {
     void persistProfile({ ...profile, ...patch });
   }
 
+  function updateFilters(patch: Partial<typeof filters>) {
+    setFilters((current) => ({ ...current, ...patch }));
+  }
+
   function toggleSavedCareer(careerId: string) {
     updateProfile({ savedCareers: toggleValue(profile.savedCareers, careerId) });
   }
@@ -200,7 +166,6 @@ export function StudentCareersRoute() {
     abortRef.current = controller;
     setBusy(true);
     setMessage('');
-    // Keep chat bounded so long advice sessions do not grow memory without limit.
     const nextChat = [...chat, { role: 'user' as const, text: prompt }, { role: 'assistant' as const, text: '' }].slice(-MAX_CHAT_MESSAGES);
     setChat(nextChat);
 
@@ -235,174 +200,357 @@ export function StudentCareersRoute() {
 
   return (
     <PageShell
-      title="Career Discovery Cockpit"
+      title="Career Discovery"
       subtitle="Explore pathways, test subject fit, plan APS targets, and ask Odie only when career guidance needs a coach."
       section="student"
     >
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="space-y-4">
-          <GreekHeroCard
-            eyebrow="Odie Careers"
-            title="Build a pathway that fits your subjects, marks, and ambition"
-            description="Use the cockpit to compare careers, save serious options, map APS targets, and turn uncertainty into a practical next step."
-          >
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl bg-white/10 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-brand-gold">Saved careers</p>
-                <p className="mt-2 text-2xl font-semibold">{profile.savedCareers.length}</p>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-brand-gold">APS target</p>
-                <p className="mt-2 text-2xl font-semibold">{profile.apsTarget ?? 'Set it'}</p>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-brand-gold">Career map</p>
-                <p className="mt-2 text-2xl font-semibold">{data?.institutions?.length || 0}</p>
-              </div>
-            </div>
-          </GreekHeroCard>
-
-          <StaggerGrid className="grid gap-4 md:grid-cols-3">
-            <StaggerItem><MetricCard label="Career Explorer" value={String(data?.careers?.length || 0)} helper="Filter pathways by interests, subjects, and category." icon={Compass} tone="aegean" /></StaggerItem>
-            <StaggerItem><MetricCard label="Subject Match" value={String(profile.preferredSubjects.length)} helper="Subjects saved into your career profile." icon={GraduationCap} tone="gold" /></StaggerItem>
-            <StaggerItem><MetricCard label="Opportunity Map" value={String(data?.institutions?.length || 0)} helper="Institution options loaded from the careers dataset." icon={Target} tone="marble" /></StaggerItem>
-          </StaggerGrid>
-
-          <Card>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-950 dark:text-brand-parchment">Career Explorer</h2>
-                <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">This is a decision cockpit, not a raw API list. Start broad, then save the careers worth investigating.</p>
-              </div>
-              <PremiumButton disabled={refetching} onClick={() => void reload()}>{refetching ? 'Refreshing...' : 'Refresh'}</PremiumButton>
-            </div>
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <FormField label="Interest">
-                <select className={inputClassName} value={filters.interest} onChange={(event) => setFilters((current) => ({ ...current, interest: event.target.value }))}>
-                  <option value="">All interests</option>
-                  {INTEREST_OPTIONS.map((interest) => <option key={interest} value={interest}>{interest}</option>)}
-                </select>
-              </FormField>
-              <FormField label="Subject">
-                <select className={inputClassName} value={filters.subject} onChange={(event) => setFilters((current) => ({ ...current, subject: event.target.value }))}>
-                  <option value="">All subjects</option>
-                  {(data?.supportedSubjects || []).map((subject) => <option key={subject} value={subject}>{subject}</option>)}
-                </select>
-              </FormField>
-              <FormField label="Career category">
-                <select className={inputClassName} value={filters.category} onChange={(event) => setFilters((current) => ({ ...current, category: event.target.value }))}>
-                  <option value="">All categories</option>
-                  {categories.map((category) => <option key={category} value={category}>{category}</option>)}
-                </select>
-              </FormField>
-            </div>
-            {loading ? <div className="mt-4"><SkeletonCard /></div> : null}
-            {error ? <div className="mt-4"><ErrorState title="Careers unavailable" description={error} onRetry={() => void reload()} /></div> : null}
-            <StaggerGrid className="mt-5 grid gap-3 lg:grid-cols-2">
-              {filteredCareers.slice(0, 10).map((career) => (
-                <StaggerItem key={career.id}>
-                  <CareerCard career={career} saved={profile.savedCareers.includes(career.id)} onToggleSave={() => toggleSavedCareer(career.id)} />
-                </StaggerItem>
-              ))}
-            </StaggerGrid>
-            {data && !filteredCareers.length ? (
-              <div className="mt-4">
-                <EmptyState
-                  title="No matching careers yet"
-                  description="Clear one filter, try a broader interest, or save more subjects so the cockpit has more context."
-                  actionLabel="Reset filters"
-                  actionHref="/dashboard/student/careers"
-                  icon={Compass}
-                />
-              </div>
-            ) : null}
-          </Card>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <h2 className="text-xl font-semibold text-slate-950 dark:text-brand-parchment">Subject Match</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">Save subjects you want Odie to consider when giving pathway advice.</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(data?.supportedSubjects || []).slice(0, 14).map((subject) => (
-                  <FilterChip key={subject} active={profile.preferredSubjects.includes(subject)} onClick={() => updateProfile({ preferredSubjects: toggleValue(profile.preferredSubjects, subject) })}>
-                    {subject}
-                  </FilterChip>
-                ))}
-              </div>
-            </Card>
-
-            <Card>
-              <h2 className="text-xl font-semibold text-slate-950 dark:text-brand-parchment">APS Planner</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">Set a target APS so career conversations stay anchored to admission planning.</p>
-              <div className="mt-4 max-w-xs">
-                <FormField label="Target APS">
-                  <TextInput
-                    type="number"
-                    min={0}
-                    max={60}
-                    value={profile.apsTarget ?? ''}
-                    onChange={(event) => updateProfile({ apsTarget: event.target.value ? Number(event.target.value) : null })}
-                    placeholder="Example: 34"
-                  />
-                </FormField>
-              </div>
-              <p className="mt-3 text-xs text-slate-500 dark:text-brand-marble">{profileBusy ? 'Saving profile...' : 'Saved profile context is used by Odie on Careers.'}</p>
-            </Card>
-
-            <Card>
-              <h2 className="text-xl font-semibold text-slate-950 dark:text-brand-parchment">Opportunity Map</h2>
-              <div className="mt-4 grid gap-3">
-                {(data?.institutions || []).slice(0, 4).map((institution) => (
-                  <InsightCard
-                    key={institution.id}
-                    title={institution.name}
-                    description={`${institution.city} · ${(institution.institutionTypes || []).join(', ') || 'institution pathway'}`}
-                  />
-                ))}
-              </div>
-            </Card>
-
-            <Card>
-              <h2 className="text-xl font-semibold text-slate-950 dark:text-brand-parchment">Saved Careers</h2>
-              <div className="mt-4 space-y-3">
-                {savedCareers.map((career) => (
-                  <InsightCard key={career.id} title={career.title} description={career.description || career.category || 'Saved for deeper planning.'} />
-                ))}
-                {!savedCareers.length ? (
-                  <EmptyState
-                    title="No saved careers yet"
-                    description="Save careers from the explorer to build a shortlist you can compare with subjects, APS targets, and Odie advice."
-                    actionLabel="Explore careers"
-                    actionHref="/dashboard/student/careers"
-                    icon={Sparkles}
-                  />
-                ) : null}
-              </div>
-            </Card>
-          </div>
+      <section className="space-y-6">
+        <CareerHero
+          savedCount={profile.savedCareers.length}
+          apsTarget={profile.apsTarget}
+          institutionCount={data?.institutions?.length || 0}
+          onOpenOdie={() => setOdieOpen(true)}
+        />
+        <CareerExplorer
+          categories={categories}
+          careers={filteredCareers}
+          filters={filters}
+          profile={profile}
+          supportedSubjects={data?.supportedSubjects || []}
+          onFilterChange={updateFilters}
+          onToggleSave={toggleSavedCareer}
+          onRefresh={() => void reload()}
+          loading={loading}
+          error={error}
+          refetching={refetching}
+          onRetry={() => void reload()}
+        />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <SubjectMatch
+            subjects={data?.supportedSubjects || []}
+            selectedSubjects={profile.preferredSubjects}
+            onToggleSubject={(subject) => updateProfile({ preferredSubjects: toggleValue(profile.preferredSubjects, subject) })}
+          />
+          <APSPlanner
+            apsTarget={profile.apsTarget}
+            profileBusy={profileBusy}
+            onChange={(apsTarget) => updateProfile({ apsTarget })}
+          />
+          <SavedCareers careers={savedCareers} />
         </div>
-
-        <Card className="scroll-mt-6" id="odie-career-assistant">
-          <h2 className="text-xl font-semibold text-slate-950 dark:text-brand-parchment">Ask Odie</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">Odie is only available on Careers, and focuses on subject choice, APS planning, study planning, and pathways.</p>
-          <div className="mt-5 max-h-[520px] space-y-3 overflow-y-auto rounded-[1.5rem] border border-white/70 bg-white/55 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]">
-            {chat.map((item, index) => (
-              <div key={`${item.role}-${index}`} className={`rounded-2xl border px-4 py-3 text-sm leading-6 shadow-sm ${item.role === 'assistant' ? 'border-white/70 bg-white/72 text-slate-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment' : 'border-brand-navy bg-brand-navy text-white dark:border-brand-aegean dark:bg-brand-aegean'}`}>
-                {item.text || (busy && index === chat.length - 1 ? 'Odie is thinking...' : '')}
-              </div>
-            ))}
-          </div>
-          <form className="mt-4 space-y-3" onSubmit={(event) => void submit(event)}>
-            <FormField label="Message">
-              <TextArea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ask about a career pathway, APS target, or subject choice..." />
-            </FormField>
-            <div className="flex flex-wrap gap-2">
-              <PremiumButton type="submit" disabled={busy || !message.trim()}>{busy ? 'Streaming...' : 'Send'}</PremiumButton>
-              {busy ? <PremiumButton type="button" variant="outline" onClick={stopGeneration}>Stop generation</PremiumButton> : null}
-            </div>
-          </form>
-        </Card>
+        <OpportunityMap institutions={data?.institutions || []} />
+        <OdieCareerSheet
+          open={odieOpen}
+          chat={chat}
+          message={message}
+          busy={busy}
+          onClose={() => setOdieOpen(false)}
+          onMessageChange={setMessage}
+          onSubmit={(event) => void submit(event)}
+          onStop={stopGeneration}
+        />
+        <OdieCareerDrawer
+          open={odieOpen}
+          chat={chat}
+          message={message}
+          busy={busy}
+          onClose={() => setOdieOpen(false)}
+          onMessageChange={setMessage}
+          onSubmit={(event) => void submit(event)}
+          onStop={stopGeneration}
+        />
       </section>
     </PageShell>
+  );
+}
+
+export function CareerHero({
+  savedCount,
+  apsTarget,
+  institutionCount,
+  onOpenOdie,
+}: {
+  savedCount: number;
+  apsTarget: number | null;
+  institutionCount: number;
+  onOpenOdie: () => void;
+}) {
+  return (
+    <section className="academy-major-surface relative overflow-hidden">
+      <div className="absolute inset-x-6 top-0 h-px greek-keyline" aria-hidden="true" />
+      <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:items-end">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-academy-gold">Career discovery cockpit</p>
+          <h2 className="mt-3 font-display text-4xl font-semibold leading-tight tracking-normal text-white sm:text-5xl">
+            Build a pathway that fits your subjects and ambition
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-academy-parchment">
+            Explore careers, save serious options, compare subject fit, plan APS, and ask Odie when pathway choices need coaching.
+          </p>
+          <button className="academy-btn academy-btn-gold mt-6" type="button" onClick={onOpenOdie}>
+            <MessageCircle className="h-4 w-4" aria-hidden="true" />
+            Ask Odie
+          </button>
+        </div>
+        <div className="grid gap-3">
+          <HeroFact label="Saved" value={String(savedCount)} />
+          <HeroFact label="APS target" value={apsTarget == null ? 'Set it' : String(apsTarget)} />
+          <HeroFact label="Map" value={String(institutionCount)} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HeroFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-ios-lg border border-white/15 bg-white/10 p-4 shadow-academy-inset backdrop-blur-xl">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-gold">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+    </div>
+  );
+}
+
+export function CareerExplorer({
+  categories,
+  careers,
+  filters,
+  profile,
+  supportedSubjects,
+  onFilterChange,
+  onToggleSave,
+  onRefresh,
+  loading,
+  error,
+  refetching,
+  onRetry,
+}: {
+  categories: string[];
+  careers: CareerSummary[];
+  filters: { interest: string; subject: string; category: string };
+  profile: StudentCareerProfile;
+  supportedSubjects: string[];
+  onFilterChange: (patch: Partial<{ interest: string; subject: string; category: string }>) => void;
+  onToggleSave: (careerId: string) => void;
+  onRefresh: () => void;
+  loading: boolean;
+  error?: string | null;
+  refetching: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <section className="space-y-4" aria-labelledby="career-explorer-title">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Career Explorer</p>
+          <h2 id="career-explorer-title" className="mt-1 text-2xl font-semibold text-academy-ink dark:text-academy-parchment">Discovery list</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-academy-muted">Filter broad pathways, then save the options worth comparing with subjects and APS.</p>
+        </div>
+        <button className="academy-btn academy-btn-outline" disabled={refetching} type="button" onClick={onRefresh}>
+          {refetching ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        <FormField label="Interest">
+          <select className={inputClassName} value={filters.interest} onChange={(event) => onFilterChange({ interest: event.target.value })}>
+            <option value="">All interests</option>
+            {INTEREST_OPTIONS.map((interest) => <option key={interest} value={interest}>{interest}</option>)}
+          </select>
+        </FormField>
+        <FormField label="Subject">
+          <select className={inputClassName} value={filters.subject} onChange={(event) => onFilterChange({ subject: event.target.value })}>
+            <option value="">All subjects</option>
+            {supportedSubjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
+          </select>
+        </FormField>
+        <FormField label="Career category">
+          <select className={inputClassName} value={filters.category} onChange={(event) => onFilterChange({ category: event.target.value })}>
+            <option value="">All categories</option>
+            {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+          </select>
+        </FormField>
+      </div>
+      {loading ? <SkeletonCard /> : null}
+      {error ? <ErrorState title="Careers unavailable" description={error} onRetry={onRetry} /> : null}
+      <div className="divide-y divide-slate-950/5 rounded-ios-lg border border-white/70 bg-white/[0.48] px-4 shadow-academy-inset backdrop-blur-xl dark:divide-white/10 dark:border-white/10 dark:bg-white/[0.035]">
+        {careers.slice(0, 12).map((career) => (
+          <CareerRow key={career.id} career={career} saved={profile.savedCareers.includes(career.id)} onToggleSave={() => onToggleSave(career.id)} />
+        ))}
+      </div>
+      {!loading && !careers.length ? (
+        <EmptyState
+          title="No matching careers yet"
+          description="Clear one filter, try a broader interest, or save more subjects so the cockpit has more context."
+          actionLabel="Reset filters"
+          actionHref="/dashboard/student/careers"
+          icon={Compass}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+export function CareerRow({ career, saved, onToggleSave }: { career: CareerSummary; saved: boolean; onToggleSave: () => void }) {
+  const metrics = latestCareerMetric(career);
+  return (
+    <article className="py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">{career.category || 'Pathway'}</p>
+          <h3 className="mt-1 text-lg font-semibold text-academy-ink dark:text-academy-parchment">{career.title}</h3>
+          <p className="mt-2 line-clamp-2 text-sm leading-6 text-academy-muted">{career.description || 'Explore this pathway and compare subject fit before choosing a next step.'}</p>
+        </div>
+        <button className={`academy-btn min-h-10 shrink-0 px-4 ${saved ? 'academy-btn-gold' : 'academy-btn-outline'}`} type="button" onClick={onToggleSave}>
+          <Bookmark className="h-4 w-4" aria-hidden="true" />
+          {saved ? 'Saved' : 'Save'}
+        </button>
+      </div>
+      {metrics ? (
+        <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-academy-muted">
+          {metrics.salary ? <span className="academy-chip min-h-8">{metrics.salary}</span> : null}
+          {metrics.growth ? <span className="academy-chip min-h-8">Growth: {metrics.growth}</span> : null}
+          {metrics.demand ? <span className="academy-chip min-h-8">Demand: {metrics.demand}</span> : null}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+export function SubjectMatch({ subjects, selectedSubjects, onToggleSubject }: { subjects: string[]; selectedSubjects: string[]; onToggleSubject: (subject: string) => void }) {
+  return (
+    <section className="rounded-ios-lg border border-white/70 bg-white/[0.48] p-5 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.035]">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Subject Match</p>
+      <h2 className="mt-1 text-xl font-semibold text-academy-ink dark:text-academy-parchment">Subjects Odie should consider</h2>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {subjects.slice(0, 14).map((subject) => (
+          <FilterChip key={subject} active={selectedSubjects.includes(subject)} onClick={() => onToggleSubject(subject)}>
+            {subject}
+          </FilterChip>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function APSPlanner({ apsTarget, profileBusy, onChange }: { apsTarget: number | null; profileBusy: boolean; onChange: (value: number | null) => void }) {
+  return (
+    <section className="rounded-ios-lg border border-white/70 bg-white/[0.48] p-5 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.035]">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">APS Planner</p>
+      <h2 className="mt-1 text-xl font-semibold text-academy-ink dark:text-academy-parchment">Set a target APS</h2>
+      <div className="mt-4 max-w-xs">
+        <FormField label="Target APS">
+          <TextInput type="number" min={0} max={60} value={apsTarget ?? ''} onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)} placeholder="Example: 34" />
+        </FormField>
+      </div>
+      <p className="mt-3 text-xs text-academy-muted">{profileBusy ? 'Saving profile...' : 'Saved profile context is used by Odie on Careers.'}</p>
+    </section>
+  );
+}
+
+function SavedCareers({ careers }: { careers: CareerSummary[] }) {
+  return (
+    <section className="rounded-ios-lg border border-white/70 bg-white/[0.48] p-5 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.035]">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Saved Careers</p>
+      <h2 className="mt-1 text-xl font-semibold text-academy-ink dark:text-academy-parchment">Shortlist</h2>
+      <div className="mt-4 space-y-3">
+        {careers.map((career) => (
+          <div key={career.id} className="academy-row">
+            <Sparkles className="h-4 w-4 shrink-0 text-academy-gold" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-academy-ink dark:text-academy-parchment">{career.title}</p>
+              <p className="truncate text-xs text-academy-muted">{career.category || 'Saved pathway'}</p>
+            </div>
+          </div>
+        ))}
+        {!careers.length ? (
+          <EmptyState title="No saved careers yet" description="Save careers from the explorer to build a shortlist you can compare with subjects, APS targets, and Odie advice." actionLabel="Explore careers" actionHref="/dashboard/student/careers" icon={Sparkles} />
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function OpportunityMap({ institutions }: { institutions: Array<{ id: string; name: string; city: string; institutionTypes?: string[] }> }) {
+  return (
+    <section className="space-y-3" aria-labelledby="opportunity-map-title">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Opportunity Map</p>
+        <h2 id="opportunity-map-title" className="mt-1 text-2xl font-semibold text-academy-ink dark:text-academy-parchment">Institution signals</h2>
+      </div>
+      <div className="divide-y divide-slate-950/5 rounded-ios-lg border border-white/70 bg-white/[0.48] px-4 shadow-academy-inset backdrop-blur-xl dark:divide-white/10 dark:border-white/10 dark:bg-white/[0.035]">
+        {institutions.slice(0, 5).map((institution) => (
+          <div key={institution.id} className="academy-row">
+            <MapPinned className="h-4 w-4 shrink-0 text-academy-aegean dark:text-academy-gold" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-academy-ink dark:text-academy-parchment">{institution.name}</p>
+              <p className="truncate text-xs text-academy-muted">{institution.city} - {(institution.institutionTypes || []).join(', ') || 'institution pathway'}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function OdieCareerSheet(props: OdieCareerSurfaceProps) {
+  return (
+    <div className={`fixed inset-x-0 bottom-0 z-50 rounded-t-sheet border border-white/70 bg-white/[0.92] p-4 shadow-[0_-20px_70px_rgba(15,23,42,0.22)] backdrop-blur-2xl transition duration-sheet ease-ios dark:border-white/10 dark:bg-slate-950/[0.92] lg:hidden ${props.open ? 'translate-y-0' : 'pointer-events-none translate-y-full'}`} id="odie-career-assistant">
+      <OdieCareerPanel {...props} />
+    </div>
+  );
+}
+
+export function OdieCareerDrawer(props: OdieCareerSurfaceProps) {
+  return (
+    <aside className={`fixed bottom-6 right-6 top-6 z-50 hidden w-[26rem] rounded-sheet border border-white/70 bg-white/[0.9] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.22)] backdrop-blur-2xl transition duration-sheet ease-ios dark:border-white/10 dark:bg-slate-950/[0.9] lg:block ${props.open ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-8 opacity-0'}`}>
+      <OdieCareerPanel {...props} />
+    </aside>
+  );
+}
+
+type OdieCareerSurfaceProps = {
+  open: boolean;
+  chat: ChatMessage[];
+  message: string;
+  busy: boolean;
+  onClose: () => void;
+  onMessageChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onStop: () => void;
+};
+
+function OdieCareerPanel({ chat, message, busy, onClose, onMessageChange, onSubmit, onStop }: OdieCareerSurfaceProps) {
+  return (
+    <div className="flex max-h-[calc(100vh-3rem)] flex-col">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Ask Odie</p>
+          <h2 className="mt-1 text-xl font-semibold text-academy-ink dark:text-academy-parchment">Career guidance only</h2>
+          <p className="mt-1 text-sm leading-6 text-academy-muted">Subject choice, APS planning, study planning, and pathways.</p>
+        </div>
+        <button aria-label="Close Odie" className="grid h-10 w-10 place-items-center rounded-full hover:bg-slate-950/[0.05] dark:hover:bg-white/[0.08]" type="button" onClick={onClose}>
+          <X className="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="mt-4 flex-1 space-y-3 overflow-y-auto rounded-ios-lg border border-white/70 bg-white/[0.55] p-4 shadow-academy-inset dark:border-white/10 dark:bg-white/[0.04]">
+        {chat.map((item, index) => (
+          <div key={`${item.role}-${index}`} className={`rounded-ios border px-4 py-3 text-sm leading-6 shadow-sm ${item.role === 'assistant' ? 'border-white/70 bg-white/[0.72] text-slate-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment' : 'border-brand-navy bg-brand-navy text-white dark:border-brand-aegean dark:bg-brand-aegean'}`}>
+            {item.text || (busy && index === chat.length - 1 ? 'Odie is thinking...' : '')}
+          </div>
+        ))}
+      </div>
+      <form className="mt-4 space-y-3" onSubmit={onSubmit}>
+        <FormField label="Message">
+          <TextArea value={message} onChange={(event) => onMessageChange(event.target.value)} placeholder="Ask about a career pathway, APS target, or subject choice..." />
+        </FormField>
+        <div className="flex flex-wrap gap-2">
+          <button className="academy-btn academy-btn-primary" type="submit" disabled={busy || !message.trim()}>
+            <Send className="h-4 w-4" aria-hidden="true" />
+            {busy ? 'Streaming...' : 'Send'}
+          </button>
+          {busy ? <button className="academy-btn academy-btn-outline" type="button" onClick={onStop}>Stop generation</button> : null}
+        </div>
+      </form>
+    </div>
   );
 }

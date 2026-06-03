@@ -41,7 +41,6 @@ test('student card collections opt into shared first-load staggering', () => {
 
   for (const [name, source] of [
     ['assignment cards', components],
-    ['careers', careers],
   ]) {
     assert.ok(source.includes('<StaggerGrid'), `${name} must use StaggerGrid`);
     assert.ok(source.includes('<StaggerItem'), `${name} must use StaggerItem`);
@@ -51,4 +50,6 @@ test('student card collections opt into shared first-load staggering', () => {
   assert.ok(results.includes('<AnimatedProgressBar'), 'results bars must use the shared animation');
   assert.ok(progress.includes('<AnimatedProgressBar'), 'progress rows must use shared animated bars');
   assert.ok(progress.includes('TopicProgressList'), 'progress page must use a stable row list instead of forced card staggering');
+  assert.ok(careers.includes('CareerRow'), 'careers page must use a stable row explorer instead of forced card staggering');
+  assert.ok(careers.includes('duration-sheet ease-ios'), 'careers Odie sheet and drawer must use shared sheet motion timing');
 });
