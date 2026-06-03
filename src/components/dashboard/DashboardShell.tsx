@@ -157,7 +157,7 @@ export function TopStudentHeader({
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">
             Project Odysseus
           </p>
-          <h1 className="mt-1 truncate text-2xl font-semibold tracking-normal text-academy-ink dark:text-academy-parchment sm:text-3xl">
+          <h1 className="mt-1 text-2xl font-semibold leading-tight tracking-normal text-academy-ink dark:text-academy-parchment sm:text-3xl">
             {title}
           </h1>
         </div>

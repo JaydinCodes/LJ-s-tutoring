@@ -243,7 +243,7 @@ export function AssignmentRow({
           <span className="min-w-0">
             <span className="block truncate text-base font-semibold text-academy-ink dark:text-academy-parchment">{assignment.title}</span>
             <span className="mt-1 block text-sm leading-6 text-academy-muted">
-              {[assignment.subject || assignment.subject_id || 'Subject pending', formatAssignmentDue(assignment.due_date, dueDelta)].filter(Boolean).join(' • ')}
+              {[assignment.subject || assignment.subject_id || 'Subject pending', formatAssignmentDue(assignment.due_date, dueDelta)].filter(Boolean).join(' | ')}
             </span>
           </span>
         </div>

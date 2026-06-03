@@ -494,7 +494,14 @@ function OpportunityMap({ institutions }: { institutions: Array<{ id: string; na
 
 export function OdieCareerSheet(props: OdieCareerSurfaceProps) {
   return (
-    <div className={`fixed inset-x-0 bottom-0 z-50 rounded-t-sheet border border-white/70 bg-white/[0.92] p-4 shadow-[0_-20px_70px_rgba(15,23,42,0.22)] backdrop-blur-2xl transition duration-sheet ease-ios dark:border-white/10 dark:bg-slate-950/[0.92] lg:hidden ${props.open ? 'translate-y-0' : 'pointer-events-none translate-y-full'}`} id="odie-career-assistant">
+    <div
+      aria-hidden={!props.open}
+      aria-label="Odie career assistant"
+      aria-modal={props.open}
+      className={`fixed inset-x-0 bottom-0 z-50 rounded-t-sheet border border-white/70 bg-white/[0.92] p-4 shadow-[0_-20px_70px_rgba(15,23,42,0.22)] backdrop-blur-2xl transition duration-sheet ease-ios dark:border-white/10 dark:bg-slate-950/[0.92] lg:hidden ${props.open ? 'translate-y-0' : 'pointer-events-none translate-y-full'}`}
+      id="odie-career-assistant"
+      role="dialog"
+    >
       <OdieCareerPanel {...props} />
     </div>
   );
@@ -502,7 +509,13 @@ export function OdieCareerSheet(props: OdieCareerSurfaceProps) {
 
 export function OdieCareerDrawer(props: OdieCareerSurfaceProps) {
   return (
-    <aside className={`fixed bottom-6 right-6 top-6 z-50 hidden w-[26rem] rounded-sheet border border-white/70 bg-white/[0.9] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.22)] backdrop-blur-2xl transition duration-sheet ease-ios dark:border-white/10 dark:bg-slate-950/[0.9] lg:block ${props.open ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-8 opacity-0'}`}>
+    <aside
+      aria-hidden={!props.open}
+      aria-label="Odie career assistant"
+      aria-modal={props.open}
+      className={`fixed bottom-6 right-6 top-6 z-50 hidden w-[26rem] rounded-sheet border border-white/70 bg-white/[0.9] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.22)] backdrop-blur-2xl transition duration-sheet ease-ios dark:border-white/10 dark:bg-slate-950/[0.9] lg:block ${props.open ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-8 opacity-0'}`}
+      role="dialog"
+    >
       <OdieCareerPanel {...props} />
     </aside>
   );
