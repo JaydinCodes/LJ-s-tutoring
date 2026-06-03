@@ -25,7 +25,7 @@ import { StudentCareersRoute } from '../features/students/StudentCareersRoute';
 import { StudentDashboardRoute } from '../features/students/StudentDashboardRoute';
 import { StudentProgressRoute } from '../features/students/StudentProgressRoute';
 import { StudentResultDetailRoute, StudentResultsRoute, StudentResultsSubjectRoute } from '../features/students/StudentResultsRoute';
-import { StudentCommunityRoute, StudentReportsRoute } from '../features/students/StudentSupportRoutes';
+import { StudentCommunityRoute, StudentReportsRoute, StudentSettingsRoute } from '../features/students/StudentSupportRoutes';
 import { TutorClassesRoute } from '../features/tutors/TutorClassesRoute';
 import { TutorDashboardRoute } from '../features/tutors/TutorDashboardRoute';
 import { TutorReportsRoute, TutorRiskRoute, TutorSessionsRoute } from '../features/tutors/TutorOperationsRoutes';
@@ -78,6 +78,7 @@ export function App() {
         <Route path="/dashboard/student/careers" element={<ProtectedRoute roles={['student']}><StudentCareersRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/community" element={<ProtectedRoute roles={['student']}><StudentCommunityRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/reports" element={<ProtectedRoute roles={['student']}><StudentReportsRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/student/settings" element={<ProtectedRoute roles={['student']}><StudentSettingsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin" element={<ProtectedRoute roles={['admin']}><AdminDashboardRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/students" element={<ProtectedRoute roles={['admin']}><AdminStudentsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/tutors" element={<ProtectedRoute roles={['admin']}><AdminTutorsRoute /></ProtectedRoute>} />

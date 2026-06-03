@@ -35,7 +35,7 @@ const nav = {
     { to: '/dashboard/student/progress', label: 'Progress', icon: TrendingUp },
     { to: '/dashboard/student/reports', label: 'Resources', icon: BookOpen },
     { to: '/dashboard/student/careers', label: 'Careers', icon: Compass },
-    { to: '/onboarding/student', label: 'Settings', icon: Settings },
+    { to: '/dashboard/student/settings', label: 'Settings', icon: Settings },
   ],
   admin: [
     { to: '/dashboard/admin', label: 'Overview', icon: LayoutDashboard },
@@ -172,7 +172,7 @@ export function TopStudentHeader({
           <NavLink
             aria-label="Open settings"
             className="grid h-11 w-11 place-items-center rounded-ios border border-slate-950/10 bg-white/64 text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09]"
-            to="/onboarding/student"
+            to="/dashboard/student/settings"
           >
             <Settings className="h-4 w-4" aria-hidden="true" />
           </NavLink>
