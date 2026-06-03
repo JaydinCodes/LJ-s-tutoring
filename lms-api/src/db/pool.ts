@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import type { PoolClient, QueryConfig, QueryResult, QueryResultRow } from 'pg';
 
 const isTest = process.env.NODE_ENV === 'test';
 const rawDatabaseUrl = isTest ? process.env.DATABASE_URL_TEST : process.env.DATABASE_URL;
@@ -66,3 +67,46 @@ export const pool = new Pool({
   idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS ?? 30000),
   connectionTimeoutMillis: Number(process.env.PG_CONN_TIMEOUT_MS ?? 5000),
 });
+
+const slowQueryMs = Number(process.env.SLOW_QUERY_MS ?? 250);
+
+function queryLabel(query: string | QueryConfig) {
+  const sql = typeof query === 'string' ? query : query.text;
+  return sql.replace(/\s+/g, ' ').trim().slice(0, 180);
+}
+
+function logSlowQuery(query: string | QueryConfig, durationMs: number, rowCount?: number | null) {
+  if (durationMs < slowQueryMs) return;
+  // Keep the SQL sample short and parameter-free; this log is for query-plan triage, not data capture.
+  console.warn(JSON.stringify({
+    event: 'db.query.slow',
+    durationMs,
+    rowCount: rowCount ?? null,
+    query: queryLabel(query),
+  }));
+}
+
+const rawPoolQuery = pool.query.bind(pool);
+pool.query = (async (...args: Parameters<typeof pool.query>) => {
+  const started = Date.now();
+  const result = await (rawPoolQuery as any)(...args);
+  logSlowQuery(args[0] as string | QueryConfig, Date.now() - started, result?.rowCount);
+  return result;
+}) as typeof pool.query;
+
+const patchedClients = new WeakSet<PoolClient>();
+const rawConnect = pool.connect.bind(pool);
+pool.connect = (async () => {
+  const client = await rawConnect();
+  if (!patchedClients.has(client)) {
+    const rawClientQuery = client.query.bind(client);
+    client.query = (async (...args: Parameters<typeof client.query>): Promise<QueryResult<QueryResultRow>> => {
+      const started = Date.now();
+      const result = await (rawClientQuery as any)(...args);
+      logSlowQuery(args[0] as string | QueryConfig, Date.now() - started, result?.rowCount);
+      return result;
+    }) as typeof client.query;
+    patchedClients.add(client);
+  }
+  return client;
+}) as typeof pool.connect;

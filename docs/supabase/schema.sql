@@ -162,6 +162,7 @@ create index if not exists idx_students_ngo_partner on public.students(ngo_partn
 create index if not exists idx_student_career_profiles_student_updated on public.student_career_profiles(student_id, updated_at desc);
 create index if not exists idx_assignments_due_date on public.assignments(due_date);
 create index if not exists idx_submissions_student on public.assignment_submissions(student_id);
+create index if not exists idx_submissions_student_assignment on public.assignment_submissions(student_id, assignment_id);
 create unique index if not exists idx_submissions_latest_assignment_student
   on public.assignment_submissions(assignment_id, student_id)
   where is_latest;

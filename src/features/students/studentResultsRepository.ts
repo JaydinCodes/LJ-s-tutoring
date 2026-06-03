@@ -1,5 +1,6 @@
 import { optionalApiGet } from '../../lib/api/client';
 import type { StudentDashboardView } from '../../types/lms';
+import { parseStudentResultsApiResponse } from '../../types/studentApiContracts';
 import { loadStudentDashboard } from './studentDashboardRepository';
 
 export interface StudentResultTopic {
@@ -223,7 +224,7 @@ function buildFallbackFromDashboard(data: StudentDashboardView): StudentResultsA
 }
 
 export async function loadStudentResultsAnalytics(): Promise<StudentResultsAnalyticsView> {
-  const apiView = await optionalApiGet<StudentResultsAnalyticsView | null>('/student/results', null);
+  const apiView = parseStudentResultsApiResponse(await optionalApiGet<unknown>('/student/results', null));
   if (apiView?.summary && Array.isArray(apiView.items)) {
     return {
       ...apiView,

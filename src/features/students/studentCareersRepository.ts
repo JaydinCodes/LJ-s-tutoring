@@ -1,4 +1,5 @@
 import { apiPut, optionalApiGet } from '../../lib/api/client';
+import { parseStudentCareersApiResponse } from '../../types/studentApiContracts';
 import careersDataset from '../../../lms-api/data/odie-careers/careers.v1.json';
 import coursesDataset from '../../../lms-api/data/odie-careers/courses.v1.json';
 
@@ -52,7 +53,8 @@ export function loadCareersOverview() {
     supportedSubjects: coursesDataset.supportedSubjects,
     profile: emptyProfile,
   };
-  return optionalApiGet<CareerOverview>('/odie-careers/overview', fallback);
+  return optionalApiGet<unknown>('/odie-careers/overview', fallback)
+    .then((payload) => parseStudentCareersApiResponse(payload, fallback));
 }
 
 export function saveCareerProfile(profile: StudentCareerProfile) {

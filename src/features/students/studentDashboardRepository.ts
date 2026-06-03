@@ -1,55 +1,12 @@
 import { optionalApiGet } from '../../lib/api/client';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, StudentDashboardView, StudentProgress } from '../../types/lms';
-
-interface LegacyDashboard {
-  profile?: { id?: string; name?: string; grade?: string; school?: string; guardian?: { name?: string }; partnerAffiliation?: string };
-  academicProfile?: { grade?: string; school?: string };
-  attendance?: { attended?: number; total?: number };
-  streak?: { current?: number };
-  progressSnapshot?: Array<{ topic: string; completion: number }>;
-  examCalendar?: StudentDashboardView['examCalendar'];
-  supportStatus?: StudentDashboardView['supportStatus'];
-  recommendedNext?: StudentDashboardView['recommendedNext'];
-  recommendedQuiz?: StudentDashboardView['recommendedQuiz'];
-  careerGoals?: StudentDashboardView['careerGoals'];
-  dailyInsightContext?: {
-    studentId?: string;
-    nextExamTitle?: string;
-    nextExamSubject?: string;
-    nextExamDate?: string;
-    currentAcademicStatus?: string;
-    attendanceRate?: number;
-    streakDays?: number;
-  };
-}
-
-interface LegacyAssignments {
-  assignments?: LegacyAssignment[];
-  items?: LegacyAssignment[];
-}
-
-type LegacyAssignment = Assignment & {
-  submission_id?: string;
-  submission_status?: string;
-  submitted_at?: string;
-  original_filename?: string;
-  mime_type?: string;
-  size_bytes?: number;
-  version_number?: number;
-  is_latest?: boolean;
-  submission_versions?: Array<{
-    id: string;
-    status?: string;
-    submitted_at?: string;
-    original_filename?: string;
-    mime_type?: string;
-    size_bytes?: number;
-    version_number?: number;
-    is_latest?: boolean;
-    file_url?: string;
-  }>;
-};
+import {
+  parseStudentAssignmentsApiResponse,
+  parseStudentDashboardApiResponse,
+  parseStudentMasteryItems,
+  parseStudentQuizItems,
+} from '../../types/studentApiContracts';
 
 interface LegacyResults {
   results?: Array<{ percentage?: number }>;
@@ -73,13 +30,14 @@ function academicStatus(score: number | null) {
 }
 
 async function loadFromApi(): Promise<StudentDashboardView> {
-  const [dashboard, assignmentsPayload, resultsPayload] = await Promise.all([
-    optionalApiGet<LegacyDashboard>('/dashboard', {}),
-    optionalApiGet<LegacyAssignments>('/student/assignments', { assignments: [] }),
+  const [dashboardRaw, assignmentsRaw, resultsPayload] = await Promise.all([
+    optionalApiGet<unknown>('/dashboard', {}),
+    optionalApiGet<unknown>('/student/assignments', { assignments: [] }),
     optionalApiGet<LegacyResults>('/student/results', { results: [] }),
   ]);
 
-  const assignments = assignmentsPayload.assignments || assignmentsPayload.items || [];
+  const dashboard = parseStudentDashboardApiResponse(dashboardRaw);
+  const assignments = parseStudentAssignmentsApiResponse(assignmentsRaw).assignments;
   const results = resultsPayload.results || resultsPayload.items || [];
   const submissions = assignments
     .flatMap((item) => {
@@ -138,22 +96,22 @@ async function loadFromApi(): Promise<StudentDashboardView> {
       { label: 'Attendance', value: `${attendanceRate}%`, helper: `${dashboard.streak?.current || 0} day study streak.`, tone: 'blue' },
     ],
     assignments,
-    progress: (dashboard.progressSnapshot || []).map((item, index) => ({
+    progress: parseStudentMasteryItems((dashboard.progressSnapshot || []).map((item, index) => ({
       id: `legacy-progress-${index}`,
       student_id: 'current',
       topic: item.topic,
       score: item.completion,
       recorded_at: new Date().toISOString(),
-    })),
+    }))),
     classes: [],
     submissions,
     recommendedNext: dashboard.recommendedNext,
-    recommendedQuiz: dashboard.recommendedQuiz || (weakestProgress ? {
+    recommendedQuiz: dashboard.recommendedQuiz || parseStudentQuizItems(weakestProgress ? [{
       id: `quiz-${weakestProgress.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'focus'}`,
       title: `${weakestProgress.topic} quick check`,
       topic: weakestProgress.topic,
       estimatedMinutes: 12,
-    } : null),
+    }] : [])[0] || null,
     careerGoals: dashboard.careerGoals || [],
     examCalendar: dashboard.examCalendar,
     supportStatus: dashboard.supportStatus,
