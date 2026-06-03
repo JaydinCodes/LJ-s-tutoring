@@ -83,7 +83,7 @@ export function StudentAssignmentsRoute() {
               {refetching ? <p className="text-sm font-semibold text-blue-700">Refreshing assignments...</p> : null}
             </div>
 
-            <div className="grid gap-2 rounded-[1.5rem] bg-brand-parchment/70 p-2 dark:bg-brand-navy/40 sm:grid-cols-2 lg:grid-cols-4" role="tablist" aria-label="Assignment status buckets">
+            <div className="grid gap-2 rounded-[1.5rem] border border-white/70 bg-white/55 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:grid-cols-2 lg:grid-cols-4" role="tablist" aria-label="Assignment status buckets">
               {assignmentTabs.map((tab) => {
                 const isActive = tab.key === activeBucket;
                 const count = studentData.assignmentBuckets.get(tab.key)?.length || 0;
@@ -93,7 +93,7 @@ export function StudentAssignmentsRoute() {
                     key={tab.key}
                     aria-controls={`assignment-panel-${tab.key}`}
                     aria-selected={isActive}
-                    className={`rounded-2xl px-4 py-3 text-left transition ${isActive ? 'bg-white text-brand-navy shadow-sm dark:bg-brand-obsidian dark:text-brand-parchment' : 'text-slate-600 hover:bg-white/60 dark:text-brand-marble dark:hover:bg-brand-obsidian/60'}`}
+                    className={`rounded-2xl px-4 py-3 text-left transition ${isActive ? 'bg-white/82 text-brand-navy shadow-sm dark:bg-white/[0.08] dark:text-brand-parchment' : 'text-slate-600 hover:bg-white/55 dark:text-brand-marble dark:hover:bg-white/[0.06]'}`}
                     id={`assignment-tab-${tab.key}`}
                     role="tab"
                     type="button"
@@ -111,7 +111,7 @@ export function StudentAssignmentsRoute() {
 
             <section
               aria-labelledby={`assignment-tab-${activeBucket}`}
-              className="rounded-[1.5rem] border border-brand-marble bg-white/80 p-4 dark:border-brand-marble/20 dark:bg-brand-obsidian/80"
+              className="rounded-[1.5rem] border border-white/70 bg-white/62 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]"
               id={`assignment-panel-${activeBucket}`}
               role="tabpanel"
             >

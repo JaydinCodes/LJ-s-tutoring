@@ -28,6 +28,8 @@ test('career profile API persists learner context with RLS-backed storage', () =
 
 test('streaming Odie career chat is Groq-backed and guarded', () => {
   const route = read('lms-api', 'src', 'routes', 'assistant.ts');
+  const apiClient = read('src', 'lib', 'api', 'client.ts');
+  const assistantConfig = read('lms-api', 'src', 'domains', 'assistant', 'config.ts');
 
   assert.ok(route.includes("app.post('/assistant/careers-chat/stream'"), 'streaming careers endpoint must exist');
   assert.ok(route.includes('https://api.groq.com/openai/v1/chat/completions'), 'streaming endpoint must call Groq');
@@ -36,4 +38,9 @@ test('streaming Odie career chat is Groq-backed and guarded', () => {
   assert.ok(route.includes('Do not pretend to be a university admissions officer'), 'guardrails must prevent admissions-officer impersonation');
   assert.ok(route.includes('verify current requirements on official institution pages'), 'guardrails must label uncertainty and require verification');
   assert.ok(route.includes('Never reveal, infer, or reference another student'), 'guardrails must protect other students data');
+  assert.ok(apiClient.includes("readCookie('csrf')"), 'streaming chat must read the CSRF cookie required by authenticated writes');
+  assert.ok(apiClient.includes("'x-csrf-token'"), 'streaming chat must send the CSRF header to the LMS API');
+  assert.ok(apiClient.includes('...csrfHeaders()'), 'write helpers and stream requests must share CSRF headers');
+  assert.ok(assistantConfig.includes('DEFAULT_MODEL'), 'Groq config must support the existing DEFAULT_MODEL env name');
+  assert.ok(assistantConfig.includes('parsed.DEFAULT_MODEL || parsed.GROQ_MODEL'), 'DEFAULT_MODEL must be accepted as the Groq model fallback');
 });

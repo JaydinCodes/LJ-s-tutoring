@@ -16,6 +16,18 @@ export function resolveApiBase() {
   return raw;
 }
 
+function readCookie(name: string) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = document.cookie.match(new RegExp(`(?:^|; )${escaped}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function csrfHeaders(): Record<string, string> {
+  const csrfToken = readCookie('csrf');
+  // The LMS API enforces double-submit CSRF for authenticated writes.
+  return csrfToken ? { 'x-csrf-token': csrfToken } : {};
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   const response = await fetch(`${resolveApiBase()}${path}`, {
     credentials: 'include',
@@ -42,6 +54,7 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
     headers: {
       accept: 'application/json',
       'content-type': 'application/json',
+      ...csrfHeaders(),
     },
     body: body == null ? undefined : JSON.stringify(body),
   });
@@ -66,6 +79,7 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
     headers: {
       accept: 'application/json',
       'content-type': 'application/json',
+      ...csrfHeaders(),
     },
     body: body == null ? undefined : JSON.stringify(body),
   });
@@ -90,6 +104,7 @@ export async function apiPut<T>(path: string, body?: unknown): Promise<T> {
     headers: {
       accept: 'application/json',
       'content-type': 'application/json',
+      ...csrfHeaders(),
     },
     body: body == null ? undefined : JSON.stringify(body),
   });
@@ -120,6 +135,7 @@ export async function apiStreamText(
     headers: {
       accept: 'text/plain',
       'content-type': 'application/json',
+      ...csrfHeaders(),
     },
     body: JSON.stringify(body),
   });

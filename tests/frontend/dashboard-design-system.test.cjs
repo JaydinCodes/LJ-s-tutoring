@@ -43,8 +43,9 @@ test('dashboard surfaces use the homepage brand palette and shared visual rules'
   }
 
   assert.ok(styles.includes('rounded-[1.5rem]'), 'shared cards must use one radius rule');
-  assert.ok(styles.includes('border-brand-marble'), 'shared cards must use the marble border rule');
-  assert.ok(styles.includes('shadow-brand-navy/10'), 'shared cards must use the navy shadow rule');
+  assert.ok(styles.includes('border-white/70'), 'shared cards must use the translucent glass border rule');
+  assert.ok(styles.includes('backdrop-blur-2xl'), 'shared cards must use the iOS-style glass blur rule');
+  assert.ok(styles.includes('shadow-[0_18px_45px_rgba(15,23,42,0.07)]'), 'shared cards must use the quiet elevation rule');
   assert.ok(card.includes('dashboardSurfaceClass'), 'legacy Card imports must inherit shared surface rules');
 });
 

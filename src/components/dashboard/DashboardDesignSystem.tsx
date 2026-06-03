@@ -8,10 +8,17 @@ import { dashboardInsetClass, dashboardSurfaceClass } from './dashboardStyles';
 type MetricTone = 'navy' | 'aegean' | 'gold' | 'marble';
 
 const metricToneClasses: Record<MetricTone, string> = {
-  navy: 'border-brand-navy/15 bg-brand-navy text-white dark:border-brand-marble/20 dark:bg-brand-navy',
-  aegean: 'border-brand-aegean/25 bg-brand-aegean/10 text-brand-obsidian dark:border-brand-aegean/60 dark:bg-brand-aegean/20 dark:text-brand-parchment',
-  gold: 'border-brand-gold/50 bg-brand-gold/15 text-brand-obsidian dark:border-brand-gold/60 dark:bg-brand-gold/20 dark:text-brand-parchment',
-  marble: 'border-brand-marble bg-white/95 text-brand-obsidian dark:border-brand-marble/20 dark:bg-brand-obsidian dark:text-brand-parchment',
+  navy: 'border-white/65 bg-brand-navy text-white shadow-[0_18px_45px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-white/[0.08]',
+  aegean: 'border-white/70 bg-white/76 text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+  gold: 'border-white/70 bg-white/76 text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+  marble: 'border-white/70 bg-white/76 text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+};
+
+const toneAccentClasses: Record<MetricTone, string> = {
+  navy: 'text-brand-gold bg-white/10 border-white/10',
+  aegean: 'text-brand-aegean bg-brand-aegean/[0.07] border-brand-aegean/10 dark:bg-brand-aegean/10',
+  gold: 'text-[#9a6a05] bg-brand-gold/[0.12] border-brand-gold/20 dark:text-brand-gold dark:bg-brand-gold/10',
+  marble: 'text-slate-500 bg-slate-950/[0.04] border-slate-950/[0.06] dark:text-brand-marble dark:bg-white/[0.06]',
 };
 
 // Route transitions use transforms only so the document keeps its layout while pages enter.
@@ -108,20 +115,20 @@ export function GreekHeroCard({
 
   return (
     <motion.section
-      className="group relative overflow-hidden rounded-[1.5rem] border border-brand-aegean/50 bg-[linear-gradient(135deg,_#0f172a_0%,_#1e3a5f_54%,_#1F6F8B_100%)] p-5 text-white shadow-xl shadow-brand-navy/20 sm:p-8"
+      className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_15%_0%,_rgba(31,111,139,0.38),_transparent_34%),linear-gradient(135deg,_#071326_0%,_#102b49_56%,_#0f172a_100%)] p-5 text-white shadow-[0_26px_80px_rgba(7,19,38,0.28)] sm:p-8"
       whileHover={prefersReducedMotion ? undefined : { y: -2 }}
       transition={{ duration: 0.22, ease: 'easeOut' }}
     >
-      <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full border border-brand-gold/25 bg-brand-gold/10" />
-      <div className="absolute left-6 top-6 h-24 w-24 rounded-full bg-brand-marble/10 blur-2xl" />
-      <div className="absolute bottom-0 left-0 h-2 w-full bg-[repeating-linear-gradient(90deg,_#f4c518_0,_#f4c518_18px,_transparent_18px,_transparent_30px)] opacity-70" />
+      <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full border border-white/10 bg-white/5 blur-sm" />
+      <div className="absolute left-6 top-6 h-24 w-24 rounded-full bg-brand-aegean/20 blur-3xl" />
+      <div className="absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-brand-gold/70 to-transparent" />
       {/* The shine is transform-only and disabled for reduced-motion users. */}
       <div
         className="pointer-events-none absolute inset-y-0 -left-1/3 hidden w-1/3 rotate-12 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 transition duration-700 motion-safe:group-hover:translate-x-[420%] motion-safe:group-hover:opacity-50 motion-reduce:hidden sm:block"
         aria-hidden="true"
       />
       <div className="relative">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-gold">{eyebrow}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-gold/90">{eyebrow}</p>
         <h2 className="greek-display mt-3 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-brand-parchment">{description}</p>
         {children ? <div className="mt-6">{children}</div> : null}
@@ -146,11 +153,11 @@ export function MetricCard({
   const mutedText = tone === 'navy' ? 'text-brand-parchment' : 'text-slate-600 dark:text-brand-marble';
 
   return (
-    <article className={`rounded-[1.5rem] border p-5 shadow-sm ${metricToneClasses[tone]}`}>
+    <article className={`rounded-[1.6rem] border p-5 backdrop-blur-2xl ${metricToneClasses[tone]}`}>
       <div className="flex items-start justify-between gap-3">
         <p className={`text-sm font-medium ${mutedText}`}>{label}</p>
         {Icon ? (
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-current/10 bg-white/30 text-current shadow-sm dark:bg-white/5">
+          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-[1.15rem] border ${toneAccentClasses[tone]}`}>
             <Icon className="h-5 w-5 text-current" aria-hidden="true" strokeWidth={2} />
           </span>
         ) : null}
@@ -173,7 +180,7 @@ export function InsightCard({
   tone?: MetricTone;
 }) {
   return (
-    <article className={`rounded-[1.5rem] border p-5 shadow-sm ${metricToneClasses[tone]}`}>
+    <article className={`rounded-[1.6rem] border p-5 backdrop-blur-2xl ${metricToneClasses[tone]}`}>
       <h3 className="text-lg font-semibold">{title}</h3>
       {description ? <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">{description}</p> : null}
       {children ? <div className="mt-4">{children}</div> : null}
@@ -222,7 +229,7 @@ export function AnimatedProgressBar({
   const score = value == null || !Number.isFinite(Number(value)) ? 0 : Math.max(0, Math.min(100, Number(value)));
 
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+    <div className="h-2 overflow-hidden rounded-full bg-slate-200/80 dark:bg-white/10">
       {/* Scaling the filled track animates once on mount without changing the reserved bar width. */}
       <motion.div
         className={`h-full rounded-full ${className}`}
@@ -247,7 +254,7 @@ export function TimelineCard({
   return (
     <article className={dashboardInsetClass}>
       <div className="flex gap-3">
-        <span className="mt-1 h-3 w-3 shrink-0 rounded-full bg-brand-gold ring-4 ring-brand-gold/20" />
+        <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-brand-gold ring-4 ring-brand-gold/15" />
         <div className="min-w-0">
           <h3 className="font-semibold text-brand-obsidian dark:text-brand-parchment">{title}</h3>
           {meta ? <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-brand-marble">{meta}</p> : null}
@@ -272,17 +279,16 @@ export function EmptyState({
   icon?: LucideIcon;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-[1.5rem] border border-dashed border-brand-aegean/50 bg-[linear-gradient(135deg,_rgba(245,239,227,0.9),_rgba(255,255,255,0.92))] p-6 text-center shadow-sm dark:border-brand-aegean/70 dark:bg-brand-navy/60 dark:bg-none">
-      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-brand-gold/15 blur-2xl" aria-hidden="true" />
-      <div className="absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-brand-gold/50 to-transparent" aria-hidden="true" />
-      <div className="relative mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-brand-aegean/20 bg-white/80 text-brand-aegean shadow-sm dark:border-brand-gold/30 dark:bg-brand-obsidian dark:text-brand-gold">
+    <div className="relative overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/70 p-6 text-center shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]">
+      <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-gold/45 to-transparent" aria-hidden="true" />
+      <div className="relative mx-auto grid h-11 w-11 place-items-center rounded-[1.1rem] border border-brand-aegean/10 bg-brand-aegean/[0.06] text-brand-aegean dark:border-brand-gold/20 dark:bg-brand-gold/10 dark:text-brand-gold">
         <Icon className="h-5 w-5 text-current" aria-hidden="true" strokeWidth={2} />
       </div>
       <h3 className="relative mt-4 text-base font-semibold text-brand-obsidian dark:text-brand-parchment">{title}</h3>
       <p className="relative mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-brand-marble">{description}</p>
       {actionLabel && actionHref ? (
         <Link
-          className="relative mt-4 inline-flex items-center justify-center rounded-full border border-brand-aegean/40 bg-white/80 px-4 py-2 text-sm font-semibold text-brand-navy shadow-sm transition hover:bg-brand-parchment dark:bg-brand-obsidian dark:text-brand-parchment dark:hover:bg-brand-navy"
+          className="relative mt-4 inline-flex items-center justify-center rounded-full border border-slate-950/10 bg-white/75 px-4 py-2 text-sm font-semibold text-brand-navy shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment dark:hover:bg-white/[0.09]"
           to={actionHref}
         >
           {actionLabel}
@@ -302,7 +308,7 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <section className={`${dashboardSurfaceClass} border-red-200 bg-red-50/95 dark:border-red-900 dark:bg-red-950/40`}>
+    <section className={`${dashboardSurfaceClass} border-red-200/70 bg-red-50/80 dark:border-red-900/60 dark:bg-red-950/30`}>
       <h2 className="text-lg font-semibold text-red-950 dark:text-red-100">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-red-800 dark:text-red-200">{description}</p>
       {onRetry ? <PremiumButton className="mt-4" onClick={onRetry}>Retry</PremiumButton> : null}
@@ -311,7 +317,7 @@ export function ErrorState({
 }
 
 export function SkeletonCard({ className = '' }: { className?: string }) {
-  return <div className={`${dashboardSurfaceClass} min-h-36 animate-pulse bg-brand-marble/70 dark:bg-brand-navy/80 ${className}`} aria-hidden="true" />;
+  return <div className={`${dashboardSurfaceClass} min-h-36 animate-pulse bg-white/55 dark:bg-white/[0.05] ${className}`} aria-hidden="true" />;
 }
 
 export function PremiumButton({
@@ -326,7 +332,7 @@ export function PremiumButton({
   const styles = {
     navy: 'bg-brand-navy text-white hover:bg-brand-deepBlue dark:bg-brand-aegean dark:hover:bg-brand-deepBlue',
     gold: 'bg-brand-gold text-brand-obsidian hover:bg-[#f7d24f]',
-    outline: 'border border-brand-aegean/50 bg-white/80 text-brand-navy hover:bg-brand-parchment dark:bg-brand-obsidian dark:text-brand-parchment dark:hover:bg-brand-navy',
+    outline: 'border border-slate-950/10 bg-white/70 text-brand-navy hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment dark:hover:bg-white/[0.09]',
   }[variant];
 
   return (

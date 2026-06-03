@@ -53,7 +53,7 @@ export function StudentWelcomeCard({
           <HeroMetric label="Academic status" value={academicStatus} helper={data.supportStatus?.recommendedAction || "Use today's plan to keep moving."} />
         </div>
 
-        <div className={`relative overflow-hidden rounded-3xl border p-5 text-sm leading-6 shadow-lg shadow-brand-navy/20 ${dailyInsightToneClasses[dailyInsight.tone]}`}>
+        <div className={`relative overflow-hidden rounded-3xl border p-5 text-sm leading-6 shadow-[0_18px_45px_rgba(15,23,42,0.14)] backdrop-blur-2xl ${dailyInsightToneClasses[dailyInsight.tone]}`}>
           <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-brand-gold/20 blur-xl" aria-hidden="true" />
           {/* Oracle Insight keeps the recommendation distinct from the raw status tiles. */}
           <div className="relative">
@@ -73,9 +73,9 @@ export function StudentWelcomeCard({
 
 const dailyInsightToneClasses: Record<DailyInsight['tone'], string> = {
   steady: 'border-white/20 bg-white/10 text-brand-parchment',
-  momentum: 'border-brand-aegean/60 bg-brand-aegean/20 text-brand-parchment',
-  focus: 'border-brand-gold/60 bg-brand-gold/15 text-brand-parchment',
-  revision: 'border-brand-gold/70 bg-brand-gold/20 text-brand-parchment',
+  momentum: 'border-white/15 bg-brand-aegean/16 text-brand-parchment',
+  focus: 'border-white/15 bg-brand-gold/12 text-brand-parchment',
+  revision: 'border-white/15 bg-brand-gold/16 text-brand-parchment',
   urgent: 'border-red-300/70 bg-red-950/30 text-red-50',
 };
 
@@ -207,11 +207,18 @@ function ActionMetricCard({
   tone: 'urgent' | 'gold' | 'navy' | 'aegean' | 'marble';
 }) {
   const toneClass = {
-    urgent: 'border-red-200 bg-red-50/90 text-red-950 hover:border-red-300 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-50',
-    gold: 'border-brand-gold/50 bg-brand-gold/15 text-brand-obsidian hover:border-brand-gold dark:border-brand-gold/60 dark:bg-brand-gold/20 dark:text-brand-parchment',
-    navy: 'border-brand-navy/15 bg-brand-navy text-white hover:border-brand-gold/70 dark:border-brand-marble/20 dark:bg-brand-navy',
-    aegean: 'border-brand-aegean/30 bg-brand-aegean/10 text-brand-obsidian hover:border-brand-aegean dark:border-brand-aegean/60 dark:bg-brand-aegean/20 dark:text-brand-parchment',
-    marble: 'border-brand-marble bg-white/95 text-brand-obsidian hover:border-brand-aegean/50 dark:border-brand-marble/20 dark:bg-brand-obsidian dark:text-brand-parchment',
+    urgent: 'border-white/70 bg-white/76 text-brand-obsidian hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+    gold: 'border-white/70 bg-white/76 text-brand-obsidian hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+    navy: 'border-white/65 bg-brand-navy text-white hover:border-brand-gold/50 dark:border-white/10 dark:bg-white/[0.08]',
+    aegean: 'border-white/70 bg-white/76 text-brand-obsidian hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+    marble: 'border-white/70 bg-white/76 text-brand-obsidian hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+  }[tone];
+  const accentClass = {
+    urgent: 'text-red-700 bg-red-500/[0.08] border-red-500/10 dark:text-red-200 dark:bg-red-500/10',
+    gold: 'text-[#9a6a05] bg-brand-gold/[0.12] border-brand-gold/20 dark:text-brand-gold dark:bg-brand-gold/10',
+    navy: 'text-brand-gold bg-white/10 border-white/10',
+    aegean: 'text-brand-aegean bg-brand-aegean/[0.07] border-brand-aegean/10 dark:bg-brand-aegean/10',
+    marble: 'text-slate-500 bg-slate-950/[0.04] border-slate-950/[0.06] dark:text-brand-marble dark:bg-white/[0.06]',
   }[tone];
   const mutedClass = tone === 'navy'
     ? 'text-brand-parchment'
@@ -219,11 +226,11 @@ function ActionMetricCard({
 
   return (
     <StaggerItem>
-      <Link className={`group block h-full rounded-[1.5rem] border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${toneClass}`} to={to}>
+      <Link className={`group block h-full rounded-[1.6rem] border p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(15,23,42,0.10)] ${toneClass}`} to={to}>
         <article className="flex h-full flex-col">
           <div className="flex items-start justify-between gap-3">
             <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${mutedClass}`}>{label}</p>
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-current/10 bg-white/35 text-current shadow-sm dark:bg-white/5">
+            <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-[1.15rem] border ${accentClass}`}>
               <Icon className="h-5 w-5 text-current" aria-hidden="true" strokeWidth={2} />
             </span>
           </div>
@@ -263,7 +270,7 @@ export function TodayBattlePlan({ items }: { items: BattlePlanItem[] }) {
           <h2 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-100">3 to 5 focused actions, in order</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-brand-marble">Start at the top. Completed actions move down so the next useful step stays visible.</p>
         </div>
-        <p className="rounded-full bg-brand-parchment px-3 py-1 text-xs font-semibold text-brand-obsidian dark:bg-brand-navy dark:text-brand-parchment">{items.length} actions</p>
+        <p className="rounded-full border border-white/70 bg-white/62 px-3 py-1 text-xs font-semibold text-brand-obsidian shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment">{items.length} actions</p>
       </div>
 
       <StaggerGrid className="mt-5 grid gap-3">
@@ -280,13 +287,13 @@ export function TodayBattlePlan({ items }: { items: BattlePlanItem[] }) {
           const isCompleted = completedIds.has(item.id);
           return (
             <StaggerItem key={item.id}>
-              <article className={`rounded-2xl border p-4 transition ${isCompleted ? 'border-slate-200 bg-slate-50 opacity-70 dark:border-slate-800 dark:bg-slate-900' : 'border-brand-marble bg-white dark:border-brand-marble/20 dark:bg-brand-obsidian'}`}>
+              <article className={`rounded-2xl border p-4 backdrop-blur-xl transition ${isCompleted ? 'border-white/50 bg-white/40 opacity-70 dark:border-white/10 dark:bg-white/[0.03]' : 'border-white/70 bg-white/62 shadow-[0_18px_45px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-white/[0.05]'}`}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-aegean dark:text-brand-gold">Step {index + 1} - {item.kind}</p>
                     <h3 className={`mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100 ${isCompleted ? 'line-through' : ''}`}>{item.title}</h3>
                   </div>
-                  <span className="rounded-full bg-brand-parchment px-3 py-1 text-xs font-semibold text-brand-obsidian dark:bg-brand-navy dark:text-brand-parchment">{item.estimatedMinutes} min</span>
+                  <span className="rounded-full border border-white/70 bg-white/62 px-3 py-1 text-xs font-semibold text-brand-obsidian shadow-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment">{item.estimatedMinutes} min</span>
                 </div>
                 {!isCompleted ? (
                   <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-brand-marble">{item.description}</p>
@@ -294,7 +301,7 @@ export function TodayBattlePlan({ items }: { items: BattlePlanItem[] }) {
                   <p className="mt-3 text-sm font-semibold text-slate-500 dark:text-brand-marble">Marked complete for this page load.</p>
                 )}
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <Link className="rounded-full border border-brand-aegean/50 px-4 py-2 text-sm font-semibold text-brand-navy transition hover:bg-brand-parchment dark:text-brand-parchment dark:hover:bg-brand-navy" to={item.to}>
+                  <Link className="rounded-full border border-white/70 bg-white/65 px-4 py-2 text-sm font-semibold text-brand-navy shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment dark:hover:bg-white/[0.08]" to={item.to}>
                     Open action
                   </Link>
                   <button className="rounded-full bg-brand-navy px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-deepBlue dark:bg-brand-aegean" type="button" onClick={() => toggleComplete(item.id)}>
@@ -369,7 +376,7 @@ export function AssignmentDueCard({
           <StatusBadge value={status} />
         </div>
         {assignment.description ? (
-          <p className="mt-4 line-clamp-3 rounded-2xl bg-brand-parchment/70 p-4 text-sm leading-6 text-slate-700 dark:bg-brand-navy/70 dark:text-brand-marble">{assignment.description}</p>
+          <p className="mt-4 line-clamp-3 rounded-2xl border border-white/70 bg-white/58 p-4 text-sm leading-6 text-slate-700 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-marble">{assignment.description}</p>
         ) : null}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-slate-600 dark:text-brand-marble">
@@ -503,7 +510,7 @@ export function AssignmentUploadPanel({
   }
 
   return (
-    <form className="mt-5 grid gap-4 rounded-2xl border border-dashed border-slate-300 bg-white p-4" onSubmit={(event) => void submit(event)}>
+    <form className="mt-5 grid gap-4 rounded-[1.5rem] border border-white/70 bg-white/62 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]" onSubmit={(event) => void submit(event)}>
       {disabled ? (
         <p className="rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-800">This assignment is closed and no longer accepts submissions.</p>
       ) : null}
@@ -518,7 +525,7 @@ export function AssignmentUploadPanel({
       <FormField label="Upload file" hint="Drag PDF, JPG, or PNG files here. Maximum file size is 10 MB.">
         <div
           {...getRootProps()}
-          className={`rounded-[1.5rem] border-2 border-dashed p-5 transition ${isDragActive ? 'border-brand-gold bg-brand-gold/10' : 'border-brand-aegean/30 bg-brand-parchment/40'} ${disabled || busy ? 'cursor-not-allowed opacity-60' : 'cursor-default hover:border-brand-aegean'}`}
+          className={`rounded-[1.5rem] border p-5 backdrop-blur-xl transition ${isDragActive ? 'border-brand-gold/70 bg-brand-gold/10' : 'border-white/70 bg-white/50'} ${disabled || busy ? 'cursor-not-allowed opacity-60' : 'cursor-default hover:border-brand-aegean/45 hover:bg-white/70'}`}
         >
           <input {...getInputProps()} />
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center">
@@ -526,7 +533,7 @@ export function AssignmentUploadPanel({
               <p className="text-sm font-semibold text-slate-950">{isDragActive ? 'Drop the file here' : 'Drag your file into this dropzone'}</p>
               <p className="mt-1 text-sm leading-6 text-slate-600">PDF, JPG, or PNG only. Validation happens before the upload starts.</p>
               <button
-                className="mt-4 rounded-full border border-brand-aegean/50 px-4 py-2 text-sm font-semibold text-brand-navy transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-4 rounded-full border border-white/70 bg-white/65 px-4 py-2 text-sm font-semibold text-brand-navy shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={disabled || busy}
                 type="button"
                 onClick={open}
@@ -540,7 +547,7 @@ export function AssignmentUploadPanel({
         {fileError ? <p className="mt-2 text-sm font-semibold text-red-700">{fileError}</p> : null}
       </FormField>
       {busy ? (
-        <div className="rounded-2xl bg-brand-parchment/80 p-3" role="status" aria-live="polite">
+        <div className="rounded-2xl border border-white/70 bg-white/58 p-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]" role="status" aria-live="polite">
           <div className="flex items-center justify-between gap-3 text-sm font-semibold text-brand-obsidian">
             <span>Uploading assignment...</span>
             <span>Working</span>
@@ -596,7 +603,7 @@ function FilePreview({
 }) {
   if (!file) {
     return (
-      <div className="rounded-2xl border border-brand-marble bg-white/80 p-4 text-center text-sm text-slate-500">
+      <div className="rounded-2xl border border-white/70 bg-white/58 p-4 text-center text-sm text-slate-500 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]">
         <UploadCloud className="mx-auto mb-2 h-6 w-6 text-brand-aegean" aria-hidden="true" />
         No file selected
       </div>
@@ -604,7 +611,7 @@ function FilePreview({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-brand-marble bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-white/70 bg-white/68 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05]">
       {isImagePreview && previewUrl ? (
         <img className="h-28 w-full object-cover" src={previewUrl} alt={`Preview of ${file.name}`} />
       ) : (

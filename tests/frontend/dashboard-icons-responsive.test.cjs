@@ -55,7 +55,9 @@ test('student empty states are premium, differentiated, and action-oriented', ()
 
   assert.ok(design.includes('actionLabel?: string'), 'EmptyState must support a next-action label');
   assert.ok(design.includes('actionHref?: string'), 'EmptyState must support a next-action route');
-  assert.ok(design.includes('border-dashed border-brand-aegean'), 'EmptyState must keep the Greek dashboard theme');
+  assert.ok(design.includes('border-white/70'), 'EmptyState must use the shared translucent surface rule');
+  assert.ok(design.includes('backdrop-blur-2xl'), 'EmptyState must use the iOS-style glass blur rule');
+  assert.ok(design.includes('via-brand-gold/45'), 'EmptyState must keep the Greek accent without a loud dashed card');
 
   for (const title of ['No assignments need action', 'No released marks yet', 'No topic mastery yet', 'No quiz recommendation yet', 'No matching careers yet']) {
     assert.ok(joined.includes(title), `${title} empty state must be present`);

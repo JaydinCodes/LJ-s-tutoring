@@ -84,11 +84,11 @@ export function DashboardShell({
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(135deg,_#f8f5ee_0%,_#ffffff_42%,_#e2e8f0_100%)] text-brand-obsidian dark:bg-brand-obsidian dark:bg-none dark:text-brand-parchment">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_12%_0%,_rgba(31,111,139,0.12),_transparent_30%),radial-gradient(circle_at_88%_8%,_rgba(244,197,24,0.10),_transparent_26%),linear-gradient(180deg,_#f7f8fb_0%,_#eef2f7_100%)] text-brand-obsidian dark:bg-[radial-gradient(circle_at_12%_0%,_rgba(31,111,139,0.2),_transparent_30%),linear-gradient(180deg,_#070b14_0%,_#111827_100%)] dark:text-brand-parchment">
       <div className="mx-auto flex max-w-[1640px] gap-4 px-3 py-3 sm:px-4 lg:gap-6 lg:py-5">
-        <aside className="sticky top-5 hidden h-[calc(100vh-2.5rem)] w-72 rounded-[1.5rem] border border-brand-marble bg-white/90 p-5 shadow-xl shadow-brand-navy/10 backdrop-blur dark:border-brand-marble/20 dark:bg-brand-obsidian/95 dark:shadow-black/20 lg:flex lg:flex-col">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-5 dark:border-slate-800">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-navy text-sm font-bold text-white shadow-lg shadow-blue-900/20 dark:bg-slate-100 dark:text-slate-950">PO</div>
+        <aside className="sticky top-5 hidden h-[calc(100vh-2.5rem)] w-72 rounded-[2rem] border border-white/70 bg-white/72 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.09)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25 lg:flex lg:flex-col">
+          <div className="flex items-center gap-3 border-b border-slate-950/5 pb-5 dark:border-white/10">
+            <div className="grid h-11 w-11 place-items-center rounded-[1.2rem] bg-brand-navy text-sm font-bold text-white shadow-[0_12px_30px_rgba(15,23,42,0.18)] dark:bg-white dark:text-slate-950">PO</div>
             <div>
               <p className="font-semibold">Project Odysseus</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">Learning management</p>
@@ -101,7 +101,7 @@ export function DashboardShell({
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  className={({ isActive }) => `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-navy text-white shadow-lg shadow-brand-navy/15 dark:bg-brand-aegean dark:text-white' : 'text-slate-600 hover:bg-brand-parchment hover:text-brand-obsidian dark:text-brand-marble dark:hover:bg-brand-navy dark:hover:text-white'}`}
+                  className={({ isActive }) => `flex items-center justify-between rounded-[1.25rem] px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-navy text-white shadow-[0_14px_34px_rgba(15,23,42,0.16)] dark:bg-brand-aegean dark:text-white' : 'text-slate-600 hover:bg-white/80 hover:text-brand-obsidian dark:text-brand-marble dark:hover:bg-white/[0.08] dark:hover:text-white'}`}
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     <Icon className="h-4 w-4 shrink-0 text-current" aria-hidden="true" strokeWidth={2} />
@@ -113,14 +113,14 @@ export function DashboardShell({
             })}
           </nav>
           {section === 'student' ? (
-            <div className="mt-auto rounded-[1.5rem] border border-brand-aegean/30 bg-brand-parchment p-4 dark:border-brand-aegean/60 dark:bg-brand-navy">
+            <div className="mt-auto rounded-[1.5rem] border border-white/70 bg-white/60 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:border-white/10 dark:bg-white/[0.05]">
               <p className="text-sm font-semibold text-brand-navy dark:text-brand-parchment">Odie stays in Careers</p>
               <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">Daily dashboard space stays focused on assignments, results, and progress.</p>
             </div>
           ) : null}
         </aside>
         <main className="min-w-0 flex-1">
-          <header className="rounded-[1.5rem] border border-brand-marble bg-white/90 p-4 shadow-lg shadow-brand-navy/10 backdrop-blur dark:border-brand-marble/20 dark:bg-brand-obsidian/95 dark:shadow-black/20 sm:p-5">
+          <header className="rounded-[2rem] border border-white/70 bg-white/72 p-4 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25 sm:p-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-aegean dark:text-brand-gold">{sectionLabel}</p>
@@ -131,7 +131,7 @@ export function DashboardShell({
                 <label className="relative block min-w-0 sm:w-72">
                   <span className="sr-only">Search dashboard</span>
                   <input
-                    className="w-full rounded-full border border-brand-marble bg-brand-parchment/60 px-4 py-2.5 pr-10 text-sm text-brand-obsidian outline-none transition placeholder:text-slate-400 focus:border-brand-aegean focus:bg-white focus:ring-4 focus:ring-brand-aegean/15 dark:border-brand-marble/30 dark:bg-brand-navy dark:text-brand-parchment dark:focus:border-brand-gold dark:focus:bg-brand-obsidian dark:focus:ring-brand-gold/15"
+                    className="w-full rounded-full border border-slate-950/10 bg-white/65 px-4 py-2.5 pr-10 text-sm text-brand-obsidian outline-none transition placeholder:text-slate-400 focus:border-brand-aegean/40 focus:bg-white focus:ring-4 focus:ring-brand-aegean/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment dark:focus:border-brand-gold/40 dark:focus:bg-white/[0.08] dark:focus:ring-brand-gold/10"
                     placeholder="Search dashboard"
                     type="search"
                   />
@@ -141,14 +141,14 @@ export function DashboardShell({
                   <button
                     type="button"
                     aria-label="Assignment alerts"
-                    className="relative grid h-11 w-11 place-items-center rounded-2xl border border-brand-marble bg-white text-sm font-bold text-brand-navy shadow-sm transition hover:border-brand-aegean hover:bg-brand-parchment dark:border-brand-marble/30 dark:bg-brand-navy dark:text-brand-parchment dark:hover:bg-brand-aegean"
+                    className="relative grid h-11 w-11 place-items-center rounded-[1.2rem] border border-slate-950/10 bg-white/70 text-sm font-bold text-brand-navy shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment dark:hover:bg-white/[0.09]"
                   >
                     <Clock className="h-4 w-4 text-current" aria-hidden="true" />
                     <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900" />
                   </button>
                   {auth.profile ? (
-                    <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-2 pr-3 dark:bg-slate-900">
-                      <div className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-navy text-sm font-bold text-white dark:bg-slate-100 dark:text-slate-950">
+                    <div className="flex items-center gap-3 rounded-[1.3rem] border border-slate-950/5 bg-white/60 p-2 pr-3 dark:border-white/10 dark:bg-white/[0.05]">
+                      <div className="grid h-10 w-10 place-items-center rounded-[1.1rem] bg-brand-navy text-sm font-bold text-white dark:bg-white dark:text-slate-950">
                         {auth.profile.full_name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -167,7 +167,7 @@ export function DashboardShell({
           <div className="mt-4 space-y-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-4">{children}</div>
         </main>
       </div>
-      <nav className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 rounded-[1.5rem] border border-brand-marble bg-white/95 p-2 shadow-2xl shadow-brand-navy/15 backdrop-blur dark:border-brand-marble/20 dark:bg-brand-obsidian/95 lg:hidden">
+      <nav className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 rounded-[2rem] border border-white/70 bg-white/82 p-2 shadow-[0_22px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/78 lg:hidden">
         <div className="grid grid-cols-4 gap-1 sm:grid-cols-6">
           {navItems.slice(0, 6).map((item) => {
             const Icon = item.icon;
@@ -175,7 +175,7 @@ export function DashboardShell({
               <NavLink
                 key={item.to}
                 to={item.to}
-                className={({ isActive }) => `rounded-2xl px-2 py-2.5 text-center text-[0.68rem] font-semibold leading-tight ${isActive ? 'bg-brand-navy text-white dark:bg-brand-aegean' : 'text-slate-600 dark:text-brand-marble'}`}
+                className={({ isActive }) => `rounded-[1.35rem] px-2 py-2.5 text-center text-[0.68rem] font-semibold leading-tight transition ${isActive ? 'bg-brand-navy text-white shadow-[0_10px_28px_rgba(15,23,42,0.18)] dark:bg-brand-aegean' : 'text-slate-600 hover:bg-white/70 dark:text-brand-marble dark:hover:bg-white/[0.08]'}`}
               >
                 <Icon className="mx-auto mb-1 h-4 w-4 text-current" aria-hidden="true" strokeWidth={2} />
                 <span className="block truncate">{item.label.replace(' / Odie AI', '')}</span>

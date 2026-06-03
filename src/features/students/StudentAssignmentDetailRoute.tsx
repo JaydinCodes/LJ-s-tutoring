@@ -88,13 +88,13 @@ function AssignmentDetailWorkspace({
           <DetailMetric label="Status" value={getAssignmentStatusLabel(status)} />
         </div>
 
-        <section className="mt-6 rounded-[1.5rem] border border-brand-marble bg-brand-parchment/60 p-5 dark:border-brand-marble/20 dark:bg-brand-navy/50">
+        <section className="mt-6 rounded-[1.5rem] border border-white/70 bg-white/62 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]">
           <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Instructions</h2>
           <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-700 dark:text-brand-marble">
             {assignment.description || 'Your tutor has not added written instructions yet. Use the file rules and due date, then ask for clarification before submitting if needed.'}
           </p>
           {assignment.attachment_url ? (
-            <a className="mt-4 inline-flex rounded-full border border-brand-aegean/50 px-4 py-2 text-sm font-semibold text-brand-navy hover:bg-white dark:text-brand-parchment dark:hover:bg-brand-obsidian" href={assignment.attachment_url} rel="noreferrer" target="_blank">
+            <a className="mt-4 inline-flex rounded-full border border-white/70 bg-white/65 px-4 py-2 text-sm font-semibold text-brand-navy shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment dark:hover:bg-white/[0.08]" href={assignment.attachment_url} rel="noreferrer" target="_blank">
               Open attached brief
             </a>
           ) : null}
@@ -125,7 +125,7 @@ function AssignmentDetailWorkspace({
       <Card>
         <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Feedback</h2>
         {submission?.feedback ? (
-          <p className="mt-3 rounded-2xl bg-brand-parchment/70 p-4 text-sm leading-7 text-slate-700 dark:bg-brand-navy/70 dark:text-brand-marble">{submission.feedback}</p>
+          <p className="mt-3 rounded-2xl border border-white/70 bg-white/58 p-4 text-sm leading-7 text-slate-700 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-marble">{submission.feedback}</p>
         ) : (
           <EmptyState
             title="No feedback yet"
@@ -155,7 +155,7 @@ function AssignmentDetailWorkspace({
 
 function DetailMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-brand-marble bg-white/80 p-4 dark:border-brand-marble/20 dark:bg-brand-obsidian">
+    <div className="rounded-2xl border border-white/70 bg-white/58 p-4 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">{label}</p>
       <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-100">{value}</p>
     </div>

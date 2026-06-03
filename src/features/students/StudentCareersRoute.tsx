@@ -86,7 +86,7 @@ function FilterChip({ active, children, onClick }: { active: boolean; children: 
       className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
         active
           ? 'border-brand-gold bg-brand-gold text-brand-obsidian'
-          : 'border-brand-aegean/30 bg-white/80 text-brand-navy hover:bg-brand-parchment dark:bg-brand-obsidian dark:text-brand-parchment'
+          : 'border-white/70 bg-white/62 text-brand-navy shadow-sm backdrop-blur-xl hover:bg-white/85 dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment dark:hover:bg-white/[0.08]'
       }`}
     >
       {children}
@@ -108,7 +108,7 @@ function CareerCard({
 
   return (
     <motion.article
-      className="group rounded-[1.5rem] border border-brand-aegean/20 bg-white/95 p-5 shadow-sm transition hover:border-brand-gold/70 hover:shadow-lg hover:shadow-brand-navy/10 dark:bg-brand-obsidian"
+      className="group rounded-[1.6rem] border border-white/70 bg-white/70 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-2xl transition hover:border-brand-gold/55 dark:border-white/10 dark:bg-white/[0.05]"
       whileHover={prefersReducedMotion ? undefined : { y: -3 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
     >
@@ -120,14 +120,14 @@ function CareerCard({
         <button
           type="button"
           onClick={onToggleSave}
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${saved ? 'bg-brand-gold text-brand-obsidian' : 'bg-brand-parchment text-brand-navy dark:bg-brand-navy dark:text-brand-parchment'}`}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold shadow-sm ${saved ? 'border-brand-gold bg-brand-gold text-brand-obsidian' : 'border-white/70 bg-white/65 text-brand-navy dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment'}`}
         >
           {saved ? 'Saved' : 'Save'}
         </button>
       </div>
       <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-brand-marble">{career.description || 'Explore this pathway and compare subject fit before choosing a next step.'}</p>
       {metrics ? (
-        <div className="mt-4 grid gap-2 rounded-2xl bg-brand-parchment/70 p-3 text-xs text-brand-obsidian dark:bg-brand-navy/60 dark:text-brand-parchment sm:grid-cols-3">
+        <div className="mt-4 grid gap-2 rounded-2xl border border-white/70 bg-white/55 p-3 text-xs text-brand-obsidian backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-parchment sm:grid-cols-3">
           {metrics.salary ? <span>Median salary: {metrics.salary}</span> : null}
           {metrics.growth ? <span>Growth: {metrics.growth}</span> : null}
           {metrics.demand ? <span>Demand: {metrics.demand}</span> : null}
@@ -385,9 +385,9 @@ export function StudentCareersRoute() {
         <Card>
           <h2 className="text-xl font-semibold text-slate-950 dark:text-brand-parchment">Ask Odie</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">Odie is only available on Careers, and focuses on subject choice, APS planning, study planning, and pathways.</p>
-          <div className="mt-5 max-h-[520px] space-y-3 overflow-y-auto rounded-[1.5rem] bg-slate-50 p-4 dark:bg-brand-navy/50">
+          <div className="mt-5 max-h-[520px] space-y-3 overflow-y-auto rounded-[1.5rem] border border-white/70 bg-white/55 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]">
             {chat.map((item, index) => (
-              <div key={`${item.role}-${index}`} className={`rounded-2xl px-4 py-3 text-sm leading-6 ${item.role === 'assistant' ? 'bg-white text-slate-700 dark:bg-brand-obsidian dark:text-brand-parchment' : 'bg-brand-navy text-white'}`}>
+              <div key={`${item.role}-${index}`} className={`rounded-2xl border px-4 py-3 text-sm leading-6 shadow-sm ${item.role === 'assistant' ? 'border-white/70 bg-white/72 text-slate-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment' : 'border-brand-navy bg-brand-navy text-white dark:border-brand-aegean dark:bg-brand-aegean'}`}>
                 {item.text || (busy && index === chat.length - 1 ? 'Odie is thinking...' : '')}
               </div>
             ))}
