@@ -24,3 +24,15 @@ test('dashboard React shells load portal config before the React bundle', () => 
   assert.ok(build.includes('isProtected'), 'protected dashboard shells must be handled explicitly');
   assert.ok(build.includes('? `${configScript}'), 'protected dashboard shells must still load portal config');
 });
+
+test('DigitalOcean config exposes same-origin /api for browser API calls', () => {
+  const appSpec = read('.do', 'app.yaml');
+  const portalConfig = read('assets', 'portal-config.js');
+  const injectConfig = read('scripts', 'inject-config.js');
+
+  assert.ok(appSpec.includes('value: /api'), 'browser API base must not depend on the api subdomain');
+  assert.ok(appSpec.includes('prefix: /api'), 'App Platform must route /api to the API service');
+  assert.ok(appSpec.includes('preserve_path_prefix: false'), 'App Platform must strip /api before forwarding to Fastify');
+  assert.ok(portalConfig.includes("window.__PO_API_BASE__ = '/api';"), 'runtime portal config must default to same-origin /api');
+  assert.ok(injectConfig.includes("raw === 'https://api.projectodysseus.live'"), 'config injection must normalize the unresolved api subdomain');
+});

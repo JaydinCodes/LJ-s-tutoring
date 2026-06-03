@@ -16,7 +16,7 @@ domains:
 envs:
   - key: PUBLIC_PO_API_BASE
     scope: RUN_AND_BUILD_TIME
-    value: https://api.projectodysseus.live
+    value: /api
   - key: PUBLIC_BASE_URL
     scope: RUN_AND_BUILD_TIME
     value: https://api.projectodysseus.live
@@ -151,6 +151,39 @@ ingress:
       component:
         name: lms-api
         preserve_path_prefix: true
+
+    - match:
+        authority:
+          exact: projectodysseus.live
+        path:
+          prefix: /api
+      component:
+        name: lms-api
+        preserve_path_prefix: false
+    - match:
+        authority:
+          exact: admin.projectodysseus.live
+        path:
+          prefix: /api
+      component:
+        name: lms-api
+        preserve_path_prefix: false
+    - match:
+        authority:
+          exact: tutor.projectodysseus.live
+        path:
+          prefix: /api
+      component:
+        name: lms-api
+        preserve_path_prefix: false
+    - match:
+        authority:
+          exact: student.projectodysseus.live
+        path:
+          prefix: /api
+      component:
+        name: lms-api
+        preserve_path_prefix: false
 
     - match:
         authority:
@@ -359,7 +392,7 @@ static_sites:
     envs:
       - key: PUBLIC_PO_API_BASE
         scope: BUILD_TIME
-        value: https://api.projectodysseus.live
+        value: /api
       - key: ASSISTANT_ENABLED
         scope: BUILD_TIME
         value: "true"

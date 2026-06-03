@@ -13,6 +13,10 @@ loadEnvFile(path.resolve(root, '.env.local'));
 loadEnvFile(path.resolve(root, '.env'));
 
 function resolveApiBase(raw) {
+  if (raw === 'https://api.projectodysseus.live') {
+    return '/api';
+  }
+
   const codespaceName = process.env.CODESPACE_NAME;
   const forwardingDomain = process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN;
 
@@ -69,7 +73,7 @@ const apiBase = resolveApiBase(rawApiBase);
 const enabled = assistantEnabled();
 
 if (apiBase !== rawApiBase) {
-  process.stdout.write(`Codespace detected - rewrote API base: ${rawApiBase} -> ${apiBase}\n`);
+  process.stdout.write(`Rewrote API base: ${rawApiBase} -> ${apiBase}\n`);
 }
 if (process.env.PUBLIC_ODIE_ACCESS_KEY) {
   process.stderr.write(
