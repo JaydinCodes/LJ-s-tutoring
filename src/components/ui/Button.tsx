@@ -7,14 +7,14 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'ghost'; children: ReactNode }) {
   const styles = {
-    primary: 'bg-slate-950 text-white hover:bg-slate-800',
-    secondary: 'border border-slate-200 bg-white text-slate-950 hover:bg-slate-50',
-    ghost: 'text-slate-600 hover:bg-slate-100',
+    primary: 'academy-btn-primary',
+    secondary: 'academy-btn-outline',
+    ghost: 'text-slate-600 hover:bg-white/70 dark:text-academy-marble dark:hover:bg-white/[0.08]',
   }[variant];
 
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition ${styles} ${className}`}
+      className={`academy-btn ${styles} ${className}`}
       {...props}
     >
       {children}

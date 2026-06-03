@@ -3,7 +3,7 @@ import { Sparkles, type LucideIcon } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { DashboardShell, type DashboardSection } from './DashboardShell';
-import { dashboardInsetClass, dashboardSurfaceClass } from './dashboardStyles';
+import { academyProgressFillClass, academyProgressTrackClass, dashboardInsetClass, dashboardSurfaceClass } from './dashboardStyles';
 
 type MetricTone = 'navy' | 'aegean' | 'gold' | 'marble';
 
@@ -229,10 +229,10 @@ export function AnimatedProgressBar({
   const score = value == null || !Number.isFinite(Number(value)) ? 0 : Math.max(0, Math.min(100, Number(value)));
 
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-slate-200/80 dark:bg-white/10">
+    <div className={academyProgressTrackClass}>
       {/* Scaling the filled track animates once on mount without changing the reserved bar width. */}
       <motion.div
-        className={`h-full rounded-full ${className}`}
+        className={`${academyProgressFillClass} ${className}`}
         initial={{ scaleX: prefersReducedMotion ? 1 : 0 }}
         animate={{ scaleX: 1 }}
         transition={{ duration: prefersReducedMotion ? 0 : 0.55, ease: 'easeOut' }}
@@ -330,14 +330,14 @@ export function PremiumButton({
   variant?: 'navy' | 'gold' | 'outline';
 }) {
   const styles = {
-    navy: 'bg-brand-navy text-white hover:bg-brand-deepBlue dark:bg-brand-aegean dark:hover:bg-brand-deepBlue',
-    gold: 'bg-brand-gold text-brand-obsidian hover:bg-[#f7d24f]',
-    outline: 'border border-slate-950/10 bg-white/70 text-brand-navy hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment dark:hover:bg-white/[0.09]',
+    navy: 'academy-btn-primary',
+    gold: 'academy-btn-gold',
+    outline: 'academy-btn-outline',
   }[variant];
 
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${styles} ${className}`}
+      className={`academy-btn ${styles} ${className}`}
       {...props}
     >
       {children}
