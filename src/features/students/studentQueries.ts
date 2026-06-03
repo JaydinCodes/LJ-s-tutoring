@@ -18,8 +18,17 @@ function useStudentScope() {
   return auth.profile?.id || auth.session?.user.id || 'anonymous';
 }
 
-function useCachedStudentQuery<T>(queryKey: QueryKey, queryFn: () => Promise<T>, staleTime?: number) {
-  const query = useQuery({ queryKey, queryFn, staleTime });
+const DEFAULT_STUDENT_STALE_TIME_MS = 60_000;
+
+function useCachedStudentQuery<T>(queryKey: QueryKey, queryFn: () => Promise<T>, staleTime = DEFAULT_STUDENT_STALE_TIME_MS) {
+  const query = useQuery({
+    queryKey,
+    queryFn,
+    staleTime,
+    // Student pages show cached learner state first; explicit reload still refetches on demand.
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
   const reload = useCallback(async () => {
     await query.refetch();
   }, [query.refetch]);
