@@ -1,7 +1,13 @@
 const isLocalHost = (value: string) => value === 'localhost' || value === '127.0.0.1';
 
+declare global {
+  interface Window {
+    __PO_API_BASE__?: string;
+  }
+}
+
 export function resolveApiBase() {
-  const configured = (import.meta.env.VITE_PO_API_BASE || import.meta.env.PUBLIC_PO_API_BASE) as string | undefined;
+  const configured = (import.meta.env.VITE_PO_API_BASE || window.__PO_API_BASE__) as string | undefined;
   const raw = String(configured || '').replace(/\/$/, '');
   const host = window.location.hostname;
 
