@@ -84,72 +84,176 @@ export function StudentResultsRoute() {
   const latest = sortByDate(items)[0] || null;
   const bestSubject = getBestSubject(items);
   const weakestTopic = getWeakestTopic(items);
-  const consistency = consistencyScore(items);
 
   return (
     <PageShell
-      title="Results Overview"
-      subtitle="A private summary of released marks, trends, strengths, and anonymous class context."
+      title="Results"
+      subtitle="A private learner insight screen for marks, movement, subjects, and the next topic to improve."
       section="student"
     >
       {loading ? <SkeletonCard /> : null}
-      {refetching ? <Card>Refreshing results overview...</Card> : null}
+      {refetching ? <p className="academy-chip w-fit text-academy-aegean dark:text-academy-gold">Refreshing results...</p> : null}
       {error ? <ErrorState title="Results unavailable" description={error} onRetry={() => void reload()} /> : null}
       {data ? (
-        <div className="space-y-5">
-          <Card>
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-center">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-aegean dark:text-brand-gold">Results oracle</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-brand-obsidian dark:text-brand-parchment">Your mark movement, simplified</h2>
-                <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 dark:text-brand-marble">
-                  This overview uses released learner results only. Class analytics stay anonymous and are hidden until the privacy threshold is met.
-                </p>
-              </div>
-              <ProgressRing value={data.summary.overallPercentage} label="Overall average" />
-            </div>
-          </Card>
-
-          <StaggerGrid className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <PremiumResultMetric label="Overall Average" value={formatPercent(data.summary.averageAcrossAssessments)} explanation="Mean percentage across released results." icon={Trophy} tone="navy" />
-            <PremiumResultMetric label="Best Subject" value={bestSubject ? bestSubject.subject : 'Pending'} explanation={bestSubject ? `${formatPercent(bestSubject.average)} across ${bestSubject.count} result${bestSubject.count === 1 ? '' : 's'}.` : 'Appears once at least one subject has a released mark.'} icon={BookOpen} tone="aegean" to={bestSubject ? `/dashboard/student/results/subjects/${encodeURIComponent(bestSubject.subject)}` : undefined} />
-            <PremiumResultMetric label="Weakest Topic" value={weakestTopic?.topic || 'Pending'} explanation={weakestTopic ? `${formatPercent(weakestTopic.score)}. Use this as your next practice target.` : 'Topic-level data appears when released results include topic breakdowns.'} icon={Brain} tone="gold" />
-            <PremiumResultMetric label="Latest Mark" value={latest ? formatPercent(latest.percentage) : '--'} explanation={latest ? `${latest.subject}: ${latest.title}.` : 'Latest released result appears here.'} icon={Clock} tone="marble" to={latest ? `/dashboard/student/results/${latest.id}` : undefined} />
-            <PremiumResultMetric label="Mark Trend" value={trendLabel(items)} explanation={items.length < 2 ? 'Needs at least two released marks to show movement.' : 'Change from earliest released result to latest released result.'} icon={TrendingUp} tone="navy" />
-            <PremiumResultMetric label="Consistency Score" value={consistency == null ? '--' : `${consistency}/100`} explanation={consistency == null ? 'Needs at least two results.' : 'Higher means marks are steadier across assessments.'} icon={Target} tone="aegean" />
-          </StaggerGrid>
-
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-            <Card>
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Mark Trend</h2>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Movement over time from your released results only.</p>
-                </div>
-                <span className="rounded-full border border-white/70 bg-white/62 px-3 py-1 text-xs font-semibold text-brand-obsidian shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment">{items.length} result{items.length === 1 ? '' : 's'}</span>
-              </div>
-              <LearnerTrendChart items={items} />
-            </Card>
-
-            <Card>
-              <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Anonymous Class Context</h2>
-              <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">No classmate names or individual marks are shown.</p>
-              <ClassAnalyticsSummary data={data.classAnalytics} buckets={data.classAnalytics.distribution} />
-            </Card>
-          </section>
-
-          <Card>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Subjects</h2>
-                <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Open a subject to see all released results for that subject.</p>
-              </div>
-            </div>
-            <SubjectSummaryGrid items={items} />
-          </Card>
+        <div className="space-y-6">
+          <ResultsHero
+            average={data.summary.averageAcrossAssessments}
+            bestSubject={bestSubject}
+            latest={latest}
+            status={data.summary.currentAcademicStatus}
+            totalResults={items.length}
+          />
+          <MarkTrend items={items} />
+          <SubjectResultRows items={items} />
+          <WeakTopicInsight topic={weakestTopic} />
         </div>
       ) : null}
     </PageShell>
+  );
+}
+
+export function ResultsHero({
+  average,
+  bestSubject,
+  latest,
+  status,
+  totalResults,
+}: {
+  average: number | null | undefined;
+  bestSubject: { subject: string; average: number | null; count: number } | null;
+  latest: StudentResultItem | null;
+  status: string;
+  totalResults: number;
+}) {
+  return (
+    <section className="academy-major-surface relative overflow-hidden">
+      <div className="absolute inset-x-6 top-0 h-px greek-keyline" aria-hidden="true" />
+      <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_14rem] lg:items-center">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-academy-gold">Results insight</p>
+          <h2 className="mt-3 font-display text-4xl font-semibold leading-tight tracking-normal text-white sm:text-5xl">
+            {formatPercent(average)} average
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-academy-parchment">
+            {status}. This view uses released learner results only and keeps class context anonymous.
+          </p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <ResultSignal label="Latest result" value={latest ? formatPercent(latest.percentage) : '--'} helper={latest ? `${latest.subject}: ${latest.title}` : 'Released marks will appear here.'} to={latest ? `/dashboard/student/results/${latest.id}` : undefined} />
+            <ResultSignal label="Best subject" value={bestSubject?.subject || 'Pending'} helper={bestSubject ? `${formatPercent(bestSubject.average)} across ${bestSubject.count} result${bestSubject.count === 1 ? '' : 's'}.` : 'Needs one released result.'} to={bestSubject ? `/dashboard/student/results/subjects/${encodeURIComponent(bestSubject.subject)}` : undefined} />
+            <ResultSignal label="Released marks" value={String(totalResults)} helper="Only marks available to this learner are counted." />
+          </div>
+        </div>
+        <div className="mx-auto">
+          <ProgressRing value={average} label="Main average score" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ResultSignal({ label, value, helper, to }: { label: string; value: string; helper: string; to?: string }) {
+  const body = (
+    <div className="min-h-28 rounded-ios-lg border border-white/15 bg-white/10 p-4 text-left shadow-academy-inset backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white/[0.14]">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">{label}</p>
+      <p className="mt-2 truncate text-xl font-semibold text-white">{value}</p>
+      <p className="mt-1 line-clamp-2 text-xs leading-5 text-academy-parchment">{helper}</p>
+    </div>
+  );
+
+  return to ? <Link to={to}>{body}</Link> : body;
+}
+
+export function MarkTrend({ items }: { items: StudentResultItem[] }) {
+  return (
+    <section aria-labelledby="mark-trend-title" className="space-y-3">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Mark trend</p>
+          <h2 id="mark-trend-title" className="mt-1 text-2xl font-semibold tracking-normal text-academy-ink dark:text-academy-parchment">
+            {trendLabel(items)}
+          </h2>
+        </div>
+        <span className="academy-chip shrink-0">{items.length} result{items.length === 1 ? '' : 's'}</span>
+      </div>
+      <LearnerTrendChart items={items} />
+    </section>
+  );
+}
+
+export function SubjectResultRows({ items }: { items: StudentResultItem[] }) {
+  const subjects = [...groupBySubject(items).entries()]
+    .map(([subject, subjectItems]) => ({
+      subject,
+      items: subjectItems,
+      average: average(subjectItems.map((item) => item.percentage)),
+      latest: sortByDate(subjectItems)[0],
+    }))
+    .sort((left, right) => Number(right.average ?? 0) - Number(left.average ?? 0) || left.subject.localeCompare(right.subject));
+
+  return (
+    <section aria-labelledby="subject-results-title" className="space-y-3">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Subject rows</p>
+        <h2 id="subject-results-title" className="mt-1 text-2xl font-semibold tracking-normal text-academy-ink dark:text-academy-parchment">
+          Subject breakdown
+        </h2>
+      </div>
+      <div className="divide-y divide-slate-950/5 rounded-ios-lg border border-white/70 bg-white/[0.48] px-4 shadow-academy-inset backdrop-blur-xl dark:divide-white/10 dark:border-white/10 dark:bg-white/[0.035]">
+        {!subjects.length ? (
+          <div className="py-4">
+            <EmptyState
+              title="No subject summaries yet"
+              description="Subject rows appear when released results are available."
+              actionLabel="Open assignments"
+              actionHref="/dashboard/student/assignments"
+              icon={BookOpen}
+            />
+          </div>
+        ) : null}
+        {subjects.map((subject, index) => (
+          <Link key={subject.subject} className="block py-4" to={`/dashboard/student/results/subjects/${encodeURIComponent(subject.subject)}`}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h3 className="truncate text-base font-semibold text-academy-ink dark:text-academy-parchment">{subject.subject}</h3>
+                <p className="mt-1 text-sm leading-6 text-academy-muted">
+                  Latest: {subject.latest?.title || 'Pending'} • {subject.items.length} result{subject.items.length === 1 ? '' : 's'}
+                </p>
+              </div>
+              <p className="shrink-0 text-lg font-semibold text-academy-aegean dark:text-academy-gold">{formatPercent(subject.average)}</p>
+            </div>
+            <div className="mt-3">
+              <AnimatedProgressBar value={subject.average || 0} color={chartPalette[index % chartPalette.length]} />
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function WeakTopicInsight({ topic }: { topic: (StudentResultTopic & { subject?: string }) | null }) {
+  return (
+    <section className="rounded-ios-lg border border-white/70 bg-white/[0.58] p-5 shadow-academy backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]" aria-labelledby="weak-topic-title">
+      <div className="flex items-start gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-ios border border-academy-gold/20 bg-academy-gold/10 text-academy-ink dark:text-academy-gold">
+          <Brain className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Weakest topic recommendation</p>
+          <h2 id="weak-topic-title" className="mt-1 text-xl font-semibold text-academy-ink dark:text-academy-parchment">
+            {topic ? `Practise ${topic.topic}` : 'No weak topic yet'}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-academy-muted">
+            {topic
+              ? `${topic.subject || 'This subject'} is currently at ${formatPercent(topic.score)} for this topic. Start with one worked example, then one exam-style question.`
+              : 'Topic-level recommendations appear when released results include topic breakdowns.'}
+          </p>
+        </div>
+      </div>
+      <Link className="academy-btn academy-btn-outline mt-4 w-full sm:w-auto" to="/dashboard/student/progress">
+        Open progress
+      </Link>
+    </section>
   );
 }
 
