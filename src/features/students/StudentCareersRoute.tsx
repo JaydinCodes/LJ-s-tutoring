@@ -382,7 +382,7 @@ export function StudentCareersRoute() {
           </div>
         </div>
 
-        <Card>
+        <Card className="scroll-mt-6" id="odie-career-assistant">
           <h2 className="text-xl font-semibold text-slate-950 dark:text-brand-parchment">Ask Odie</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">Odie is only available on Careers, and focuses on subject choice, APS planning, study planning, and pathways.</p>
           <div className="mt-5 max-h-[520px] space-y-3 overflow-y-auto rounded-[1.5rem] border border-white/70 bg-white/55 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]">
