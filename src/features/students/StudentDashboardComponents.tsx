@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDropzone, type FileRejection } from 'react-dropzone';
+import { Brain, Clock, ScrollText, Sparkles, Target, TrendingUp, Trophy, UploadCloud, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { GreekHeroCard, InsightCard, PremiumButton, StaggerGrid, StaggerItem, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
@@ -134,6 +135,7 @@ export function ProgressSummaryCards({
         explanation={nextTask ? `${getAssignmentStatusLabel(nextTask.status)} - ${dueText(nextTask.assignment.due_date, daysUntil(nextTask.assignment.due_date))}` : 'No urgent assignment is blocking today. Use the time for review or exam prep.'}
         action={nextTask ? 'Open assignment detail' : 'View assignments'}
         to={nextTask ? `/dashboard/student/assignments/${nextTask.assignmentId}` : '/dashboard/student/assignments'}
+        icon={Clock}
         tone="urgent"
       />
       <ActionMetricCard
@@ -142,6 +144,7 @@ export function ProgressSummaryCards({
         explanation={dueTasks.length ? 'These are ordered by overdue work, due-soon pressure, and returned corrections.' : 'Your visible assignment queue is clear right now.'}
         action="Plan assignment work"
         to="/dashboard/student/assignments"
+        icon={ScrollText}
         tone="gold"
       />
       <ActionMetricCard
@@ -150,6 +153,7 @@ export function ProgressSummaryCards({
         explanation={averageScore == null ? 'Results will appear once marks or progress records are available.' : 'Use recent performance to decide whether to consolidate or push ahead.'}
         action="Review results"
         to="/dashboard/student/results"
+        icon={Trophy}
         tone="navy"
       />
       <ActionMetricCard
@@ -158,6 +162,7 @@ export function ProgressSummaryCards({
         explanation={weakestTopic ? `${weakestTopic.score}% mastery. Start here if you only have one focused study block today.` : 'Progress records will identify the best topic to practise first.'}
         action="Open progress"
         to="/dashboard/student/progress"
+        icon={Brain}
         tone="aegean"
       />
       <ActionMetricCard
@@ -166,6 +171,7 @@ export function ProgressSummaryCards({
         explanation={streakDays ? 'Keep the habit alive with one meaningful task before the day gets busy.' : 'Start the streak with one short, completed learning block.'}
         action="Check progress"
         to="/dashboard/student/progress"
+        icon={TrendingUp}
         tone="marble"
       />
       {nextExam ? (
@@ -175,6 +181,7 @@ export function ProgressSummaryCards({
           explanation={`${nextExam.subject}: ${nextExam.title}. ${weakestTopic ? `Pair revision with ${weakestTopic.topic}.` : 'Use progress records to choose revision topics.'}`}
           action="Build revision plan"
           to="/dashboard/student/progress"
+          icon={Target}
           tone="gold"
         />
       ) : null}
@@ -188,6 +195,7 @@ function ActionMetricCard({
   explanation,
   action,
   to,
+  icon: Icon,
   tone,
 }: {
   label: string;
@@ -195,6 +203,7 @@ function ActionMetricCard({
   explanation: string;
   action: string;
   to: string;
+  icon: LucideIcon;
   tone: 'urgent' | 'gold' | 'navy' | 'aegean' | 'marble';
 }) {
   const toneClass = {
@@ -212,7 +221,12 @@ function ActionMetricCard({
     <StaggerItem>
       <Link className={`group block h-full rounded-[1.5rem] border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${toneClass}`} to={to}>
         <article className="flex h-full flex-col">
-          <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${mutedClass}`}>{label}</p>
+          <div className="flex items-start justify-between gap-3">
+            <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${mutedClass}`}>{label}</p>
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-current/10 bg-white/35 text-current shadow-sm dark:bg-white/5">
+              <Icon className="h-5 w-5 text-current" aria-hidden="true" strokeWidth={2} />
+            </span>
+          </div>
           <h3 className="mt-3 line-clamp-2 text-2xl font-semibold tracking-tight">{value}</h3>
           <p className={`mt-3 flex-1 text-sm leading-6 ${mutedClass}`}>{explanation}</p>
           <p className="mt-4 text-sm font-semibold text-brand-aegean group-hover:text-brand-gold dark:text-brand-gold">{action}</p>
@@ -242,7 +256,10 @@ export function TodayBattlePlan({ items }: { items: BattlePlanItem[] }) {
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-aegean dark:text-brand-gold">Today's Battle Plan</p>
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-brand-aegean dark:text-brand-gold">
+            <Sparkles className="h-4 w-4 text-current" aria-hidden="true" />
+            Today's Battle Plan
+          </p>
           <h2 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-100">3 to 5 focused actions, in order</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-brand-marble">Start at the top. Completed actions move down so the next useful step stays visible.</p>
         </div>
@@ -250,6 +267,15 @@ export function TodayBattlePlan({ items }: { items: BattlePlanItem[] }) {
       </div>
 
       <StaggerGrid className="mt-5 grid gap-3">
+        {!visibleItems.length ? (
+          <EmptyState
+            title="No quiz recommendation yet"
+            description="Quiz suggestions appear when the dashboard has a weak topic or revision target. Start with assignments or progress so recommendations stay grounded in real data."
+            actionLabel="Open progress"
+            actionHref="/dashboard/student/progress"
+            icon={Brain}
+          />
+        ) : null}
         {visibleItems.map((item, index) => {
           const isCompleted = completedIds.has(item.id);
           return (
@@ -309,7 +335,10 @@ export function AssignmentsDueSection({
       {!visible.length ? (
         <EmptyState
           title="No assignments due right now"
-          description="Published assignments will appear here automatically once tutors or admins create them."
+          description="Your active queue is clear. Use the space to review a weak topic or check whether new work has landed."
+          actionLabel="Open progress"
+          actionHref="/dashboard/student/progress"
+          icon={ScrollText}
         />
       ) : null}
     </StaggerGrid>
@@ -568,6 +597,7 @@ function FilePreview({
   if (!file) {
     return (
       <div className="rounded-2xl border border-brand-marble bg-white/80 p-4 text-center text-sm text-slate-500">
+        <UploadCloud className="mx-auto mb-2 h-6 w-6 text-brand-aegean" aria-hidden="true" />
         No file selected
       </div>
     );
@@ -671,7 +701,15 @@ export function SubmittedAssignmentsList({
             </StaggerItem>
           );
         })}
-        {!submissions.length ? <EmptyState title="No submissions yet" description="Once you upload work, the confirmation and review status will appear here." /> : null}
+        {!submissions.length ? (
+          <EmptyState
+            title="No submissions yet"
+            description="Your submitted work will collect here with timestamps, review status, and released feedback."
+            actionLabel="Open assignments"
+            actionHref="/dashboard/student/assignments"
+            icon={UploadCloud}
+          />
+        ) : null}
       </StaggerGrid>
     </Card>
   );
@@ -700,7 +738,15 @@ export function LatestResultsCard({
             </TimelineCard>
           </StaggerItem>
         ))}
-        {!marked.length ? <EmptyState title="No marked assignments yet" description="Results will appear here once feedback is released." /> : null}
+        {!marked.length ? (
+          <EmptyState
+            title="No marked assignments yet"
+            description="Released marks and tutor feedback will appear here when marking is complete."
+            actionLabel="Review progress"
+            actionHref="/dashboard/student/progress"
+            icon={Trophy}
+          />
+        ) : null}
       </StaggerGrid>
     </Card>
   );

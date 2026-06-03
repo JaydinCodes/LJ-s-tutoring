@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Compass, GraduationCap, Sparkles, Target } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { EmptyState, ErrorState, GreekHeroCard, InsightCard, MetricCard, PageShell, PremiumButton, SkeletonCard, StaggerGrid, StaggerItem } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
@@ -262,9 +263,9 @@ export function StudentCareersRoute() {
           </GreekHeroCard>
 
           <StaggerGrid className="grid gap-4 md:grid-cols-3">
-            <StaggerItem><MetricCard label="Career Explorer" value={String(data?.careers?.length || 0)} helper="Filter pathways by interests, subjects, and category." tone="aegean" /></StaggerItem>
-            <StaggerItem><MetricCard label="Subject Match" value={String(profile.preferredSubjects.length)} helper="Subjects saved into your career profile." tone="gold" /></StaggerItem>
-            <StaggerItem><MetricCard label="Opportunity Map" value={String(data?.institutions?.length || 0)} helper="Institution options loaded from the careers dataset." tone="marble" /></StaggerItem>
+            <StaggerItem><MetricCard label="Career Explorer" value={String(data?.careers?.length || 0)} helper="Filter pathways by interests, subjects, and category." icon={Compass} tone="aegean" /></StaggerItem>
+            <StaggerItem><MetricCard label="Subject Match" value={String(profile.preferredSubjects.length)} helper="Subjects saved into your career profile." icon={GraduationCap} tone="gold" /></StaggerItem>
+            <StaggerItem><MetricCard label="Opportunity Map" value={String(data?.institutions?.length || 0)} helper="Institution options loaded from the careers dataset." icon={Target} tone="marble" /></StaggerItem>
           </StaggerGrid>
 
           <Card>
@@ -304,7 +305,17 @@ export function StudentCareersRoute() {
                 </StaggerItem>
               ))}
             </StaggerGrid>
-            {data && !filteredCareers.length ? <div className="mt-4"><EmptyState title="No matching careers yet" description="Clear a filter or save more interests to widen the cockpit." /></div> : null}
+            {data && !filteredCareers.length ? (
+              <div className="mt-4">
+                <EmptyState
+                  title="No matching careers yet"
+                  description="Clear one filter, try a broader interest, or save more subjects so the cockpit has more context."
+                  actionLabel="Reset filters"
+                  actionHref="/dashboard/student/careers"
+                  icon={Compass}
+                />
+              </div>
+            ) : null}
           </Card>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -357,7 +368,15 @@ export function StudentCareersRoute() {
                 {savedCareers.map((career) => (
                   <InsightCard key={career.id} title={career.title} description={career.description || career.category || 'Saved for deeper planning.'} />
                 ))}
-                {!savedCareers.length ? <EmptyState title="No saved careers yet" description="Save careers from the explorer to build your shortlist." /> : null}
+                {!savedCareers.length ? (
+                  <EmptyState
+                    title="No saved careers yet"
+                    description="Save careers from the explorer to build a shortlist you can compare with subjects, APS targets, and Odie advice."
+                    actionLabel="Explore careers"
+                    actionHref="/dashboard/student/careers"
+                    icon={Sparkles}
+                  />
+                ) : null}
               </div>
             </Card>
           </div>

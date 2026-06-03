@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { BookOpen, Brain, Clock, Target, TrendingUp, Trophy, type LucideIcon } from 'lucide-react';
 import { AnimatedProgressBar, ErrorState, PageShell, ProgressRing, SkeletonCard, StaggerGrid, StaggerItem } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -110,12 +111,12 @@ export function StudentResultsRoute() {
           </Card>
 
           <StaggerGrid className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <PremiumResultMetric label="Overall Average" value={formatPercent(data.summary.averageAcrossAssessments)} explanation="Mean percentage across released results." tone="navy" />
-            <PremiumResultMetric label="Best Subject" value={bestSubject ? bestSubject.subject : 'Pending'} explanation={bestSubject ? `${formatPercent(bestSubject.average)} across ${bestSubject.count} result${bestSubject.count === 1 ? '' : 's'}.` : 'Appears once at least one subject has a released mark.'} tone="aegean" to={bestSubject ? `/student/results/subjects/${encodeURIComponent(bestSubject.subject)}` : undefined} />
-            <PremiumResultMetric label="Weakest Topic" value={weakestTopic?.topic || 'Pending'} explanation={weakestTopic ? `${formatPercent(weakestTopic.score)}. Use this as your next practice target.` : 'Topic-level data appears when released results include topic breakdowns.'} tone="gold" />
-            <PremiumResultMetric label="Latest Mark" value={latest ? formatPercent(latest.percentage) : '--'} explanation={latest ? `${latest.subject}: ${latest.title}.` : 'Latest released result appears here.'} tone="marble" to={latest ? `/student/results/${latest.id}` : undefined} />
-            <PremiumResultMetric label="Mark Trend" value={trendLabel(items)} explanation={items.length < 2 ? 'Needs at least two released marks to show movement.' : 'Change from earliest released result to latest released result.'} tone="navy" />
-            <PremiumResultMetric label="Consistency Score" value={consistency == null ? '--' : `${consistency}/100`} explanation={consistency == null ? 'Needs at least two results.' : 'Higher means marks are steadier across assessments.'} tone="aegean" />
+            <PremiumResultMetric label="Overall Average" value={formatPercent(data.summary.averageAcrossAssessments)} explanation="Mean percentage across released results." icon={Trophy} tone="navy" />
+            <PremiumResultMetric label="Best Subject" value={bestSubject ? bestSubject.subject : 'Pending'} explanation={bestSubject ? `${formatPercent(bestSubject.average)} across ${bestSubject.count} result${bestSubject.count === 1 ? '' : 's'}.` : 'Appears once at least one subject has a released mark.'} icon={BookOpen} tone="aegean" to={bestSubject ? `/dashboard/student/results/subjects/${encodeURIComponent(bestSubject.subject)}` : undefined} />
+            <PremiumResultMetric label="Weakest Topic" value={weakestTopic?.topic || 'Pending'} explanation={weakestTopic ? `${formatPercent(weakestTopic.score)}. Use this as your next practice target.` : 'Topic-level data appears when released results include topic breakdowns.'} icon={Brain} tone="gold" />
+            <PremiumResultMetric label="Latest Mark" value={latest ? formatPercent(latest.percentage) : '--'} explanation={latest ? `${latest.subject}: ${latest.title}.` : 'Latest released result appears here.'} icon={Clock} tone="marble" to={latest ? `/dashboard/student/results/${latest.id}` : undefined} />
+            <PremiumResultMetric label="Mark Trend" value={trendLabel(items)} explanation={items.length < 2 ? 'Needs at least two released marks to show movement.' : 'Change from earliest released result to latest released result.'} icon={TrendingUp} tone="navy" />
+            <PremiumResultMetric label="Consistency Score" value={consistency == null ? '--' : `${consistency}/100`} explanation={consistency == null ? 'Needs at least two results.' : 'Higher means marks are steadier across assessments.'} icon={Target} tone="aegean" />
           </StaggerGrid>
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
@@ -162,7 +163,17 @@ export function StudentResultDetailRoute() {
       <BackToResults />
       {loading ? <SkeletonCard /> : null}
       {error ? <ErrorState title="Result unavailable" description={error} onRetry={() => void reload()} /> : null}
-      {data && !result ? <Card><EmptyState title="Result not found" description="This result is not available for the signed-in learner." /></Card> : null}
+      {data && !result ? (
+        <Card>
+          <EmptyState
+            title="Result not found"
+            description="This result is not available for the signed-in learner. Return to your private results overview to choose another released mark."
+            actionLabel="Back to results"
+            actionHref="/dashboard/student/results"
+            icon={Trophy}
+          />
+        </Card>
+      ) : null}
       {result ? <ResultDetail result={result} /> : null}
     </PageShell>
   );
@@ -200,12 +211,14 @@ function PremiumResultMetric({
   label,
   value,
   explanation,
+  icon: Icon,
   tone,
   to,
 }: {
   label: string;
   value: string;
   explanation: string;
+  icon: LucideIcon;
   tone: 'navy' | 'aegean' | 'gold' | 'marble';
   to?: string;
 }) {
@@ -217,7 +230,12 @@ function PremiumResultMetric({
   }[tone];
   const content = (
     <article className={`h-full rounded-[1.6rem] border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${toneClass}`}>
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-75">{label}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-75">{label}</p>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-current/10 bg-white/30 text-current shadow-sm dark:bg-white/5">
+          <Icon className="h-5 w-5 text-current" aria-hidden="true" strokeWidth={2} />
+        </span>
+      </div>
       <h3 className="mt-3 text-3xl font-semibold tracking-tight">{value}</h3>
       <p className="mt-3 text-sm leading-6 opacity-80">{explanation}</p>
     </article>
@@ -228,7 +246,17 @@ function PremiumResultMetric({
 
 function LearnerTrendChart({ items }: { items: StudentResultItem[] }) {
   const chronological = [...items].sort((left, right) => new Date(left.completedAt || left.markedAt || 0).getTime() - new Date(right.completedAt || right.markedAt || 0).getTime());
-  if (!chronological.length) return <EmptyState title="No released marks yet" description="Your trend chart appears after your first released result." />;
+  if (!chronological.length) {
+    return (
+      <EmptyState
+        title="No released marks yet"
+        description="Your trend chart appears after your first released result. Until then, use progress to choose what to practise."
+        actionLabel="Open progress"
+        actionHref="/dashboard/student/progress"
+        icon={TrendingUp}
+      />
+    );
+  }
   if (chronological.length === 1) {
     return (
       <div className="mt-5 rounded-[1.5rem] border border-brand-marble bg-brand-parchment/60 p-5">
@@ -301,7 +329,17 @@ function DistributionBars({ buckets }: { buckets: ClassDistributionBucket[] }) {
 function SubjectSummaryGrid({ items }: { items: StudentResultItem[] }) {
   const bySubject = groupBySubject(items);
   const subjects = [...bySubject.entries()];
-  if (!subjects.length) return <EmptyState title="No subject summaries yet" description="Subject summaries appear when released results are available." />;
+  if (!subjects.length) {
+    return (
+      <EmptyState
+        title="No subject summaries yet"
+        description="Subject cards appear when released results are available, giving you a clean view of strengths by subject."
+        actionLabel="Open assignments"
+        actionHref="/dashboard/student/assignments"
+        icon={BookOpen}
+      />
+    );
+  }
 
   return (
     <StaggerGrid className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -309,7 +347,7 @@ function SubjectSummaryGrid({ items }: { items: StudentResultItem[] }) {
         const subjectAverage = average(subjectItems.map((item) => item.percentage));
         return (
           <StaggerItem key={subject}>
-            <Link className="block rounded-[1.5rem] border border-brand-marble bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-gold hover:shadow-lg dark:bg-brand-obsidian" to={`/student/results/subjects/${encodeURIComponent(subject)}`}>
+            <Link className="block rounded-[1.5rem] border border-brand-marble bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-gold hover:shadow-lg dark:bg-brand-obsidian" to={`/dashboard/student/results/subjects/${encodeURIComponent(subject)}`}>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">{subject}</p>
               <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-100">{formatPercent(subjectAverage)}</p>
               <div className="mt-3"><AnimatedProgressBar value={subjectAverage || 0} color={chartPalette[index % chartPalette.length]} /></div>
@@ -361,7 +399,17 @@ function ResultDetail({ result }: { result: StudentResultItem }) {
 
 function CognitiveBreakdown({ levels }: { levels: StudentResultCognitiveLevel[] }) {
   const byLevel = new Map(levels.map((item) => [item.level, item]));
-  if (!levels.length) return <EmptyState title="No cognitive data yet" description="Older results may not include CAPS cognitive-level marks." />;
+  if (!levels.length) {
+    return (
+      <EmptyState
+        title="No cognitive data yet"
+        description="Older results may not include CAPS cognitive-level marks. Use the practice recommendation and topic feedback that is available."
+        actionLabel="Back to overview"
+        actionHref="/dashboard/student/results"
+        icon={Brain}
+      />
+    );
+  }
 
   return (
     <div className="mt-4 space-y-3">
@@ -409,7 +457,17 @@ function questionTypeForLevel(level: CognitiveLevelName) {
 }
 
 function TopicBreakdown({ topics }: { topics: StudentResultTopic[] }) {
-  if (!topics.length) return <EmptyState title="No topic breakdown" description="Older results may only include the overall mark." />;
+  if (!topics.length) {
+    return (
+      <EmptyState
+        title="No topic breakdown"
+        description="This result only has the overall mark. Future released results can show topic-level focus areas."
+        actionLabel="Open progress"
+        actionHref="/dashboard/student/progress"
+        icon={Target}
+      />
+    );
+  }
   return (
     <div className="mt-4 space-y-3">
       {topics.map((topic, index) => (
@@ -426,11 +484,21 @@ function TopicBreakdown({ topics }: { topics: StudentResultTopic[] }) {
 }
 
 function ResultList({ items, emptyTitle }: { items: StudentResultItem[]; emptyTitle: string }) {
-  if (!items.length) return <EmptyState title={emptyTitle} description="Released results will appear here once available." />;
+  if (!items.length) {
+    return (
+      <EmptyState
+        title={emptyTitle}
+        description="Released results will appear here once available, with each mark linking to its full breakdown."
+        actionLabel="Back to overview"
+        actionHref="/dashboard/student/results"
+        icon={Trophy}
+      />
+    );
+  }
   return (
     <div className="mt-5 space-y-3">
       {sortByDate(items).map((item) => (
-        <Link key={item.id} className="block rounded-[1.5rem] border border-brand-marble bg-white p-4 transition hover:border-brand-gold hover:shadow-lg dark:bg-brand-obsidian" to={`/student/results/${item.id}`}>
+        <Link key={item.id} className="block rounded-[1.5rem] border border-brand-marble bg-white p-4 transition hover:border-brand-gold hover:shadow-lg dark:bg-brand-obsidian" to={`/dashboard/student/results/${item.id}`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold text-slate-950 dark:text-slate-100">{item.title}</p>
@@ -456,7 +524,7 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
 function BackToResults() {
   return (
     <div className="mb-4">
-      <Link className="text-sm font-semibold text-brand-aegean hover:text-brand-gold dark:text-brand-gold" to="/student/results">
+      <Link className="text-sm font-semibold text-brand-aegean hover:text-brand-gold dark:text-brand-gold" to="/dashboard/student/results">
         Back to results overview
       </Link>
     </div>

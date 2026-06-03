@@ -1,5 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { Sparkles, type LucideIcon } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
+import { Link } from 'react-router-dom';
 import { DashboardShell, type DashboardSection } from './DashboardShell';
 import { dashboardInsetClass, dashboardSurfaceClass } from './dashboardStyles';
 
@@ -132,19 +134,28 @@ export function MetricCard({
   label,
   value,
   helper,
+  icon: Icon,
   tone = 'marble',
 }: {
   label: string;
   value: string;
   helper: string;
+  icon?: LucideIcon;
   tone?: MetricTone;
 }) {
   const mutedText = tone === 'navy' ? 'text-brand-parchment' : 'text-slate-600 dark:text-brand-marble';
 
   return (
     <article className={`rounded-[1.5rem] border p-5 shadow-sm ${metricToneClasses[tone]}`}>
-      <p className={`text-sm font-medium ${mutedText}`}>{label}</p>
-      <p className="mt-3 text-3xl font-semibold tracking-tight">{value}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className={`text-sm font-medium ${mutedText}`}>{label}</p>
+        {Icon ? (
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-current/10 bg-white/30 text-current shadow-sm dark:bg-white/5">
+            <Icon className="h-5 w-5 text-current" aria-hidden="true" strokeWidth={2} />
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-3 break-words text-3xl font-semibold tracking-tight">{value}</p>
       <p className={`mt-2 text-sm leading-6 ${mutedText}`}>{helper}</p>
     </article>
   );
@@ -247,11 +258,36 @@ export function TimelineCard({
   );
 }
 
-export function EmptyState({ title, description }: { title: string; description: string }) {
+export function EmptyState({
+  title,
+  description,
+  actionLabel,
+  actionHref,
+  icon: Icon = Sparkles,
+}: {
+  title: string;
+  description: string;
+  actionLabel?: string;
+  actionHref?: string;
+  icon?: LucideIcon;
+}) {
   return (
-    <div className="rounded-[1.5rem] border border-dashed border-brand-aegean/50 bg-brand-parchment/70 p-6 text-center dark:border-brand-aegean/70 dark:bg-brand-navy/60">
-      <h3 className="text-base font-semibold text-brand-obsidian dark:text-brand-parchment">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">{description}</p>
+    <div className="relative overflow-hidden rounded-[1.5rem] border border-dashed border-brand-aegean/50 bg-[linear-gradient(135deg,_rgba(245,239,227,0.9),_rgba(255,255,255,0.92))] p-6 text-center shadow-sm dark:border-brand-aegean/70 dark:bg-brand-navy/60 dark:bg-none">
+      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-brand-gold/15 blur-2xl" aria-hidden="true" />
+      <div className="absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-brand-gold/50 to-transparent" aria-hidden="true" />
+      <div className="relative mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-brand-aegean/20 bg-white/80 text-brand-aegean shadow-sm dark:border-brand-gold/30 dark:bg-brand-obsidian dark:text-brand-gold">
+        <Icon className="h-5 w-5 text-current" aria-hidden="true" strokeWidth={2} />
+      </div>
+      <h3 className="relative mt-4 text-base font-semibold text-brand-obsidian dark:text-brand-parchment">{title}</h3>
+      <p className="relative mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-brand-marble">{description}</p>
+      {actionLabel && actionHref ? (
+        <Link
+          className="relative mt-4 inline-flex items-center justify-center rounded-full border border-brand-aegean/40 bg-white/80 px-4 py-2 text-sm font-semibold text-brand-navy shadow-sm transition hover:bg-brand-parchment dark:bg-brand-obsidian dark:text-brand-parchment dark:hover:bg-brand-navy"
+          to={actionHref}
+        >
+          {actionLabel}
+        </Link>
+      ) : null}
     </div>
   );
 }

@@ -1,43 +1,64 @@
 import type { ReactNode } from 'react';
+import {
+  BookOpen,
+  Brain,
+  Clock,
+  Compass,
+  GraduationCap,
+  LayoutDashboard,
+  ScrollText,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Trophy,
+  type LucideIcon,
+} from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { signOut } from '../../features/auth/authService';
 
+type DashboardNavItem = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+// Keep icon choices centralized so sidebar and mobile nav share one visual language.
 const nav = {
   student: [
-    { to: '/dashboard/student', label: 'Dashboard' },
-    { to: '/dashboard/student/assignments', label: 'Assignments' },
-    { to: '/dashboard/student/results', label: 'Results' },
-    { to: '/dashboard/student/progress', label: 'Progress' },
-    { to: '/dashboard/student/reports', label: 'Resources' },
-    { to: '/dashboard/student/careers', label: 'Careers / Odie AI' },
-    { to: '/onboarding/student', label: 'Settings' },
+    { to: '/dashboard/student', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/dashboard/student/assignments', label: 'Assignments', icon: ScrollText },
+    { to: '/dashboard/student/results', label: 'Results', icon: Trophy },
+    { to: '/dashboard/student/progress', label: 'Progress', icon: TrendingUp },
+    { to: '/dashboard/student/reports', label: 'Resources', icon: BookOpen },
+    { to: '/dashboard/student/careers', label: 'Careers / Odie AI', icon: Compass },
+    { to: '/onboarding/student', label: 'Settings', icon: Sparkles },
   ],
   admin: [
-    { to: '/dashboard/admin', label: 'Overview' },
-    { to: '/dashboard/admin/students', label: 'Students' },
-    { to: '/dashboard/admin/tutors', label: 'Tutors' },
-    { to: '/dashboard/admin/assignments', label: 'Assignments' },
-    { to: '/dashboard/admin/approvals', label: 'Approvals' },
-    { to: '/dashboard/admin/payments', label: 'Payments' },
-    { to: '/dashboard/admin/payroll', label: 'Payroll' },
-    { to: '/dashboard/admin/reconciliation', label: 'Reconciliation' },
-    { to: '/dashboard/admin/reports', label: 'Reports' },
-    { to: '/dashboard/admin/results', label: 'Results' },
-    { to: '/dashboard/admin/audit', label: 'Audit' },
-    { to: '/dashboard/admin/privacy-requests', label: 'Privacy' },
-    { to: '/dashboard/admin/retention', label: 'Retention' },
-    { to: '/dashboard/admin/ops-runbook', label: 'Runbook' },
+    { to: '/dashboard/admin', label: 'Overview', icon: LayoutDashboard },
+    { to: '/dashboard/admin/students', label: 'Students', icon: GraduationCap },
+    { to: '/dashboard/admin/tutors', label: 'Tutors', icon: Brain },
+    { to: '/dashboard/admin/assignments', label: 'Assignments', icon: ScrollText },
+    { to: '/dashboard/admin/approvals', label: 'Approvals', icon: Target },
+    { to: '/dashboard/admin/payments', label: 'Payments', icon: Trophy },
+    { to: '/dashboard/admin/payroll', label: 'Payroll', icon: TrendingUp },
+    { to: '/dashboard/admin/reconciliation', label: 'Reconciliation', icon: Clock },
+    { to: '/dashboard/admin/reports', label: 'Reports', icon: BookOpen },
+    { to: '/dashboard/admin/results', label: 'Results', icon: Trophy },
+    { to: '/dashboard/admin/audit', label: 'Audit', icon: Sparkles },
+    { to: '/dashboard/admin/privacy-requests', label: 'Privacy', icon: Target },
+    { to: '/dashboard/admin/retention', label: 'Retention', icon: Clock },
+    { to: '/dashboard/admin/ops-runbook', label: 'Runbook', icon: Compass },
   ],
   tutor: [
-    { to: '/dashboard/tutor', label: 'Overview' },
-    { to: '/dashboard/tutor/classes', label: 'Classes' },
-    { to: '/dashboard/tutor/sessions', label: 'Sessions' },
-    { to: '/dashboard/tutor/submissions', label: 'Submissions' },
-    { to: '/dashboard/tutor/reports', label: 'Reports' },
-    { to: '/dashboard/tutor/risk', label: 'Risk' },
+    { to: '/dashboard/tutor', label: 'Overview', icon: LayoutDashboard },
+    { to: '/dashboard/tutor/classes', label: 'Classes', icon: BookOpen },
+    { to: '/dashboard/tutor/sessions', label: 'Sessions', icon: Clock },
+    { to: '/dashboard/tutor/submissions', label: 'Submissions', icon: ScrollText },
+    { to: '/dashboard/tutor/reports', label: 'Reports', icon: TrendingUp },
+    { to: '/dashboard/tutor/risk', label: 'Risk', icon: Brain },
   ],
-};
+} satisfies Record<string, DashboardNavItem[]>;
 
 export type DashboardSection = keyof typeof nav;
 
@@ -74,16 +95,22 @@ export function DashboardShell({
             </div>
           </div>
           <nav className="mt-5 grid gap-1.5">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) => `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-navy text-white shadow-lg shadow-brand-navy/15 dark:bg-brand-aegean dark:text-white' : 'text-slate-600 hover:bg-brand-parchment hover:text-brand-obsidian dark:text-brand-marble dark:hover:bg-brand-navy dark:hover:text-white'}`}
-              >
-                <span>{item.label}</span>
-                <span className="h-1.5 w-1.5 rounded-full bg-current opacity-40" />
-              </NavLink>
-            ))}
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) => `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-navy text-white shadow-lg shadow-brand-navy/15 dark:bg-brand-aegean dark:text-white' : 'text-slate-600 hover:bg-brand-parchment hover:text-brand-obsidian dark:text-brand-marble dark:hover:bg-brand-navy dark:hover:text-white'}`}
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <Icon className="h-4 w-4 shrink-0 text-current" aria-hidden="true" strokeWidth={2} />
+                    <span className="truncate">{item.label}</span>
+                  </span>
+                  <span className="h-5 w-1 rounded-full bg-current opacity-25" aria-hidden="true" />
+                </NavLink>
+              );
+            })}
           </nav>
           {section === 'student' ? (
             <div className="mt-auto rounded-[1.5rem] border border-brand-aegean/30 bg-brand-parchment p-4 dark:border-brand-aegean/60 dark:bg-brand-navy">
@@ -116,7 +143,7 @@ export function DashboardShell({
                     aria-label="Assignment alerts"
                     className="relative grid h-11 w-11 place-items-center rounded-2xl border border-brand-marble bg-white text-sm font-bold text-brand-navy shadow-sm transition hover:border-brand-aegean hover:bg-brand-parchment dark:border-brand-marble/30 dark:bg-brand-navy dark:text-brand-parchment dark:hover:bg-brand-aegean"
                   >
-                    !
+                    <Clock className="h-4 w-4 text-current" aria-hidden="true" />
                     <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900" />
                   </button>
                   {auth.profile ? (
@@ -137,20 +164,24 @@ export function DashboardShell({
               </div>
             </div>
           </header>
-          <div className="mt-4 space-y-4 pb-24 lg:pb-4">{children}</div>
+          <div className="mt-4 space-y-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-4">{children}</div>
         </main>
       </div>
-      <nav className="fixed inset-x-3 bottom-3 z-40 rounded-[1.5rem] border border-brand-marble bg-white/95 p-2 shadow-2xl shadow-brand-navy/15 backdrop-blur dark:border-brand-marble/20 dark:bg-brand-obsidian/95 lg:hidden">
+      <nav className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 rounded-[1.5rem] border border-brand-marble bg-white/95 p-2 shadow-2xl shadow-brand-navy/15 backdrop-blur dark:border-brand-marble/20 dark:bg-brand-obsidian/95 lg:hidden">
         <div className="grid grid-cols-4 gap-1 sm:grid-cols-6">
-          {navItems.slice(0, 6).map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) => `rounded-2xl px-2 py-3 text-center text-[0.7rem] font-semibold leading-tight ${isActive ? 'bg-brand-navy text-white dark:bg-brand-aegean' : 'text-slate-600 dark:text-brand-marble'}`}
-            >
-              {item.label.replace(' / Odie AI', '')}
-            </NavLink>
-          ))}
+          {navItems.slice(0, 6).map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) => `rounded-2xl px-2 py-2.5 text-center text-[0.68rem] font-semibold leading-tight ${isActive ? 'bg-brand-navy text-white dark:bg-brand-aegean' : 'text-slate-600 dark:text-brand-marble'}`}
+              >
+                <Icon className="mx-auto mb-1 h-4 w-4 text-current" aria-hidden="true" strokeWidth={2} />
+                <span className="block truncate">{item.label.replace(' / Odie AI', '')}</span>
+              </NavLink>
+            );
+          })}
         </div>
       </nav>
     </div>

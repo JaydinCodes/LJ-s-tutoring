@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { BookOpen, Brain } from 'lucide-react';
 import { AnimatedProgressBar, ErrorState, InsightCard, PageShell, SkeletonCard, StaggerGrid, StaggerItem, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -73,7 +74,15 @@ export function StudentDashboardRoute() {
                       </InsightCard>
                     </StaggerItem>
                   ))}
-                  {!data.progress.length ? <EmptyState title="No progress records yet" description="Progress records should move into the student_progress table during data migration." /> : null}
+                  {!data.progress.length ? (
+                    <EmptyState
+                      title="No progress snapshot yet"
+                      description="As soon as marks or topic mastery arrive, this space becomes your study compass. For now, focus on the next assignment."
+                      actionLabel="Open assignments"
+                      actionHref="/dashboard/student/assignments"
+                      icon={Brain}
+                    />
+                  ) : null}
                 </StaggerGrid>
               </Card>
             </div>
@@ -105,7 +114,15 @@ export function StudentDashboardRoute() {
                       <p className="mt-1 text-sm text-slate-600">{[item.day_of_week, item.start_time, item.location].filter(Boolean).join(' | ') || 'Schedule pending'}</p>
                     </div>
                   ))}
-                  {!data.classes.length ? <EmptyState title="No class records yet" description="Current subject and class information will appear once classes and enrollments are migrated." /> : null}
+                  {!data.classes.length ? (
+                    <EmptyState
+                      title="No class schedule yet"
+                      description="Your subject and lesson details will appear here once they are linked to your learner profile."
+                      actionLabel="Open resources"
+                      actionHref="/dashboard/student/reports"
+                      icon={BookOpen}
+                    />
+                  ) : null}
                 </div>
               </Card>
             </aside>

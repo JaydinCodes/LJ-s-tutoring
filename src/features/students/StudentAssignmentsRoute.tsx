@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Clock, ScrollText, Trophy, UploadCloud, type LucideIcon } from 'lucide-react';
 import { ErrorState, PageShell, SkeletonCard, StaggerGrid, StaggerItem } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -12,34 +13,44 @@ const assignmentTabs: Array<{
   description: string;
   emptyTitle: string;
   emptyDescription: string;
+  emptyAction: string;
+  icon: LucideIcon;
 }> = [
   {
     key: 'due-now',
     label: 'Due Now',
     description: 'Assignments that still need action, including overdue work and returned corrections.',
     emptyTitle: 'No assignments need action',
-    emptyDescription: 'You do not have overdue, due-soon, or correction work waiting right now.',
+    emptyDescription: 'Your active assignment lane is clear. Use this time for revision or check progress for the next weak topic.',
+    emptyAction: 'Open progress',
+    icon: Clock,
   },
   {
     key: 'submitted',
     label: 'Submitted',
     description: 'Work sent in and waiting for tutor review or final marking.',
     emptyTitle: 'No submitted work waiting',
-    emptyDescription: 'After you upload an assignment, it will move here while feedback is pending.',
+    emptyDescription: 'When you upload work, it will move here with its review status so you know it was received.',
+    emptyAction: 'Go to due work',
+    icon: UploadCloud,
   },
   {
     key: 'marked',
     label: 'Marked',
     description: 'Released feedback, marks, and completed assignment outcomes.',
     emptyTitle: 'No marked assignments yet',
-    emptyDescription: 'Marks and written feedback will appear here once your tutor releases them.',
+    emptyDescription: 'Released feedback and marks will collect here so you can see what improved and what to fix next.',
+    emptyAction: 'Open results',
+    icon: Trophy,
   },
   {
     key: 'archived',
     label: 'Archived',
     description: 'Closed, draft, or archived assignments kept out of your active workflow.',
     emptyTitle: 'No archived assignments',
-    emptyDescription: 'Older or closed assignments will collect here without cluttering your active tabs.',
+    emptyDescription: 'Older or closed assignments will collect here without cluttering your active work lane.',
+    emptyAction: 'Back to due work',
+    icon: ScrollText,
   },
 ];
 
@@ -76,6 +87,7 @@ export function StudentAssignmentsRoute() {
               {assignmentTabs.map((tab) => {
                 const isActive = tab.key === activeBucket;
                 const count = studentData.assignmentBuckets.get(tab.key)?.length || 0;
+                const Icon = tab.icon;
                 return (
                   <button
                     key={tab.key}
@@ -87,7 +99,10 @@ export function StudentAssignmentsRoute() {
                     type="button"
                     onClick={() => setActiveBucket(tab.key)}
                   >
-                    <span className="block text-sm font-semibold">{tab.label}</span>
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <Icon className="h-4 w-4 text-current" aria-hidden="true" />
+                      {tab.label}
+                    </span>
                     <span className="mt-1 block text-xs">{count} assignment{count === 1 ? '' : 's'}</span>
                   </button>
                 );
@@ -117,7 +132,13 @@ export function StudentAssignmentsRoute() {
               </StaggerGrid>
 
               {!activeAssignments.length ? (
-                <EmptyState title={activeTab.emptyTitle} description={activeTab.emptyDescription} />
+                <EmptyState
+                  title={activeTab.emptyTitle}
+                  description={activeTab.emptyDescription}
+                  actionLabel={activeTab.emptyAction}
+                  actionHref={activeBucket === 'marked' ? '/dashboard/student/results' : activeBucket === 'due-now' ? '/dashboard/student/progress' : '/dashboard/student/assignments'}
+                  icon={activeTab.icon}
+                />
               ) : null}
             </section>
           </div>

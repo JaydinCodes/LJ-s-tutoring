@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { ScrollText, Trophy, UploadCloud } from 'lucide-react';
 import { ErrorState, PageShell, SkeletonCard, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -42,7 +43,13 @@ export function StudentAssignmentDetailRoute() {
       {error ? <Card><ErrorState title="Assignment unavailable" description={error} onRetry={() => void reload()} /></Card> : null}
       {data && !assignment ? (
         <Card>
-          <EmptyState title="Assignment not found" description="This assignment may have been removed, archived, or assigned to a different learner." />
+          <EmptyState
+            title="Assignment not found"
+            description="This assignment may have been removed, archived, or assigned to a different learner."
+            actionLabel="Back to assignments"
+            actionHref="/dashboard/student/assignments"
+            icon={ScrollText}
+          />
         </Card>
       ) : null}
       {assignment ? <AssignmentDetailWorkspace assignment={assignment} submission={submission} submissionHistory={submissionHistory} /> : null}
@@ -120,14 +127,26 @@ function AssignmentDetailWorkspace({
         {submission?.feedback ? (
           <p className="mt-3 rounded-2xl bg-brand-parchment/70 p-4 text-sm leading-7 text-slate-700 dark:bg-brand-navy/70 dark:text-brand-marble">{submission.feedback}</p>
         ) : (
-          <EmptyState title="No feedback yet" description="Feedback and marks will appear here after your tutor reviews the submission." />
+          <EmptyState
+            title="No feedback yet"
+            description="Feedback and marks will appear here after your tutor reviews the submission."
+            actionLabel="Review assignment"
+            actionHref={`/dashboard/student/assignments/${assignment.id}`}
+            icon={Trophy}
+          />
         )}
       </Card>
 
       <Card>
         <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Submission History</h2>
         {submissionHistory.length ? <SubmissionHistory submissions={submissionHistory} assignment={assignment} /> : (
-          <EmptyState title="No submission history" description="Your first upload will create the submission record for this assignment." />
+          <EmptyState
+            title="No submission history"
+            description="Your first upload will create a versioned record here, including the file name, timestamp, and latest status."
+            actionLabel="Use upload panel"
+            actionHref={`/dashboard/student/assignments/${assignment.id}`}
+            icon={UploadCloud}
+          />
         )}
       </Card>
     </div>
