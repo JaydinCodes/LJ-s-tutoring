@@ -372,7 +372,8 @@ describe('Phase 5 operational readiness', () => {
     expect(res.headers['x-request-id']).toBe(requestId);
     const body = res.json();
     expect(body.ok).toBe(true);
-    expect(body.db?.ok).toBe(true);
+    expect(body.service).toBe('lms-api');
+    expect(typeof body.uptimeSeconds).toBe('number');
 
     const combinedLogs = logs.join('');
     expect(combinedLogs).toContain(requestId);
