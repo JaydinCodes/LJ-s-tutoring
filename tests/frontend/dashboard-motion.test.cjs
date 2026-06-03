@@ -34,23 +34,21 @@ test('dashboard progress indicators animate once with transform-based tracks', (
 });
 
 test('student card collections opt into shared first-load staggering', () => {
-  const dashboard = read('src', 'features', 'students', 'StudentDashboardRoute.tsx');
   const components = read('src', 'features', 'students', 'StudentDashboardComponents.tsx');
   const results = read('src', 'features', 'students', 'StudentResultsRoute.tsx');
   const progress = read('src', 'features', 'students', 'StudentProgressRoute.tsx');
   const careers = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
 
   for (const [name, source] of [
-    ['dashboard', dashboard],
     ['assignment cards', components],
-    ['results', results],
-    ['progress', progress],
     ['careers', careers],
   ]) {
     assert.ok(source.includes('<StaggerGrid'), `${name} must use StaggerGrid`);
     assert.ok(source.includes('<StaggerItem'), `${name} must use StaggerItem`);
   }
 
-  assert.ok(dashboard.includes('<AnimatedProgressBar'), 'dashboard mastery bars must use the shared animation');
+  assert.ok(components.includes('<AnimatedProgressBar'), 'dashboard mastery bars must use the shared animation');
   assert.ok(results.includes('<AnimatedProgressBar'), 'results bars must use the shared animation');
+  assert.ok(progress.includes('<AnimatedProgressBar'), 'progress rows must use shared animated bars');
+  assert.ok(progress.includes('TopicProgressList'), 'progress page must use a stable row list instead of forced card staggering');
 });

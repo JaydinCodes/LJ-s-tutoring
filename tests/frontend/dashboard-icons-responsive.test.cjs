@@ -33,10 +33,11 @@ test('dashboard uses one Lucide icon system across navigation and student cards'
 
 test('mobile dashboard layout keeps bottom navigation and tables usable', () => {
   const shell = read('src', 'components', 'dashboard', 'DashboardShell.tsx');
+  const styles = read('src', 'styles', 'tailwind.css');
   const table = read('src', 'components', 'ui', 'DataTable.tsx');
 
-  assert.ok(shell.includes('pb-[calc(6.5rem+env(safe-area-inset-bottom))]'), 'main content must reserve space for phone bottom nav');
-  assert.ok(shell.includes('bottom-[calc(0.75rem+env(safe-area-inset-bottom))]'), 'bottom nav must respect iOS safe area');
+  assert.ok(shell.includes('pb-[calc(6.75rem+env(safe-area-inset-bottom))]'), 'main content must reserve space for phone bottom nav');
+  assert.ok(styles.includes('bottom-[calc(0.75rem+env(safe-area-inset-bottom))]'), 'bottom nav must respect iOS safe area');
   assert.ok(shell.includes('lg:hidden'), 'mobile nav must hide on desktop breakpoints');
   assert.ok(shell.includes('mx-auto mb-1 h-4 w-4'), 'mobile nav must show icons above labels');
   assert.ok(table.includes('md:hidden'), 'tables must render card rows on small screens');
