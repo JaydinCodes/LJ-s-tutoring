@@ -114,6 +114,10 @@ function safeFileName(file: File) {
   return file.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 120);
 }
 
+function stableUploadId() {
+  return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export async function createAssignment(input: CreateAssignmentInput) {
   const client = requireSupabase();
   const profile = await getCurrentProfile();
@@ -292,10 +296,31 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
     throw new Error('This assignment is closed and no longer accepts submissions.');
   }
 
-  let fileUrl: string | null = null;
+  const existing = await client
+    .from('assignment_submissions')
+    .select('*')
+    .eq('assignment_id', input.assignmentId)
+    .eq('student_id', student.id)
+    .order('version_number', { ascending: false })
+    .order('submitted_at', { ascending: false });
+
+  if (existing.error) {
+    throw existing.error;
+  }
+
+  const existingSubmissions = (existing.data || []) as AssignmentSubmission[];
+  const latestSubmission = existingSubmissions.find((submission) => submission.is_latest) || existingSubmissions[0] || null;
+  const nextVersion = Math.max(0, ...existingSubmissions.map((submission) => Number(submission.version_number || 0))) + 1;
+  const submissionId = stableUploadId();
+  let fileUrl: string | null = latestSubmission?.file_url || null;
+  let storageKey: string | null = latestSubmission?.storage_key || null;
+  let originalFilename: string | null = latestSubmission?.original_filename || null;
+  let mimeType: string | null = latestSubmission?.mime_type || null;
+  let sizeBytes: number | null = latestSubmission?.size_bytes || null;
 
   if (input.file) {
-    const path = `${student.id}/${input.assignmentId}/${Date.now()}-${safeFileName(input.file)}`;
+    const ext = input.file.name.split('.').pop()?.toLowerCase() || 'bin';
+    const path = `${student.id}/${input.assignmentId}/${submissionId}/submission.${ext}`;
     const uploaded = await client.storage.from('assignment-submissions').upload(path, input.file, {
       upsert: true,
       contentType: input.file.type || undefined,
@@ -304,42 +329,67 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
       throw uploaded.error;
     }
     fileUrl = uploaded.data.path;
-  } else {
-    const existing = await client
-      .from('assignment_submissions')
-      .select('*')
+    storageKey = uploaded.data.path;
+    originalFilename = safeFileName(input.file);
+    mimeType = input.file.type || null;
+    sizeBytes = input.file.size;
+  }
+
+  if (!input.file && !fileUrl) {
+    throw new Error('Add a file before submitting a file-only correction, or include a written answer.');
+  }
+
+  if (existingSubmissions.length) {
+    const latestReset = await (client.from('assignment_submissions') as unknown as {
+      update: (payload: { is_latest: boolean }) => {
+        eq: (column: string, value: string) => {
+          eq: (column: string, value: string) => Promise<{ data: unknown; error: Error | null }>;
+        };
+      };
+    })
+      .update({ is_latest: false })
       .eq('assignment_id', input.assignmentId)
-      .eq('student_id', student.id)
-      .maybeSingle();
+      .eq('student_id', student.id);
 
-    if (existing.error) {
-      throw existing.error;
+    if (latestReset.error) {
+      throw latestReset.error;
     }
-
-    fileUrl = (existing.data as AssignmentSubmission | null)?.file_url || null;
   }
 
   const saved = await (client.from('assignment_submissions') as unknown as {
-    upsert: (
+    insert: (
       payload: {
+        id: string;
         assignment_id: string;
         student_id: string;
+        storage_key: string | null;
         file_url: string | null;
+        original_filename: string | null;
+        mime_type: string | null;
+        size_bytes: number | null;
         text_answer: string | null;
         submitted_at: string;
         status: string;
-      },
-      options: { onConflict: string },
+        version_number: number;
+        is_latest: boolean;
+      }
     ) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
   })
-    .upsert({
+    .insert({
+      id: submissionId,
       assignment_id: input.assignmentId,
       student_id: student.id,
+      storage_key: storageKey,
       file_url: fileUrl,
+      original_filename: originalFilename,
+      mime_type: mimeType,
+      size_bytes: sizeBytes,
       text_answer: textAnswer,
       submitted_at: new Date().toISOString(),
       status: 'submitted',
-    }, { onConflict: 'assignment_id,student_id' })
+      version_number: nextVersion,
+      is_latest: true,
+    })
     .select('*')
     .single();
 

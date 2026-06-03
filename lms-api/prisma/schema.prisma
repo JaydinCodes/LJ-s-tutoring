@@ -108,6 +108,7 @@ model User {
   learningAssignmentsCreated   LearningAssignment[]
   baselineAssessmentsCreated   BaselineAssessment[]
   learningGoalsCreated         LearningGoal[]
+  examEventsCreated            StudentExamEvent[]
   communityProfile             CommunityProfile?
   studyRoomMessages            StudyRoomMessage[]
   studyRoomMemberships         StudyRoomMember[]
@@ -408,8 +409,27 @@ model Student {
   learningAssignments LearningAssignment[]
   baselineAssessments BaselineAssessment[]
   learningGoals LearningGoal[]
+  examEvents StudentExamEvent[]
+  careerProfile StudentCareerProfile?
 
   @@map("students")
+}
+
+model StudentCareerProfile {
+  id                    String   @id @default(uuid()) @db.Uuid
+  studentId             String   @unique @map("student_id") @db.Uuid
+  interestsJson         Json     @default("[]") @map("interests_json")
+  preferredSubjectsJson Json     @default("[]") @map("preferred_subjects_json")
+  targetCareersJson     Json     @default("[]") @map("target_careers_json")
+  apsTarget             Int?     @map("aps_target")
+  savedCareersJson      Json     @default("[]") @map("saved_careers_json")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, updatedAt(sort: Desc)])
+  @@map("student_career_profiles")
 }
 
 model StudyActivityEvent {
@@ -529,6 +549,7 @@ model Session {
   adjustments  Adjustment[]
 
   @@index([tutorId, date])
+  @@index([studentId, date(sort: Desc), startTime(sort: Desc)])
   @@map("sessions")
 }
 
@@ -661,6 +682,23 @@ model LearningGoal {
   @@index([studentId, status, dueDate])
   @@index([category, status])
   @@map("learning_goals")
+}
+
+model StudentExamEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  studentId       String   @map("student_id") @db.Uuid
+  subject         String
+  title           String
+  examDate        DateTime @map("exam_date") @db.Date
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @map("updated_at")
+
+  student   Student @relation(fields: [studentId], references: [id])
+  createdBy User?   @relation(fields: [createdByUserId], references: [id])
+
+  @@index([studentId, examDate])
+  @@map("student_exam_events")
 }
 
 model VolunteerEvent {

@@ -74,9 +74,15 @@ export interface AssignmentSubmission {
   assignment_id: string;
   student_id: string;
   file_url?: string | null;
+  storage_key?: string | null;
+  original_filename?: string | null;
+  mime_type?: string | null;
+  size_bytes?: number | null;
   text_answer?: string | null;
   submitted_at?: string | null;
   status: SubmissionStatus | string;
+  version_number?: number | null;
+  is_latest?: boolean | null;
   marks_awarded?: number | null;
   feedback?: string | null;
 }
@@ -146,6 +152,51 @@ export interface StudentDashboardView {
   progress: StudentProgress[];
   classes: ClassRecord[];
   submissions: AssignmentSubmission[];
+  recommendedNext?: {
+    title: string;
+    description: string;
+    action: string;
+  } | null;
+  recommendedQuiz?: {
+    id: string;
+    title: string;
+    topic: string;
+    estimatedMinutes?: number;
+  } | null;
+  careerGoals?: Array<{
+    goalId: string;
+    alignmentScore?: number | null;
+  }>;
+  examCalendar?: {
+    items: Array<{
+      id: string;
+      subject: string;
+      title: string;
+      examDate: string;
+    }>;
+    nextExam?: {
+      id: string;
+      subject: string;
+      title: string;
+      examDate: string;
+    } | null;
+  };
+  supportStatus?: {
+    band: string;
+    label: string;
+    explanation: string;
+    recommendedAction: string;
+  };
+  dailyInsightContext?: {
+    studentId: string;
+    nextExamTitle?: string;
+    nextExamSubject?: string;
+    nextExamDate?: string;
+    currentAcademicStatus?: string;
+    attendanceRate?: number;
+    averageScore?: number;
+    streakDays?: number;
+  };
 }
 
 export interface AdminDashboardView {

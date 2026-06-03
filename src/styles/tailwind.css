@@ -3,6 +3,24 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --academy-ink: 28 25 23;
+    --academy-muted: 87 96 114;
+    --academy-navy: 15 23 42;
+    --academy-deep: 30 58 95;
+    --academy-aegean: 31 111 139;
+    --academy-gold: 244 197 24;
+    --academy-parchment: 248 245 238;
+    --academy-marble: 226 232 240;
+    --academy-surface: 255 255 255;
+    --academy-hairline: 224 229 238;
+    --academy-page-x: clamp(1rem, 3vw, 1.5rem);
+    --academy-flow: clamp(1rem, 2.6vw, 1.5rem);
+    --academy-radius: 1.35rem;
+    --academy-radius-large: 1.75rem;
+    --academy-radius-sheet: 2rem;
+  }
+
   :focus-visible {
     outline: 2px solid theme('colors.brand.gold');
     outline-offset: 3px;
@@ -26,17 +44,34 @@
 body {
   margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  background: #f8fafc;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(31, 111, 139, 0.12), transparent 30rem),
+    radial-gradient(circle at 86% 6%, rgba(244, 197, 24, 0.1), transparent 24rem),
+    linear-gradient(180deg, #f7f8fb 0%, #eef2f7 100%);
+  color: rgb(var(--academy-ink));
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .greek-display {
-  font-family: Georgia, Cambria, 'Times New Roman', serif;
-  letter-spacing: -0.025em;
+  font-family: 'Cormorant Garamond', Fraunces, Georgia, Cambria, 'Times New Roman', serif;
+  letter-spacing: 0;
 }
 
 @media (prefers-color-scheme: dark) {
+  :root {
+    --academy-ink: 248 245 238;
+    --academy-muted: 198 206 219;
+    --academy-surface: 13 21 36;
+    --academy-hairline: 255 255 255;
+  }
+
   body {
-    background: #020617;
+    background:
+      radial-gradient(circle at 12% 0%, rgba(31, 111, 139, 0.2), transparent 30rem),
+      radial-gradient(circle at 86% 6%, rgba(244, 197, 24, 0.07), transparent 24rem),
+      linear-gradient(180deg, #070b14 0%, #111827 100%);
   }
 }
 
@@ -60,4 +95,103 @@ a {
 .split-title .char {
   display: inline-block;
   will-change: transform, opacity;
+}
+
+@layer components {
+  .academy-app-bg {
+    @apply min-h-screen bg-[radial-gradient(circle_at_12%_0%,_rgba(31,111,139,0.12),_transparent_30rem),radial-gradient(circle_at_86%_6%,_rgba(244,197,24,0.10),_transparent_24rem),linear-gradient(180deg,_#f7f8fb_0%,_#eef2f7_100%)] text-academy-ink dark:bg-[radial-gradient(circle_at_12%_0%,_rgba(31,111,139,0.2),_transparent_30rem),radial-gradient(circle_at_86%_6%,_rgba(244,197,24,0.07),_transparent_24rem),linear-gradient(180deg,_#070b14_0%,_#111827_100%)] dark:text-academy-parchment;
+  }
+
+  .academy-flow {
+    @apply mx-auto w-full max-w-5xl space-y-4 px-4 py-4 sm:px-5 lg:px-6 lg:py-6;
+  }
+
+  .academy-student-flow {
+    @apply mx-auto w-full max-w-4xl space-y-4 px-4 py-4 sm:px-5 lg:px-6 lg:py-6;
+  }
+
+  .academy-surface {
+    @apply rounded-ios-lg border border-white/70 bg-white/[0.78] p-5 shadow-academy backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25;
+  }
+
+  .academy-major-surface {
+    @apply rounded-sheet border border-white/10 bg-[radial-gradient(circle_at_16%_0%,_rgba(31,111,139,0.38),_transparent_34%),linear-gradient(135deg,_#071326_0%,_#102b49_56%,_#0f172a_100%)] p-5 text-white shadow-academy-strong sm:p-7;
+  }
+
+  .academy-row {
+    @apply flex items-center gap-3 border-b border-slate-950/5 py-3 last:border-b-0 dark:border-white/10;
+  }
+
+  .academy-chip {
+    @apply inline-flex min-h-9 items-center justify-center rounded-full border border-slate-950/10 bg-white/70 px-3 text-sm font-semibold text-academy-navy shadow-sm transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09];
+  }
+
+  .academy-segmented {
+    @apply grid rounded-full border border-slate-950/10 bg-white/[0.58] p-1 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05];
+  }
+
+  .academy-segment {
+    @apply rounded-full px-3 py-2 text-center text-sm font-semibold text-slate-600 transition duration-fluid ease-ios hover:text-academy-navy data-[active=true]:bg-academy-navy data-[active=true]:text-white data-[active=true]:shadow-academy-soft dark:text-academy-marble dark:hover:text-white dark:data-[active=true]:bg-academy-aegean;
+  }
+
+  .academy-btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold shadow-sm transition duration-fluid ease-ios disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .academy-btn-primary {
+    @apply bg-academy-navy text-white hover:bg-academy-deep dark:bg-academy-aegean dark:hover:bg-academy-deep;
+  }
+
+  .academy-btn-gold {
+    @apply bg-academy-gold text-academy-ink hover:bg-[#f7d24f];
+  }
+
+  .academy-btn-outline {
+    @apply border border-slate-950/10 bg-white/70 text-academy-navy hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-academy-parchment dark:hover:bg-white/[0.09];
+  }
+
+  .academy-progress-track {
+    @apply h-2 overflow-hidden rounded-full bg-slate-200/80 dark:bg-white/10;
+  }
+
+  .academy-progress-fill {
+    @apply h-full origin-left rounded-full bg-academy-aegean transition-transform duration-sheet ease-ios;
+  }
+
+  .academy-bottom-nav {
+    @apply fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 rounded-sheet border border-white/70 bg-white/[0.82] p-2 shadow-[0_22px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/[0.78];
+  }
+
+  .academy-nav-item {
+    @apply rounded-ios px-2 py-2.5 text-center text-[0.68rem] font-semibold leading-tight text-slate-600 transition duration-fluid ease-ios hover:bg-white/70 data-[active=true]:bg-academy-navy data-[active=true]:text-white data-[active=true]:shadow-academy-soft dark:text-academy-marble dark:hover:bg-white/[0.08] dark:data-[active=true]:bg-academy-aegean;
+  }
+
+  .academy-title {
+    @apply font-display text-3xl font-semibold leading-tight tracking-normal text-academy-ink dark:text-academy-parchment sm:text-4xl;
+  }
+
+  .academy-subtitle {
+    @apply max-w-3xl text-sm leading-6 text-academy-muted dark:text-academy-muted;
+  }
+}
+
+@layer utilities {
+  .safe-bottom-padding {
+    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+  }
+
+  .greek-keyline {
+    background-image: linear-gradient(90deg, transparent, rgba(244, 197, 24, 0.58), transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

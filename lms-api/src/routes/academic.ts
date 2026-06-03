@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
@@ -36,6 +37,11 @@ function toDateOnly(value: Date) {
 function safeFilename(value: string) {
   const base = path.basename(value || 'submission').replace(/[^a-zA-Z0-9._-]/g, '_');
   return base.slice(0, 160) || 'submission';
+}
+
+function stableSubmissionObjectName(mimetype: string) {
+  const extension = mimetype === 'application/pdf' ? '.pdf' : mimetype === 'image/png' ? '.png' : '.jpg';
+  return `submission${extension}`;
 }
 
 function publicUploadPath(key: string) {
@@ -118,6 +124,62 @@ function scoreBucket(score: number | null | undefined) {
 
 const SCORE_BUCKETS = ['0-29%', '30-39%', '40-49%', '50-59%', '60-69%', '70-79%', '80-100%'];
 
+type CognitiveLevelName = 'Knowledge' | 'Routine Procedure' | 'Complex Procedure' | 'Problem Solving';
+
+interface StudentResultAnalyticsResponse {
+  studentId: string;
+  generatedAt: string;
+  resultCount: number;
+  overallAverage: number | null;
+  subjectAverages: Array<{ subject: string; average: number | null; marksObtained: number; marksAvailable: number; resultCount: number }>;
+  topicAverages: Array<{ subject: string; topic: string; average: number | null; support: number }>;
+  cognitiveBreakdown: Array<{ level: CognitiveLevelName; average: number | null; support: number; weak: boolean }>;
+  trendPoints: Array<{ resultId: string; subject: string; completedAt: string; percentage: number }>;
+  classComparison: {
+    available: boolean;
+    privacyThreshold: number;
+    classSize: number;
+    classAverage: number | null;
+    differenceFromClassAverage: number | null;
+    percentile: number | null;
+  };
+}
+
+const COGNITIVE_LEVELS: CognitiveLevelName[] = ['Knowledge', 'Routine Procedure', 'Complex Procedure', 'Problem Solving'];
+
+function normalizeCognitiveLevelName(value: string): CognitiveLevelName | null {
+  const normalized = value.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+  return COGNITIVE_LEVELS.find((level) => level.toLowerCase() === normalized) ?? null;
+}
+
+function normalizeCognitiveBreakdown(value: any) {
+  const parsed = normalizeJson(value, {});
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return [];
+
+  return Object.entries(parsed)
+    .map(([rawLevel, rawPayload]) => {
+      const level = normalizeCognitiveLevelName(rawLevel);
+      if (!level) return null;
+      const payload = typeof rawPayload === 'number'
+        ? { score: rawPayload }
+        : rawPayload && typeof rawPayload === 'object' && !Array.isArray(rawPayload)
+          ? rawPayload as Record<string, unknown>
+          : {};
+      const marksObtained = Number(payload.score ?? payload.marksObtained ?? payload.obtained);
+      const marksAvailable = Number(payload.total ?? payload.marksAvailable);
+      const percentage = Number(payload.percentage ?? (
+        Number.isFinite(marksObtained) && Number.isFinite(marksAvailable) && marksAvailable > 0
+          ? (marksObtained / marksAvailable) * 100
+          : marksObtained
+      ));
+      return {
+        level,
+        score: Number.isFinite(percentage) ? percentage : null,
+      };
+    })
+    .filter(Boolean) as Array<{ level: CognitiveLevelName; score: number | null }>;
+}
+
 function classPositioning(percentile: number | null, ownAverage: number | null, classAverage: number | null) {
   if (percentile == null || ownAverage == null || classAverage == null) {
     return 'Class comparison is available once enough anonymous results exist.';
@@ -126,6 +188,167 @@ function classPositioning(percentile: number | null, ownAverage: number | null, 
   if (ownAverage > classAverage) return 'You performed above the class average.';
   if (percentile >= 40) return 'You are in the middle performance band.';
   return 'You are below the class average and should prioritise the improvement areas.';
+}
+
+async function buildStudentResultsAnalytics(studentId: string): Promise<StudentResultAnalyticsResponse> {
+  const [studentRes, resultRes] = await Promise.all([
+    pool.query(`select grade from students where id = $1`, [studentId]),
+    pool.query(
+      `select id, subject, grade, score, total, percentage, topic_breakdown_json,
+              cognitive_breakdown_json, completed_at
+       from baseline_assessments
+       where student_id = $1
+       order by completed_at desc
+       limit 100`,
+      [studentId]
+    ),
+  ]);
+
+  const results = resultRes.rows.map((row) => ({
+    id: String(row.id),
+    subject: String(row.subject),
+    grade: row.grade as string | null,
+    score: Number(row.score),
+    total: Number(row.total),
+    percentage: Number(row.percentage),
+    topicBreakdown: normalizeTopicBreakdown(row.topic_breakdown_json),
+    cognitiveBreakdown: normalizeCognitiveBreakdown(row.cognitive_breakdown_json),
+    completedAt: row.completed_at,
+  }));
+
+  const totalMarksObtained = results.reduce((total, item) => total + item.score, 0);
+  const totalMarksAvailable = results.reduce((total, item) => total + item.total, 0);
+  const overallAverage = totalMarksAvailable > 0
+    ? roundMetric((totalMarksObtained / totalMarksAvailable) * 100, 1)
+    : roundMetric(average(results.map((item) => item.percentage)), 1);
+
+  const bySubject = new Map<string, typeof results>();
+  for (const item of results) {
+    bySubject.set(item.subject, [...(bySubject.get(item.subject) ?? []), item]);
+  }
+
+  const subjectAverages = [...bySubject.entries()]
+    .map(([subject, subjectItems]) => {
+      const marksObtained = subjectItems.reduce((total, item) => total + item.score, 0);
+      const marksAvailable = subjectItems.reduce((total, item) => total + item.total, 0);
+      return {
+        subject,
+        average: roundMetric(marksAvailable > 0 ? (marksObtained / marksAvailable) * 100 : average(subjectItems.map((item) => item.percentage)), 1),
+        marksObtained: roundMetric(marksObtained, 1) ?? 0,
+        marksAvailable: roundMetric(marksAvailable, 1) ?? 0,
+        resultCount: subjectItems.length,
+      };
+    })
+    .sort((left, right) => left.subject.localeCompare(right.subject));
+
+  const topicGroups = new Map<string, Array<{ score: number; subject: string; topic: string }>>();
+  for (const item of results) {
+    for (const rawTopic of item.topicBreakdown) {
+      const topic = String((rawTopic as any).topic ?? (rawTopic as any).name ?? 'Topic');
+      const score = Number((rawTopic as any).score ?? (rawTopic as any).percentage);
+      if (!Number.isFinite(score)) continue;
+      const key = `${item.subject}::${topic}`;
+      topicGroups.set(key, [...(topicGroups.get(key) ?? []), { subject: item.subject, topic, score }]);
+    }
+  }
+  const topicAverages = [...topicGroups.values()]
+    .map((items) => ({
+      subject: items[0].subject,
+      topic: items[0].topic,
+      average: roundMetric(average(items.map((item) => item.score)), 1),
+      support: items.length,
+    }))
+    .sort((left, right) => left.subject.localeCompare(right.subject) || left.topic.localeCompare(right.topic));
+
+  const cognitiveBreakdown = COGNITIVE_LEVELS.map((level) => {
+    const scores = results
+      .flatMap((item) => item.cognitiveBreakdown)
+      .filter((item) => item.level === level && item.score != null)
+      .map((item) => Number(item.score));
+    const levelAverage = roundMetric(average(scores), 1);
+    return {
+      level,
+      average: levelAverage,
+      support: scores.length,
+      weak: levelAverage != null && levelAverage < 50,
+    };
+  });
+
+  const trendPoints = [...results]
+    .sort((left, right) => new Date(left.completedAt).getTime() - new Date(right.completedAt).getTime())
+    .map((item) => ({
+      resultId: item.id,
+      subject: item.subject,
+      completedAt: new Date(item.completedAt).toISOString(),
+      percentage: roundMetric(item.percentage, 1) ?? 0,
+    }));
+
+  let classComparison: StudentResultAnalyticsResponse['classComparison'] = {
+    available: false,
+    privacyThreshold: CLASS_ANALYTICS_PRIVACY_THRESHOLD,
+    classSize: 0,
+    classAverage: null,
+    differenceFromClassAverage: null,
+    percentile: null,
+  };
+
+  const subjects = subjectAverages.map((item) => item.subject);
+  if (subjects.length) {
+    const ownGrade = studentRes.rows[0]?.grade ?? results.find((item) => item.grade)?.grade ?? null;
+    const classParams = [subjects, ownGrade];
+    // Keep class comparison aggregate-only; individual learner rows never leave this function.
+    const classFilter = `
+      b.subject = any($1::text[])
+      and ($2::text is null or b.grade = $2::text)
+    `;
+    const [classSummaryRes, studentAverageRes] = await Promise.all([
+      pool.query(
+        `select count(distinct b.student_id)::int as class_size,
+                round(avg(b.percentage)::numeric, 2) as class_average
+         from baseline_assessments b
+         where ${classFilter}`,
+        classParams
+      ),
+      pool.query(
+        `select b.student_id, round(avg(b.percentage)::numeric, 2) as average
+         from baseline_assessments b
+         where ${classFilter}
+         group by b.student_id`,
+        classParams
+      ),
+    ]);
+    const classSize = Number(classSummaryRes.rows[0]?.class_size ?? 0);
+    if (classSize >= CLASS_ANALYTICS_PRIVACY_THRESHOLD) {
+      const classAverage = roundMetric(Number(classSummaryRes.rows[0]?.class_average), 1);
+      // Percentile is derived server-side so the response stays anonymous and stable.
+      const studentAverages = studentAverageRes.rows.map((row) => Number(row.average)).filter(Number.isFinite);
+      const percentile = overallAverage == null || !studentAverages.length
+        ? null
+        : roundMetric((studentAverages.filter((score) => score <= overallAverage).length / studentAverages.length) * 100, 0);
+      classComparison = {
+        available: true,
+        privacyThreshold: CLASS_ANALYTICS_PRIVACY_THRESHOLD,
+        classSize,
+        classAverage,
+        differenceFromClassAverage: overallAverage == null || classAverage == null ? null : roundMetric(overallAverage - classAverage, 1),
+        percentile,
+      };
+    } else {
+      classComparison = { ...classComparison, classSize };
+    }
+  }
+
+  return {
+    studentId,
+    generatedAt: new Date().toISOString(),
+    resultCount: results.length,
+    overallAverage,
+    subjectAverages,
+    topicAverages,
+    cognitiveBreakdown,
+    trendPoints,
+    classComparison,
+  };
 }
 
 function setPrivateNoStore(reply: any) {
@@ -483,6 +706,15 @@ export async function academicRoutes(app: FastifyInstance) {
       source: 'mock_fallback',
       studentId,
     });
+  });
+
+  app.get('/student/results/analytics', {
+    preHandler: [app.authenticate, requireAuth, requireRole('STUDENT')],
+  }, async (req, reply) => {
+    const studentId = req.user?.studentId ?? await getStudentIdForUser(req.user!.userId);
+    if (!studentId) return reply.code(404).send({ error: 'student_not_found' });
+    setPrivateNoStore(reply);
+    return reply.send(await buildStudentResultsAnalytics(studentId));
   });
 
   app.get('/student/results', {
@@ -861,6 +1093,15 @@ export async function academicRoutes(app: FastifyInstance) {
       [studentId]
     );
 
+    const examCalendarRes = await pool.query(
+      `select id, subject, title, exam_date
+       from student_exam_events
+       where student_id = $1 and exam_date >= $2::date
+       order by exam_date asc, created_at desc
+       limit 8`,
+      [studentId, today]
+    );
+
     const attendanceRes = await pool.query(
       `select s.id, s.date, s.start_time, a.subject, t.full_name as tutor_name,
               coalesce(s.attendance_status,
@@ -905,6 +1146,15 @@ export async function academicRoutes(app: FastifyInstance) {
     const weakestTopic = [...topics].sort((a, b) => a.completion - b.completion)[0] ?? null;
     const weekStats = weekStatsRes.rows[0] ?? { sessions_attended: 0, minutes_studied: 0 };
     const streak = streakRes.rows[0] ?? { current: 0, longest: 0, last_credited_date: null, xp: 0 };
+    const attendedSessions = attendanceRes.rows.filter((row) => ['present', 'late'].includes(String(row.attendance_status))).length;
+    const recordedSessions = attendanceRes.rows.filter((row) => String(row.attendance_status) !== 'scheduled').length;
+    const attendanceRate = recordedSessions ? Math.round((attendedSessions / recordedSessions) * 100) : 0;
+    const examEvents = examCalendarRes.rows.map((row) => ({
+      id: row.id,
+      subject: row.subject,
+      title: row.title,
+      examDate: toDateOnly(new Date(row.exam_date)),
+    }));
 
     const scoreRes = await pool.query(
       `select score_date, risk_score, momentum_score, reasons_json, recommended_actions_json
@@ -986,6 +1236,14 @@ export async function academicRoutes(app: FastifyInstance) {
           description: 'Complete a short practice set to start your streak.',
           action: 'Do practice'
         };
+    const recommendedQuiz = weakestTopic
+      ? {
+          id: `quiz-${String(weakestTopic.topic).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'focus'}`,
+          title: `${weakestTopic.topic} quick check`,
+          topic: weakestTopic.topic,
+          estimatedMinutes: 12,
+        }
+      : null;
 
       const scoreDrivenRecommendation = score?.recommendedActions?.[0];
       const goalRecommendation = careerGoals[0]
@@ -998,7 +1256,7 @@ export async function academicRoutes(app: FastifyInstance) {
 
     return reply.send({
       profile: toPublicStudentProfile(profileRow),
-      greeting: 'Welcome back, Jaydin — let’s keep the streak alive.',
+      greeting: `Welcome back, ${profileRow.full_name}.`,
       today: upcoming,
       thisWeek: {
         minutesStudied: Number(weekStats.minutes_studied || 0),
@@ -1033,8 +1291,22 @@ export async function academicRoutes(app: FastifyInstance) {
       supportStatus,
       attendance: {
         items: attendanceRes.rows,
-        attended: attendanceRes.rows.filter((row) => ['present', 'late'].includes(String(row.attendance_status))).length,
-        total: attendanceRes.rows.filter((row) => String(row.attendance_status) !== 'scheduled').length,
+        attended: attendedSessions,
+        total: recordedSessions,
+      },
+      examCalendar: {
+        items: examEvents,
+        nextExam: examEvents[0] ?? null,
+      },
+      // The client derives the rotating message without persisting presentation state.
+      dailyInsightContext: {
+        studentId,
+        nextExamTitle: examEvents[0]?.title ?? null,
+        nextExamSubject: examEvents[0]?.subject ?? null,
+        nextExamDate: examEvents[0]?.examDate ?? null,
+        currentAcademicStatus: supportStatus.label,
+        attendanceRate,
+        streakDays: Number(streak.current || 0),
       },
       goals: goalsRes.rows.map((row) => ({
         ...row,
@@ -1061,6 +1333,7 @@ export async function academicRoutes(app: FastifyInstance) {
             action: 'Open recommendation'
           }
         : (goalRecommendation || recommendedNext),
+      recommendedQuiz,
       predictiveScore: score,
       careerGoals,
     });
@@ -1202,7 +1475,8 @@ export async function academicRoutes(app: FastifyInstance) {
               la.due_date, la.status, la.created_at, la.published_at,
               t.full_name as tutor_name,
               sub.id as submission_id, sub.status as submission_status, sub.submitted_at,
-              sub.original_filename, sub.mime_type, sub.size_bytes,
+              sub.original_filename, sub.mime_type, sub.size_bytes, sub.version_number, sub.is_latest,
+              coalesce(history.submission_versions, '[]'::json) as submission_versions,
               10 as max_file_size_mb,
               array['pdf','jpg','jpeg','png'] as allowed_file_types
        from learning_assignments la
@@ -1211,10 +1485,28 @@ export async function academicRoutes(app: FastifyInstance) {
          select *
          from assignment_submissions s
          where s.assignment_id = la.id and s.student_id = $1
-         order by s.submitted_at desc
+         order by s.is_latest desc, s.version_number desc, s.submitted_at desc
          limit 1
        ) sub on true
-       where la.student_id = $1 and la.status in ('published','submitted','reviewed')
+       left join lateral (
+         select json_agg(
+           json_build_object(
+             'id', s.id,
+             'status', s.status,
+             'submitted_at', s.submitted_at,
+             'original_filename', s.original_filename,
+             'mime_type', s.mime_type,
+             'size_bytes', s.size_bytes,
+             'version_number', s.version_number,
+             'is_latest', s.is_latest,
+             'file_url', s.file_url
+           )
+           order by s.is_latest desc, s.version_number desc, s.submitted_at desc
+         ) as submission_versions
+         from assignment_submissions s
+         where s.assignment_id = la.id and s.student_id = $1
+       ) history on true
+       where la.student_id = $1 and la.status in ('published','submitted','reviewed','closed','marked')
        order by coalesce(la.due_date, la.created_at::date) asc, la.created_at desc`,
       [studentId]
     );
@@ -1231,7 +1523,8 @@ export async function academicRoutes(app: FastifyInstance) {
               la.due_date, la.status, la.created_at, la.published_at,
               t.full_name as tutor_name,
               sub.id as submission_id, sub.status as submission_status, sub.submitted_at,
-              sub.original_filename, sub.mime_type, sub.size_bytes,
+              sub.original_filename, sub.mime_type, sub.size_bytes, sub.version_number, sub.is_latest,
+              coalesce(history.submission_versions, '[]'::json) as submission_versions,
               10 as max_file_size_mb,
               array['pdf','jpg','jpeg','png'] as allowed_file_types
        from learning_assignments la
@@ -1240,10 +1533,28 @@ export async function academicRoutes(app: FastifyInstance) {
          select *
          from assignment_submissions s
          where s.assignment_id = la.id and s.student_id = $1
-         order by s.submitted_at desc
+         order by s.is_latest desc, s.version_number desc, s.submitted_at desc
          limit 1
        ) sub on true
-       where la.student_id = $1 and la.status in ('published','submitted','reviewed')
+       left join lateral (
+         select json_agg(
+           json_build_object(
+             'id', s.id,
+             'status', s.status,
+             'submitted_at', s.submitted_at,
+             'original_filename', s.original_filename,
+             'mime_type', s.mime_type,
+             'size_bytes', s.size_bytes,
+             'version_number', s.version_number,
+             'is_latest', s.is_latest,
+             'file_url', s.file_url
+           )
+           order by s.is_latest desc, s.version_number desc, s.submitted_at desc
+         ) as submission_versions
+         from assignment_submissions s
+         where s.assignment_id = la.id and s.student_id = $1
+       ) history on true
+       where la.student_id = $1 and la.status in ('published','submitted','reviewed','closed','marked')
        order by coalesce(la.due_date, la.created_at::date) asc, la.created_at desc`,
       [studentId]
     );
@@ -1261,10 +1572,17 @@ export async function academicRoutes(app: FastifyInstance) {
     const assignmentRes = await pool.query(
       `select id, student_id, title, subject, due_date, status
         from learning_assignments
-        where id = $1 and student_id = $2 and status in ('published','submitted','reviewed')`,
+        where id = $1 and student_id = $2 and status <> 'draft'`,
       [params.data.id, studentId]
     );
     if (Number(assignmentRes.rowCount || 0) === 0) return reply.code(404).send({ error: 'assignment_not_found' });
+    const assignment = assignmentRes.rows[0];
+    if (assignment.status === 'closed' || assignment.status === 'archived') {
+      return reply.code(409).send({
+        error: 'assignment_locked',
+        message: 'This assignment is closed or archived and no longer accepts uploads.',
+      });
+    }
 
     const file = await (req as any).file();
     if (!file) return reply.code(400).send({ error: 'file_required' });
@@ -1286,32 +1604,61 @@ export async function academicRoutes(app: FastifyInstance) {
       return reply.code(413).send({ error: 'file_too_large', maxBytes: SUBMISSION_MAX_BYTES });
     }
 
-    const dir = await ensureUploadDir('submissions', studentId, params.data.id);
-    const key = path.posix.join('submissions', studentId, params.data.id, `${Date.now()}-${originalFilename}`);
-    await fs.writeFile(path.join(dir, path.basename(key)), buffer, { flag: 'wx' });
+    const submissionId = crypto.randomUUID();
+    const objectName = stableSubmissionObjectName(file.mimetype);
+    const dir = await ensureUploadDir('submissions', studentId, params.data.id, submissionId);
+    const key = path.posix.join('submissions', studentId, params.data.id, submissionId, objectName);
+    await fs.writeFile(path.join(dir, objectName), buffer, { flag: 'wx' });
 
-    const dueDate = assignmentRes.rows[0].due_date ? new Date(assignmentRes.rows[0].due_date) : null;
+    const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
     const status = dueDate && Date.now() > dueDate.getTime() + DAY_MS - 1 ? 'late' : 'submitted';
-    const res = await pool.query(
-      `insert into assignment_submissions
-       (assignment_id, student_id, file_key, file_url, original_filename, mime_type, size_bytes, status)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)
-       returning *`,
-      [params.data.id, studentId, key, publicUploadPath(key), originalFilename, file.mimetype, buffer.length, status]
-    );
+    const client = await pool.connect();
+    let submission;
+    try {
+      await client.query('begin');
+      await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [`${params.data.id}:${studentId}`]);
+      const versionRes = await client.query(
+        `select version_number
+         from assignment_submissions
+         where assignment_id = $1 and student_id = $2
+         for update`,
+        [params.data.id, studentId]
+      );
+      const nextVersion = Math.max(0, ...versionRes.rows.map((row) => Number(row.version_number || 0))) + 1;
+      await client.query(
+        `update assignment_submissions
+         set is_latest = false, updated_at = now()
+         where assignment_id = $1 and student_id = $2 and is_latest = true`,
+        [params.data.id, studentId]
+      );
+      const res = await client.query(
+        `insert into assignment_submissions
+         (id, assignment_id, student_id, file_key, file_url, original_filename, mime_type, size_bytes, status, version_number, is_latest)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
+         returning *`,
+        [submissionId, params.data.id, studentId, key, publicUploadPath(key), originalFilename, file.mimetype, buffer.length, status, nextVersion]
+      );
+      submission = res.rows[0];
+      await client.query('commit');
+    } catch (err) {
+      await client.query('rollback');
+      throw err;
+    } finally {
+      client.release();
+    }
 
     await createStudentNotification(pool, {
       studentId,
       type: 'assignment_submission_received',
       title: 'Assignment submission received',
-      body: `We received your submission for ${assignmentRes.rows[0].title || assignmentRes.rows[0].subject || 'this assignment'}.`,
+      body: `We received version ${submission.version_number} for ${assignment.title || assignment.subject || 'this assignment'}.`,
       link: '/dashboard/assignments/',
       entityType: 'learning_assignment',
       entityId: params.data.id,
-      metadata: { status },
+      metadata: { status, versionNumber: submission.version_number, isLatest: submission.is_latest },
     });
 
-    return reply.code(201).send({ submission: res.rows[0] });
+    return reply.code(201).send({ submission });
   });
 
   app.get('/student/tutors', {

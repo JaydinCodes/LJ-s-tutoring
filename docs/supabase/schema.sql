@@ -43,6 +43,18 @@ create table if not exists public.students (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.student_career_profiles (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null unique references public.students(id) on delete cascade,
+  interests_json jsonb not null default '[]'::jsonb,
+  preferred_subjects_json jsonb not null default '[]'::jsonb,
+  target_careers_json jsonb not null default '[]'::jsonb,
+  aps_target integer check (aps_target is null or (aps_target >= 0 and aps_target <= 60)),
+  saved_careers_json jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.tutors (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null unique references public.profiles(id) on delete cascade,
@@ -78,13 +90,19 @@ create table if not exists public.assignment_submissions (
   id uuid primary key default gen_random_uuid(),
   assignment_id uuid not null references public.assignments(id) on delete cascade,
   student_id uuid not null references public.students(id) on delete cascade,
+  storage_key text,
   file_url text,
+  original_filename text,
+  mime_type text,
+  size_bytes bigint,
   text_answer text,
-  submitted_at timestamptz,
-  status public.submission_status not null default 'not_submitted',
+  submitted_at timestamptz not null default now(),
+  status public.submission_status not null default 'submitted',
+  version_number integer not null default 1,
+  is_latest boolean not null default true,
   marks_awarded numeric(8, 2),
   feedback text,
-  unique (assignment_id, student_id)
+  unique (assignment_id, student_id, version_number)
 );
 
 create table if not exists public.student_progress (
@@ -141,14 +159,22 @@ create table if not exists public.class_enrollments (
 
 create index if not exists idx_profiles_role on public.profiles(role);
 create index if not exists idx_students_ngo_partner on public.students(ngo_partner_id);
+create index if not exists idx_student_career_profiles_student_updated on public.student_career_profiles(student_id, updated_at desc);
 create index if not exists idx_assignments_due_date on public.assignments(due_date);
 create index if not exists idx_submissions_student on public.assignment_submissions(student_id);
+create index if not exists idx_submissions_student_assignment on public.assignment_submissions(student_id, assignment_id);
+create unique index if not exists idx_submissions_latest_assignment_student
+  on public.assignment_submissions(assignment_id, student_id)
+  where is_latest;
+create index if not exists idx_submissions_assignment_versions
+  on public.assignment_submissions(assignment_id, student_id, version_number desc);
 create index if not exists idx_progress_student_recorded on public.student_progress(student_id, recorded_at desc);
 create index if not exists idx_payments_student_status on public.payments(student_id, status);
 create index if not exists idx_classes_tutor on public.classes(tutor_id);
 
 alter table public.profiles enable row level security;
 alter table public.students enable row level security;
+alter table public.student_career_profiles enable row level security;
 alter table public.tutors enable row level security;
 alter table public.ngo_partners enable row level security;
 alter table public.subjects enable row level security;
@@ -217,6 +243,33 @@ create policy "admin_full_access_students"
 on public.students for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
+
+create policy "students_select_own_career_profile"
+on public.student_career_profiles for select
+using (
+  student_id in (
+    select s.id from public.students s
+    join public.profiles p on p.id = s.profile_id
+    where p.auth_user_id = auth.uid()
+  )
+);
+
+create policy "students_upsert_own_career_profile"
+on public.student_career_profiles for all
+using (
+  student_id in (
+    select s.id from public.students s
+    join public.profiles p on p.id = s.profile_id
+    where p.auth_user_id = auth.uid()
+  )
+)
+with check (
+  student_id in (
+    select s.id from public.students s
+    join public.profiles p on p.id = s.profile_id
+    where p.auth_user_id = auth.uid()
+  )
+);
 
 create policy "tutors_select_self_or_admin"
 on public.tutors for select
@@ -288,6 +341,14 @@ using (
 create policy "submissions_student_insert_self"
 on public.assignment_submissions for insert
 with check (
+  status = 'submitted'
+  and is_latest = true
+  and exists (
+    select 1 from public.assignments a
+    where a.id = assignment_id
+      and a.status = 'published'
+  )
+  and
   student_id in (
     select s.id from public.students s
     join public.profiles p on p.id = s.profile_id
@@ -298,6 +359,15 @@ with check (
 create policy "submissions_student_update_self"
 on public.assignment_submissions for update
 using (
+  false
+)
+with check (
+  false
+);
+
+create policy "submissions_student_mark_previous_versions"
+on public.assignment_submissions for update
+using (
   student_id in (
     select s.id from public.students s
     join public.profiles p on p.id = s.profile_id
@@ -305,6 +375,9 @@ using (
   )
 )
 with check (
+  status in ('submitted', 'returned')
+  and is_latest = false
+  and
   student_id in (
     select s.id from public.students s
     join public.profiles p on p.id = s.profile_id
@@ -420,6 +493,7 @@ on storage.objects for insert
 with check (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
+  and (storage.foldername(name))[3] is not null
   and (storage.foldername(name))[1] in (
     select s.id::text from public.students s
     join public.profiles p on p.id = s.profile_id
@@ -432,6 +506,7 @@ on storage.objects for update
 using (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
+  and (storage.foldername(name))[3] is not null
   and (storage.foldername(name))[1] in (
     select s.id::text from public.students s
     join public.profiles p on p.id = s.profile_id

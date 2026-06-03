@@ -11,14 +11,14 @@ export function FormField({
 }) {
   return (
     <label className="grid gap-1.5 text-sm">
-      <span className="font-semibold text-slate-800">{label}</span>
+      <span className="font-semibold text-slate-800 dark:text-brand-parchment">{label}</span>
       {children}
-      {hint ? <span className="text-xs leading-5 text-slate-500">{hint}</span> : null}
+      {hint ? <span className="text-xs leading-5 text-slate-500 dark:text-brand-marble">{hint}</span> : null}
     </label>
   );
 }
 
-export const inputClassName = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-slate-950 focus:ring-2 focus:ring-slate-950/10';
+export const inputClassName = 'w-full rounded-2xl border border-brand-marble bg-white px-3 py-2 text-sm text-brand-obsidian outline-none transition focus:border-brand-aegean focus:ring-2 focus:ring-brand-aegean/20 dark:border-brand-marble/30 dark:bg-brand-navy dark:text-brand-parchment dark:focus:border-brand-gold dark:focus:ring-brand-gold/20';
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={inputClassName} {...props} />;

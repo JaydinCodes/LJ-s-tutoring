@@ -5,6 +5,7 @@ const AssistantConfigSchema = z.object({
   OPENROUTER_MODEL: z.string().trim().optional().default('google/gemma-2-9b-it:free'),
   GROQ_API_KEY: z.string().trim().optional().default(''),
   GROQ_MODEL: z.string().trim().optional().default('llama-3.1-8b-instant'),
+  DEFAULT_MODEL: z.string().trim().optional().default(''),
   LMSTUDIO_BASE_URL: z.string().trim().optional().default('http://localhost:1234'),
   LMSTUDIO_MODEL: z.string().trim().optional().default('google/gemma-4-26b-a4b'),
   MAX_TOKENS: z.coerce.number().int().min(64).max(8192).default(1024),
@@ -44,7 +45,8 @@ export function loadAssistantConfig(env: NodeJS.ProcessEnv = process.env): Assis
     openRouterApiKey: parsed.OPENROUTER_API_KEY,
     openRouterModel: parsed.OPENROUTER_MODEL,
     groqApiKey: parsed.GROQ_API_KEY,
-    groqModel: parsed.GROQ_MODEL,
+    // Existing deployments often store the online LLM model as DEFAULT_MODEL.
+    groqModel: parsed.DEFAULT_MODEL || parsed.GROQ_MODEL,
     lmStudioBaseUrl: parsed.LMSTUDIO_BASE_URL,
     lmStudioModel: parsed.LMSTUDIO_MODEL,
     maxTokens: parsed.MAX_TOKENS,

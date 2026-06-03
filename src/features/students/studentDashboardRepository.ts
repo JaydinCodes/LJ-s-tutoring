@@ -1,19 +1,12 @@
 import { optionalApiGet } from '../../lib/api/client';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, StudentDashboardView, StudentProgress } from '../../types/lms';
-
-interface LegacyDashboard {
-  profile?: { name?: string; grade?: string; school?: string; guardian?: { name?: string }; partnerAffiliation?: string };
-  academicProfile?: { grade?: string; school?: string };
-  attendance?: { attended?: number; total?: number };
-  streak?: { current?: number };
-  progressSnapshot?: Array<{ topic: string; completion: number }>;
-}
-
-interface LegacyAssignments {
-  assignments?: Assignment[];
-  items?: Assignment[];
-}
+import {
+  parseStudentAssignmentsApiResponse,
+  parseStudentDashboardApiResponse,
+  parseStudentMasteryItems,
+  parseStudentQuizItems,
+} from '../../types/studentApiContracts';
 
 interface LegacyResults {
   results?: Array<{ percentage?: number }>;
@@ -27,36 +20,66 @@ function average(values: number[]) {
   return Math.round(values.reduce((total, value) => total + value, 0) / values.length);
 }
 
+function academicStatus(score: number | null) {
+  if (score == null) return 'Awaiting results';
+  if (score >= 80) return 'Excellent progress';
+  if (score >= 70) return 'Strong progress';
+  if (score >= 50) return 'On track';
+  if (score >= 40) return 'Needs support';
+  return 'Urgent support';
+}
+
 async function loadFromApi(): Promise<StudentDashboardView> {
-  const [dashboard, assignmentsPayload, resultsPayload] = await Promise.all([
-    optionalApiGet<LegacyDashboard>('/dashboard', {}),
-    optionalApiGet<LegacyAssignments>('/student/assignments', { assignments: [] }),
+  const [dashboardRaw, assignmentsRaw, resultsPayload] = await Promise.all([
+    optionalApiGet<unknown>('/dashboard', {}),
+    optionalApiGet<unknown>('/student/assignments', { assignments: [] }),
     optionalApiGet<LegacyResults>('/student/results', { results: [] }),
   ]);
 
-  const assignments = assignmentsPayload.assignments || assignmentsPayload.items || [];
+  const dashboard = parseStudentDashboardApiResponse(dashboardRaw);
+  const assignments = parseStudentAssignmentsApiResponse(assignmentsRaw).assignments;
   const results = resultsPayload.results || resultsPayload.items || [];
   const submissions = assignments
-    .filter((item) => (item as Assignment & { submission_id?: string }).submission_id)
-    .map((item) => {
-      const legacy = item as Assignment & {
-        submission_id?: string;
-        submission_status?: string;
-        submitted_at?: string;
-        original_filename?: string;
-      };
-      return {
-        id: legacy.submission_id || `${legacy.id}-submission`,
-        assignment_id: legacy.id,
+    .flatMap((item) => {
+      const versions = item.submission_versions || [];
+      if (versions.length) {
+        return versions.map((version) => ({
+          id: version.id,
+          assignment_id: item.id,
+          student_id: 'current',
+          file_url: version.file_url || null,
+          original_filename: version.original_filename || null,
+          mime_type: version.mime_type || null,
+          size_bytes: version.size_bytes ?? null,
+          submitted_at: version.submitted_at || null,
+          status: version.status || 'submitted',
+          version_number: version.version_number ?? null,
+          is_latest: version.is_latest ?? false,
+        } as AssignmentSubmission));
+      }
+      if (!item.submission_id) {
+        return [];
+      }
+      return [{
+        id: item.submission_id || `${item.id}-submission`,
+        assignment_id: item.id,
         student_id: 'current',
-        file_url: legacy.original_filename || null,
-        submitted_at: legacy.submitted_at || null,
-        status: legacy.submission_status || 'submitted',
-      } as AssignmentSubmission;
+        file_url: item.original_filename || null,
+        original_filename: item.original_filename || null,
+        mime_type: item.mime_type || null,
+        size_bytes: item.size_bytes ?? null,
+        submitted_at: item.submitted_at || null,
+        status: item.submission_status || 'submitted',
+        version_number: item.version_number ?? null,
+        is_latest: item.is_latest ?? true,
+      } as AssignmentSubmission];
     });
   const completed = submissions.filter((item) => ['submitted', 'late', 'reviewed', 'marked'].includes(String(item.status || '').toLowerCase())).length;
   const attendanceRate = dashboard.attendance?.total ? Math.round(((dashboard.attendance.attended || 0) / dashboard.attendance.total) * 100) : 0;
   const score = average(results.map((item) => Number(item.percentage)).filter(Number.isFinite));
+  const weakestProgress = (dashboard.progressSnapshot || [])
+    .filter((item) => Number.isFinite(Number(item.completion)))
+    .sort((left, right) => Number(left.completion) - Number(right.completion) || left.topic.localeCompare(right.topic))[0];
 
   return {
     profile: {
@@ -73,15 +96,35 @@ async function loadFromApi(): Promise<StudentDashboardView> {
       { label: 'Attendance', value: `${attendanceRate}%`, helper: `${dashboard.streak?.current || 0} day study streak.`, tone: 'blue' },
     ],
     assignments,
-    progress: (dashboard.progressSnapshot || []).map((item, index) => ({
+    progress: parseStudentMasteryItems((dashboard.progressSnapshot || []).map((item, index) => ({
       id: `legacy-progress-${index}`,
       student_id: 'current',
       topic: item.topic,
       score: item.completion,
       recorded_at: new Date().toISOString(),
-    })),
+    }))),
     classes: [],
     submissions,
+    recommendedNext: dashboard.recommendedNext,
+    recommendedQuiz: dashboard.recommendedQuiz || parseStudentQuizItems(weakestProgress ? [{
+      id: `quiz-${weakestProgress.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'focus'}`,
+      title: `${weakestProgress.topic} quick check`,
+      topic: weakestProgress.topic,
+      estimatedMinutes: 12,
+    }] : [])[0] || null,
+    careerGoals: dashboard.careerGoals || [],
+    examCalendar: dashboard.examCalendar,
+    supportStatus: dashboard.supportStatus,
+    dailyInsightContext: {
+      studentId: dashboard.dailyInsightContext?.studentId || dashboard.profile?.id || 'current',
+      nextExamTitle: dashboard.dailyInsightContext?.nextExamTitle || dashboard.examCalendar?.nextExam?.title,
+      nextExamSubject: dashboard.dailyInsightContext?.nextExamSubject || dashboard.examCalendar?.nextExam?.subject,
+      nextExamDate: dashboard.dailyInsightContext?.nextExamDate || dashboard.examCalendar?.nextExam?.examDate,
+      currentAcademicStatus: dashboard.dailyInsightContext?.currentAcademicStatus || dashboard.supportStatus?.label || academicStatus(score),
+      attendanceRate: dashboard.dailyInsightContext?.attendanceRate ?? attendanceRate,
+      averageScore: score ?? undefined,
+      streakDays: dashboard.dailyInsightContext?.streakDays ?? dashboard.streak?.current ?? 0,
+    },
   };
 }
 
@@ -130,6 +173,9 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     ...assignment,
     subject: assignment.subject || (assignment.subject_id ? subjectNameById.get(assignment.subject_id) : undefined),
   }));
+  const weakestProgress = [...progress]
+    .filter((item) => Number.isFinite(Number(item.score)))
+    .sort((left, right) => Number(left.score) - Number(right.score) || left.topic.localeCompare(right.topic))[0];
 
   return {
     profile: {
@@ -148,6 +194,29 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     progress,
     classes,
     submissions,
+    recommendedNext: weakestProgress ? {
+      title: `Recommended next: ${weakestProgress.topic}`,
+      description: `Spend one focused block on ${weakestProgress.topic}.`,
+      action: 'Open progress',
+    } : null,
+    recommendedQuiz: weakestProgress ? {
+      id: `quiz-${weakestProgress.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'focus'}`,
+      title: `${weakestProgress.topic} quick check`,
+      topic: weakestProgress.topic,
+      estimatedMinutes: 12,
+    } : null,
+    careerGoals: [],
+    supportStatus: {
+      band: score == null ? 'awaiting_results' : score >= 50 ? 'on_track' : 'needs_support',
+      label: academicStatus(score),
+      explanation: 'Based on available progress records.',
+      recommendedAction: 'Keep using the next task and progress summary to guide study time.',
+    },
+    dailyInsightContext: {
+      studentId: student.id,
+      currentAcademicStatus: academicStatus(score),
+      averageScore: score ?? undefined,
+    },
   };
 }
 

@@ -1,6 +1,7 @@
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useState } from 'react';
-import { DashboardShell } from '../../components/dashboard/DashboardShell';
+import { Bell, BookOpen, ChevronRight, FileText, GraduationCap, Lock, Moon, Shield, UserRound, type LucideIcon } from 'lucide-react';
+import { ErrorState, PageShell, PremiumButton } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -8,6 +9,7 @@ import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatDate } from '../../lib/utils/format';
+import { useAuth } from '../auth/AuthProvider';
 import {
   createStudyRoom,
   joinStudyRoom,
@@ -98,7 +100,7 @@ export function StudentCommunityRoute() {
   }
 
   return (
-    <DashboardShell
+    <PageShell
       title="Community"
       subtitle="Moderated study rooms, weekly challenges, and peer Q&A migrated from the legacy student page."
       section="student"
@@ -111,7 +113,7 @@ export function StudentCommunityRoute() {
                 <h2 className="text-xl font-semibold text-slate-950">Study rooms</h2>
                 <p className="mt-1 text-sm text-slate-600">Join a focused subject room before reading or posting messages.</p>
               </div>
-              <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Refresh</button>
+              <PremiumButton onClick={() => void reload()}>Refresh</PremiumButton>
             </div>
             {loading ? <p className="mt-4 text-sm text-slate-600">Loading community...</p> : null}
             {error ? <p className="mt-4 text-sm font-semibold text-red-700">{error}</p> : null}
@@ -142,9 +144,9 @@ export function StudentCommunityRoute() {
               <FormField label="Subject"><TextInput required value={roomSubject} onChange={(event) => setRoomSubject(event.target.value)} placeholder="Mathematics" /></FormField>
               <FormField label="Grade"><TextInput value={roomGrade} onChange={(event) => setRoomGrade(event.target.value)} placeholder="Grade 11" /></FormField>
               <div className="md:col-span-2">
-                <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" type="submit">
+                <PremiumButton disabled={busy} type="submit">
                   {busy ? 'Saving...' : 'Create room'}
-                </button>
+                </PremiumButton>
               </div>
             </form>
           </Card>
@@ -185,9 +187,9 @@ export function StudentCommunityRoute() {
               <FormField label="Message">
                 <TextArea value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} placeholder="Ask a focused study question or share a worked step..." />
               </FormField>
-              <button disabled={busy || !activeRoom || !message.trim()} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
+              <PremiumButton disabled={busy || !activeRoom || !message.trim()} type="submit">
                 {busy ? 'Sending...' : 'Send message'}
-              </button>
+              </PremiumButton>
             </form>
           </Card>
 
@@ -211,7 +213,7 @@ export function StudentCommunityRoute() {
           </Card>
         </aside>
       </section>
-    </DashboardShell>
+    </PageShell>
   );
 }
 
@@ -254,69 +256,192 @@ export function StudentReportsRoute() {
   }
 
   return (
-    <DashboardShell
-      title="Reports"
-      subtitle="Learner reporting foundation for parent and NGO summaries."
+    <PageShell
+      title="Resources"
+      subtitle="Learning resources, weekly summaries, report history, and next-step guidance."
       section="student"
     >
-      <Card>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-950">Report snapshot</h2>
-            <p className="mt-1 text-sm text-slate-600">Current learner data that feeds weekly reports for parents and NGO partners.</p>
-          </div>
-          <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" type="button" onClick={() => void generateReport()}>
+      <section className="space-y-5">
+        <div className="academy-major-surface">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-academy-gold">Resource library</p>
+          <h2 className="mt-3 font-display text-4xl font-semibold leading-tight tracking-normal text-white sm:text-5xl">Keep useful learning context close</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-academy-parchment">Reports, assignments, progress, and classes are grouped as rows so this page stays practical and easy to scan.</p>
+          <PremiumButton className="mt-6" disabled={busy} type="button" variant="gold" onClick={() => void generateReport()}>
             {busy ? 'Working...' : 'Generate this week'}
-          </button>
+          </PremiumButton>
         </div>
-        {loading ? <p className="mt-4 text-sm text-slate-600">Loading report data...</p> : null}
+        {loading ? <Card><p className="text-sm text-slate-600">Loading resource data...</p></Card> : null}
         {error ? (
-          <div className="mt-4">
-            <h2 className="text-lg font-semibold text-slate-950">Reports unavailable</h2>
-            <p className="mt-2 text-sm text-slate-600">{error}</p>
-            <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Retry</button>
-          </div>
+          <ErrorState title="Resources unavailable" description={error} onRetry={() => void reload()} />
         ) : null}
-        {message ? <p className="mt-4 text-sm font-semibold text-emerald-700">{message}</p> : null}
-        {reportError ? <p className="mt-4 text-sm font-semibold text-red-700">{reportError}</p> : null}
+        {message ? <p className="academy-chip w-fit text-emerald-700">{message}</p> : null}
+        {reportError ? <p className="academy-chip w-fit text-red-700">{reportError}</p> : null}
         {data ? (
-          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <ReportTile label="Assignments" value={String(data.assignments.length)} />
-            <ReportTile label="Submissions" value={String(data.submissions.length)} />
-            <ReportTile label="Progress records" value={String(data.progress.length)} />
-            <ReportTile label="Classes" value={String(data.classes.length)} />
-          </div>
+          <ResourceList
+            groups={[
+              {
+                title: 'Learning',
+                rows: [
+                  { icon: BookOpen, title: 'Assignments', meta: `${data.assignments.length} visible assignment${data.assignments.length === 1 ? '' : 's'}`, href: '/dashboard/student/assignments' },
+                  { icon: GraduationCap, title: 'Progress records', meta: `${data.progress.length} topic signal${data.progress.length === 1 ? '' : 's'}`, href: '/dashboard/student/progress' },
+                  { icon: FileText, title: 'Results', meta: `${data.submissions.filter((item) => item.marks_awarded != null).length} marked submission${data.submissions.filter((item) => item.marks_awarded != null).length === 1 ? '' : 's'}`, href: '/dashboard/student/results' },
+                ],
+              },
+              {
+                title: 'Schedule',
+                rows: data.classes.length
+                  ? data.classes.map((item) => ({ icon: BookOpen, title: item.subject || 'Class', meta: [item.day_of_week, item.start_time, item.location].filter(Boolean).join(' | ') || 'Schedule pending' }))
+                  : [{ icon: BookOpen, title: 'No class schedule yet', meta: 'Class details will appear once linked to your learner profile.' }],
+              },
+            ]}
+          />
         ) : null}
-      </Card>
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <Card>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-950">Report history</h2>
-              <p className="mt-1 text-sm text-slate-600">Open a weekly report to view the date range, sessions, minutes, and summary.</p>
-            </div>
-            <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800" onClick={() => void reports.reload()}>Refresh</button>
-          </div>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <ResourceList
+            groups={[
+              {
+                title: 'Report history',
+                rows: (reports.data?.items || []).map((report) => ({
+                  icon: FileText,
+                  title: 'Weekly learning report',
+                  meta: `${formatDate(report.week_start || report.weekStart)} - ${formatDate(report.week_end || report.weekEnd)}`,
+                  actionLabel: 'View',
+                  onAction: () => void openReport(report.id),
+                })),
+              },
+            ]}
+            empty={reports.data && !reports.data.items.length ? {
+              title: 'No reports generated yet',
+              description: 'Reports become useful after sessions are approved and learning activity exists.',
+            } : undefined}
+            trailing={<button className="academy-btn academy-btn-outline min-h-10 px-4" onClick={() => void reports.reload()}>Refresh</button>}
+          />
           {reports.loading ? <p className="mt-4 text-sm text-slate-600">Loading weekly reports...</p> : null}
           {reports.error ? <p className="mt-4 text-sm font-semibold text-red-700">{reports.error}</p> : null}
-          <div className="mt-5 space-y-3">
-            {(reports.data?.items || []).map((report) => (
-              <ReportHistoryCard key={report.id} report={report} onOpen={openReport} />
-            ))}
-            {reports.data && !reports.data.items.length ? (
-              <EmptyState title="No reports generated yet" description="Reports become useful after sessions are approved and learning activity exists." />
-            ) : null}
-          </div>
-        </Card>
-
-        <Card>
-          <h2 className="text-xl font-semibold text-slate-950">Report details</h2>
-          {selectedReport ? <WeeklyReportDetail report={selectedReport} /> : (
-            <EmptyState title="No report selected" description="Generate or open a report to see parent and NGO-ready details." />
-          )}
-        </Card>
+          <section className="rounded-ios-lg border border-white/70 bg-white/[0.48] p-5 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.035]">
+            <h2 className="text-xl font-semibold text-academy-ink dark:text-academy-parchment">Report details</h2>
+            {selectedReport ? <WeeklyReportDetail report={selectedReport} /> : (
+              <EmptyState title="No report selected" description="Generate or open a report to see parent and NGO-ready details." />
+            )}
+          </section>
+        </div>
       </section>
-    </DashboardShell>
+    </PageShell>
+  );
+}
+
+type ResourceGroup = {
+  title: string;
+  rows: Array<{
+    icon: LucideIcon;
+    title: string;
+    meta: string;
+    href?: string;
+    actionLabel?: string;
+    onAction?: () => void;
+  }>;
+};
+
+export function ResourceList({ groups, empty, trailing }: { groups: ResourceGroup[]; empty?: { title: string; description: string }; trailing?: ReactNode }) {
+  return (
+    <section className="space-y-3">
+      {groups.map((group) => (
+        <div key={group.title} className="rounded-ios-lg border border-white/70 bg-white/[0.48] p-4 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.035]">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-academy-ink dark:text-academy-parchment">{group.title}</h2>
+            {trailing}
+          </div>
+          <div className="divide-y divide-slate-950/5 dark:divide-white/10">
+            {group.rows.map((row) => <ResourceRow key={`${group.title}-${row.title}-${row.meta}`} {...row} />)}
+          </div>
+          {empty && !group.rows.length ? <EmptyState title={empty.title} description={empty.description} /> : null}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+export function ResourceRow({ icon: Icon, title, meta, href, actionLabel, onAction }: ResourceGroup['rows'][number]) {
+  const content = (
+    <div className="academy-row">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-ios bg-slate-950/[0.04] text-academy-aegean dark:bg-white/[0.06] dark:text-academy-gold">
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-academy-ink dark:text-academy-parchment">{title}</p>
+        <p className="truncate text-xs text-academy-muted">{meta}</p>
+      </div>
+      {actionLabel ? (
+        <button className="academy-btn academy-btn-outline min-h-9 px-3 text-xs" type="button" onClick={onAction}>
+          {actionLabel}
+        </button>
+      ) : (
+        <ChevronRight className="h-4 w-4 text-academy-muted" aria-hidden="true" />
+      )}
+    </div>
+  );
+
+  return href ? <a href={href}>{content}</a> : content;
+}
+
+export function StudentSettingsRoute() {
+  const auth = useAuth();
+  const profile = auth.profile;
+
+  return (
+    <PageShell
+      title="Settings"
+      subtitle="Profile, account, notifications, privacy, and appearance preferences."
+      section="student"
+    >
+      <section className="space-y-4">
+        <div className="academy-major-surface">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-academy-gold">Student settings</p>
+          <h2 className="mt-3 font-display text-4xl font-semibold leading-tight tracking-normal text-white sm:text-5xl">{profile?.full_name || 'Your profile'}</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-academy-parchment">Manage the core preferences for your student portal experience.</p>
+        </div>
+        <SettingsGroup title="Profile">
+          <SettingsRow icon={UserRound} label="Name" value={profile?.full_name || 'Pending'} />
+          <SettingsRow icon={FileText} label="Email" value={profile?.email || 'Pending'} />
+          <SettingsRow icon={GraduationCap} label="Role" value={profile?.role || 'Student'} />
+        </SettingsGroup>
+        <SettingsGroup title="Account">
+          <SettingsRow icon={Bell} label="Notifications" value="Learning reminders enabled" />
+          <SettingsRow icon={Lock} label="Password and sign-in" value="Managed by secure login" />
+        </SettingsGroup>
+        <SettingsGroup title="Privacy">
+          <SettingsRow icon={Shield} label="Learner data" value="Private to your account" />
+          <SettingsRow icon={FileText} label="Reports" value="Shared only with authorised guardians or partners" />
+        </SettingsGroup>
+        <SettingsGroup title="Appearance">
+          <SettingsRow icon={Moon} label="Theme" value="Uses your device setting" />
+        </SettingsGroup>
+      </section>
+    </PageShell>
+  );
+}
+
+export function SettingsGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-ios-lg border border-white/70 bg-white/[0.48] p-4 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.035]">
+      <h2 className="mb-2 text-lg font-semibold text-academy-ink dark:text-academy-parchment">{title}</h2>
+      <div className="divide-y divide-slate-950/5 dark:divide-white/10">{children}</div>
+    </section>
+  );
+}
+
+export function SettingsRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return (
+    <div className="academy-row">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-ios bg-slate-950/[0.04] text-academy-aegean dark:bg-white/[0.06] dark:text-academy-gold">
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-academy-ink dark:text-academy-parchment">{label}</p>
+        <p className="truncate text-xs text-academy-muted">{value}</p>
+      </div>
+      <ChevronRight className="h-4 w-4 text-academy-muted" aria-hidden="true" />
+    </div>
   );
 }
 

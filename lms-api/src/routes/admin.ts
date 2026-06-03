@@ -58,6 +58,8 @@ import {
   BaselineAssessmentSchema,
   LearningGoalSchema,
   UpdateLearningGoalSchema,
+  StudentExamEventSchema,
+  StudentExamEventsQuerySchema,
   TutorApplicationDecisionSchema,
   TutorDocumentVerifySchema,
   VolunteerEventSchema,
@@ -1750,6 +1752,33 @@ export async function adminRoutes(app: FastifyInstance) {
     return reply.send({ goal: res.rows[0] });
   });
 
+  app.get('/admin/exam-events', async (req, reply) => {
+    const parsed = StudentExamEventsQuerySchema.safeParse(req.query ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const res = await pool.query(
+      `select id, student_id, subject, title, exam_date, created_at, updated_at
+       from student_exam_events
+       where ($1::uuid is null or student_id = $1)
+       order by exam_date asc, created_at desc`,
+      [parsed.data.studentId || null]
+    );
+    return reply.send({ events: res.rows, items: res.rows });
+  });
+
+  app.post('/admin/exam-events', async (req, reply) => {
+    const parsed = StudentExamEventSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
+    const data = parsed.data;
+    const res = await pool.query(
+      `insert into student_exam_events
+       (student_id, subject, title, exam_date, created_by_user_id)
+       values ($1, $2, $3, $4::date, $5)
+       returning *`,
+      [data.studentId, data.subject, data.title, data.examDate, req.user!.userId]
+    );
+    return reply.code(201).send({ event: res.rows[0] });
+  });
+
   app.get('/admin/learning-assignments', async (req, reply) => {
     const query = req.query as { subject?: string; sort?: string };
     const params: any[] = [];
@@ -1764,13 +1793,31 @@ export async function adminRoutes(app: FastifyInstance) {
       : `la.created_at desc`;
     const res = await pool.query(
       `select la.*, t.full_name as tutor_name, st.full_name as student_name,
-              count(sub.id)::int as submission_count
+              coalesce(history.submission_count, 0)::int as submission_count,
+              coalesce(history.submission_versions, '[]'::json) as submission_versions
        from learning_assignments la
        join tutor_profiles t on t.id = la.tutor_id
        join students st on st.id = la.student_id
-       left join assignment_submissions sub on sub.assignment_id = la.id
+       left join lateral (
+         select count(versioned.id)::int as submission_count,
+                json_agg(
+           json_build_object(
+             'id', versioned.id,
+             'status', versioned.status,
+             'submitted_at', versioned.submitted_at,
+             'original_filename', versioned.original_filename,
+             'mime_type', versioned.mime_type,
+             'size_bytes', versioned.size_bytes,
+             'version_number', versioned.version_number,
+             'is_latest', versioned.is_latest,
+             'file_url', versioned.file_url
+           )
+           order by versioned.is_latest desc, versioned.version_number desc, versioned.submitted_at desc
+         ) as submission_versions
+         from assignment_submissions versioned
+         where versioned.assignment_id = la.id
+       ) history on true
        ${where}
-       group by la.id, t.full_name, st.full_name
        order by ${order}`,
       params
     );

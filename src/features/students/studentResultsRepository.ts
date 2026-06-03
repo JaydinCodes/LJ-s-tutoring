@@ -1,5 +1,6 @@
 import { optionalApiGet } from '../../lib/api/client';
 import type { StudentDashboardView } from '../../types/lms';
+import { parseStudentResultsApiResponse } from '../../types/studentApiContracts';
 import { loadStudentDashboard } from './studentDashboardRepository';
 
 export interface StudentResultTopic {
@@ -7,6 +8,15 @@ export interface StudentResultTopic {
   subject?: string;
   score: number;
   support?: number;
+}
+
+export type CognitiveLevelName = 'Knowledge' | 'Routine Procedure' | 'Complex Procedure' | 'Problem Solving';
+
+export interface StudentResultCognitiveLevel {
+  level: CognitiveLevelName;
+  score: number | null;
+  marksObtained?: number | null;
+  marksAvailable?: number | null;
 }
 
 export interface StudentResultItem {
@@ -23,6 +33,7 @@ export interface StudentResultItem {
   submittedAt?: string;
   feedbackSummary?: string;
   topicBreakdown: StudentResultTopic[];
+  cognitiveBreakdown: StudentResultCognitiveLevel[];
   recommendedNextSteps: string[];
 }
 
@@ -83,6 +94,8 @@ export interface StudentResultsAnalyticsView {
 const emptyDistribution = ['0-29%', '30-39%', '40-49%', '50-59%', '60-69%', '70-79%', '80-100%']
   .map((range) => ({ range, count: 0 }));
 
+export const cognitiveLevelOrder: CognitiveLevelName[] = ['Knowledge', 'Routine Procedure', 'Complex Procedure', 'Problem Solving'];
+
 function average(values: number[]) {
   const finite = values.filter(Number.isFinite);
   if (!finite.length) return null;
@@ -98,6 +111,42 @@ function academicStatus(score: number | null) {
   return 'Urgent intervention';
 }
 
+function toTitleCase(value: string) {
+  return value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function normalizeCognitiveBreakdown(value: unknown): StudentResultCognitiveLevel[] {
+  if (!value || typeof value !== 'object') {
+    return [];
+  }
+
+  return Object.entries(value as Record<string, unknown>)
+    .map(([rawLevel, rawPayload]) => {
+      const payload = typeof rawPayload === 'number' ? { score: rawPayload } : rawPayload as Record<string, unknown>;
+      const level = cognitiveLevelOrder.find((item) => item.toLowerCase() === toTitleCase(rawLevel).toLowerCase())
+        || toTitleCase(rawLevel) as CognitiveLevelName;
+      const marksObtained = Number(payload?.marksObtained ?? payload?.score ?? payload?.obtained);
+      const marksAvailable = Number(payload?.marksAvailable ?? payload?.total);
+      const score = Number(payload?.percentage ?? (
+        Number.isFinite(marksObtained) && Number.isFinite(marksAvailable) && marksAvailable > 0
+          ? (marksObtained / marksAvailable) * 100
+          : marksObtained
+      ));
+
+      return {
+        level,
+        score: Number.isFinite(score) ? Math.round(score * 10) / 10 : null,
+        marksObtained: Number.isFinite(marksObtained) ? marksObtained : null,
+        marksAvailable: Number.isFinite(marksAvailable) ? marksAvailable : null,
+      };
+    })
+    .sort((left, right) => cognitiveLevelOrder.indexOf(left.level) - cognitiveLevelOrder.indexOf(right.level));
+}
+
 function buildFallbackFromDashboard(data: StudentDashboardView): StudentResultsAnalyticsView {
   const marked = data.submissions.filter((submission) => submission.marks_awarded != null);
   const progressItems = data.progress.map<StudentResultItem>((item) => ({
@@ -111,6 +160,7 @@ function buildFallbackFromDashboard(data: StudentDashboardView): StudentResultsA
     markedAt: item.recorded_at,
     feedbackSummary: item.cognitive_level ? `Cognitive level: ${item.cognitive_level}` : 'Progress record captured.',
     topicBreakdown: [{ topic: item.topic, subject: item.subject || 'General', score: Number(item.score) }],
+    cognitiveBreakdown: item.cognitive_level ? [{ level: toTitleCase(item.cognitive_level) as CognitiveLevelName, score: Number(item.score) }] : [],
     recommendedNextSteps: [],
   }));
   const submissionItems = marked.map<StudentResultItem>((item) => ({
@@ -125,6 +175,7 @@ function buildFallbackFromDashboard(data: StudentDashboardView): StudentResultsA
     markedAt: item.submitted_at || undefined,
     feedbackSummary: item.feedback || 'Marked assignment.',
     topicBreakdown: [],
+    cognitiveBreakdown: [],
     recommendedNextSteps: [],
   }));
   const items = [...submissionItems, ...progressItems];
@@ -173,10 +224,16 @@ function buildFallbackFromDashboard(data: StudentDashboardView): StudentResultsA
 }
 
 export async function loadStudentResultsAnalytics(): Promise<StudentResultsAnalyticsView> {
-  const apiView = await optionalApiGet<StudentResultsAnalyticsView | null>('/student/results', null);
+  const apiView = parseStudentResultsApiResponse(await optionalApiGet<unknown>('/student/results', null));
   if (apiView?.summary && Array.isArray(apiView.items)) {
     return {
       ...apiView,
+      items: apiView.items.map((item) => ({
+        ...item,
+        cognitiveBreakdown: Array.isArray(item.cognitiveBreakdown)
+          ? item.cognitiveBreakdown
+          : normalizeCognitiveBreakdown(item.cognitiveBreakdown),
+      })),
       classAnalytics: {
         ...apiView.classAnalytics,
         distribution: apiView.classAnalytics?.distribution?.length ? apiView.classAnalytics.distribution : emptyDistribution,

@@ -80,6 +80,19 @@ describe('Student dashboard LMS features', () => {
     });
     expect(goal.statusCode).toBe(201);
 
+    const exam = await app.inject({
+      method: 'POST',
+      url: '/admin/exam-events',
+      headers: adminAuth.headers,
+      payload: {
+        studentId: student.id,
+        subject: 'Math',
+        title: 'Term mathematics exam',
+        examDate: '2099-06-15'
+      }
+    });
+    expect(exam.statusCode).toBe(201);
+
     await pool.query(
       `insert into student_score_snapshots
        (user_id, score_date, risk_score, momentum_score, reasons_json, metrics_json, recommended_actions_json)
@@ -130,6 +143,14 @@ describe('Student dashboard LMS features', () => {
     expect(body.supportStatus.band).toBe('urgent_support');
     expect(body.goals[0]).toMatchObject({ title: 'Improve algebra baseline' });
     expect(body.attendance.items[0]).toMatchObject({ attendance_status: 'present' });
+    expect(body.examCalendar.nextExam).toMatchObject({ subject: 'Math', examDate: '2099-06-15' });
+    expect(body.dailyInsightContext).toMatchObject({
+      studentId: student.id,
+      nextExamTitle: 'Term mathematics exam',
+      nextExamSubject: 'Math',
+      nextExamDate: '2099-06-15',
+      currentAcademicStatus: 'Urgent Support'
+    });
     expect(body.latestReport).toBeTruthy();
     expect(body.notificationsUnreadCount).toBeGreaterThan(0);
     expect(body.notifications.some((notification: any) => notification.type === 'baseline_assessment_created')).toBe(true);
