@@ -37,6 +37,8 @@ This also reduces product risk. Students, tutors, admins, parents, and NGO partn
 
 - Browser routes must use Supabase Auth for signed-in state.
 - Browser role checks must read from the authenticated user's Supabase-backed profile.
+- Frontend roles must be normalized in one auth helper before route checks use them.
+- Frontend protected routes must not require a Fastify JWT cookie before rendering.
 - Direct browser table writes are allowed only when RLS fully protects the operation and no privileged fields can be changed.
 - Sensitive writes must go through secure RPC functions, especially marking, result release, payments, role management, account provisioning, submission review, and privacy operations.
 - File uploads must use private Supabase Storage buckets with scoped paths and RLS-backed access rules.

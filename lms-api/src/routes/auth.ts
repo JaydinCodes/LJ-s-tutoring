@@ -56,6 +56,8 @@ type GoogleVerifiedProfile = {
 
 const googleOAuthVerifier = new OAuth2Client();
 
+// Transitional: Supabase Auth is the browser source of truth. These routes remain
+// only for legacy API-cookie workflows until each backend endpoint accepts Supabase identity.
 function setPrivateNoStore(reply: any) {
   reply.header('Cache-Control', 'private, no-store, max-age=0');
   reply.header('Pragma', 'no-cache');

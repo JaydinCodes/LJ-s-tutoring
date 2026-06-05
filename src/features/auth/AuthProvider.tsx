@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
-import type { Profile } from '../../types/lms';
 import { fetchCurrentProfile, type AuthState } from './authService';
 
 interface AuthContextValue extends AuthState {
@@ -16,6 +15,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: true,
     session: null,
     profile: null,
+    status: 'loading',
     error: null,
   });
 
@@ -26,21 +26,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading: false,
         session: null,
         profile: null,
+        status: 'error',
         error: 'The sign-in service is temporarily unavailable. Please contact support if you need urgent access.',
       });
       return;
     }
 
-    setState((current) => ({ ...current, configured: true, loading: true, error: null }));
+    setState((current) => ({ ...current, configured: true, loading: true, status: 'loading', error: null }));
     try {
-      const { session, profile } = await fetchCurrentProfile();
-      setState({ configured: true, loading: false, session, profile: profile as Profile | null, error: null });
+      const { session, profile, status } = await fetchCurrentProfile();
+      const statusError = status === 'missing_profile'
+        ? 'Your account setup is incomplete. Please contact support so we can finish linking your profile.'
+        : status === 'invalid_role'
+          ? 'Your profile has a role that is not enabled for this portal.'
+          : null;
+      setState({ configured: true, loading: false, session, profile, status, error: statusError });
     } catch (error) {
       setState({
         configured: true,
         loading: false,
         session: null,
         profile: null,
+        status: 'error',
         error: error instanceof Error ? error.message : 'Could not load your account session.',
       });
     }

@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
-import type { UserRole } from '../../types/lms';
 import { useAuth } from './AuthProvider';
+import { formatRoleList, normalizeUserRole, type SupportedDashboardRole } from './roles';
 
-export function ProtectedRoute({ roles, children }: { roles: UserRole[]; children: ReactNode }) {
+export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardRole[]; children: ReactNode }) {
   const auth = useAuth();
   const location = useLocation();
+  const currentRole = normalizeUserRole(auth.profile?.role);
 
   if (auth.loading) {
     return <GuardMessage title="Checking access" description="Loading your account access..." />;
@@ -25,7 +26,7 @@ export function ProtectedRoute({ roles, children }: { roles: UserRole[]; childre
     return <Navigate to="/dashboard/login" replace state={{ from: location.pathname }} />;
   }
 
-  if (!auth.profile) {
+  if (auth.status === 'missing_profile' || !auth.profile) {
     return (
       <GuardMessage
         title="Profile missing"
@@ -34,11 +35,20 @@ export function ProtectedRoute({ roles, children }: { roles: UserRole[]; childre
     );
   }
 
-  if (!roles.includes(auth.profile.role)) {
+  if (auth.status === 'invalid_role' || !currentRole) {
+    return (
+      <GuardMessage
+        title="Portal role unavailable"
+        description="Your account has a role that is not enabled for this portal. Please contact support so we can correct your access."
+      />
+    );
+  }
+
+  if (!roles.includes(currentRole)) {
     return (
       <GuardMessage
         title="Access denied"
-        description={`This route requires one of these roles: ${roles.join(', ')}. Your current role is ${auth.profile.role}.`}
+        description={`This route requires one of these roles: ${formatRoleList(roles)}. Your current role is ${currentRole}.`}
       />
     );
   }

@@ -1,28 +1,32 @@
 import type { Session } from '@supabase/supabase-js';
 import { isSupabaseConfigured, requireSupabase, supabase } from '../../lib/supabase/client';
-import type { Profile, UserRole } from '../../types/lms';
+import type { Profile } from '../../types/lms';
+import { getDashboardPath, normalizeUserRole, type SupportedDashboardRole } from './roles';
+
+export { getDashboardPath } from './roles';
+
+export type AuthStatus =
+  | 'loading'
+  | 'unauthenticated'
+  | 'authenticated'
+  | 'missing_profile'
+  | 'invalid_role'
+  | 'error';
+
+export type AuthProfile = Omit<Profile, 'role'> & { role: SupportedDashboardRole };
 
 export interface AuthState {
   configured: boolean;
   loading: boolean;
   session: Session | null;
-  profile: Profile | null;
+  profile: AuthProfile | null;
+  status: AuthStatus;
   error: string | null;
-}
-
-export function getDashboardPath(role?: UserRole | null) {
-  if (role === 'admin') {
-    return '/dashboard/admin';
-  }
-  if (role === 'tutor') {
-    return '/dashboard/tutor';
-  }
-  return '/dashboard/student';
 }
 
 export async function fetchCurrentProfile() {
   if (!isSupabaseConfigured || !supabase) {
-    return { session: null, profile: null };
+    return { session: null, profile: null, status: 'error' as const };
   }
 
   const sessionResult = await supabase.auth.getSession();
@@ -33,7 +37,7 @@ export async function fetchCurrentProfile() {
   const session = sessionResult.data.session;
   const authUserId = session?.user.id;
   if (!authUserId) {
-    return { session: null, profile: null };
+    return { session: null, profile: null, status: 'unauthenticated' as const };
   }
 
   const profileResult = await supabase.from('profiles').select('*').eq('auth_user_id', authUserId).maybeSingle();
@@ -41,7 +45,20 @@ export async function fetchCurrentProfile() {
     throw profileResult.error;
   }
 
-  return { session, profile: profileResult.data as Profile | null };
+  if (!profileResult.data) {
+    return { session, profile: null, status: 'missing_profile' as const };
+  }
+
+  const role = normalizeUserRole((profileResult.data as Profile).role);
+  if (!role) {
+    return { session, profile: null, status: 'invalid_role' as const };
+  }
+
+  return {
+    session,
+    profile: { ...(profileResult.data as Profile), role },
+    status: 'authenticated' as const,
+  };
 }
 
 export async function signInWithPassword(email: string, password: string) {

@@ -6,6 +6,12 @@ declare global {
   }
 }
 
+async function supabaseAccessToken() {
+  const { supabase } = await import('../supabase/client');
+  const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+  return session?.access_token ?? '';
+}
+
 export function resolveApiBase() {
   const configured = (import.meta.env.VITE_PO_API_BASE || window.__PO_API_BASE__) as string | undefined;
   const raw = String(configured || '').replace(/\/$/, '');
@@ -30,14 +36,19 @@ function readCookie(name: string) {
 
 function csrfHeaders(): Record<string, string> {
   const csrfToken = readCookie('csrf');
-  // The LMS API enforces double-submit CSRF for authenticated writes.
+  // Transitional Fastify endpoints still enforce double-submit CSRF while they move to Supabase bearer auth.
   return csrfToken ? { 'x-csrf-token': csrfToken } : {};
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const accessToken = await supabaseAccessToken();
+  return accessToken ? { authorization: `Bearer ${accessToken}` } : {};
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
   const response = await fetch(`${resolveApiBase()}${path}`, {
     credentials: 'include',
-    headers: { accept: 'application/json' },
+    headers: { accept: 'application/json', ...(await authHeaders()) },
   });
 
   if (!response.ok) {
@@ -60,6 +71,7 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
     headers: {
       accept: 'application/json',
       'content-type': 'application/json',
+      ...(await authHeaders()),
       ...csrfHeaders(),
     },
     body: body == null ? undefined : JSON.stringify(body),
@@ -85,6 +97,7 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
     headers: {
       accept: 'application/json',
       'content-type': 'application/json',
+      ...(await authHeaders()),
       ...csrfHeaders(),
     },
     body: body == null ? undefined : JSON.stringify(body),
@@ -110,6 +123,7 @@ export async function apiPut<T>(path: string, body?: unknown): Promise<T> {
     headers: {
       accept: 'application/json',
       'content-type': 'application/json',
+      ...(await authHeaders()),
       ...csrfHeaders(),
     },
     body: body == null ? undefined : JSON.stringify(body),
@@ -141,6 +155,7 @@ export async function apiStreamText(
     headers: {
       accept: 'text/plain',
       'content-type': 'application/json',
+      ...(await authHeaders()),
       ...csrfHeaders(),
     },
     body: JSON.stringify(body),

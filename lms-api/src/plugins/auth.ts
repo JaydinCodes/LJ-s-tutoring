@@ -26,6 +26,8 @@ type ImpersonationPayload = {
   mode: 'READ_ONLY';
 };
 
+// Transitional: browser LMS access is Supabase-first. This plugin remains for backend-only
+// routes that still depend on the legacy Fastify JWT cookie model during migration.
 export const authPlugin = fp(async function authPlugin(app: FastifyInstance) {
   const secret = process.env.JWT_SECRET ?? process.env.COOKIE_SECRET;
   if (!secret) throw new Error('JWT_SECRET is required');
