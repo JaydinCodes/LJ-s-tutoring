@@ -75,6 +75,7 @@ const reactDashboardRoutes = [
   'dashboard/admin/users',
   'dashboard/admin/students',
   'dashboard/admin/tutors',
+  'dashboard/admin/classes',
   'dashboard/admin/assignments',
   'dashboard/admin/approvals',
   'dashboard/admin/payments',

@@ -1,6 +1,7 @@
 import type {
   Assignment,
   AssignmentSubmission,
+  ClassEnrollment,
   ClassRecord,
   NgoPartner,
   Payment,
@@ -32,12 +33,8 @@ export interface Database {
       student_progress: Table<StudentProgress, Omit<StudentProgress, 'id'>, Partial<StudentProgress>>;
       payments: Table<Payment, Omit<Payment, 'id'>, Partial<Payment>>;
       tutor_payments: Table<TutorPayment, Omit<TutorPayment, 'id'>, Partial<TutorPayment>>;
-      classes: Table<ClassRecord, Omit<ClassRecord, 'id'>, Partial<ClassRecord>>;
-      class_enrollments: Table<
-        { id: string; class_id: string; student_id: string; status: string; created_at: string },
-        { class_id: string; student_id: string; status: string },
-        Partial<{ class_id: string; student_id: string; status: string }>
-      >;
+      classes: Table<ClassRecord, Omit<ClassRecord, 'id' | 'created_at' | 'updated_at'>, Partial<ClassRecord>>;
+      class_enrollments: Table<ClassEnrollment, Omit<ClassEnrollment, 'id' | 'created_at'>, Partial<ClassEnrollment>>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

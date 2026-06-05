@@ -60,3 +60,17 @@ test('students cannot update review fields directly through submission policies'
   assert.match(schema, /feedback is null/);
   assert.match(schema, /assignment_submissions_marks_range/);
 });
+
+test('class and enrollment RLS is scoped to admins, assigned tutors, and enrolled students', () => {
+  assert.match(schema, /create or replace function public\.current_tutor_id\(\)/);
+  assert.match(schema, /alter table public\.classes add column if not exists name/);
+  assert.match(schema, /alter table public\.classes add column if not exists status/);
+  assert.match(schema, /drop policy if exists "classes_read_authenticated"/);
+  assert.match(schema, /create policy "classes_select_scoped"/);
+  assert.match(schema, /tutor_id = public\.current_tutor_id\(\)/);
+  assert.match(schema, /ce\.student_id = public\.current_student_id\(\)/);
+  assert.match(schema, /drop policy if exists "class_enrollments_read_authenticated"/);
+  assert.match(schema, /create policy "class_enrollments_select_scoped"/);
+  assert.doesNotMatch(schema, /create policy "classes_read_authenticated"[\s\S]*auth\.uid\(\) is not null/);
+  assert.doesNotMatch(schema, /create policy "class_enrollments_read_authenticated"[\s\S]*auth\.uid\(\) is not null/);
+});

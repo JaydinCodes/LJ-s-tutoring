@@ -14,8 +14,10 @@ const protectedRoutes = [
   '/dashboard/student/reports',
   '/dashboard/student/community',
   '/dashboard/admin',
+  '/dashboard/admin/users',
   '/dashboard/admin/students',
   '/dashboard/admin/tutors',
+  '/dashboard/admin/classes',
   '/dashboard/admin/assignments',
   '/dashboard/admin/approvals',
   '/dashboard/admin/payments',
@@ -94,6 +96,8 @@ test('React migration docs name the cleanup checklist and active route families'
 
   assert.ok(readme.includes('docs/REACT_MIGRATION_CLEANUP_CHECKLIST.md'));
   assert.ok(readme.includes('/dashboard/student/community'));
+  assert.ok(readme.includes('/dashboard/admin/users'));
+  assert.ok(readme.includes('/dashboard/admin/classes'));
   assert.ok(readme.includes('/dashboard/admin/payroll'));
   assert.ok(readme.includes('/dashboard/tutor/risk'));
 });

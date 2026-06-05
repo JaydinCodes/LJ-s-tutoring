@@ -121,6 +121,7 @@ export interface TutorPayment {
 
 export interface ClassRecord {
   id: string;
+  name: string;
   tutor_id: string;
   subject_id?: string | null;
   subject?: string | null;
@@ -130,6 +131,17 @@ export interface ClassRecord {
   start_time?: string | null;
   end_time?: string | null;
   ngo_partner_id?: string | null;
+  status: RecordStatus;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ClassEnrollment {
+  id: string;
+  class_id: string;
+  student_id: string;
+  status: RecordStatus;
+  created_at: string;
 }
 
 export interface DashboardMetric {

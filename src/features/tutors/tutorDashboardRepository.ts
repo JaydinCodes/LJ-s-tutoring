@@ -38,7 +38,7 @@ export async function loadTutorDashboard(): Promise<TutorDashboardView> {
   const { profile, tutor } = await getCurrentTutor();
 
   const [classesResult, assignmentsResult] = await Promise.all([
-    client.from('classes').select('*').eq('tutor_id', tutor.id).order('day_of_week', { ascending: true }),
+    client.from('classes').select('*').eq('tutor_id', tutor.id).neq('status', 'inactive').order('day_of_week', { ascending: true }),
     client.from('assignments').select('*').eq('created_by', profile.id).order('created_at', { ascending: false }),
   ]);
 

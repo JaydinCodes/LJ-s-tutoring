@@ -142,6 +142,7 @@ create table if not exists public.tutor_payments (
 
 create table if not exists public.classes (
   id uuid primary key default gen_random_uuid(),
+  name text not null default 'Class',
   tutor_id uuid not null references public.tutors(id) on delete cascade,
   subject_id uuid references public.subjects(id),
   grade text,
@@ -149,8 +150,16 @@ create table if not exists public.classes (
   day_of_week text,
   start_time time,
   end_time time,
-  ngo_partner_id uuid references public.ngo_partners(id)
+  ngo_partner_id uuid references public.ngo_partners(id),
+  status public.record_status not null default 'active',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
+
+alter table public.classes add column if not exists name text not null default 'Class';
+alter table public.classes add column if not exists status public.record_status not null default 'active';
+alter table public.classes add column if not exists created_at timestamptz not null default now();
+alter table public.classes add column if not exists updated_at timestamptz not null default now();
 
 create table if not exists public.class_enrollments (
   id uuid primary key default gen_random_uuid(),
@@ -175,6 +184,9 @@ create index if not exists idx_submissions_assignment_versions
 create index if not exists idx_progress_student_recorded on public.student_progress(student_id, recorded_at desc);
 create index if not exists idx_payments_student_status on public.payments(student_id, status);
 create index if not exists idx_classes_tutor on public.classes(tutor_id);
+create index if not exists idx_classes_status on public.classes(status);
+create index if not exists idx_class_enrollments_student on public.class_enrollments(student_id);
+create index if not exists idx_class_enrollments_class_status on public.class_enrollments(class_id, status);
 
 alter table public.profiles enable row level security;
 alter table public.students enable row level security;
@@ -220,6 +232,19 @@ as $$
   select s.id
   from public.students s
   join public.profiles p on p.id = s.profile_id
+  where p.auth_user_id = auth.uid()
+$$;
+
+create or replace function public.current_tutor_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select t.id
+  from public.tutors t
+  join public.profiles p on p.id = t.profile_id
   where p.auth_user_id = auth.uid()
 $$;
 
@@ -639,18 +664,39 @@ on public.tutor_payments for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
-create policy "classes_read_authenticated"
+drop policy if exists "classes_read_authenticated" on public.classes;
+
+create policy "classes_select_scoped"
 on public.classes for select
-using (auth.uid() is not null);
+using (
+  public.current_profile_role() = 'admin'
+  or tutor_id = public.current_tutor_id()
+  or id in (
+    select ce.class_id
+    from public.class_enrollments ce
+    where ce.student_id = public.current_student_id()
+      and ce.status = 'active'
+  )
+);
 
 create policy "admin_manage_classes"
 on public.classes for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
-create policy "class_enrollments_read_authenticated"
+drop policy if exists "class_enrollments_read_authenticated" on public.class_enrollments;
+
+create policy "class_enrollments_select_scoped"
 on public.class_enrollments for select
-using (auth.uid() is not null);
+using (
+  public.current_profile_role() = 'admin'
+  or student_id = public.current_student_id()
+  or class_id in (
+    select c.id
+    from public.classes c
+    where c.tutor_id = public.current_tutor_id()
+  )
+);
 
 create policy "admin_manage_class_enrollments"
 on public.class_enrollments for all

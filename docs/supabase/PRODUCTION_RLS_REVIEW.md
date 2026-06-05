@@ -11,6 +11,7 @@ The current `docs/supabase/schema.sql` is the production schema direction, but i
 - Admins can manage operational LMS tables.
 - Tutors can manage only assignments where `assignments.created_by = current_profile_id()`.
 - Tutors can insert missing `subjects` rows for assignment creation without broad subject-management access.
+- Class visibility is scoped to admins, assigned tutors, and actively enrolled students.
 - Assignment and submission storage buckets are private.
 - Student submission file paths are student-scoped.
 - Tutors can read submission files only for assignments they created.
@@ -28,10 +29,6 @@ The current `docs/supabase/schema.sql` is the production schema direction, but i
   - Direct tutor inserts are disabled in the Supabase schema plan.
 
 ## Must Review Before Production Cutover
-
-- `classes` and `class_enrollments`
-  - Current read policies are broad for authenticated users to support early dashboard migration.
-  - Before production, restrict class visibility to enrolled students, assigned tutors, admins, and relevant NGO partner profiles.
 
 - `payments` and `tutor_payments`
   - Current Supabase finance workflows are admin-only.
@@ -51,6 +48,7 @@ The current `docs/supabase/schema.sql` is the production schema direction, but i
 - assignment storage buckets are private and scoped by policy.
 - assignment submissions and marking use RPC functions.
 - student direct update policies cannot change marks, feedback, or status.
+- class and enrollment read policies are not broad authenticated reads.
 
 Expand this test whenever direct table policies, RPC functions, or Storage policies change.
 
@@ -65,3 +63,6 @@ Run these checks with real Supabase Auth test users before production cutover:
 - Tutor can call `mark_assignment_submission` only for submissions on assignments they created.
 - Tutor cannot mark another tutor's assignment submission.
 - Admin can mark through the same RPC.
+- Student can see only classes where they have an active enrollment.
+- Tutor can see only classes assigned to their tutor record.
+- Non-enrolled students cannot read unrelated class enrollment rows.

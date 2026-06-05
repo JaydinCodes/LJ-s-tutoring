@@ -151,15 +151,19 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     return null;
   }
 
-  const [assignmentsResult, progressResult, classesResult, submissionsResult] = await Promise.all([
+  const [assignmentsResult, progressResult, enrollmentsResult, submissionsResult] = await Promise.all([
     supabase.from('assignments').select('*').eq('grade', student.grade || '').neq('status', 'draft').order('due_date', { ascending: true }),
     supabase.from('student_progress').select('*').eq('student_id', student.id).order('recorded_at', { ascending: false }),
-    supabase.from('classes').select('*').eq('grade', student.grade || ''),
+    supabase.from('class_enrollments').select('class_id').eq('student_id', student.id).eq('status', 'active'),
     supabase.from('assignment_submissions').select('*').eq('student_id', student.id).order('submitted_at', { ascending: false }),
   ]);
 
   const assignments = (assignmentsResult.data || []) as Assignment[];
   const progress = (progressResult.data || []) as StudentProgress[];
+  const enrolledClassIds = ((enrollmentsResult.data || []) as Array<{ class_id: string }>).map((item) => item.class_id);
+  const classesResult = enrolledClassIds.length
+    ? await supabase.from('classes').select('*').in('id', enrolledClassIds).neq('status', 'inactive')
+    : { data: [], error: null };
   const classes = (classesResult.data || []) as ClassRecord[];
   const submissions = (submissionsResult.data || []) as AssignmentSubmission[];
   const submittedIds = new Set(submissions.map((item) => item.assignment_id));
