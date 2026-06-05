@@ -70,7 +70,7 @@ Important unified React routes:
 - Public: `/`, `/about`, `/programs`, `/guides`, `/guides/matric-maths-mistakes-guide`, `/privacy`, `/terms`
 - Auth/onboarding: `/dashboard/login`, `/onboarding/student`, `/onboarding/tutor`
 - Student: `/dashboard/student`, `/dashboard/student/assignments`, `/dashboard/student/progress`, `/dashboard/student/results`, `/dashboard/student/careers`, `/dashboard/student/reports`, `/dashboard/student/community`
-- Admin: `/dashboard/admin`, `/dashboard/admin/students`, `/dashboard/admin/tutors`, `/dashboard/admin/assignments`, `/dashboard/admin/approvals`, `/dashboard/admin/payments`, `/dashboard/admin/payroll`, `/dashboard/admin/reconciliation`, `/dashboard/admin/reports`, `/dashboard/admin/results`, `/dashboard/admin/audit`, `/dashboard/admin/privacy-requests`, `/dashboard/admin/retention`, `/dashboard/admin/ops-runbook`
+- Admin: `/dashboard/admin`, `/dashboard/admin/users`, `/dashboard/admin/students`, `/dashboard/admin/tutors`, `/dashboard/admin/assignments`, `/dashboard/admin/approvals`, `/dashboard/admin/payments`, `/dashboard/admin/payroll`, `/dashboard/admin/reconciliation`, `/dashboard/admin/reports`, `/dashboard/admin/results`, `/dashboard/admin/audit`, `/dashboard/admin/privacy-requests`, `/dashboard/admin/retention`, `/dashboard/admin/ops-runbook`
 - Tutor: `/dashboard/tutor`, `/dashboard/tutor/classes`, `/dashboard/tutor/sessions`, `/dashboard/tutor/submissions`, `/dashboard/tutor/reports`, `/dashboard/tutor/risk`
 
 Migration tracking:
@@ -188,6 +188,7 @@ VITE_PO_FORMSPREE_ENDPOINT=
 
 `PUBLIC_PO_API_BASE` is injected into `dist/assets/portal-config.js` during the static build.
 `VITE_PO_FORMSPREE_ENDPOINT` is optional; when omitted, the React public enquiry form opens a pre-filled email fallback.
+`SUPABASE_SERVICE_ROLE_KEY` is intentionally omitted from public client config. It is backend-only for API operations such as admin user invitations.
 
 ### API config
 

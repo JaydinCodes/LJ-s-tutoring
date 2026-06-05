@@ -14,6 +14,7 @@ import {
   Target,
   TrendingUp,
   Trophy,
+  UserPlus,
   type LucideIcon,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -39,6 +40,7 @@ const nav = {
   ],
   admin: [
     { to: '/dashboard/admin', label: 'Overview', icon: LayoutDashboard },
+    { to: '/dashboard/admin/users', label: 'Users', icon: UserPlus },
     { to: '/dashboard/admin/students', label: 'Students', icon: GraduationCap },
     { to: '/dashboard/admin/tutors', label: 'Tutors', icon: Brain },
     { to: '/dashboard/admin/assignments', label: 'Assignments', icon: ScrollText },

@@ -24,12 +24,15 @@ Use the local values from `supabase status`:
 ```env
 VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_ANON_KEY=<local anon key from supabase status>
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_SERVICE_ROLE_KEY=<local service_role key from supabase status>
+SUPABASE_INVITE_REDIRECT_URL=http://localhost:5173/dashboard/login
 SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
 SUPABASE_TEST_PROJECT_REF=local
 SUPABASE_PRODUCTION_PROJECT_REF=
 ```
 
-`SUPABASE_PRODUCTION_PROJECT_REF` is intentionally blank in local files. Production project refs and service-role keys belong only in the deployment secret manager.
+`SUPABASE_PRODUCTION_PROJECT_REF` is intentionally blank in local files. Production project refs and service-role keys belong only in the deployment secret manager. `SUPABASE_SERVICE_ROLE_KEY` is backend-only for API tasks such as admin user invitations; never expose it through Vite or `portal-config.js`.
 
 ## Schema Source Of Truth
 

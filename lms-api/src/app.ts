@@ -21,6 +21,7 @@ import { academicRoutes } from './routes/academic.js';
 import { phase3Routes } from './routes/phase3.js';
 import { assistantRoutes } from './routes/assistant.js';
 import { odieCareersRoutes } from './routes/odie-careers.js';
+import { supabaseAdminRoutes } from './routes/supabase-admin.js';
 
 const kGenerateCallbackUriParams = Symbol.for('fastify-oauth2.generate-callback-uri-params');
 
@@ -449,6 +450,7 @@ export async function buildApp() {
   }
 
   await app.register(authRoutes);
+  await app.register(supabaseAdminRoutes);
   await app.register(adminRoutes);
   await app.register(tutorRoutes);
   await app.register(academicRoutes);

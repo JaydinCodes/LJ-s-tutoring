@@ -247,6 +247,7 @@ Current Fastify responsibilities include:
 
 - health, readiness, metrics, request logging, CORS, CSRF, and operational middleware,
 - legacy Google OAuth and cookie auth routes,
+- backend-only Supabase Admin Auth operations such as admin user invites, where a service-role key is required and must never reach browser code,
 - admin/tutor/academic routes from the older API model,
 - assistant and Odie careers services,
 - email, jobs, reports, exports, and integrations where trusted backend execution is needed.
