@@ -569,7 +569,8 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: 'invalid_credentials' });
     }
 
-    // MFA removed: issue the full admin session JWT directly.
+    // Legacy Fastify admin login is transitional only. Browser admin access is
+    // Supabase-first and must pass the React Supabase MFA gate before rendering.
     const jwt = await issueTrackedSessionJwt(app, {
       userId: user.id,
       role: 'ADMIN',

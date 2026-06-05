@@ -12,6 +12,20 @@ This document previously described Fastify-owned Google OAuth sessions as the pr
 - Do not store browser auth tokens in localStorage.
 - Do not introduce a second browser session cookie for LMS routes.
 
+## Admin MFA
+
+Production admin access requires Supabase Auth MFA. The React admin route guard checks:
+
+1. A valid Supabase session.
+2. A linked `profiles` row with the normalized `admin` role.
+3. Supabase authenticator assurance level `aal2`, or a verified TOTP factor that can be challenged and verified.
+
+Enable MFA in Supabase Dashboard > Authentication > Multi-Factor Auth, then require each admin account to enroll and verify a TOTP factor before using `/dashboard/admin`. Admins without a verified factor see `MFA setup required`; admins with a factor but an `aal1` session see `MFA required` and must enter their authenticator code. If Supabase MFA status cannot be read, admin access remains blocked.
+
+The frontend uses `supabase.auth.mfa.getAuthenticatorAssuranceLevel()`, `supabase.auth.mfa.listFactors()`, `supabase.auth.mfa.challenge()`, and `supabase.auth.mfa.verify()`.
+
+Local UI development can set `VITE_PO_DEV_ADMIN_MFA_BYPASS=true`, but the code ignores that flag in production builds. Do not set it in staging or production.
+
 ## Transitional Google Auth Notes
 
 The Fastify API still contains Google OAuth routes from the older API-session model. Keep these notes only for migration support while the platform converges on Supabase Auth.

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
-import { fetchCurrentProfile, type AuthState } from './authService';
+import { ADMIN_MFA_NOT_APPLICABLE, fetchCurrentProfile, type AuthState } from './authService';
 
 interface AuthContextValue extends AuthState {
   refresh: () => Promise<void>;
@@ -16,6 +16,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session: null,
     profile: null,
     status: 'loading',
+    adminMfa: ADMIN_MFA_NOT_APPLICABLE,
     error: null,
   });
 
@@ -27,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session: null,
         profile: null,
         status: 'error',
+        adminMfa: ADMIN_MFA_NOT_APPLICABLE,
         error: 'The sign-in service is temporarily unavailable. Please contact support if you need urgent access.',
       });
       return;
@@ -34,13 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setState((current) => ({ ...current, configured: true, loading: true, status: 'loading', error: null }));
     try {
-      const { session, profile, status } = await fetchCurrentProfile();
+      const { session, profile, status, adminMfa } = await fetchCurrentProfile();
       const statusError = status === 'missing_profile'
         ? 'Your account setup is incomplete. Please contact support so we can finish linking your profile.'
         : status === 'invalid_role'
           ? 'Your profile has a role that is not enabled for this portal.'
           : null;
-      setState({ configured: true, loading: false, session, profile, status, error: statusError });
+      setState({ configured: true, loading: false, session, profile, status, adminMfa, error: statusError });
     } catch (error) {
       setState({
         configured: true,
@@ -48,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session: null,
         profile: null,
         status: 'error',
+        adminMfa: ADMIN_MFA_NOT_APPLICABLE,
         error: error instanceof Error ? error.message : 'Could not load your account session.',
       });
     }

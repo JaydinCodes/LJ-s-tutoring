@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
+import { AdminMfaGate } from './AdminMfaGate';
 import { useAuth } from './AuthProvider';
 import { formatRoleList, normalizeUserRole, type SupportedDashboardRole } from './roles';
 
@@ -51,6 +52,10 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
         description={`This route requires one of these roles: ${formatRoleList(roles)}. Your current role is ${currentRole}.`}
       />
     );
+  }
+
+  if (currentRole === 'admin') {
+    return <AdminMfaGate>{children}</AdminMfaGate>;
   }
 
   return <>{children}</>;

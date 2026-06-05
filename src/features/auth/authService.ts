@@ -15,18 +15,139 @@ export type AuthStatus =
 
 export type AuthProfile = Omit<Profile, 'role'> & { role: SupportedDashboardRole };
 
+export type AdminMfaStatus =
+  | 'not_applicable'
+  | 'verified'
+  | 'required'
+  | 'setup_required'
+  | 'unavailable'
+  | 'dev_bypass';
+
+export interface AdminMfaState {
+  status: AdminMfaStatus;
+  currentLevel: string | null;
+  nextLevel: string | null;
+  factorId: string | null;
+  error: string | null;
+}
+
 export interface AuthState {
   configured: boolean;
   loading: boolean;
   session: Session | null;
   profile: AuthProfile | null;
   status: AuthStatus;
+  adminMfa: AdminMfaState;
   error: string | null;
+}
+
+type MfaFactorLike = {
+  id?: string;
+  factor_type?: string;
+  status?: string;
+};
+
+export const ADMIN_MFA_NOT_APPLICABLE: AdminMfaState = {
+  status: 'not_applicable',
+  currentLevel: null,
+  nextLevel: null,
+  factorId: null,
+  error: null,
+};
+
+function isLocalAdminMfaBypassEnabled() {
+  return !import.meta.env.PROD && import.meta.env.VITE_PO_DEV_ADMIN_MFA_BYPASS === 'true';
+}
+
+function findVerifiedTotpFactor(factors: unknown) {
+  const groupedFactors = factors as Partial<Record<'totp' | 'all', MfaFactorLike[]>>;
+  const candidates = [...(groupedFactors.totp ?? []), ...(groupedFactors.all ?? [])];
+  return candidates.find((factor) => factor.id && factor.factor_type === 'totp' && factor.status === 'verified') ?? null;
+}
+
+export async function getAdminMfaState(): Promise<AdminMfaState> {
+  if (isLocalAdminMfaBypassEnabled()) {
+    return {
+      status: 'dev_bypass',
+      currentLevel: 'dev_bypass',
+      nextLevel: 'dev_bypass',
+      factorId: null,
+      error: null,
+    };
+  }
+
+  const client = requireSupabase();
+  const assurance = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (assurance.error) {
+    return {
+      status: 'unavailable',
+      currentLevel: null,
+      nextLevel: null,
+      factorId: null,
+      error: assurance.error.message,
+    };
+  }
+
+  const currentLevel = assurance.data.currentLevel ?? null;
+  const nextLevel = assurance.data.nextLevel ?? null;
+  if (currentLevel === 'aal2') {
+    return { status: 'verified', currentLevel, nextLevel, factorId: null, error: null };
+  }
+
+  const factorResult = await client.auth.mfa.listFactors();
+  if (factorResult.error) {
+    return {
+      status: 'unavailable',
+      currentLevel,
+      nextLevel,
+      factorId: null,
+      error: factorResult.error.message,
+    };
+  }
+
+  const verifiedTotpFactor = findVerifiedTotpFactor(factorResult.data);
+  if (!verifiedTotpFactor?.id) {
+    return {
+      status: 'setup_required',
+      currentLevel,
+      nextLevel,
+      factorId: null,
+      error: 'A verified Supabase TOTP factor is required for admin access.',
+    };
+  }
+
+  return {
+    status: 'required',
+    currentLevel,
+    nextLevel,
+    factorId: verifiedTotpFactor.id,
+    error: null,
+  };
+}
+
+export async function challengeAdminMfa(factorId: string) {
+  const client = requireSupabase();
+  const challenge = await client.auth.mfa.challenge({ factorId });
+  if (challenge.error) {
+    throw challenge.error;
+  }
+
+  return { challengeId: challenge.data.id };
+}
+
+export async function verifyAdminMfa(input: { factorId: string; challengeId: string; code: string }) {
+  const client = requireSupabase();
+  const verification = await client.auth.mfa.verify(input);
+  if (verification.error) {
+    throw verification.error;
+  }
+
+  return verification.data;
 }
 
 export async function fetchCurrentProfile() {
   if (!isSupabaseConfigured || !supabase) {
-    return { session: null, profile: null, status: 'error' as const };
+    return { session: null, profile: null, status: 'error' as const, adminMfa: ADMIN_MFA_NOT_APPLICABLE };
   }
 
   const sessionResult = await supabase.auth.getSession();
@@ -37,7 +158,7 @@ export async function fetchCurrentProfile() {
   const session = sessionResult.data.session;
   const authUserId = session?.user.id;
   if (!authUserId) {
-    return { session: null, profile: null, status: 'unauthenticated' as const };
+    return { session: null, profile: null, status: 'unauthenticated' as const, adminMfa: ADMIN_MFA_NOT_APPLICABLE };
   }
 
   const profileResult = await supabase.from('profiles').select('*').eq('auth_user_id', authUserId).maybeSingle();
@@ -46,18 +167,21 @@ export async function fetchCurrentProfile() {
   }
 
   if (!profileResult.data) {
-    return { session, profile: null, status: 'missing_profile' as const };
+    return { session, profile: null, status: 'missing_profile' as const, adminMfa: ADMIN_MFA_NOT_APPLICABLE };
   }
 
   const role = normalizeUserRole((profileResult.data as Profile).role);
   if (!role) {
-    return { session, profile: null, status: 'invalid_role' as const };
+    return { session, profile: null, status: 'invalid_role' as const, adminMfa: ADMIN_MFA_NOT_APPLICABLE };
   }
+
+  const adminMfa = role === 'admin' ? await getAdminMfaState() : ADMIN_MFA_NOT_APPLICABLE;
 
   return {
     session,
     profile: { ...(profileResult.data as Profile), role },
     status: 'authenticated' as const,
+    adminMfa,
   };
 }
 
