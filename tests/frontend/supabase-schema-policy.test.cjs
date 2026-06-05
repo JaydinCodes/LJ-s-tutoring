@@ -36,3 +36,27 @@ test('assignment storage buckets remain private with scoped upload policies', ()
   assert.match(schema, /create policy "students_upload_own_submission_files"/);
   assert.match(schema, /create policy "students_read_own_submission_files_or_admin"/);
 });
+
+test('assignment submission writes use RPC for versioning and marking', () => {
+  const mutations = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'src', 'features', 'assignments', 'assignmentMutations.ts'),
+    'utf8',
+  );
+
+  assert.match(schema, /create or replace function public\.submit_assignment_submission/);
+  assert.match(schema, /create or replace function public\.mark_assignment_submission/);
+  assert.match(schema, /grant execute on function public\.submit_assignment_submission/);
+  assert.match(schema, /grant execute on function public\.mark_assignment_submission/);
+  assert.match(mutations, /rpc\('submit_assignment_submission'/);
+  assert.match(mutations, /rpc\('mark_assignment_submission'/);
+  assert.doesNotMatch(mutations, /\.from\('assignment_submissions'\)[\s\S]*\.update\(\{\s*marks_awarded/);
+});
+
+test('students cannot update review fields directly through submission policies', () => {
+  assert.match(schema, /create policy "submissions_no_direct_student_update"/);
+  assert.match(schema, /create policy "submissions_tutor_mark_via_rpc_only"/);
+  assert.match(schema, /with check \(\s*false\s*\)/);
+  assert.match(schema, /marks_awarded is null/);
+  assert.match(schema, /feedback is null/);
+  assert.match(schema, /assignment_submissions_marks_range/);
+});

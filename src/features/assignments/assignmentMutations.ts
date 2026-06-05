@@ -36,6 +36,17 @@ export interface MarkSubmissionInput {
   status: 'submitted' | 'marked' | 'returned';
 }
 
+type SubmitAssignmentRpcResult = {
+  submission_id: string;
+};
+
+function mutationError(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error;
+  }
+  return new Error(fallback);
+}
+
 async function getCurrentProfile() {
   const client = requireSupabase();
   const { data: auth, error: authError } = await client.auth.getUser();
@@ -296,27 +307,12 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
     throw new Error('This assignment is closed and no longer accepts submissions.');
   }
 
-  const existing = await client
-    .from('assignment_submissions')
-    .select('*')
-    .eq('assignment_id', input.assignmentId)
-    .eq('student_id', student.id)
-    .order('version_number', { ascending: false })
-    .order('submitted_at', { ascending: false });
-
-  if (existing.error) {
-    throw existing.error;
-  }
-
-  const existingSubmissions = (existing.data || []) as AssignmentSubmission[];
-  const latestSubmission = existingSubmissions.find((submission) => submission.is_latest) || existingSubmissions[0] || null;
-  const nextVersion = Math.max(0, ...existingSubmissions.map((submission) => Number(submission.version_number || 0))) + 1;
   const submissionId = stableUploadId();
-  let fileUrl: string | null = latestSubmission?.file_url || null;
-  let storageKey: string | null = latestSubmission?.storage_key || null;
-  let originalFilename: string | null = latestSubmission?.original_filename || null;
-  let mimeType: string | null = latestSubmission?.mime_type || null;
-  let sizeBytes: number | null = latestSubmission?.size_bytes || null;
+  let fileUrl: string | null = null;
+  let storageKey: string | null = null;
+  let originalFilename: string | null = null;
+  let mimeType: string | null = null;
+  let sizeBytes: number | null = null;
 
   if (input.file) {
     const ext = input.file.name.split('.').pop()?.toLowerCase() || 'bin';
@@ -335,64 +331,45 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
     sizeBytes = input.file.size;
   }
 
-  if (!input.file && !fileUrl) {
-    throw new Error('Add a file before submitting a file-only correction, or include a written answer.');
+  if (!textAnswer && !fileUrl) {
+    throw new Error('Add a file or a written answer before submitting.');
   }
 
-  if (existingSubmissions.length) {
-    const latestReset = await (client.from('assignment_submissions') as unknown as {
-      update: (payload: { is_latest: boolean }) => {
-        eq: (column: string, value: string) => {
-          eq: (column: string, value: string) => Promise<{ data: unknown; error: Error | null }>;
-        };
-      };
-    })
-      .update({ is_latest: false })
-      .eq('assignment_id', input.assignmentId)
-      .eq('student_id', student.id);
-
-    if (latestReset.error) {
-      throw latestReset.error;
-    }
-  }
-
-  const saved = await (client.from('assignment_submissions') as unknown as {
-    insert: (
-      payload: {
-        id: string;
-        assignment_id: string;
-        student_id: string;
-        storage_key: string | null;
-        file_url: string | null;
-        original_filename: string | null;
-        mime_type: string | null;
-        size_bytes: number | null;
-        text_answer: string | null;
-        submitted_at: string;
-        status: string;
-        version_number: number;
-        is_latest: boolean;
+  const submitted = await (client as unknown as {
+    rpc: (
+      name: 'submit_assignment_submission',
+      args: {
+        p_assignment_id: string;
+        p_submission_id: string;
+        p_storage_key: string | null;
+        p_file_url: string | null;
+        p_original_filename: string | null;
+        p_mime_type: string | null;
+        p_size_bytes: number | null;
+        p_text_answer: string | null;
       }
-    ) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
-  })
-    .insert({
-      id: submissionId,
-      assignment_id: input.assignmentId,
-      student_id: student.id,
-      storage_key: storageKey,
-      file_url: fileUrl,
-      original_filename: originalFilename,
-      mime_type: mimeType,
-      size_bytes: sizeBytes,
-      text_answer: textAnswer,
-      submitted_at: new Date().toISOString(),
-      status: 'submitted',
-      version_number: nextVersion,
-      is_latest: true,
-    })
-    .select('*')
-    .single();
+    ) => Promise<{ data: SubmitAssignmentRpcResult[] | SubmitAssignmentRpcResult | null; error: Error | null }>;
+  }).rpc('submit_assignment_submission', {
+    p_assignment_id: input.assignmentId,
+    p_submission_id: submissionId,
+    p_storage_key: storageKey,
+    p_file_url: fileUrl,
+    p_original_filename: originalFilename,
+    p_mime_type: mimeType,
+    p_size_bytes: sizeBytes,
+    p_text_answer: textAnswer,
+  });
 
+  if (submitted.error) {
+    throw mutationError(submitted.error, 'Could not submit assignment.');
+  }
+
+  const row = Array.isArray(submitted.data) ? submitted.data[0] : submitted.data;
+  if (!row?.submission_id) {
+    throw new Error('Submission was saved, but the new record could not be loaded.');
+  }
+
+  const saved = await client.from('assignment_submissions').select('*').eq('id', row.submission_id).single();
   if (saved.error) {
     throw saved.error;
   }
@@ -412,59 +389,31 @@ export async function markSubmission(input: MarkSubmissionInput) {
     throw new Error('Marks must be a number between 0 and 100.');
   }
 
-  const saved = await (client.from('assignment_submissions') as unknown as {
-    update: (payload: { marks_awarded: number | null; feedback: string | null; status: string }) => {
-      eq: (column: string, value: string) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
-    };
-  })
-    .update({
-      marks_awarded: marks,
-      feedback: input.feedback?.trim() || null,
-      status: input.status,
-    })
-    .eq('id', input.submissionId)
-    .select('*')
-    .single();
+  const saved = await (client as unknown as {
+    rpc: (
+      name: 'mark_assignment_submission',
+      args: {
+        p_submission_id: string;
+        p_marks_awarded: number | null;
+        p_feedback: string | null;
+        p_status: 'submitted' | 'marked' | 'returned';
+      }
+    ) => Promise<{ data: AssignmentSubmission[] | AssignmentSubmission | null; error: Error | null }>;
+  }).rpc('mark_assignment_submission', {
+    p_submission_id: input.submissionId,
+    p_marks_awarded: marks,
+    p_feedback: input.feedback?.trim() || null,
+    p_status: input.status,
+  });
 
   if (saved.error) {
-    throw saved.error;
+    throw mutationError(saved.error, 'Could not mark submission.');
   }
 
-  const submission = saved.data as AssignmentSubmission;
-  if (marks !== null && input.status === 'marked') {
-    await createProgressFromMarkedSubmission(submission, marks);
+  const submission = Array.isArray(saved.data) ? saved.data[0] : saved.data;
+  if (!submission) {
+    throw new Error('Submission was updated, but the marked record could not be loaded.');
   }
 
   return submission;
-}
-
-async function createProgressFromMarkedSubmission(submission: AssignmentSubmission, score: number) {
-  const client = requireSupabase();
-  const assignmentResult = await client
-    .from('assignments')
-    .select('*')
-    .eq('id', submission.assignment_id)
-    .maybeSingle();
-
-  if (assignmentResult.error || !assignmentResult.data) {
-    return;
-  }
-
-  const assignment = assignmentResult.data as Assignment;
-  const payload = {
-    student_id: submission.student_id,
-    subject_id: assignment.subject_id || null,
-    topic: assignment.title,
-    score,
-    cognitive_level: null,
-    recorded_at: new Date().toISOString(),
-  };
-
-  const inserted = await (client.from('student_progress') as unknown as {
-    insert: (row: typeof payload) => Promise<{ data: unknown; error: Error | null }>;
-  }).insert(payload);
-
-  if (inserted.error) {
-    throw inserted.error;
-  }
 }

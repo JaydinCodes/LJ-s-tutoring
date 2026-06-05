@@ -11,14 +11,15 @@ function read(...segments) {
 
 test('student Supabase submission flow creates versions instead of silent overwrite', () => {
   const source = read('src', 'features', 'assignments', 'assignmentMutations.ts');
+  const schema = read('docs', 'supabase', 'schema.sql');
 
-  assert.ok(source.includes('.order(\'version_number\', { ascending: false })'), 'existing versions must be read in version order');
-  assert.ok(source.includes('const nextVersion = Math.max(0, ...existingSubmissions.map'), 'next version must be calculated from previous versions');
-  assert.ok(source.includes('.update({ is_latest: false })'), 'previous rows must be moved out of latest state');
-  assert.ok(source.includes('.insert({'), 're-upload must insert a new row');
+  assert.ok(source.includes("rpc('submit_assignment_submission'"), 'student submissions must use the controlled Supabase RPC');
+  assert.ok(schema.includes('select coalesce(max(version_number), 0) + 1'), 'next version must be calculated inside the database');
+  assert.ok(schema.includes('set is_latest = false'), 'previous rows must be moved out of latest state inside the database');
+  assert.ok(schema.includes('insert into public.assignment_submissions'), 're-upload must insert a new row inside the database');
   assert.ok(!source.includes('.upsert({'), 'submission upload must not silently overwrite the existing row');
-  assert.ok(source.includes('version_number: nextVersion'), 'new row must carry version_number');
-  assert.ok(source.includes('is_latest: true'), 'new row must be clearly marked latest');
+  assert.ok(schema.includes('v_next_version'), 'new row must carry version_number from the RPC');
+  assert.ok(schema.includes('true,'), 'new row must be clearly marked latest');
 });
 
 test('submission storage path uses stable ids and not raw uploaded filenames', () => {

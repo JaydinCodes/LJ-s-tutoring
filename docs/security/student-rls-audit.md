@@ -7,7 +7,7 @@ This audit covers `BE-SEC-01` for dashboard-facing student data.
 | Data | Student access | Write access |
 | --- | --- | --- |
 | `learning_assignments` | Own rows by `app.current_student_id` | Staff only. |
-| `assignment_submissions` | Own rows by `app.current_student_id` | Student insert only for own rows; tutor/admin manage review fields. |
+| `assignment_submissions` | Own rows by `app.current_student_id` | Student submission/versioning through `submit_assignment_submission`; marking through `mark_assignment_submission`. |
 | `baseline_assessments` | Own rows by `app.current_student_id` | Staff only; students cannot edit marks or feedback. |
 | `learning_goals` | Own visible rows only | Staff only. |
 | `student_exam_events` | Own rows only | Staff only. |
@@ -20,9 +20,10 @@ Anonymous class stats are exposed through `student_results_class_analytics_anony
 
 ## Guardrails
 
-- Students cannot update assignment review fields because no student update policy exists on `assignment_submissions`.
+- Students cannot update assignment review fields because direct student update policies are disabled on `assignment_submissions`.
+- Students can create submitted work only through the controlled Supabase RPC or the safe insert shape where marks and feedback are null.
 - Students cannot edit marks or feedback because `baseline_assessments` has no student write policy.
-- Tutor/admin access remains role-based through `app.current_role in ('ADMIN', 'TUTOR')`.
+- Tutor/admin marking access is enforced by `public.can_mark_submission` and `public.mark_assignment_submission`.
 - Storage upload policies remain scoped to the student assignment folder in `docs/supabase/schema.sql`.
 
 ## API Context Required

@@ -15,19 +15,19 @@ The current `docs/supabase/schema.sql` is the production schema direction, but i
 - Student submission file paths are student-scoped.
 - Tutors can read submission files only for assignments they created.
 
-## Must Review Before Production Cutover
+## Assignment Submission Cutover
 
 - `assignment_submissions`
-  - Students currently need update access for their own submission row so they can resubmit text/files.
-  - PostgreSQL RLS does not restrict individual columns by default. Without additional controls, a malicious client could try to update marking fields such as `marks_awarded` or `feedback`.
-  - Required production direction:
-    - Use RPC functions for student submission updates and remove direct student update policy where privileged columns exist.
-    - Add column-level privileges only as a defense-in-depth layer, not as the primary design.
-    - Split learner-owned submission content from marker-owned assessment rows if the RPC model becomes too complex.
+  - Student resubmission/versioning is handled by `public.submit_assignment_submission`.
+  - Tutor/admin marking is handled by `public.mark_assignment_submission`.
+  - Students can insert only submitted rows with `marks_awarded is null` and `feedback is null`.
+  - Direct student/tutor update policies are disabled so marks, feedback, status changes, and `is_latest` changes are not browser-controlled.
 
 - `student_progress`
-  - Tutors can insert progress after marking submissions.
-  - The policy must be tightened further with an RPC or relational proof tying the inserted progress row to a tutor-owned assignment/submission.
+  - Progress rows created from marks are inserted inside `public.mark_assignment_submission`.
+  - Direct tutor inserts are disabled in the Supabase schema plan.
+
+## Must Review Before Production Cutover
 
 - `classes` and `class_enrollments`
   - Current read policies are broad for authenticated users to support early dashboard migration.
@@ -49,5 +49,19 @@ The current `docs/supabase/schema.sql` is the production schema direction, but i
 - tutor assignment writes are scoped to the current tutor profile.
 - tutors can insert subjects for assignment creation.
 - assignment storage buckets are private and scoped by policy.
+- assignment submissions and marking use RPC functions.
+- student direct update policies cannot change marks, feedback, or status.
 
 Expand this test whenever direct table policies, RPC functions, or Storage policies change.
+
+## Manual Verification Before Applying In Production
+
+Run these checks with real Supabase Auth test users before production cutover:
+
+- Student can upload to `assignment-submissions/<student-id>/<assignment-id>/<submission-id>/submission.<ext>`.
+- Student cannot upload to another student's folder.
+- Student can call `submit_assignment_submission` for their own published assignment.
+- Student cannot directly update `marks_awarded`, `feedback`, `status`, or `is_latest`.
+- Tutor can call `mark_assignment_submission` only for submissions on assignments they created.
+- Tutor cannot mark another tutor's assignment submission.
+- Admin can mark through the same RPC.

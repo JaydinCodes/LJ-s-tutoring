@@ -105,6 +105,10 @@ create table if not exists public.assignment_submissions (
   unique (assignment_id, student_id, version_number)
 );
 
+alter table public.assignment_submissions
+  add constraint assignment_submissions_marks_range
+  check (marks_awarded is null or (marks_awarded >= 0 and marks_awarded <= 100));
+
 create table if not exists public.student_progress (
   id uuid primary key default gen_random_uuid(),
   student_id uuid not null references public.students(id) on delete cascade,
@@ -205,6 +209,207 @@ set search_path = public
 as $$
   select id from public.profiles where auth_user_id = auth.uid()
 $$;
+
+create or replace function public.current_student_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select s.id
+  from public.students s
+  join public.profiles p on p.id = s.profile_id
+  where p.auth_user_id = auth.uid()
+$$;
+
+create or replace function public.can_mark_submission(p_submission_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    public.current_profile_role() = 'admin'
+    or exists (
+      select 1
+      from public.assignment_submissions sub
+      join public.assignments a on a.id = sub.assignment_id
+      where sub.id = p_submission_id
+        and a.created_by = public.current_profile_id()
+        and public.current_profile_role() = 'tutor'
+    ),
+    false
+  )
+$$;
+
+create or replace function public.submit_assignment_submission(
+  p_assignment_id uuid,
+  p_submission_id uuid,
+  p_storage_key text,
+  p_file_url text,
+  p_original_filename text,
+  p_mime_type text,
+  p_size_bytes bigint,
+  p_text_answer text
+)
+returns table (submission_id uuid)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_student_id uuid := public.current_student_id();
+  v_assignment public.assignments%rowtype;
+  v_submission_id uuid := coalesce(p_submission_id, gen_random_uuid());
+  v_next_version integer;
+  v_text_answer text := nullif(btrim(coalesce(p_text_answer, '')), '');
+begin
+  if public.current_profile_role() <> 'student' or v_student_id is null then
+    raise exception 'only_students_can_submit' using errcode = '42501';
+  end if;
+
+  select * into v_assignment
+  from public.assignments
+  where id = p_assignment_id;
+
+  if not found then
+    raise exception 'assignment_not_found' using errcode = 'P0002';
+  end if;
+
+  if v_assignment.status <> 'published' then
+    raise exception 'assignment_not_open_for_submission' using errcode = '42501';
+  end if;
+
+  if v_text_answer is null and nullif(p_storage_key, '') is null then
+    raise exception 'submission_content_required' using errcode = '23514';
+  end if;
+
+  if nullif(p_storage_key, '') is not null and p_storage_key !~ ('^' || v_student_id::text || '/' || p_assignment_id::text || '/' || v_submission_id::text || '/submission\.[A-Za-z0-9]+$') then
+    raise exception 'invalid_submission_storage_path' using errcode = '42501';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext(p_assignment_id::text || ':' || v_student_id::text));
+
+  select coalesce(max(version_number), 0) + 1
+  into v_next_version
+  from public.assignment_submissions
+  where assignment_id = p_assignment_id
+    and student_id = v_student_id;
+
+  update public.assignment_submissions
+  set is_latest = false
+  where assignment_id = p_assignment_id
+    and student_id = v_student_id
+    and is_latest = true;
+
+  insert into public.assignment_submissions (
+    id,
+    assignment_id,
+    student_id,
+    storage_key,
+    file_url,
+    original_filename,
+    mime_type,
+    size_bytes,
+    text_answer,
+    submitted_at,
+    status,
+    version_number,
+    is_latest,
+    marks_awarded,
+    feedback
+  )
+  values (
+    v_submission_id,
+    p_assignment_id,
+    v_student_id,
+    nullif(p_storage_key, ''),
+    nullif(p_file_url, ''),
+    nullif(p_original_filename, ''),
+    nullif(p_mime_type, ''),
+    p_size_bytes,
+    v_text_answer,
+    now(),
+    'submitted',
+    v_next_version,
+    true,
+    null,
+    null
+  );
+
+  return query select v_submission_id;
+end;
+$$;
+
+create or replace function public.mark_assignment_submission(
+  p_submission_id uuid,
+  p_marks_awarded numeric,
+  p_feedback text,
+  p_status public.submission_status
+)
+returns setof public.assignment_submissions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_submission public.assignment_submissions%rowtype;
+  v_assignment public.assignments%rowtype;
+begin
+  if not public.can_mark_submission(p_submission_id) then
+    raise exception 'submission_marking_not_allowed' using errcode = '42501';
+  end if;
+
+  if p_status not in ('submitted', 'marked', 'returned') then
+    raise exception 'invalid_submission_status' using errcode = '23514';
+  end if;
+
+  if p_marks_awarded is not null and (p_marks_awarded < 0 or p_marks_awarded > 100) then
+    raise exception 'marks_out_of_range' using errcode = '23514';
+  end if;
+
+  update public.assignment_submissions
+  set marks_awarded = p_marks_awarded,
+      feedback = nullif(btrim(coalesce(p_feedback, '')), ''),
+      status = p_status
+  where id = p_submission_id
+  returning * into v_submission;
+
+  if not found then
+    raise exception 'submission_not_found' using errcode = 'P0002';
+  end if;
+
+  if p_status = 'marked' and p_marks_awarded is not null then
+    select * into v_assignment
+    from public.assignments
+    where id = v_submission.assignment_id;
+
+    insert into public.student_progress (
+      student_id,
+      subject_id,
+      topic,
+      score,
+      cognitive_level,
+      recorded_at
+    )
+    values (
+      v_submission.student_id,
+      v_assignment.subject_id,
+      coalesce(v_assignment.title, 'Marked assignment'),
+      p_marks_awarded,
+      null,
+      now()
+    );
+  end if;
+
+  return next v_submission;
+end;
+$$;
+
+grant execute on function public.submit_assignment_submission(uuid, uuid, text, text, text, text, bigint, text) to authenticated;
+grant execute on function public.mark_assignment_submission(uuid, numeric, text, public.submission_status) to authenticated;
 
 create policy "profiles_select_self_or_admin"
 on public.profiles for select
@@ -338,45 +543,48 @@ using (
   )
 );
 
-create policy "submissions_student_insert_self"
+drop policy if exists "submissions_student_insert_self" on public.assignment_submissions;
+drop policy if exists "submissions_student_update_self" on public.assignment_submissions;
+drop policy if exists "submissions_student_mark_previous_versions" on public.assignment_submissions;
+drop policy if exists "tutors_update_own_assignment_submissions" on public.assignment_submissions;
+drop policy if exists "tutor_insert_progress" on public.student_progress;
+
+create policy "submissions_student_insert_via_rpc_guard"
+on public.assignment_submissions for insert
+with check (
+  false
+);
+
+create policy "submissions_no_direct_student_update"
+on public.assignment_submissions for update
+using (
+  false
+)
+with check (
+  false
+);
+
+create policy "submissions_tutor_mark_via_rpc_only"
+on public.assignment_submissions for update
+using (
+  false
+)
+with check (
+  false
+);
+
+create policy "submissions_student_rpc_insert_shape"
 on public.assignment_submissions for insert
 with check (
   status = 'submitted'
   and is_latest = true
+  and marks_awarded is null
+  and feedback is null
   and exists (
     select 1 from public.assignments a
     where a.id = assignment_id
       and a.status = 'published'
   )
-  and
-  student_id in (
-    select s.id from public.students s
-    join public.profiles p on p.id = s.profile_id
-    where p.auth_user_id = auth.uid()
-  )
-);
-
-create policy "submissions_student_update_self"
-on public.assignment_submissions for update
-using (
-  false
-)
-with check (
-  false
-);
-
-create policy "submissions_student_mark_previous_versions"
-on public.assignment_submissions for update
-using (
-  student_id in (
-    select s.id from public.students s
-    join public.profiles p on p.id = s.profile_id
-    where p.auth_user_id = auth.uid()
-  )
-)
-with check (
-  status in ('submitted', 'returned')
-  and is_latest = false
   and
   student_id in (
     select s.id from public.students s
@@ -401,25 +609,6 @@ using (
   )
 );
 
-create policy "tutors_update_own_assignment_submissions"
-on public.assignment_submissions for update
-using (
-  assignment_id in (
-    select a.id from public.assignments a
-    join public.profiles p on p.id = a.created_by
-    where p.auth_user_id = auth.uid()
-      and p.role = 'tutor'
-  )
-)
-with check (
-  assignment_id in (
-    select a.id from public.assignments a
-    join public.profiles p on p.id = a.created_by
-    where p.auth_user_id = auth.uid()
-      and p.role = 'tutor'
-  )
-);
-
 create policy "student_progress_self_or_admin"
 on public.student_progress for select
 using (
@@ -436,9 +625,9 @@ on public.student_progress for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
-create policy "tutor_insert_progress"
+create policy "progress_insert_via_marking_rpc_only"
 on public.student_progress for insert
-with check (public.current_profile_role() = 'tutor');
+with check (false);
 
 create policy "admin_finance_access"
 on public.payments for all
@@ -493,11 +682,15 @@ on storage.objects for insert
 with check (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
-  and (storage.foldername(name))[3] is not null
+  and array_length(storage.foldername(name), 1) = 4
   and (storage.foldername(name))[1] in (
     select s.id::text from public.students s
     join public.profiles p on p.id = s.profile_id
     where p.auth_user_id = auth.uid()
+  )
+  and (storage.foldername(name))[2] in (
+    select a.id::text from public.assignments a
+    where a.status = 'published'
   )
 );
 
@@ -506,7 +699,7 @@ on storage.objects for update
 using (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
-  and (storage.foldername(name))[3] is not null
+  and array_length(storage.foldername(name), 1) = 4
   and (storage.foldername(name))[1] in (
     select s.id::text from public.students s
     join public.profiles p on p.id = s.profile_id
@@ -516,6 +709,7 @@ using (
 with check (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
+  and array_length(storage.foldername(name), 1) = 4
   and (storage.foldername(name))[1] in (
     select s.id::text from public.students s
     join public.profiles p on p.id = s.profile_id
