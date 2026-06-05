@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { AdminAllocationsRoute } from '../features/admin/AdminAllocationsRoute';
 import { AdminAssignmentsRoute } from '../features/admin/AdminAssignmentsRoute';
 import { AdminClassesRoute } from '../features/admin/AdminClassesRoute';
 import { AdminDashboardRoute } from '../features/admin/AdminDashboardRoute';
@@ -85,6 +86,7 @@ export function App() {
         <Route path="/dashboard/admin/students" element={<ProtectedRoute roles={['admin']}><AdminStudentsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/users" element={<ProtectedRoute roles={['admin']}><AdminUsersRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/tutors" element={<ProtectedRoute roles={['admin']}><AdminTutorsRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/admin/allocations" element={<ProtectedRoute roles={['admin']}><AdminAllocationsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/classes" element={<ProtectedRoute roles={['admin']}><AdminClassesRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/assignments" element={<ProtectedRoute roles={['admin']}><AdminAssignmentsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/approvals" element={<ProtectedRoute roles={['admin']}><AdminApprovalsRoute /></ProtectedRoute>} />

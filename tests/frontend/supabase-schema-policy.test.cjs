@@ -74,3 +74,16 @@ test('class and enrollment RLS is scoped to admins, assigned tutors, and enrolle
   assert.doesNotMatch(schema, /create policy "classes_read_authenticated"[\s\S]*auth\.uid\(\) is not null/);
   assert.doesNotMatch(schema, /create policy "class_enrollments_read_authenticated"[\s\S]*auth\.uid\(\) is not null/);
 });
+
+test('tutor-student allocation RLS scopes learner visibility to active assignments', () => {
+  assert.match(schema, /create table if not exists public\.tutor_student_allocations/);
+  assert.match(schema, /unique \(tutor_id, student_id\)/);
+  assert.match(schema, /alter table public\.tutor_student_allocations enable row level security/);
+  assert.match(schema, /create policy "tutor_student_allocations_select_scoped"/);
+  assert.match(schema, /tutor_id = public\.current_tutor_id\(\)/);
+  assert.match(schema, /student_id = public\.current_student_id\(\)/);
+  assert.match(schema, /create policy "admin_manage_tutor_student_allocations"/);
+  assert.match(schema, /create policy "profiles_select_allocated_learning_relationship"/);
+  assert.match(schema, /create policy "students_select_self_or_admin"[\s\S]*tutor_student_allocations/);
+  assert.match(schema, /create policy "tutors_select_self_or_admin"[\s\S]*tutor_student_allocations/);
+});

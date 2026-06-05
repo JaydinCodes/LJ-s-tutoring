@@ -144,6 +144,18 @@ export interface ClassEnrollment {
   created_at: string;
 }
 
+export interface TutorStudentAllocation {
+  id: string;
+  tutor_id: string;
+  student_id: string;
+  status: RecordStatus;
+  start_date?: string | null;
+  end_date?: string | null;
+  focus_notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DashboardMetric {
   label: string;
   value: string;
@@ -163,6 +175,7 @@ export interface StudentDashboardView {
   assignments: Assignment[];
   progress: StudentProgress[];
   classes: ClassRecord[];
+  assignedTutors?: Array<Tutor & { full_name?: string; email?: string }>;
   submissions: AssignmentSubmission[];
   recommendedNext?: {
     title: string;
@@ -233,6 +246,7 @@ export interface TutorDashboardView {
   };
   metrics: DashboardMetric[];
   classes: ClassRecord[];
+  allocatedStudents: Array<Student & { full_name?: string; email?: string; allocation_status?: RecordStatus; focus_notes?: string | null }>;
   assignments: Assignment[];
   submissions: Array<AssignmentSubmission & { assignment_title?: string; student_label?: string }>;
 }

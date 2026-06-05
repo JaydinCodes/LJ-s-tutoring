@@ -170,6 +170,19 @@ create table if not exists public.class_enrollments (
   unique (class_id, student_id)
 );
 
+create table if not exists public.tutor_student_allocations (
+  id uuid primary key default gen_random_uuid(),
+  tutor_id uuid not null references public.tutors(id) on delete cascade,
+  student_id uuid not null references public.students(id) on delete cascade,
+  status public.record_status not null default 'active',
+  start_date date,
+  end_date date,
+  focus_notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (tutor_id, student_id)
+);
+
 create index if not exists idx_profiles_role on public.profiles(role);
 create index if not exists idx_students_ngo_partner on public.students(ngo_partner_id);
 create index if not exists idx_student_career_profiles_student_updated on public.student_career_profiles(student_id, updated_at desc);
@@ -187,6 +200,8 @@ create index if not exists idx_classes_tutor on public.classes(tutor_id);
 create index if not exists idx_classes_status on public.classes(status);
 create index if not exists idx_class_enrollments_student on public.class_enrollments(student_id);
 create index if not exists idx_class_enrollments_class_status on public.class_enrollments(class_id, status);
+create index if not exists idx_tutor_student_allocations_tutor on public.tutor_student_allocations(tutor_id, status);
+create index if not exists idx_tutor_student_allocations_student on public.tutor_student_allocations(student_id, status);
 
 alter table public.profiles enable row level security;
 alter table public.students enable row level security;
@@ -201,6 +216,7 @@ alter table public.payments enable row level security;
 alter table public.tutor_payments enable row level security;
 alter table public.classes enable row level security;
 alter table public.class_enrollments enable row level security;
+alter table public.tutor_student_allocations enable row level security;
 
 create or replace function public.current_profile_role()
 returns public.user_role
@@ -440,6 +456,25 @@ create policy "profiles_select_self_or_admin"
 on public.profiles for select
 using (auth_user_id = auth.uid() or public.current_profile_role() = 'admin');
 
+create policy "profiles_select_allocated_learning_relationship"
+on public.profiles for select
+using (
+  id in (
+    select s.profile_id
+    from public.students s
+    join public.tutor_student_allocations tsa on tsa.student_id = s.id
+    where tsa.tutor_id = public.current_tutor_id()
+      and tsa.status = 'active'
+  )
+  or id in (
+    select t.profile_id
+    from public.tutors t
+    join public.tutor_student_allocations tsa on tsa.tutor_id = t.id
+    where tsa.student_id = public.current_student_id()
+      and tsa.status = 'active'
+  )
+);
+
 create policy "profiles_insert_self_student_or_tutor"
 on public.profiles for insert
 with check (
@@ -457,6 +492,12 @@ on public.students for select
 using (
   public.current_profile_role() = 'admin'
   or profile_id in (select id from public.profiles where auth_user_id = auth.uid())
+  or id in (
+    select tsa.student_id
+    from public.tutor_student_allocations tsa
+    where tsa.tutor_id = public.current_tutor_id()
+      and tsa.status = 'active'
+  )
 );
 
 create policy "students_insert_self"
@@ -506,6 +547,12 @@ on public.tutors for select
 using (
   public.current_profile_role() = 'admin'
   or profile_id in (select id from public.profiles where auth_user_id = auth.uid())
+  or id in (
+    select tsa.tutor_id
+    from public.tutor_student_allocations tsa
+    where tsa.student_id = public.current_student_id()
+      and tsa.status = 'active'
+  )
 );
 
 create policy "tutors_insert_self_pending"
@@ -700,6 +747,24 @@ using (
 
 create policy "admin_manage_class_enrollments"
 on public.class_enrollments for all
+using (public.current_profile_role() = 'admin')
+with check (public.current_profile_role() = 'admin');
+
+create policy "tutor_student_allocations_select_scoped"
+on public.tutor_student_allocations for select
+using (
+  public.current_profile_role() = 'admin'
+  or (
+    status = 'active'
+    and (
+      tutor_id = public.current_tutor_id()
+      or student_id = public.current_student_id()
+    )
+  )
+);
+
+create policy "admin_manage_tutor_student_allocations"
+on public.tutor_student_allocations for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 

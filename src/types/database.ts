@@ -11,6 +11,7 @@ import type {
   Subject,
   Tutor,
   TutorPayment,
+  TutorStudentAllocation,
 } from './lms';
 
 type Table<Row, Insert, Update> = {
@@ -35,6 +36,7 @@ export interface Database {
       tutor_payments: Table<TutorPayment, Omit<TutorPayment, 'id'>, Partial<TutorPayment>>;
       classes: Table<ClassRecord, Omit<ClassRecord, 'id' | 'created_at' | 'updated_at'>, Partial<ClassRecord>>;
       class_enrollments: Table<ClassEnrollment, Omit<ClassEnrollment, 'id' | 'created_at'>, Partial<ClassEnrollment>>;
+      tutor_student_allocations: Table<TutorStudentAllocation, Omit<TutorStudentAllocation, 'id' | 'created_at' | 'updated_at'>, Partial<TutorStudentAllocation>>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

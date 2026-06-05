@@ -1,6 +1,6 @@
 import { optionalApiGet } from '../../lib/api/client';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
-import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, StudentDashboardView, StudentProgress } from '../../types/lms';
+import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, StudentDashboardView, StudentProgress, Tutor, TutorStudentAllocation } from '../../types/lms';
 import {
   parseStudentAssignmentsApiResponse,
   parseStudentDashboardApiResponse,
@@ -151,11 +151,12 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     return null;
   }
 
-  const [assignmentsResult, progressResult, enrollmentsResult, submissionsResult] = await Promise.all([
+  const [assignmentsResult, progressResult, enrollmentsResult, submissionsResult, allocationsResult] = await Promise.all([
     supabase.from('assignments').select('*').eq('grade', student.grade || '').neq('status', 'draft').order('due_date', { ascending: true }),
     supabase.from('student_progress').select('*').eq('student_id', student.id).order('recorded_at', { ascending: false }),
     supabase.from('class_enrollments').select('class_id').eq('student_id', student.id).eq('status', 'active'),
     supabase.from('assignment_submissions').select('*').eq('student_id', student.id).order('submitted_at', { ascending: false }),
+    supabase.from('tutor_student_allocations').select('*').eq('student_id', student.id).eq('status', 'active'),
   ]);
 
   const assignments = (assignmentsResult.data || []) as Assignment[];
@@ -166,6 +167,18 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     : { data: [], error: null };
   const classes = (classesResult.data || []) as ClassRecord[];
   const submissions = (submissionsResult.data || []) as AssignmentSubmission[];
+  const allocations = (allocationsResult.data || []) as TutorStudentAllocation[];
+  const tutorIds = allocations.map((allocation) => allocation.tutor_id);
+  const tutorsResult = tutorIds.length
+    ? await supabase.from('tutors').select('*').in('id', tutorIds)
+    : { data: [], error: null };
+  const tutors = (tutorsResult.data || []) as Tutor[];
+  const tutorProfileIds = Array.from(new Set(tutors.map((tutor) => tutor.profile_id).filter(Boolean)));
+  const tutorProfilesResult = tutorProfileIds.length
+    ? await supabase.from('profiles').select('*').in('id', tutorProfileIds)
+    : { data: [], error: null };
+  const tutorProfiles = (tutorProfilesResult.data || []) as Profile[];
+  const tutorProfileById = new Map(tutorProfiles.map((tutorProfile) => [tutorProfile.id, tutorProfile]));
   const submittedIds = new Set(submissions.map((item) => item.assignment_id));
   const score = average(progress.map((item) => Number(item.score)).filter(Number.isFinite));
   const subjectIds = Array.from(new Set(assignments.map((assignment) => assignment.subject_id).filter(Boolean)));
@@ -197,6 +210,11 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     assignments: assignmentsWithSubjects,
     progress,
     classes,
+    assignedTutors: tutors.map((tutor) => ({
+      ...tutor,
+      full_name: tutorProfileById.get(tutor.profile_id)?.full_name,
+      email: tutorProfileById.get(tutor.profile_id)?.email,
+    })),
     submissions,
     recommendedNext: weakestProgress ? {
       title: `Recommended next: ${weakestProgress.topic}`,

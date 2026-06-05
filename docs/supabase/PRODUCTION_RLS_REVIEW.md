@@ -9,6 +9,7 @@ The current `docs/supabase/schema.sql` is the production schema direction, but i
 - Profiles are self-readable and admin-readable.
 - Student and tutor onboarding can create self-owned profile/domain rows.
 - Admins can manage operational LMS tables.
+- Tutor-student allocations scope tutor access to learner rows and reciprocal student access to assigned tutor rows.
 - Tutors can manage only assignments where `assignments.created_by = current_profile_id()`.
 - Tutors can insert missing `subjects` rows for assignment creation without broad subject-management access.
 - Class visibility is scoped to admins, assigned tutors, and actively enrolled students.
@@ -49,6 +50,7 @@ The current `docs/supabase/schema.sql` is the production schema direction, but i
 - assignment submissions and marking use RPC functions.
 - student direct update policies cannot change marks, feedback, or status.
 - class and enrollment read policies are not broad authenticated reads.
+- tutor-student allocation policies scope profile, student, and tutor reads to active learning relationships.
 
 Expand this test whenever direct table policies, RPC functions, or Storage policies change.
 
@@ -66,3 +68,6 @@ Run these checks with real Supabase Auth test users before production cutover:
 - Student can see only classes where they have an active enrollment.
 - Tutor can see only classes assigned to their tutor record.
 - Non-enrolled students cannot read unrelated class enrollment rows.
+- Tutor can read only students with an active `tutor_student_allocations` row.
+- Student can read only tutor profile context linked through their active allocations.
+- Inactive allocations no longer expose learner/tutor relationship data.

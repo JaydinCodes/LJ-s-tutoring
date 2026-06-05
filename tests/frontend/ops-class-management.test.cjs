@@ -22,8 +22,8 @@ test('admin class management route supports create edit archive and enrollment w
   assert.match(route, /assignStudentToClass/);
   assert.match(route, /removeStudentFromClass/);
   assert.match(route, /archiveClassRecord/);
-  assert.match(mutations, /from\('classes'\)\.insert/);
-  assert.match(mutations, /from\('classes'\)\.update/);
+  assert.match(mutations, /from\('classes'\)[\s\S]*\.insert\(classPayload\(input\)\)/);
+  assert.match(mutations, /from\('classes'\)[\s\S]*\.update\(classPayload\(input\)\)/);
   assert.match(mutations, /from\('class_enrollments'\)\s*[\s\S]*\.upsert/);
   assert.match(mutations, /status: 'inactive'/);
   assert.match(repository, /from\('class_enrollments'\)\.select\('\*'\)/);

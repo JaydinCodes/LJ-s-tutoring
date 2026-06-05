@@ -26,6 +26,22 @@ export function TutorDashboardRoute() {
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
             <div className="space-y-4">
               <Card>
+                <h2 className="text-xl font-semibold text-slate-950">Allocated students</h2>
+                <div className="mt-4">
+                  <DataTable
+                    rows={data.allocatedStudents.slice(0, 8)}
+                    empty="No students are allocated to this tutor profile yet."
+                    columns={[
+                      { key: 'name', label: 'Student', render: (row) => <span className="font-semibold text-slate-950">{row.full_name || row.email || row.id}</span> },
+                      { key: 'grade', label: 'Grade', render: (row) => row.grade || 'Pending' },
+                      { key: 'school', label: 'School', render: (row) => row.school || 'Pending' },
+                      { key: 'focus', label: 'Focus', render: (row) => row.focus_notes || 'General support' },
+                    ]}
+                  />
+                </div>
+              </Card>
+
+              <Card>
                 <h2 className="text-xl font-semibold text-slate-950">Assignments created by you</h2>
                 <div className="mt-4">
                   <DataTable<Assignment>
