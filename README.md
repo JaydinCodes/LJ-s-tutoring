@@ -1,12 +1,25 @@
 # Project Odysseus
 
-React LMS + public site + API monorepo.
+React LMS + public site + Supabase-first platform monorepo.
+
+## Architecture source of truth
+
+Project Odysseus is Supabase-first:
+
+- Supabase Auth owns browser identity and sessions.
+- Supabase RLS owns row-level authorization.
+- Supabase Storage owns private learner, tutor, and assignment files.
+- Secure Supabase RPC functions own privileged mutations.
+
+The Fastify API remains available for backend-only services such as jobs, AI, email, exports, integrations, and operational automation. It must not become a second browser authentication source.
+
+See `docs/architecture/ADR-0001-supabase-first.md` for the accepted architecture decision.
 
 ## What this repo now contains
 
 - A unified Vite + React + TypeScript LMS migration app in `src/`.
 - Legacy HTML/CSS/JS source files may remain for audit/reference, but the production build no longer copies old portal route trees.
-- `lms-api/` for the Fastify + Postgres backend.
+- `lms-api/` for backend-only Fastify services that require trusted server execution.
 - Build scripts that compile the unified React bundle, generate React route shells, serve the React public root from `dist/index.html`, and inject the public API base.
 
 ## Quick start
@@ -64,7 +77,7 @@ Migration tracking:
 
 - Audit and slice history: `docs/MIGRATION_AUDIT.md`
 - Documentation map: `docs/README.md`
-- Supabase schema plan: `docs/supabase/schema.sql`
+- Supabase schema source: `docs/supabase/schema.sql`
 - Supabase auth seed notes: `docs/supabase/auth-seed-notes.md`
 - Supabase production RLS review: `docs/supabase/PRODUCTION_RLS_REVIEW.md`
 - Cleanup checklist: `docs/REACT_MIGRATION_CLEANUP_CHECKLIST.md`

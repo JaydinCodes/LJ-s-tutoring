@@ -1,6 +1,8 @@
 # Supabase Production RLS Review
 
-The current `docs/supabase/schema.sql` is a migration plan for React/Supabase parity, not yet a final production authorization model.
+Project Odysseus is Supabase-first. Supabase Auth, RLS, Storage, and secure RPC functions are the platform authorization source of truth.
+
+The current `docs/supabase/schema.sql` is the production schema direction, but its policies still need the reviews below before full production cutover.
 
 ## Already Covered
 
@@ -18,14 +20,14 @@ The current `docs/supabase/schema.sql` is a migration plan for React/Supabase pa
 - `assignment_submissions`
   - Students currently need update access for their own submission row so they can resubmit text/files.
   - PostgreSQL RLS does not restrict individual columns by default. Without additional controls, a malicious client could try to update marking fields such as `marks_awarded` or `feedback`.
-  - Production options:
-    - Use RPC functions for student submission updates and remove direct student update policy.
-    - Add column-level privileges so authenticated students cannot update marking columns.
-    - Split learner-owned submission content from marker-owned assessment rows.
+  - Required production direction:
+    - Use RPC functions for student submission updates and remove direct student update policy where privileged columns exist.
+    - Add column-level privileges only as a defense-in-depth layer, not as the primary design.
+    - Split learner-owned submission content from marker-owned assessment rows if the RPC model becomes too complex.
 
 - `student_progress`
   - Tutors can insert progress after marking submissions.
-  - The policy should be tightened further with an RPC or relational proof tying the inserted progress row to a tutor-owned assignment/submission.
+  - The policy must be tightened further with an RPC or relational proof tying the inserted progress row to a tutor-owned assignment/submission.
 
 - `classes` and `class_enrollments`
   - Current read policies are broad for authenticated users to support early dashboard migration.
@@ -48,4 +50,4 @@ The current `docs/supabase/schema.sql` is a migration plan for React/Supabase pa
 - tutors can insert subjects for assignment creation.
 - assignment storage buckets are private and scoped by policy.
 
-Expand this test when direct table policies change.
+Expand this test whenever direct table policies, RPC functions, or Storage policies change.

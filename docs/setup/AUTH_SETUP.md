@@ -1,6 +1,20 @@
-# Google Auth Setup
+# Auth Setup
 
-Project Odysseus admin, tutor, and student portal sign-in can use Google OAuth Authorization Code flow with PKCE. Student magic links are not accepted for student dashboard sessions.
+Project Odysseus is Supabase-first. Browser sign-in, session state, and role access should use Supabase Auth plus Supabase-backed `profiles` rows.
+
+This document previously described Fastify-owned Google OAuth sessions as the primary portal auth model. Treat that flow as transitional backend history unless a specific backend-only service still needs it. New browser-facing auth work must use Supabase Auth providers and RLS-backed role checks.
+
+## Supabase Auth Direction
+
+- Configure email/password, magic link, and Google OAuth in the Supabase project.
+- Store application role and profile metadata in the `profiles` table.
+- Use RLS policies and secure RPC functions for authorization.
+- Do not store browser auth tokens in localStorage.
+- Do not introduce a second browser session cookie for LMS routes.
+
+## Transitional Google Auth Notes
+
+The Fastify API still contains Google OAuth routes from the older API-session model. Keep these notes only for migration support while the platform converges on Supabase Auth.
 
 ## Google Cloud Console
 
