@@ -13,7 +13,7 @@ Project Odysseus is Supabase-first:
 
 The Fastify API remains available for backend-only services such as jobs, AI, email, exports, integrations, and operational automation. It must not become a second browser authentication source.
 
-See `docs/architecture/ADR-0001-supabase-first.md` for the accepted architecture decision.
+Start with `docs/architecture/ARCHITECTURE.md` for the current implementation map. See `docs/architecture/ADR-0001-supabase-first.md` for the accepted architecture decision.
 
 ## What this repo now contains
 
@@ -82,6 +82,14 @@ Migration tracking:
 - Supabase production RLS review: `docs/supabase/PRODUCTION_RLS_REVIEW.md`
 - Local Supabase setup: `docs/supabase/LOCAL_DEVELOPMENT.md`
 - Cleanup checklist: `docs/REACT_MIGRATION_CLEANUP_CHECKLIST.md`
+
+Supabase-first migration rules:
+
+- Edit `docs/supabase/schema.sql` for Supabase tables, RLS, Storage policies, and RPC.
+- Run `npm run supabase:migration:sync` before local Supabase resets.
+- Use direct browser Supabase writes only when RLS fully protects ownership and allowed fields.
+- Use RPC or trusted backend code for marking, feedback, result release, role management, payments, privacy work, and other privileged mutations.
+- Treat `student-app/`, `legacy/static/`, and Prisma-era API migrations as legacy/transitional unless a task explicitly targets them.
 
 ## Docker Postgres
 
@@ -247,12 +255,15 @@ npm run build        # Build the React bundle, generate route shells, inject con
 npm run build:react  # Build the unified React LMS bundle
 npm run build:api    # Install + build lms-api from repo root
 npm run build:static # Generate React route shells and copy required public assets to dist/
+npm run supabase:start # Start local Supabase through the CLI
+npm run supabase:reset # Generate and apply the local Supabase schema/RLS/RPC migration
 npm run inject:config
 npm run serve        # Serve dist/ on port 8080
 npm run dev          # Serve static site + run API dev server
 npm run start        # Serve static site + run API prod server (after build:api)
 npm run lint         # Lint JS and validate HTML
 npm run test:unit    # Run frontend helper and React migration unit tests
+npm run test:rls     # Validate Supabase schema/RLS/RPC source contracts
 npm run test:api     # Run LMS API integration tests
 npm run test:e2e:api # Run LMS API E2E tests
 npm run test:all     # Run frontend unit + API integration + API E2E
