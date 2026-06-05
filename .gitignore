@@ -37,3 +37,8 @@ Thumbs.db
 lms-api/test-results/
 playwright-report/
 test-results/
+
+# Supabase CLI local state and generated local migration copy.
+supabase/.branches/
+supabase/.temp/
+supabase/migrations/20260606000000_project_odysseus_schema.sql

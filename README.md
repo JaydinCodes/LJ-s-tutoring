@@ -80,6 +80,7 @@ Migration tracking:
 - Supabase schema source: `docs/supabase/schema.sql`
 - Supabase auth seed notes: `docs/supabase/auth-seed-notes.md`
 - Supabase production RLS review: `docs/supabase/PRODUCTION_RLS_REVIEW.md`
+- Local Supabase setup: `docs/supabase/LOCAL_DEVELOPMENT.md`
 - Cleanup checklist: `docs/REACT_MIGRATION_CLEANUP_CHECKLIST.md`
 
 ## Docker Postgres

@@ -1,14 +1,16 @@
 # Testing
 
 This repo uses a test pyramid:
-- Unit: Frontend helper tests (Node test runner).
-- API integration: LMS API tests (Vitest + Postgres).
+- Unit: Frontend helper and source-contract tests (Node test runner).
+- RLS/RPC contract: Supabase schema source tests.
+- API integration: transitional LMS API tests (Vitest + Postgres).
 - E2E: LMS API E2E tests (Vitest).
 
 ## Prerequisites
 - Node.js 20
 - Postgres (local or Docker)
 - `DATABASE_URL_TEST` set for LMS tests
+- Docker Desktop and Supabase CLI for local Supabase resets
 
 Example Docker-backed local Postgres:
 ```
@@ -28,6 +30,9 @@ npm run test:all
 # Unit (frontend helpers)
 npm run test:unit
 
+# Supabase RLS/RPC source contracts
+npm run test:rls
+
 # API integration (LMS)
 npm run test:api
 
@@ -40,6 +45,8 @@ npm run test:e2e:web
 ```
 
 ## Notes
+- Supabase-first frontend and RLS tests use `docs/supabase/schema.sql` as the source of truth.
+- Local Supabase setup is documented in `docs/supabase/LOCAL_DEVELOPMENT.md`.
 - LMS API E2E uses the test-only login endpoint enabled when `NODE_ENV=test`.
 - API E2E resets and seeds the test DB before running.
 - Browser E2E also uses the test-only login endpoint for deterministic role-based portal access.

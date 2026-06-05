@@ -19,6 +19,7 @@ Use this as the entry point for project docs beyond the root `README.md`.
 ## Data, Security, And Compliance
 
 - Supabase schema and RLS notes: `supabase/`
+- Local Supabase setup: `supabase/LOCAL_DEVELOPMENT.md`
 - Data retention: `compliance/DATA_RETENTION_AND_DELETION.md`
 - POPIA data classification: `compliance/POPIA_DATA_CLASSIFICATION.md`
 - LMS security blueprint: `security/FUTURE_LMS_SECURITY_BLUEPRINT.md`
