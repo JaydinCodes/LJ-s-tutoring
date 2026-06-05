@@ -26,7 +26,7 @@ These must remain server-side only and must NOT be injected into the client:
 - `COOKIE_SECRET`
 - `EMAIL_PROVIDER_KEY`
 - Any API keys, auth tokens, or private credentials
-- `ADMIN_PORTAL_URL`, `TUTOR_PORTAL_URL`, `STUDENT_PORTAL_URL` (server-side role redirect targets)
+- `ADMIN_PORTAL_URL`, `TUTOR_PORTAL_URL`, `STUDENT_PORTAL_URL` (server-side portal origins; store origins only, not `/dashboard/*` paths)
 
 ## DigitalOcean App Platform
 

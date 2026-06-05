@@ -179,7 +179,7 @@ describe('Auth + RBAC', () => {
     expect(login.statusCode).toBe(200);
     expect(login.json().ok).toBe(true);
     expect(login.json().role).toBe('STUDENT');
-    expect(login.json().redirectTo).toBe('/dashboard/');
+    expect(login.json().redirectTo).toBe('/dashboard/student/');
 
     const cookies = login.headers['set-cookie'];
     const cookieHeader = Array.isArray(cookies) ? cookies.join('; ') : String(cookies ?? '');
@@ -528,7 +528,7 @@ describe('Auth + RBAC', () => {
       });
 
       expect(res.statusCode).toBe(302);
-      expect(res.headers.location).toBe('/tutor/dashboard/');
+      expect(res.headers.location).toBe('/dashboard/tutor/');
       expect(String(res.headers['set-cookie'])).toContain('session=');
 
       const linked = await pool.query('select google_id from users where id = $1', [user.id]);
@@ -564,7 +564,7 @@ describe('Auth + RBAC', () => {
       });
 
       expect(res.statusCode).toBe(302);
-      expect(res.headers.location).toBe('/dashboard/');
+      expect(res.headers.location).toBe('/dashboard/student/');
       expect(String(res.headers['set-cookie'])).toContain('session=');
       const sessionCookie = String(res.headers['set-cookie']);
       const sessionMatch = sessionCookie.match(/session=([^;]+)/);
@@ -596,7 +596,7 @@ describe('Auth + RBAC', () => {
     });
 
     expect(res.statusCode).toBe(302);
-    expect(res.headers.location).toBe('/dashboard/login.html?error=google_id_token_invalid');
+    expect(res.headers.location).toBe('/dashboard/login/?error=google_id_token_invalid');
     await app.close();
   });
 

@@ -22,6 +22,10 @@ import { LoginSchema, MagicLinkRequestSchema, RegisterAdminSchema, AdminLoginSch
 import { sendOtpEmail } from '../lib/email.js';
 import { safeAuditMeta, writeAuditLog } from '../lib/audit.js';
 import { findUserByEmail, requestMagicLink, verifyMagicLink } from '../domains/auth/service.js';
+import {
+  portalLoginTarget,
+  portalRedirectTarget
+} from '../lib/portal-redirects.js';
 
 type UserRole = 'ADMIN' | 'TUTOR' | 'STUDENT';
 
@@ -260,48 +264,6 @@ async function issueTrackedSessionJwt(
   return jwtToken;
 }
 
-function requestHost(req?: any) {
-  const raw = (req?.headers?.['x-forwarded-host'] || req?.headers?.host || '') as string | string[];
-  const value = Array.isArray(raw) ? String(raw[0] ?? '') : String(raw ?? '');
-  return value.split(',')[0]?.trim().toLowerCase() || '';
-}
-
-function portalRedirectTarget(role: 'ADMIN' | 'TUTOR' | 'STUDENT', req?: any) {
-  // Prefer explicit configuration when present.
-  const adminBase = process.env.ADMIN_PORTAL_URL?.replace(/\/$/, '');
-  const tutorBase = process.env.TUTOR_PORTAL_URL?.replace(/\/$/, '');
-  const studentBase = process.env.STUDENT_PORTAL_URL?.replace(/\/$/, '');
-
-  if (role === 'ADMIN' && adminBase) return `${adminBase}/`;
-  if (role === 'TUTOR' && tutorBase) return `${tutorBase}/dashboard/`;
-  if (role === 'STUDENT' && studentBase) return `${studentBase}/student/dashboard/`;
-
-  // No configured portal URLs: choose paths based on the request host.
-  // Your static site is deployed with path-based routes (/admin/*, /tutor/*, /student/*).
-  // Without explicit portal URLs, keep redirects on those paths even on subdomains.
-  const host = requestHost(req);
-  const isAdminSub = host.startsWith('admin.');
-  const isTutorSub = host.startsWith('tutor.');
-  const isStudentSub = host.startsWith('student.');
-
-  if (role === 'ADMIN') return isAdminSub ? '/admin/' : '/admin/';
-  if (role === 'TUTOR') return isTutorSub ? '/tutor/dashboard/' : '/tutor/dashboard/';
-  return isStudentSub ? '/student/dashboard/' : '/student/dashboard/';
-}
-
-function portalLoginTarget(role: 'ADMIN' | 'TUTOR' | 'STUDENT') {
-  if (role === 'ADMIN') {
-    const base = process.env.ADMIN_PORTAL_URL?.replace(/\/$/, '');
-    return base ? `${base}/login.html` : '/admin/login.html';
-  }
-  if (role === 'TUTOR') {
-    const base = process.env.TUTOR_PORTAL_URL?.replace(/\/$/, '');
-    return base ? `${base}/login.html` : '/tutor/login.html';
-  }
-  const base = process.env.STUDENT_PORTAL_URL?.replace(/\/$/, '');
-  return base ? `${base}/login.html` : '/dashboard/login.html';
-}
-
 export async function authRoutes(app: FastifyInstance) {
   function createWindowLimiter(windowMs: number, maxAttempts: number) {
     const attempts = new Map<string, { count: number; resetAt: number }>();
@@ -400,7 +362,7 @@ export async function authRoutes(app: FastifyInstance) {
     await trackSession(app, result.jwt, verified.userId, req);
 
     setAuthCookies(reply, result.jwt);
-    return reply.redirect(portalRedirectTarget(verified.role, req));
+    return reply.redirect(portalRedirectTarget(verified.role));
   };
 
   app.get('/auth/verify', {
@@ -486,7 +448,7 @@ export async function authRoutes(app: FastifyInstance) {
       token: jwt,
       csrfToken,
       role: user.role,
-      redirectTo: portalRedirectTarget(user.role, req)
+      redirectTo: portalRedirectTarget(user.role)
     });
   }
 
@@ -619,7 +581,7 @@ export async function authRoutes(app: FastifyInstance) {
       token: jwt,
       csrfToken,
       role: 'ADMIN',
-      redirectTo: portalRedirectTarget('ADMIN', req)
+      redirectTo: portalRedirectTarget('ADMIN')
     });
   });
 
@@ -773,7 +735,7 @@ export async function authRoutes(app: FastifyInstance) {
       meta: { provider: 'google', role: requestedRole, linkedGoogleId: !user.google_id }
     });
 
-    return reply.redirect(portalRedirectTarget(requestedRole, req));
+    return reply.redirect(portalRedirectTarget(requestedRole));
   }
 
   app.get('/auth/google/callback', {
@@ -940,7 +902,7 @@ export async function authRoutes(app: FastifyInstance) {
         studentId: studentId ?? undefined
       }, req);
       const csrfToken = setAuthCookies(reply, jwt);
-      return reply.send({ ok: true, csrfToken, redirectTo: portalRedirectTarget(role, req) });
+      return reply.send({ ok: true, csrfToken, redirectTo: portalRedirectTarget(role) });
     });
   }
 

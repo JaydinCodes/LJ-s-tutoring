@@ -38,6 +38,8 @@ Set these for local development:
 PUBLIC_PO_API_BASE=https://api.projectodysseus.live
 PUBLIC_BASE_URL=https://api.projectodysseus.live
 STUDENT_PORTAL_URL=https://student.projectodysseus.live
+TUTOR_PORTAL_URL=https://tutor.projectodysseus.live
+ADMIN_PORTAL_URL=https://admin.projectodysseus.live
 CORS_ORIGIN=https://student.projectodysseus.live
 COOKIE_SECRET=replace_with_long_random_value
 JWT_SECRET=replace_with_long_random_value
@@ -52,12 +54,14 @@ GOOGLE_ADMIN_CALLBACK_URL=https://api.projectodysseus.live/auth/google/admin/cal
 
 Production additionally fails fast unless `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `PUBLIC_BASE_URL`, `STUDENT_PORTAL_URL`, and `GOOGLE_STUDENT_CALLBACK_URL` are present. Production URL values must use HTTPS.
 
+Portal URL values must be origins only. The auth service appends `/dashboard/admin/`, `/dashboard/tutor/`, or `/dashboard/student/` after login.
+
 ## Local Development
 
 1. Copy `.env.example` to `.env` and fill only local values.
 2. Run database migrations with `npm run migrate`.
 3. Start the API and static site with `npm run dev`.
-4. Open `http://localhost:8081/dashboard/login.html`.
+4. Open `http://localhost:8081/dashboard/login/`.
 5. Use a Google account whose email already exists as an active `STUDENT` user.
 
 ## Production Notes
@@ -78,7 +82,7 @@ Production additionally fails fast unless `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SEC
 
 ## Manual Verification
 
-- Visit `/dashboard/` while signed out and confirm redirect to `/dashboard/login.html`.
+- Visit `/dashboard/` while signed out and confirm redirect to `/dashboard/login/`.
 - Confirm the login page shows only `Continue with Google`.
 - Complete Google sign-in with a registered active student email and confirm redirect to `/dashboard/`.
 - Confirm the dashboard shows the Google profile name/email/avatar when available.

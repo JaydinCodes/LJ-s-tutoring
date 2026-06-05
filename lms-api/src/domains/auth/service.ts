@@ -1,6 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 import { sendMagicLink } from '../../lib/email.js';
 import { hashToken, generateMagicToken, normalizeEmail } from '../../lib/security.js';
+import { portalRedirectTarget } from '../../lib/portal-redirects.js';
 
 export type AuthDbClient = Pool | PoolClient;
 
@@ -88,26 +89,6 @@ type RequestMagicLinkDeps = {
   baseUrl?: string;
   sendMagicLinkFn?: (params: { to: string; link: string }) => Promise<void>;
 };
-
-function normalizeBaseUrl(url: string | undefined, fallbackPath: string) {
-  if (!url) {
-    return fallbackPath;
-  }
-  return String(url).replace(/\/$/, '');
-}
-
-function roleRedirectTarget(role: UserRole) {
-  if (role === 'ADMIN') {
-    const adminBase = normalizeBaseUrl(process.env.ADMIN_PORTAL_URL, '');
-    return adminBase ? `${adminBase}/` : '/admin';
-  }
-  if (role === 'TUTOR') {
-    const tutorBase = normalizeBaseUrl(process.env.TUTOR_PORTAL_URL, '');
-    return tutorBase ? `${tutorBase}/dashboard/` : '/tutor';
-  }
-  const studentBase = normalizeBaseUrl(process.env.STUDENT_PORTAL_URL, '');
-  return studentBase ? `${studentBase}/student/dashboard/` : '/student/dashboard/';
-}
 
 function computeDeviceHash(userAgent: string, acceptLanguage: string) {
   return hashToken(`${userAgent}|${acceptLanguage}`);
@@ -397,7 +378,7 @@ export async function verifyMagicLink(
     role: row.role,
     tutorId: row.tutor_profile_id ?? undefined,
     studentId: row.student_id ?? undefined,
-    redirectTo: roleRedirectTarget(row.role)
+    redirectTo: portalRedirectTarget(row.role)
   };
 }
 

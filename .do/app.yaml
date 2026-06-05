@@ -25,13 +25,13 @@ envs:
     value: production
   - key: ADMIN_PORTAL_URL
     scope: RUN_AND_BUILD_TIME
-    value: https://admin.projectodysseus.live/dashboard/admin
+    value: https://admin.projectodysseus.live
   - key: TUTOR_PORTAL_URL
     scope: RUN_AND_BUILD_TIME
-    value: https://tutor.projectodysseus.live/dashboard/tutor
+    value: https://tutor.projectodysseus.live
   - key: STUDENT_PORTAL_URL
     scope: RUN_AND_BUILD_TIME
-    value: https://student.projectodysseus.live/dashboard/student
+    value: https://student.projectodysseus.live
   - key: TRUST_PROXY
     scope: RUN_AND_BUILD_TIME
     value: "1"
