@@ -37,3 +37,18 @@ test('transitional API client forwards Supabase bearer auth and documents legacy
   assert.match(fastifyPlugin, /Transitional: browser LMS access is Supabase-first/);
   assert.match(fastifyRoutes, /Transitional: Supabase Auth is the browser source of truth/);
 });
+
+test('protected routes cover Supabase-first access states for every dashboard role', () => {
+  const app = read('src/app/App.tsx');
+  const protectedRoute = read('src/features/auth/ProtectedRoute.tsx');
+
+  assert.match(protectedRoute, /if \(!auth\.session\)/, 'unauthenticated users must be blocked before protected content renders');
+  assert.match(protectedRoute, /to="\/dashboard\/login"/, 'unauthenticated users must go to the Supabase login route');
+  assert.match(protectedRoute, /title="Profile missing"/, 'missing Supabase profiles must show a clear state');
+  assert.match(protectedRoute, /title="Access denied"/, 'wrong-role users must show a clear denial state');
+  assert.match(protectedRoute, /roles\.includes\(currentRole\)/, 'role checks must use normalized profile role');
+
+  assert.match(app, /path="\/dashboard\/student"[\s\S]*<ProtectedRoute roles=\{\['student'\]\}>/, 'student dashboard must require the student role');
+  assert.match(app, /path="\/dashboard\/tutor"[\s\S]*<ProtectedRoute roles=\{\['tutor'\]\}>/, 'tutor dashboard must require the tutor role');
+  assert.match(app, /path="\/dashboard\/admin"[\s\S]*<ProtectedRoute roles=\{\['admin'\]\}>/, 'admin dashboard must require the admin role');
+});

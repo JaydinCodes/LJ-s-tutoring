@@ -47,7 +47,7 @@ test('public layout uses blurred navigation, Greek display accents, and a mobile
   assert.match(publicRoutes, /className="greek-display truncate text-xl"/);
   assert.match(publicRoutes, /className="greek-display mt-3 text-4xl/);
   assert.match(tailwind, /\.greek-display/);
-  assert.match(tailwind, /font-family: Georgia, Cambria, 'Times New Roman', serif/);
+  assert.match(tailwind, /font-family: 'Cormorant Garamond', Fraunces, Georgia, Cambria, 'Times New Roman', serif/);
 });
 
 test('hero, tutor images, and enquiry form carry accessibility improvements', () => {

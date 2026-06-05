@@ -65,7 +65,7 @@
     "dev": "npm run dev:full",
     "migrate": "npm run migrate --prefix lms-api",
     "db:create:local": "npm run db:create:local --prefix lms-api",
-    "test:frontend:unit": "node --test \"tests/frontend/*.test.cjs\"",
+    "test:frontend:unit": "node --test tests/frontend",
     "verify:supabase:roles": "node scripts/verify-supabase-dashboard-access.cjs",
     "test:release:evidence": "node --test tests/release-evidence.test.cjs",
     "test:api": "npm run test --prefix lms-api",

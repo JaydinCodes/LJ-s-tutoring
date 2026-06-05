@@ -41,7 +41,7 @@ test('student dashboard RLS audit protects learner-owned data and class stats', 
   assert.ok(!migration.includes('assignment_submissions_student_own_update'), 'students must not update marks, feedback, or review fields');
   assert.ok(resultsPrivacy.includes('having count(distinct b.student_id) >= 3'), 'anonymous class stats must require minimum group size');
   assert.ok(docs.includes('Students cannot edit marks or feedback'), 'RLS audit must document mark/feedback protection');
-  assert.ok(docs.includes("app.current_role in ('ADMIN', 'TUTOR')"), 'role-based staff access must remain documented');
+  assert.ok(docs.includes('public.can_mark_submission'), 'Supabase-first staff marking access must remain documented');
 });
 
 test('student API contracts validate dashboard, results, mastery, quizzes, careers, and daily insight', () => {
