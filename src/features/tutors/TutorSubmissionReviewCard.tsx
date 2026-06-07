@@ -15,6 +15,9 @@ export function TutorSubmissionReviewCard({
 }) {
   const [marksAwarded, setMarksAwarded] = useState(submission.marks_awarded == null ? '' : String(submission.marks_awarded));
   const [feedback, setFeedback] = useState(submission.feedback || '');
+  const [rubricScoresJson, setRubricScoresJson] = useState(JSON.stringify(submission.rubric_scores_json || {}, null, 2));
+  const [marksReleased, setMarksReleased] = useState(Boolean(submission.marks_released));
+  const [feedbackReleased, setFeedbackReleased] = useState(Boolean(submission.feedback_released));
   const [status, setStatus] = useState<'submitted' | 'marked' | 'returned'>(
     submission.status === 'marked' || submission.status === 'returned' ? submission.status : 'marked',
   );
@@ -28,7 +31,7 @@ export function TutorSubmissionReviewCard({
     setMessage(null);
     setError(null);
     try {
-      await markSubmission({ submissionId: submission.id, marksAwarded, feedback, status });
+      await markSubmission({ submissionId: submission.id, marksAwarded, feedback, status, rubricScoresJson, marksReleased, feedbackReleased });
       setMessage('Submission review saved.');
       await onSaved();
     } catch (err) {
@@ -68,6 +71,13 @@ export function TutorSubmissionReviewCard({
         <FormField label="Feedback">
           <TextArea value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="Feedback for the learner..." />
         </FormField>
+        <FormField label="Rubric scores JSON">
+          <TextArea value={rubricScoresJson} onChange={(event) => setRubricScoresJson(event.target.value)} placeholder='{"method": 32, "accuracy": 18}' />
+        </FormField>
+        <div className="grid gap-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={marksReleased} onChange={(event) => setMarksReleased(event.target.checked)} /> Release marks to learner</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={feedbackReleased} onChange={(event) => setFeedbackReleased(event.target.checked)} /> Release feedback and rubric to learner</label>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
             {busy ? 'Saving...' : 'Save review'}

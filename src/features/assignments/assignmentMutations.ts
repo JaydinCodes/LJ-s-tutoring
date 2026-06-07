@@ -9,6 +9,7 @@ export interface CreateAssignmentInput {
   curriculum?: string;
   dueDate?: string;
   attachment?: File | null;
+  rubricJson?: string;
 }
 
 export interface SubmitAssignmentInput {
@@ -27,6 +28,7 @@ export interface UpdateAssignmentInput {
   dueDate?: string;
   status: AssignmentStatus;
   attachment?: File | null;
+  rubricJson?: string;
 }
 
 export interface MarkSubmissionInput {
@@ -34,6 +36,9 @@ export interface MarkSubmissionInput {
   marksAwarded?: string;
   feedback?: string;
   status: 'submitted' | 'marked' | 'returned';
+  rubricScoresJson?: string;
+  marksReleased?: boolean;
+  feedbackReleased?: boolean;
 }
 
 type SubmitAssignmentRpcResult = {
@@ -129,6 +134,18 @@ function stableUploadId() {
   return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function parseJsonField(value: string | undefined, fallback: unknown, label: string) {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    throw new Error(`${label} must be valid JSON.`);
+  }
+}
+
 export async function createAssignment(input: CreateAssignmentInput) {
   const client = requireSupabase();
   const profile = await getCurrentProfile();
@@ -159,6 +176,7 @@ export async function createAssignment(input: CreateAssignmentInput) {
       created_by: string;
       status: string;
       attachment_url: string | null;
+      rubric_json: unknown;
     }) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
   })
     .insert({
@@ -170,6 +188,7 @@ export async function createAssignment(input: CreateAssignmentInput) {
       created_by: profile.id,
       status: 'published',
       attachment_url: null,
+      rubric_json: parseJsonField(input.rubricJson, [], 'Rubric'),
     })
     .select('*')
     .single();
@@ -249,6 +268,7 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
     due_date: input.dueDate ? new Date(input.dueDate).toISOString() : null,
     status: input.status,
     attachment_url: current.attachment_url || null,
+    rubric_json: parseJsonField(input.rubricJson, current.rubric_json || [], 'Rubric'),
   };
 
   let assignment = current;
@@ -397,6 +417,9 @@ export async function markSubmission(input: MarkSubmissionInput) {
         p_marks_awarded: number | null;
         p_feedback: string | null;
         p_status: 'submitted' | 'marked' | 'returned';
+        p_rubric_scores: unknown;
+        p_marks_released: boolean;
+        p_feedback_released: boolean;
       }
     ) => Promise<{ data: AssignmentSubmission[] | AssignmentSubmission | null; error: Error | null }>;
   }).rpc('mark_assignment_submission', {
@@ -404,6 +427,9 @@ export async function markSubmission(input: MarkSubmissionInput) {
     p_marks_awarded: marks,
     p_feedback: input.feedback?.trim() || null,
     p_status: input.status,
+    p_rubric_scores: parseJsonField(input.rubricScoresJson, {}, 'Rubric scores'),
+    p_marks_released: Boolean(input.marksReleased),
+    p_feedback_released: Boolean(input.feedbackReleased),
   });
 
   if (saved.error) {

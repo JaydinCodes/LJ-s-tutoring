@@ -83,6 +83,7 @@ create table if not exists public.assignments (
   created_by uuid references public.profiles(id),
   status public.assignment_status not null default 'draft',
   attachment_url text,
+  rubric_json jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now()
 );
 
@@ -102,12 +103,30 @@ create table if not exists public.assignment_submissions (
   is_latest boolean not null default true,
   marks_awarded numeric(8, 2),
   feedback text,
+  rubric_scores_json jsonb not null default '{}'::jsonb,
+  marks_released boolean not null default false,
+  feedback_released boolean not null default false,
+  released_at timestamptz,
   unique (assignment_id, student_id, version_number)
 );
 
 alter table public.assignment_submissions
   add constraint assignment_submissions_marks_range
   check (marks_awarded is null or (marks_awarded >= 0 and marks_awarded <= 100));
+
+alter table public.assignments add column if not exists rubric_json jsonb not null default '[]'::jsonb;
+alter table public.assignment_submissions add column if not exists rubric_scores_json jsonb not null default '{}'::jsonb;
+alter table public.assignment_submissions add column if not exists marks_released boolean not null default false;
+alter table public.assignment_submissions add column if not exists feedback_released boolean not null default false;
+alter table public.assignment_submissions add column if not exists released_at timestamptz;
+
+alter table public.assignments
+  add constraint assignments_rubric_json_array
+  check (jsonb_typeof(rubric_json) = 'array');
+
+alter table public.assignment_submissions
+  add constraint assignment_submissions_rubric_scores_object
+  check (jsonb_typeof(rubric_scores_json) = 'object');
 
 create table if not exists public.student_progress (
   id uuid primary key default gen_random_uuid(),
@@ -388,7 +407,10 @@ create or replace function public.mark_assignment_submission(
   p_submission_id uuid,
   p_marks_awarded numeric,
   p_feedback text,
-  p_status public.submission_status
+  p_status public.submission_status,
+  p_rubric_scores jsonb default '{}'::jsonb,
+  p_marks_released boolean default false,
+  p_feedback_released boolean default false
 )
 returns setof public.assignment_submissions
 language plpgsql
@@ -411,10 +433,21 @@ begin
     raise exception 'marks_out_of_range' using errcode = '23514';
   end if;
 
+  if jsonb_typeof(coalesce(p_rubric_scores, '{}'::jsonb)) <> 'object' then
+    raise exception 'invalid_rubric_scores' using errcode = '23514';
+  end if;
+
   update public.assignment_submissions
   set marks_awarded = p_marks_awarded,
       feedback = nullif(btrim(coalesce(p_feedback, '')), ''),
-      status = p_status
+      status = p_status,
+      rubric_scores_json = coalesce(p_rubric_scores, '{}'::jsonb),
+      marks_released = coalesce(p_marks_released, false),
+      feedback_released = coalesce(p_feedback_released, false),
+      released_at = case
+        when coalesce(p_marks_released, false) or coalesce(p_feedback_released, false) then coalesce(released_at, now())
+        else null
+      end
   where id = p_submission_id
   returning * into v_submission;
 
@@ -449,8 +482,60 @@ begin
 end;
 $$;
 
+create or replace function public.get_student_assignment_submissions()
+returns table (
+  id uuid,
+  assignment_id uuid,
+  student_id uuid,
+  storage_key text,
+  file_url text,
+  original_filename text,
+  mime_type text,
+  size_bytes bigint,
+  text_answer text,
+  submitted_at timestamptz,
+  status public.submission_status,
+  version_number integer,
+  is_latest boolean,
+  marks_awarded numeric,
+  feedback text,
+  rubric_scores_json jsonb,
+  marks_released boolean,
+  feedback_released boolean,
+  released_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    sub.id,
+    sub.assignment_id,
+    sub.student_id,
+    sub.storage_key,
+    sub.file_url,
+    sub.original_filename,
+    sub.mime_type,
+    sub.size_bytes,
+    sub.text_answer,
+    sub.submitted_at,
+    sub.status,
+    sub.version_number,
+    sub.is_latest,
+    case when sub.marks_released then sub.marks_awarded else null end as marks_awarded,
+    case when sub.feedback_released then sub.feedback else null end as feedback,
+    case when sub.feedback_released then sub.rubric_scores_json else '{}'::jsonb end as rubric_scores_json,
+    sub.marks_released,
+    sub.feedback_released,
+    sub.released_at
+  from public.assignment_submissions sub
+  where sub.student_id = public.current_student_id()
+  order by sub.submitted_at desc;
+$$;
+
 grant execute on function public.submit_assignment_submission(uuid, uuid, text, text, text, text, bigint, text) to authenticated;
-grant execute on function public.mark_assignment_submission(uuid, numeric, text, public.submission_status) to authenticated;
+grant execute on function public.mark_assignment_submission(uuid, numeric, text, public.submission_status, jsonb, boolean, boolean) to authenticated;
+grant execute on function public.get_student_assignment_submissions() to authenticated;
 
 create policy "profiles_select_self_or_admin"
 on public.profiles for select
@@ -608,11 +693,6 @@ create policy "submissions_student_self_or_admin"
 on public.assignment_submissions for select
 using (
   public.current_profile_role() = 'admin'
-  or student_id in (
-    select s.id from public.students s
-    join public.profiles p on p.id = s.profile_id
-    where p.auth_user_id = auth.uid()
-  )
 );
 
 drop policy if exists "submissions_student_insert_self" on public.assignment_submissions;

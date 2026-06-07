@@ -39,7 +39,12 @@ export interface Database {
       tutor_student_allocations: Table<TutorStudentAllocation, Omit<TutorStudentAllocation, 'id' | 'created_at' | 'updated_at'>, Partial<TutorStudentAllocation>>;
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      get_student_assignment_submissions: {
+        Args: Record<string, never>;
+        Returns: AssignmentSubmission[];
+      };
+    };
     Enums: Record<string, never>;
   };
 }

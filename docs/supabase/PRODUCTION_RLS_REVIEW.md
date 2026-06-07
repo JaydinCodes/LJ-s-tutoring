@@ -22,12 +22,28 @@ The current `docs/supabase/schema.sql` is the production schema direction, but i
 - `assignment_submissions`
   - Student resubmission/versioning is handled by `public.submit_assignment_submission`.
   - Tutor/admin marking is handled by `public.mark_assignment_submission`.
+  - Rubric definitions live on `assignments.rubric_json`.
+  - Rubric scores and release controls live on `assignment_submissions.rubric_scores_json`, `marks_released`, `feedback_released`, and `released_at`.
   - Students can insert only submitted rows with `marks_awarded is null` and `feedback is null`.
   - Direct student/tutor update policies are disabled so marks, feedback, status changes, and `is_latest` changes are not browser-controlled.
+  - Students must read submissions through `public.get_student_assignment_submissions`, which redacts marks, feedback, and rubric scores until the release flags allow visibility. Raw `assignment_submissions` select access must stay staff-only because RLS cannot hide individual columns.
 
 - `student_progress`
   - Progress rows created from marks are inserted inside `public.mark_assignment_submission`.
   - Direct tutor inserts are disabled in the Supabase schema plan.
+
+## Tutor Operations Dashboard
+
+- `src/features/tutors/tutorDashboardRepository.ts` builds the tutor dashboard from Supabase Auth plus RLS-scoped reads.
+- Tutor learner lists and learner progress summaries come from active `tutor_student_allocations`, tutor-created `assignments`, and visible `assignment_submissions`.
+- Tutor marking queues remain Supabase-first and use the existing `mark_assignment_submission` RPC through the shared assignment mutation path.
+- Session previews are intentionally optional because session operations still use the transitional tutor operations API. The dashboard must keep working when that API returns no records or is unavailable.
+
+## Admin Markbook
+
+- `src/features/admin/adminMarkbookRepository.ts` loads the admin markbook from Supabase tables under admin RLS: students, profiles, classes, class enrollments, assignments, subjects, and assignment submissions.
+- Admin mark editing uses `src/features/assignments/assignmentMutations.ts` and `public.mark_assignment_submission`; the browser must not directly update `assignment_submissions.marks_awarded`, feedback, or status columns.
+- The admin markbook may show named learner rows because it is admin-only. Student-facing result views must continue to show only the signed-in learner's released/private results and anonymized class context.
 
 ## Must Review Before Production Cutover
 

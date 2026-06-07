@@ -10,12 +10,12 @@ import {
   AdminOpsRunbookRoute,
   AdminPrivacyRequestsRoute,
   AdminReconciliationRoute,
-  AdminResultsRoute,
   AdminRetentionRoute,
 } from '../features/admin/AdminOperationsRoutes';
 import { AdminPaymentsRoute } from '../features/admin/AdminPaymentsRoute';
 import { AdminPayrollRoute } from '../features/admin/AdminPayrollRoute';
 import { AdminReportsRoute } from '../features/admin/AdminReportsRoute';
+import { AdminResultsRoute } from '../features/admin/AdminResultsRoute';
 import { AdminStudentsRoute } from '../features/admin/AdminStudentsRoute';
 import { AdminTutorsRoute } from '../features/admin/AdminTutorsRoute';
 import { AdminUsersRoute } from '../features/admin/AdminUsersRoute';

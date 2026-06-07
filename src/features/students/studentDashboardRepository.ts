@@ -155,7 +155,8 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     supabase.from('assignments').select('*').eq('grade', student.grade || '').neq('status', 'draft').order('due_date', { ascending: true }),
     supabase.from('student_progress').select('*').eq('student_id', student.id).order('recorded_at', { ascending: false }),
     supabase.from('class_enrollments').select('class_id').eq('student_id', student.id).eq('status', 'active'),
-    supabase.from('assignment_submissions').select('*').eq('student_id', student.id).order('submitted_at', { ascending: false }),
+    // Student submission reads must go through the redacted RPC so unreleased marks and feedback stay hidden.
+    supabase.rpc('get_student_assignment_submissions'),
     supabase.from('tutor_student_allocations').select('*').eq('student_id', student.id).eq('status', 'active'),
   ]);
 

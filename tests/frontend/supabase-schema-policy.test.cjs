@@ -61,6 +61,24 @@ test('students cannot update review fields directly through submission policies'
   assert.match(schema, /assignment_submissions_marks_range/);
 });
 
+test('students read assignment submissions through release-redacted RPC', () => {
+  const studentRepo = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'src', 'features', 'students', 'studentDashboardRepository.ts'),
+    'utf8',
+  );
+
+  assert.match(schema, /create or replace function public\.get_student_assignment_submissions/);
+  assert.match(schema, /case when sub\.marks_released then sub\.marks_awarded else null end as marks_awarded/);
+  assert.match(schema, /case when sub\.feedback_released then sub\.feedback else null end as feedback/);
+  assert.match(schema, /grant execute on function public\.get_student_assignment_submissions\(\) to authenticated/);
+  assert.match(
+    schema,
+    /create policy "submissions_student_self_or_admin"[\s\S]*on public\.assignment_submissions for select[\s\S]*using \(\s*public\.current_profile_role\(\) = 'admin'\s*\);/,
+    'raw submission table select must stay admin-only for this policy',
+  );
+  assert.match(studentRepo, /rpc\('get_student_assignment_submissions'\)/);
+});
+
 test('class and enrollment RLS is scoped to admins, assigned tutors, and enrolled students', () => {
   assert.match(schema, /create or replace function public\.current_tutor_id\(\)/);
   assert.match(schema, /alter table public\.classes add column if not exists name/);

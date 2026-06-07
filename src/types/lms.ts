@@ -66,7 +66,15 @@ export interface Assignment {
   created_by?: string | null;
   status: AssignmentStatus | string;
   attachment_url?: string | null;
+  rubric_json?: RubricCriterion[] | null;
   created_at: string;
+}
+
+export interface RubricCriterion {
+  id: string;
+  label: string;
+  maxMarks: number;
+  description?: string;
 }
 
 export interface AssignmentSubmission {
@@ -85,6 +93,10 @@ export interface AssignmentSubmission {
   is_latest?: boolean | null;
   marks_awarded?: number | null;
   feedback?: string | null;
+  rubric_scores_json?: Record<string, number | string | null> | null;
+  marks_released?: boolean | null;
+  feedback_released?: boolean | null;
+  released_at?: string | null;
 }
 
 export interface StudentProgress {
@@ -249,4 +261,24 @@ export interface TutorDashboardView {
   allocatedStudents: Array<Student & { full_name?: string; email?: string; allocation_status?: RecordStatus; focus_notes?: string | null }>;
   assignments: Assignment[];
   submissions: Array<AssignmentSubmission & { assignment_title?: string; student_label?: string }>;
+  markingQueue: Array<AssignmentSubmission & { assignment_title?: string; student_label?: string }>;
+  sessions: Array<{
+    id: string;
+    student_name: string;
+    date?: string;
+    start_time?: string;
+    end_time?: string;
+    status: string;
+  }>;
+  learnerProgress: Array<{
+    student_id: string;
+    student_name: string;
+    grade?: string | null;
+    school?: string | null;
+    focus_notes?: string | null;
+    pending_submissions: number;
+    marked_submissions: number;
+    average_mark?: number | null;
+    latest_submission_at?: string | null;
+  }>;
 }

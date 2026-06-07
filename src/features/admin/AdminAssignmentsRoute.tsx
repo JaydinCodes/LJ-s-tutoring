@@ -64,6 +64,7 @@ function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: Assignme
   const [curriculum, setCurriculum] = useState('CAPS');
   const [dueDate, setDueDate] = useState(toDateInputValue(assignment.due_date));
   const [status, setStatus] = useState<AssignmentStatus>(normalizeAssignmentStatus(assignment.status));
+  const [rubricJson, setRubricJson] = useState(JSON.stringify(assignment.rubric_json || [], null, 2));
   const [attachment, setAttachment] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -74,7 +75,7 @@ function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: Assignme
     setMessage(null);
     setError(null);
     try {
-      await updateAssignment({ assignmentId: assignment.id, title, description, subjectName, grade, curriculum, dueDate, status: nextStatus, attachment });
+      await updateAssignment({ assignmentId: assignment.id, title, description, subjectName, grade, curriculum, dueDate, status: nextStatus, attachment, rubricJson });
       setAttachment(null);
       setStatus(nextStatus);
       setMessage('Assignment updated.');
@@ -132,6 +133,9 @@ function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: Assignme
         <FormField label="Description">
           <TextArea value={description} onChange={(event) => setDescription(event.target.value)} />
         </FormField>
+        <FormField label="Rubric JSON">
+          <TextArea value={rubricJson} onChange={(event) => setRubricJson(event.target.value)} placeholder='[{"id":"method","label":"Method","maxMarks":40}]' />
+        </FormField>
         <div className="flex flex-wrap items-center gap-3">
           <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
             {busy ? 'Saving...' : 'Save assignment'}
@@ -159,6 +163,9 @@ function SubmissionReviewCard({
 }) {
   const [marksAwarded, setMarksAwarded] = useState(submission.marks_awarded == null ? '' : String(submission.marks_awarded));
   const [feedback, setFeedback] = useState(submission.feedback || '');
+  const [rubricScoresJson, setRubricScoresJson] = useState(JSON.stringify(submission.rubric_scores_json || {}, null, 2));
+  const [marksReleased, setMarksReleased] = useState(Boolean(submission.marks_released));
+  const [feedbackReleased, setFeedbackReleased] = useState(Boolean(submission.feedback_released));
   const [status, setStatus] = useState<'submitted' | 'marked' | 'returned'>(
     submission.status === 'marked' || submission.status === 'returned' ? submission.status : 'marked',
   );
@@ -172,7 +179,7 @@ function SubmissionReviewCard({
     setMessage(null);
     setError(null);
     try {
-      await markSubmission({ submissionId: submission.id, marksAwarded, feedback, status });
+      await markSubmission({ submissionId: submission.id, marksAwarded, feedback, status, rubricScoresJson, marksReleased, feedbackReleased });
       setMessage('Submission updated.');
       await onSaved();
     } catch (err) {
@@ -212,6 +219,13 @@ function SubmissionReviewCard({
         <FormField label="Feedback">
           <TextArea value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="Feedback for the learner..." />
         </FormField>
+        <FormField label="Rubric scores JSON">
+          <TextArea value={rubricScoresJson} onChange={(event) => setRubricScoresJson(event.target.value)} placeholder='{"method": 32, "accuracy": 18}' />
+        </FormField>
+        <div className="grid gap-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={marksReleased} onChange={(event) => setMarksReleased(event.target.checked)} /> Release marks to learner</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={feedbackReleased} onChange={(event) => setFeedbackReleased(event.target.checked)} /> Release feedback and rubric to learner</label>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
             {busy ? 'Saving...' : 'Save review'}
@@ -231,6 +245,7 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
   const [grade, setGrade] = useState('');
   const [curriculum, setCurriculum] = useState('CAPS');
   const [dueDate, setDueDate] = useState('');
+  const [rubricJson, setRubricJson] = useState('[]');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -242,13 +257,14 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
     setMessage(null);
     setError(null);
     try {
-      await createAssignment({ title, description, subjectName, grade, curriculum, dueDate, attachment });
+      await createAssignment({ title, description, subjectName, grade, curriculum, dueDate, attachment, rubricJson });
       setTitle('');
       setDescription('');
       setSubjectName('');
       setGrade('');
       setCurriculum('CAPS');
       setDueDate('');
+      setRubricJson('[]');
       setAttachment(null);
       setMessage('Assignment published.');
       await onCreated();
@@ -290,6 +306,11 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
         <div className="lg:col-span-2">
           <FormField label="Description">
             <TextArea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Instructions, expected work, submission notes..." />
+          </FormField>
+        </div>
+        <div className="lg:col-span-2">
+          <FormField label="Rubric JSON" hint="Define criteria as an array; keep IDs stable for marking.">
+            <TextArea value={rubricJson} onChange={(event) => setRubricJson(event.target.value)} placeholder='[{"id":"method","label":"Method","maxMarks":40}]' />
           </FormField>
         </div>
         <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
