@@ -562,12 +562,65 @@ as $$
     sub.released_at
   from public.assignment_submissions sub
   where sub.student_id = public.current_student_id()
-  order by sub.submitted_at desc;
+    order by sub.submitted_at desc;
+$$;
+
+create or replace function public.get_parent_progress_reports()
+returns table (
+  student_id uuid,
+  student_name text,
+  grade text,
+  school text,
+  assignment_title text,
+  marks_awarded numeric,
+  feedback text,
+  released_at timestamptz,
+  topic text,
+  topic_score numeric
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    s.id as student_id,
+    p.full_name as student_name,
+    s.grade,
+    s.school,
+    a.title as assignment_title,
+    sub.marks_awarded,
+    case when sub.feedback_released then sub.feedback else null end as feedback,
+    sub.released_at,
+    sp.topic,
+    sp.score as topic_score
+  from public.guardians g
+  join public.student_guardians sg on sg.guardian_id = g.id
+  join public.students s on s.id = sg.student_id
+  join public.profiles p on p.id = s.profile_id
+  left join public.assignment_submissions sub
+    on sub.student_id = s.id
+    and sub.marks_released = true
+    and sub.marks_awarded is not null
+  left join public.assignments a on a.id = sub.assignment_id
+  left join lateral (
+    select progress.topic, progress.score
+    from public.student_progress progress
+    where progress.student_id = s.id
+    order by progress.recorded_at desc
+    limit 1
+  ) sp on true
+  where public.current_profile_role() = 'parent'
+    and g.profile_id = public.current_profile_id()
+    and g.status = 'active'
+    and sg.status = 'active'
+    and sg.can_receive_reports = true
+  order by p.full_name, sub.released_at desc nulls last;
 $$;
 
 grant execute on function public.submit_assignment_submission(uuid, uuid, text, text, text, text, bigint, text) to authenticated;
 grant execute on function public.mark_assignment_submission(uuid, numeric, text, public.submission_status, jsonb, boolean, boolean) to authenticated;
 grant execute on function public.get_student_assignment_submissions() to authenticated;
+grant execute on function public.get_parent_progress_reports() to authenticated;
 
 create policy "profiles_select_self_or_admin"
 on public.profiles for select

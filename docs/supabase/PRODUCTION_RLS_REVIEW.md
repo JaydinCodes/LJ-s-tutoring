@@ -53,6 +53,13 @@ The current `docs/supabase/schema.sql` is the production schema direction, but i
 - Parent-role users may read only guardian records linked to their own profile and the link rows for those guardian records.
 - Tutors do not receive guardian contact access by default. Add a separate scoped policy only if the product rules explicitly allow tutor access to guardian contacts.
 
+## Parent And NGO Reports
+
+- `src/features/admin/adminProgressReportsRepository.ts` builds the admin report MVP from Supabase tables under admin RLS.
+- Parent-ready learner reports use only released assignment marks and released feedback. Pending or unreleased submission results are counted for admin context but not shown as marks.
+- `public.get_parent_progress_reports()` is the parent-facing RPC path for future parent portal screens. It returns only students linked to the signed-in parent profile through active `student_guardians` rows with `can_receive_reports = true`.
+- NGO report rows are aggregate-only by partner: learner count, released result count, average mark, active class count, and progress signal count. They must not include learner names, guardian contacts, individual feedback, or raw submission rows.
+
 ## Must Review Before Production Cutover
 
 - `payments` and `tutor_payments`

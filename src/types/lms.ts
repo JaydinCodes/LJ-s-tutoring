@@ -135,6 +135,19 @@ export interface StudentProgress {
   recorded_at: string;
 }
 
+export interface ParentProgressReportRow {
+  student_id: string;
+  student_name: string;
+  grade?: string | null;
+  school?: string | null;
+  assignment_title?: string | null;
+  marks_awarded?: number | null;
+  feedback?: string | null;
+  released_at?: string | null;
+  topic?: string | null;
+  topic_score?: number | null;
+}
+
 export interface Payment {
   id: string;
   student_id: string;

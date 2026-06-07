@@ -5,6 +5,7 @@ import type {
   ClassRecord,
   Guardian,
   NgoPartner,
+  ParentProgressReportRow,
   Payment,
   Profile,
   Student,
@@ -47,6 +48,10 @@ export interface Database {
       get_student_assignment_submissions: {
         Args: Record<string, never>;
         Returns: AssignmentSubmission[];
+      };
+      get_parent_progress_reports: {
+        Args: Record<string, never>;
+        Returns: ParentProgressReportRow[];
       };
     };
     Enums: Record<string, never>;
