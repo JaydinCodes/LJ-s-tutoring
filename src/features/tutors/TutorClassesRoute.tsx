@@ -1,6 +1,7 @@
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
+import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import type { ClassRecord } from '../../types/lms';
@@ -12,14 +13,8 @@ export function TutorClassesRoute() {
   return (
     <DashboardShell title="Tutor Classes" subtitle="Scheduled classes and delivery context linked to the current tutor profile." section="tutor">
       <Card>
-        {loading ? <p className="text-sm text-slate-600">Loading classes...</p> : null}
-        {error ? (
-          <div>
-            <h2 className="text-lg font-semibold text-slate-950">Classes unavailable</h2>
-            <p className="mt-2 text-sm text-slate-600">{error}</p>
-            <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Retry</button>
-          </div>
-        ) : null}
+        {loading ? <LoadingState title="Loading classes" description="Fetching classes linked to your tutor profile..." /> : null}
+        {error ? <ErrorState title="Classes unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/tutor" /> : null}
         {data ? (
           <DataTable<ClassRecord>
             rows={data.classes}

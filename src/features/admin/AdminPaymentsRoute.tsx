@@ -2,7 +2,9 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextInput } from '../../components/ui/FormField';
+import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatCurrency, formatDate } from '../../lib/utils/format';
@@ -27,14 +29,14 @@ export function AdminPaymentsRoute() {
         <h2 className="text-xl font-semibold text-slate-950">Student payments</h2>
         <p className="mt-1 text-sm text-slate-600">Track learner invoices, payment arrangements, and status.</p>
         <div className="mt-5">
-        {loading ? <p className="text-sm text-slate-600">Loading payments...</p> : null}
-        {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+        {loading ? <LoadingState title="Loading payments" description="Fetching student payments and tutor payouts..." /> : null}
+        {error ? <ErrorState title="Payments unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
         {data ? (
           <div className="grid gap-4">
             {data.payments.map((payment) => (
               <PaymentRecordCard key={payment.id} payment={payment} onUpdated={reload} />
             ))}
-            {!data.payments.length ? <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">No payment records are available yet.</p> : null}
+            {!data.payments.length ? <EmptyState title="No payment records yet" description="Student payment records will appear here after invoices or payments are created." /> : null}
           </div>
         ) : null}
         </div>
@@ -46,7 +48,7 @@ export function AdminPaymentsRoute() {
           {data?.tutorPayments.map((payment) => (
             <TutorPaymentRecordCard key={payment.id} payment={payment} onUpdated={reload} />
           ))}
-          {data && !data.tutorPayments.length ? <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">No tutor payout records are available yet.</p> : null}
+          {data && !data.tutorPayments.length ? <EmptyState title="No tutor payouts yet" description="Tutor payout records will appear here after payroll entries are created." /> : null}
         </div>
       </Card>
     </DashboardShell>
@@ -343,12 +345,3 @@ function TutorPaymentRecordCard({
   );
 }
 
-function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => Promise<void> }) {
-  return (
-    <div>
-      <h2 className="text-lg font-semibold text-slate-950">Data unavailable</h2>
-      <p className="mt-2 text-sm text-slate-600">{message}</p>
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void onRetry()}>Retry</button>
-    </div>
-  );
-}

@@ -4,6 +4,7 @@ import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
+import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import type { RecordStatus } from '../../types/lms';
@@ -18,8 +19,8 @@ export function AdminAllocationsRoute() {
     <DashboardShell title="Tutor Allocations" subtitle="Assign learners to tutors and preserve allocation history for operations and reporting." section="admin">
       <CreateAllocationForm data={data ?? undefined} onSaved={reload} />
       <Card>
-        {loading ? <p className="text-sm text-slate-600">Loading tutor allocations...</p> : null}
-        {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+        {loading ? <LoadingState title="Loading tutor allocations" description="Fetching learner-to-tutor access links..." /> : null}
+        {error ? <ErrorState title="Allocations unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
         {data ? (
           <div className="space-y-5">
             <DataTable<AdminTutorStudentAllocation>
@@ -207,14 +208,4 @@ function allocationInputFromRecord(allocation: AdminTutorStudentAllocation): All
     endDate: allocation.end_date || '',
     focusNotes: allocation.focus_notes || '',
   };
-}
-
-function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => Promise<void> }) {
-  return (
-    <div>
-      <h2 className="text-lg font-semibold text-slate-950">Allocations unavailable</h2>
-      <p className="mt-2 text-sm text-slate-600">{message}</p>
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void onRetry()}>Retry</button>
-    </div>
-  );
 }

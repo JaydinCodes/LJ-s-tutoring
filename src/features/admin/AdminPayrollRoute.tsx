@@ -5,6 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextInput } from '../../components/ui/FormField';
+import { ErrorState, InlineFeedback, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatCurrency } from '../../lib/utils/format';
@@ -70,10 +71,10 @@ export function AdminPayrollRoute() {
             <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800" onClick={() => void reload()}>Refresh</button>
           </div>
         </div>
-        {loading ? <p className="mt-4 text-sm text-slate-600">Loading payroll...</p> : null}
-        {error ? <p className="mt-4 text-sm font-semibold text-red-700">{error}</p> : null}
+        {loading ? <LoadingState title="Loading payroll" description="Checking pay period, invoices, adjustments, and integrity signals..." /> : null}
+        {error ? <ErrorState title="Payroll unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
         {message ? <p className="mt-4 text-sm font-semibold text-emerald-700">{message}</p> : null}
-        {actionError ? <p className="mt-4 text-sm font-semibold text-red-700">{actionError}</p> : null}
+        {actionError ? <InlineFeedback>{actionError}</InlineFeedback> : null}
       </Card>
 
       {data ? (

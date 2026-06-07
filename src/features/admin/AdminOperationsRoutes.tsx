@@ -4,6 +4,7 @@ import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
+import { InlineFeedback, InlineLoadingState, RetryButton } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatDate } from '../../lib/utils/format';
@@ -340,13 +341,13 @@ function JsonPanel({ title, data }: { title: string; data: unknown }) {
 
 function StatusLine({ loading, error, message, onRetry }: { loading: boolean; error?: string | null; message?: string | null; onRetry: () => Promise<void> }) {
   if (loading) {
-    return <p className="mt-4 text-sm text-slate-600">Loading...</p>;
+    return <InlineLoadingState label="Loading operational data..." />;
   }
   if (error) {
     return (
-      <div className="mt-4 rounded-lg bg-red-50 p-4">
-        <p className="text-sm font-semibold text-red-800">{error}</p>
-        <button className="mt-3 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void onRetry()}>Retry</button>
+      <div className="mt-4 space-y-3">
+        <InlineFeedback>{error}</InlineFeedback>
+        <RetryButton onRetry={() => void onRetry()} />
       </div>
     );
   }

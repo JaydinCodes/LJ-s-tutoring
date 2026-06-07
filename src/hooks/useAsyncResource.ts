@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { logTechnicalError, toUserFacingError } from '../lib/utils/errors';
 
 export function useAsyncResource<T>(loader: () => Promise<T>, deps: unknown[] = []) {
   const [data, setData] = useState<T | null>(null);
@@ -11,7 +12,8 @@ export function useAsyncResource<T>(loader: () => Promise<T>, deps: unknown[] = 
     try {
       setData(await loader());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unexpected error');
+      logTechnicalError('Async resource failed', err);
+      setError(toUserFacingError(err));
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,9 @@
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
+import { InlineFeedback } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { toUserFacingError } from '../../lib/utils/errors';
 import { formatDate } from '../../lib/utils/format';
 import type { AssignmentSubmission } from '../../types/lms';
 import { markSubmission } from '../assignments/assignmentMutations';
@@ -35,7 +37,7 @@ export function TutorSubmissionReviewCard({
       setMessage('Submission review saved.');
       await onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save submission review.');
+      setError(toUserFacingError(err));
     } finally {
       setBusy(false);
     }
@@ -83,7 +85,7 @@ export function TutorSubmissionReviewCard({
             {busy ? 'Saving...' : 'Save review'}
           </button>
           {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
-          {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
+          {error ? <InlineFeedback>Marking or release failed. {error}</InlineFeedback> : null}
         </div>
       </form>
     </article>

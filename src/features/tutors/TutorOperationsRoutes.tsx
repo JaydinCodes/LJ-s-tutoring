@@ -5,8 +5,10 @@ import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextArea } from '../../components/ui/FormField';
+import { ErrorState, InlineFeedback, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
+import { toUserFacingError } from '../../lib/utils/errors';
 import { formatDate } from '../../lib/utils/format';
 import {
   loadTutorReport,
@@ -37,8 +39,8 @@ export function TutorSessionsRoute() {
             </div>
             <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Refresh</button>
           </div>
-          {loading ? <p className="mt-4 text-sm text-slate-600">Loading sessions...</p> : null}
-          {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+          {loading ? <LoadingState title="Loading sessions" description="Fetching tutor sessions and report workflow status..." /> : null}
+          {error ? <ErrorState title="Sessions unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/tutor" /> : null}
           <div className="mt-5">
             <DataTable<TutorSession>
               rows={sessions}
@@ -74,7 +76,7 @@ export function TutorReportsRoute() {
       const result = await loadTutorReport(reportId);
       setSelectedReport(result.report);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not load report.');
+      setActionError(toUserFacingError(err));
     } finally {
       setBusy(false);
     }
@@ -93,7 +95,7 @@ export function TutorReportsRoute() {
       setMessage('Report regenerated.');
       await reload();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not regenerate report.');
+      setActionError(toUserFacingError(err));
     } finally {
       setBusy(false);
     }
@@ -110,10 +112,10 @@ export function TutorReportsRoute() {
             </div>
             <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Refresh</button>
           </div>
-          {loading ? <p className="mt-4 text-sm text-slate-600">Loading reports...</p> : null}
-          {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+          {loading ? <LoadingState title="Loading reports" description="Fetching weekly reports for linked learners..." /> : null}
+          {error ? <ErrorState title="Reports unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/tutor" /> : null}
           {message ? <p className="mt-4 text-sm font-semibold text-emerald-700">{message}</p> : null}
-          {actionError ? <p className="mt-4 text-sm font-semibold text-red-700">{actionError}</p> : null}
+          {actionError ? <InlineFeedback>{actionError}</InlineFeedback> : null}
           <div className="mt-5 space-y-3">
             {(data?.items || []).map((report) => (
               <article key={report.id} className="rounded-lg border border-slate-200 p-4">
@@ -156,8 +158,8 @@ export function TutorRiskRoute() {
           </div>
           <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Refresh</button>
         </div>
-        {loading ? <p className="mt-4 text-sm text-slate-600">Loading risk scores...</p> : null}
-        {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+        {loading ? <LoadingState title="Loading risk scores" description="Preparing learner support signals..." /> : null}
+        {error ? <ErrorState title="Risk scores unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/tutor" /> : null}
         <div className="mt-5 grid gap-4 xl:grid-cols-2">
           {(data?.items || []).map((score, index) => <RiskCard key={score.id || score.studentId || score.student_id || index} score={score} />)}
           {data && !data.items.length ? <EmptyState title="No risk scores available" description="Predictive signals will appear once enough learner activity exists." /> : null}
@@ -207,7 +209,7 @@ function SessionReportPanel({ session, onSaved }: { session: TutorSession | null
       setMessage('Report draft saved.');
       await onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save report.');
+      setError(toUserFacingError(err));
     } finally {
       setBusy(false);
     }
@@ -226,7 +228,7 @@ function SessionReportPanel({ session, onSaved }: { session: TutorSession | null
       setMessage('Report submitted for admin review.');
       await onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not submit report.');
+      setError(toUserFacingError(err));
     } finally {
       setBusy(false);
     }
@@ -261,7 +263,7 @@ function SessionReportPanel({ session, onSaved }: { session: TutorSession | null
           </button>
         </div>
         {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
-        {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
+        {error ? <InlineFeedback>{error}</InlineFeedback> : null}
       </form>
     </Card>
   );
@@ -314,14 +316,5 @@ function RiskCard({ score }: { score: TutorRiskScore }) {
         {!reasons.length ? <p>No model reasons supplied yet.</p> : null}
       </div>
     </article>
-  );
-}
-
-function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => Promise<void> }) {
-  return (
-    <div className="mt-4 rounded-lg bg-red-50 p-4">
-      <p className="text-sm font-semibold text-red-800">{message}</p>
-      <button className="mt-3 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void onRetry()}>Retry</button>
-    </div>
   );
 }

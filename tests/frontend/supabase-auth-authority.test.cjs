@@ -44,8 +44,8 @@ test('protected routes cover Supabase-first access states for every dashboard ro
 
   assert.match(protectedRoute, /if \(!auth\.session\)/, 'unauthenticated users must be blocked before protected content renders');
   assert.match(protectedRoute, /to="\/dashboard\/login"/, 'unauthenticated users must go to the Supabase login route');
-  assert.match(protectedRoute, /title="Profile missing"/, 'missing Supabase profiles must show a clear state');
-  assert.match(protectedRoute, /title="Access denied"/, 'wrong-role users must show a clear denial state');
+  assert.match(protectedRoute, /MissingProfileState/, 'missing Supabase profiles must show a clear shared state');
+  assert.match(protectedRoute, /PermissionDeniedState/, 'wrong-role users must show a clear denial state');
   assert.match(protectedRoute, /roles\.includes\(currentRole\)/, 'role checks must use normalized profile role');
 
   assert.match(app, /path="\/dashboard\/student"[\s\S]*<ProtectedRoute roles=\{\['student'\]\}>/, 'student dashboard must require the student role');

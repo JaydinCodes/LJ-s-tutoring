@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextInput } from '../../components/ui/FormField';
+import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatDate } from '../../lib/utils/format';
@@ -46,8 +47,8 @@ export function AdminReportsRoute() {
           </div>
           <StatusBadge value="released_data_only" />
         </div>
-        {loading ? <p className="mt-4 text-sm text-slate-600">Loading report data...</p> : null}
-        {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+        {loading ? <LoadingState title="Loading report data" description="Preparing parent-ready and anonymized NGO report rows..." /> : null}
+        {error ? <ErrorState title="Report data unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
         {data ? (
           <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.6fr)]">
             <FormField label="Learner search">
@@ -197,14 +198,4 @@ function metrics(summary: { studentReports: number; guardianRecipients: number; 
     { label: 'NGO reports', value: String(summary.ngoReports), helper: 'Partner aggregate rows.', tone: 'blue' },
     { label: 'Released results', value: String(summary.releasedResults), helper: 'Marks included in external-facing reports.', tone: 'amber' },
   ];
-}
-
-function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => Promise<void> }) {
-  return (
-    <div className="mt-4 rounded-lg bg-red-50 p-4">
-      <h2 className="text-lg font-semibold text-red-900">Report data unavailable</h2>
-      <p className="mt-2 text-sm text-red-800">{message}</p>
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void onRetry()}>Retry</button>
-    </div>
-  );
 }

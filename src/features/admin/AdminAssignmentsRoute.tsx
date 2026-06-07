@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
+import { ErrorState, InlineFeedback, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatDate } from '../../lib/utils/format';
@@ -20,8 +22,8 @@ export function AdminAssignmentsRoute() {
       <Card>
         <h2 className="text-xl font-semibold text-slate-950">Assignments</h2>
         <p className="mt-1 text-sm text-slate-600">Edit assignment details, close submissions, or archive old work without touching legacy static pages.</p>
-        {loading ? <p className="text-sm text-slate-600">Loading assignments...</p> : null}
-        {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+        {loading ? <LoadingState title="Loading assignments" description="Fetching current assignment records and submission counts..." /> : null}
+        {error ? <ErrorState title="Assignments unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
         {data ? (
           <div className="mt-5 space-y-5">
             <DataTable<Assignment>
@@ -49,7 +51,7 @@ export function AdminAssignmentsRoute() {
         <div className="mt-5 grid gap-4 xl:grid-cols-2">
           {data?.submissions.length ? data.submissions.map((submission) => (
             <SubmissionReviewCard key={submission.id} submission={submission} onSaved={reload} />
-          )) : <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">No submissions are available yet.</p>}
+          )) : <EmptyState title="No submissions yet" description="Learner submissions will appear here after students submit published assignments." />}
         </div>
       </Card>
     </DashboardShell>
@@ -147,7 +149,7 @@ function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: Assignme
             Archive
           </button>
           {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
-          {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
+          {error ? <InlineFeedback>{error}</InlineFeedback> : null}
         </div>
       </form>
     </article>
@@ -231,7 +233,7 @@ function SubmissionReviewCard({
             {busy ? 'Saving...' : 'Save review'}
           </button>
           {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
-          {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
+          {error ? <InlineFeedback>Marking or release failed. {error}</InlineFeedback> : null}
         </div>
       </form>
     </article>
@@ -318,7 +320,7 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
             {busy ? 'Publishing...' : 'Publish assignment'}
           </button>
           {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
-          {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
+          {error ? <InlineFeedback>{error}</InlineFeedback> : null}
         </div>
       </form>
     </Card>
@@ -336,12 +338,3 @@ function toDateInputValue(value?: string | null) {
   return new Date(value).toISOString().slice(0, 10);
 }
 
-function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => Promise<void> }) {
-  return (
-    <div>
-      <h2 className="text-lg font-semibold text-slate-950">Data unavailable</h2>
-      <p className="mt-2 text-sm text-slate-600">{message}</p>
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void onRetry()}>Retry</button>
-    </div>
-  );
-}

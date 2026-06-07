@@ -4,6 +4,7 @@ import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { FormField, TextInput } from '../../components/ui/FormField';
+import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import type { RecordStatus } from '../../types/lms';
@@ -18,8 +19,8 @@ export function AdminClassesRoute() {
     <DashboardShell title="Classes" subtitle="Create cohorts, link tutors, and manage student enrolments without deleting historical records." section="admin">
       <CreateClassForm data={data ?? undefined} onSaved={reload} />
       <Card>
-        {loading ? <p className="text-sm text-slate-600">Loading classes...</p> : null}
-        {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+        {loading ? <LoadingState title="Loading classes" description="Fetching cohorts, enrolments, tutors, and NGO links..." /> : null}
+        {error ? <ErrorState title="Classes unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
         {data ? (
           <div className="space-y-5">
             <DataTable<AdminClassRecord>
@@ -263,14 +264,4 @@ function classInputFromRecord(classRecord: AdminClassRecord): ClassInput {
     ngoPartnerId: classRecord.ngo_partner_id || '',
     status: classRecord.status,
   };
-}
-
-function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => Promise<void> }) {
-  return (
-    <div>
-      <h2 className="text-lg font-semibold text-slate-950">Classes unavailable</h2>
-      <p className="mt-2 text-sm text-slate-600">{message}</p>
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void onRetry()}>Retry</button>
-    </div>
-  );
 }

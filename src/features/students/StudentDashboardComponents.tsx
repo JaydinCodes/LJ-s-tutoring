@@ -8,7 +8,9 @@ import { AnimatedProgressBar, GreekHeroCard, InsightCard, PremiumButton, Stagger
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextArea } from '../../components/ui/FormField';
+import { InlineFeedback } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { toUserFacingError } from '../../lib/utils/errors';
 import { formatDate } from '../../lib/utils/format';
 import type { Assignment, AssignmentSubmission, StudentDashboardView, StudentProgress } from '../../types/lms';
 import {
@@ -711,7 +713,7 @@ export function AssignmentUploadPanel({
       setMessage(submission ? 'Resubmission saved.' : 'Submission saved.');
       toast.success(submission ? 'Resubmission saved.' : 'Submission uploaded.');
     } catch (err) {
-      const nextError = err instanceof Error ? err.message : 'Could not submit assignment.';
+      const nextError = toUserFacingError(err);
       setError(nextError);
       toast.error(nextError);
     }
@@ -785,7 +787,7 @@ export function AssignmentUploadPanel({
           {busy ? 'Uploading...' : submission ? 'Update submission' : 'Upload submission'}
         </PremiumButton>
         {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
-        {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
+        {error ? <InlineFeedback>Upload failed. {error}</InlineFeedback> : null}
       </div>
     </form>
   );

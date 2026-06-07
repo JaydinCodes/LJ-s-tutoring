@@ -3,6 +3,7 @@ import { StatCard } from '../../components/dashboard/StatCard';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState, LoadingState } from '../../components/ui/State';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatDate } from '../../lib/utils/format';
 import type { DashboardMetric } from '../../types/lms';
@@ -21,8 +22,8 @@ export function ParentReportsRoute() {
   return (
     <DashboardShell title="Guardian Reports" subtitle="Released learner progress available through your linked guardian record." section="parent">
       {data ? <section className="grid gap-4 md:grid-cols-3">{metrics.map((metric) => <StatCard key={metric.label} metric={metric} />)}</section> : null}
-      {loading ? <Card><p className="text-sm text-slate-600">Loading guardian reports...</p></Card> : null}
-      {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+      {loading ? <LoadingState title="Loading guardian reports" description="Checking linked learners and released results..." /> : null}
+      {error ? <ErrorState title="Guardian reports unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/parent/reports" /> : null}
       {data && !students.length ? (
         <EmptyState title="No reports available" description="Reports appear after an admin links your guardian profile to an active learner and releases results for guardian access." />
       ) : null}
@@ -64,16 +65,6 @@ function ParentStudentReport({ student }: { student: ParentReportStudent }) {
           ]}
         />
       </div>
-    </Card>
-  );
-}
-
-function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => Promise<void> }) {
-  return (
-    <Card className="border-red-200 bg-red-50">
-      <h2 className="text-lg font-semibold text-red-950">Guardian reports unavailable</h2>
-      <p className="mt-2 text-sm leading-6 text-red-800">{message}</p>
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" type="button" onClick={() => void onRetry()}>Retry</button>
     </Card>
   );
 }

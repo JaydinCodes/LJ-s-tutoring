@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextInput } from '../../components/ui/FormField';
+import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import type { Guardian, NgoPartner, RecordStatus, Student, StudentGuardian } from '../../types/lms';
@@ -19,8 +21,8 @@ export function AdminStudentsRoute() {
       <CreateStudentForm ngoPartners={data?.ngoPartners || []} onCreated={reload} />
       <CreateGuardianForm onCreated={reload} />
       <Card>
-        {loading ? <p className="text-sm text-slate-600">Loading students...</p> : null}
-        {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+        {loading ? <LoadingState title="Loading students" description="Fetching learner, guardian, and NGO roster records..." /> : null}
+        {error ? <ErrorState title="Student roster unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
         {data ? (
           <div className="space-y-5">
             <DataTable<Student & { full_name?: string; email?: string; ngo_partner?: string }>
@@ -49,7 +51,7 @@ export function AdminStudentsRoute() {
         {data ? (
           <div className="mt-5 grid gap-4 xl:grid-cols-2">
             {data.guardians.map((guardian) => <GuardianRecordCard key={guardian.id} guardian={guardian} onSaved={reload} />)}
-            {!data.guardians.length ? <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">No guardian records are available yet.</p> : null}
+            {!data.guardians.length ? <EmptyState title="No guardian records yet" description="Create parent or guardian records before linking them to learners for reporting access." /> : null}
           </div>
         ) : null}
       </Card>
@@ -415,12 +417,3 @@ function normalizeStatus(value: string): RecordStatus {
   return value === 'active' || value === 'inactive' || value === 'approved' || value === 'suspended' ? value : 'pending';
 }
 
-function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => Promise<void> }) {
-  return (
-    <div>
-      <h2 className="text-lg font-semibold text-slate-950">Data unavailable</h2>
-      <p className="mt-2 text-sm text-slate-600">{message}</p>
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void onRetry()}>Retry</button>
-    </div>
-  );
-}

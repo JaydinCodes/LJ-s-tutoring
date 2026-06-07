@@ -1,17 +1,19 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
+import { LoadingState, MissingProfileState, PermissionDeniedState } from '../../components/ui/State';
 import { AdminMfaGate } from './AdminMfaGate';
 import { useAuth } from './AuthProvider';
-import { formatRoleList, normalizeUserRole, type SupportedDashboardRole } from './roles';
+import { formatRoleList, getDashboardPath, normalizeUserRole, type SupportedDashboardRole } from './roles';
 
 export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardRole[]; children: ReactNode }) {
   const auth = useAuth();
   const location = useLocation();
   const currentRole = normalizeUserRole(auth.profile?.role);
+  const dashboardHref = getDashboardPath(currentRole);
 
   if (auth.loading) {
-    return <GuardMessage title="Checking access" description="Loading your account access..." />;
+    return <GuardShell><LoadingState title="Checking access" description="Loading your account access..." /></GuardShell>;
   }
 
   if (!auth.configured) {
@@ -28,12 +30,7 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
   }
 
   if (auth.status === 'missing_profile' || !auth.profile) {
-    return (
-      <GuardMessage
-        title="Profile missing"
-        description="Your account setup is incomplete. Please contact support so we can finish linking your profile."
-      />
-    );
+    return <GuardShell><MissingProfileState /></GuardShell>;
   }
 
   if (auth.status === 'invalid_role' || !currentRole) {
@@ -47,10 +44,12 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
 
   if (!roles.includes(currentRole)) {
     return (
-      <GuardMessage
-        title="Access denied"
-        description={`This route requires one of these roles: ${formatRoleList(roles)}. Your current role is ${currentRole}.`}
-      />
+      <GuardShell>
+        <PermissionDeniedState
+          dashboardHref={dashboardHref}
+          description={`This route requires ${formatRoleList(roles)} access. Your current role is ${currentRole}.`}
+        />
+      </GuardShell>
     );
   }
 
@@ -59,6 +58,14 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
   }
 
   return <>{children}</>;
+}
+
+function GuardShell({ children }: { children: ReactNode }) {
+  return (
+    <main className="min-h-screen bg-slate-100 p-4 text-slate-950">
+      <div className="mx-auto mt-20 max-w-xl">{children}</div>
+    </main>
+  );
 }
 
 function GuardMessage({ title, description }: { title: string; description: string }) {

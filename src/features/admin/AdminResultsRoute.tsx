@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
+import { ErrorState, InlineFeedback, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatDate } from '../../lib/utils/format';
@@ -69,8 +70,8 @@ export function AdminResultsRoute() {
         <Card>
           <h2 className="text-xl font-semibold text-slate-950">Markbook table</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600">Rows represent submitted learner work. Use the edit panel to update marks through the secured RPC.</p>
-          {loading ? <p className="mt-4 text-sm text-slate-600">Loading markbook...</p> : null}
-          {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+          {loading ? <LoadingState title="Loading markbook" description="Fetching submitted work and release status..." /> : null}
+          {error ? <ErrorState title="Markbook unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
           {data ? (
             <div className="mt-5">
               <DataTable<AdminMarkbookRow>
@@ -176,7 +177,7 @@ function MarkEditPanel({ row, onSaved }: { row: AdminMarkbookRow | null; onSaved
             {busy ? 'Saving...' : 'Save mark'}
           </button>
           {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
-          {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
+          {error ? <InlineFeedback>Marking or result release failed. {error}</InlineFeedback> : null}
         </div>
       </form>
     </Card>
@@ -206,15 +207,6 @@ function AssignmentCell({ row }: { row: AdminMarkbookRow }) {
     <div>
       <p className="font-semibold text-slate-950">{row.assignment_title}</p>
       <p className="mt-1 text-xs text-slate-500">{[row.subject_name, row.assignment_grade, formatDate(row.submitted_at)].filter(Boolean).join(' | ')}</p>
-    </div>
-  );
-}
-
-function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => Promise<void> }) {
-  return (
-    <div className="mt-4 rounded-lg bg-red-50 p-4">
-      <p className="text-sm font-semibold text-red-800">{message}</p>
-      <button className="mt-3 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void onRetry()}>Retry</button>
     </div>
   );
 }

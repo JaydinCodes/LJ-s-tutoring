@@ -3,6 +3,7 @@ import { StatCard } from '../../components/dashboard/StatCard';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatCurrency, formatDate } from '../../lib/utils/format';
@@ -18,14 +19,8 @@ export function AdminDashboardRoute() {
       subtitle="Operational React console for learners, tutors, assignments, payments, reporting, and ProVision rollout support."
       section="admin"
     >
-      {loading ? <Card>Loading admin dashboard...</Card> : null}
-      {error ? (
-        <Card>
-          <h2 className="text-lg font-semibold text-slate-950">Admin dashboard unavailable</h2>
-          <p className="mt-2 text-sm text-slate-600">{error}</p>
-          <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Retry</button>
-        </Card>
-      ) : null}
+      {loading ? <LoadingState title="Loading admin dashboard" description="Checking learners, tutors, assignments, and payments..." /> : null}
+      {error ? <ErrorState title="Admin dashboard unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
       {data ? (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

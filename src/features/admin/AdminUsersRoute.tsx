@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { FormField, TextInput } from '../../components/ui/FormField';
+import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { apiPost } from '../../lib/api/client';
@@ -42,8 +43,8 @@ export function AdminUsersRoute() {
           </div>
           <StatusBadge value="supabase_first" />
         </div>
-        {loading ? <p className="mt-4 text-sm text-slate-600">Loading roster summary...</p> : null}
-        {error ? <p className="mt-4 text-sm font-semibold text-red-700">{error}</p> : null}
+        {loading ? <LoadingState title="Loading roster summary" description="Checking current Supabase-linked users..." /> : null}
+        {error ? <ErrorState title="Roster summary unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
         {data ? (
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <SummaryTile label="Students" value={data.students.length} />

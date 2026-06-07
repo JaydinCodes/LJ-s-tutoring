@@ -3,6 +3,7 @@ import { StatCard } from '../../components/dashboard/StatCard';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState, LoadingState } from '../../components/ui/State';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import type { DashboardMetric } from '../../types/lms';
 import { loadNgoReports, type NgoAggregateReport } from './ngoReportsRepository';
@@ -19,8 +20,8 @@ export function NgoReportsRoute() {
   return (
     <DashboardShell title="NGO Cohort Reports" subtitle="Anonymized cohort summaries for partner-linked learners." section="ngo">
       {data ? <section className="grid gap-4 md:grid-cols-3">{metrics.map((metric) => <StatCard key={metric.label} metric={metric} />)}</section> : null}
-      {loading ? <Card><p className="text-sm text-slate-600">Loading NGO cohort reports...</p></Card> : null}
-      {error ? <ErrorBlock message={error} onRetry={reload} /> : null}
+      {loading ? <LoadingState title="Loading NGO cohort reports" description="Preparing anonymized aggregate rows for visible cohorts..." /> : null}
+      {error ? <ErrorState title="NGO reports unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/ngo/reports" /> : null}
       {data && !reports.length ? (
         <EmptyState title="No cohort reports available" description="Aggregate reports appear after an NGO partner, linked learners, and released results are visible to your account." />
       ) : null}
@@ -49,15 +50,5 @@ export function NgoReportsRoute() {
         </Card>
       ) : null}
     </DashboardShell>
-  );
-}
-
-function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => Promise<void> }) {
-  return (
-    <Card className="border-red-200 bg-red-50">
-      <h2 className="text-lg font-semibold text-red-950">NGO reports unavailable</h2>
-      <p className="mt-2 text-sm leading-6 text-red-800">{message}</p>
-      <button className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" type="button" onClick={() => void onRetry()}>Retry</button>
-    </Card>
   );
 }
