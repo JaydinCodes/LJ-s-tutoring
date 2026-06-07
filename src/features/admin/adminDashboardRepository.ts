@@ -1,7 +1,7 @@
 import { optionalApiGet } from '../../lib/api/client';
 import { formatCurrency } from '../../lib/utils/format';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
-import type { AdminDashboardView, Assignment, AssignmentSubmission, NgoPartner, Payment, Profile, Student, Tutor, TutorPayment } from '../../types/lms';
+import type { AdminDashboardView, Assignment, AssignmentSubmission, Guardian, NgoPartner, Payment, Profile, Student, StudentGuardian, Tutor, TutorPayment } from '../../types/lms';
 
 interface LegacyAdminDashboard {
   tutors?: number;
@@ -23,6 +23,7 @@ async function loadFromApi(): Promise<AdminDashboardView> {
       { label: 'Privacy requests', value: String(dashboard.openPrivacyRequestsCount ?? 0), helper: 'POPIA requests still open.', tone: 'blue' },
     ],
     students: [],
+    guardians: [],
     tutors: [],
     assignments: dashboard.pendingApprovals || [],
     submissions: [],
@@ -42,8 +43,10 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
     return null;
   }
 
-  const [studentsResult, tutorsResult, assignmentsResult, submissionsResult, paymentsResult, tutorPaymentsResult, ngoResult] = await Promise.all([
+  const [studentsResult, guardiansResult, studentGuardiansResult, tutorsResult, assignmentsResult, submissionsResult, paymentsResult, tutorPaymentsResult, ngoResult] = await Promise.all([
     supabase.from('students').select('*').order('created_at', { ascending: false }).limit(25),
+    supabase.from('guardians').select('*').order('created_at', { ascending: false }).limit(100),
+    supabase.from('student_guardians').select('*').order('created_at', { ascending: false }).limit(200),
     supabase.from('tutors').select('*').order('created_at', { ascending: false }).limit(25),
     supabase.from('assignments').select('*').order('created_at', { ascending: false }).limit(25),
     supabase.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }).limit(50),
@@ -53,6 +56,8 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
   ]);
 
   const students = (studentsResult.data || []) as Student[];
+  const guardians = (guardiansResult.data || []) as Guardian[];
+  const studentGuardians = (studentGuardiansResult.data || []) as StudentGuardian[];
   const tutors = (tutorsResult.data || []) as Tutor[];
   const assignments = (assignmentsResult.data || []) as Assignment[];
   const submissions = (submissionsResult.data || []) as AssignmentSubmission[];
@@ -67,11 +72,12 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
     ? await supabase.from('profiles').select('*').in('id', profileIds)
     : { data: [], error: null };
   const profiles = (profilesResult.data || []) as Profile[];
+  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
   const outstanding = payments.filter((item) => item.status !== 'paid').reduce((total, item) => total + Number(item.amount || 0), 0);
   const assignmentTitleById = new Map(assignments.map((assignment) => [assignment.id, assignment.title]));
   const studentNameById = new Map(students.map((student) => [student.id, [student.grade, student.school].filter(Boolean).join(' | ') || student.id]));
+  const studentDisplayNameById = new Map(students.map((student) => [student.id, profileById.get(student.profile_id)?.full_name || [student.grade, student.school].filter(Boolean).join(' | ') || student.id]));
   const tutorNameById = new Map(tutors.map((tutor) => [tutor.id, [tutor.subjects?.join(', '), tutor.grades?.join(', ')].filter(Boolean).join(' | ') || tutor.id]));
-  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
   const ngoById = new Map(ngoPartners.map((ngo) => [ngo.id, ngo.name]));
 
   return {
@@ -87,6 +93,15 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
       email: profileById.get(student.profile_id)?.email,
       phone: profileById.get(student.profile_id)?.phone,
       ngo_partner: student.ngo_partner_id ? ngoById.get(student.ngo_partner_id) : undefined,
+    })),
+    guardians: guardians.map((guardian) => ({
+      ...guardian,
+      linked_students: studentGuardians
+        .filter((link) => link.guardian_id === guardian.id)
+        .map((link) => ({
+          ...link,
+          student_name: studentDisplayNameById.get(link.student_id),
+        })),
     })),
     tutors: tutors.map((tutor) => ({
       ...tutor,

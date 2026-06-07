@@ -87,6 +87,33 @@ create table if not exists public.assignments (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.guardians (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid references public.profiles(id) on delete set null,
+  full_name text not null,
+  email text,
+  phone text,
+  communication_preference text not null default 'email',
+  notes text,
+  status public.record_status not null default 'active',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (email)
+);
+
+create table if not exists public.student_guardians (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null references public.students(id) on delete cascade,
+  guardian_id uuid not null references public.guardians(id) on delete cascade,
+  relationship_type text not null default 'guardian',
+  is_primary boolean not null default false,
+  can_receive_reports boolean not null default true,
+  status public.record_status not null default 'active',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (student_id, guardian_id)
+);
+
 create table if not exists public.assignment_submissions (
   id uuid primary key default gen_random_uuid(),
   assignment_id uuid not null references public.assignments(id) on delete cascade,
@@ -204,6 +231,9 @@ create table if not exists public.tutor_student_allocations (
 
 create index if not exists idx_profiles_role on public.profiles(role);
 create index if not exists idx_students_ngo_partner on public.students(ngo_partner_id);
+create index if not exists idx_guardians_profile on public.guardians(profile_id);
+create index if not exists idx_student_guardians_student on public.student_guardians(student_id, status);
+create index if not exists idx_student_guardians_guardian on public.student_guardians(guardian_id, status);
 create index if not exists idx_student_career_profiles_student_updated on public.student_career_profiles(student_id, updated_at desc);
 create index if not exists idx_assignments_due_date on public.assignments(due_date);
 create index if not exists idx_submissions_student on public.assignment_submissions(student_id);
@@ -224,6 +254,8 @@ create index if not exists idx_tutor_student_allocations_student on public.tutor
 
 alter table public.profiles enable row level security;
 alter table public.students enable row level security;
+alter table public.guardians enable row level security;
+alter table public.student_guardians enable row level security;
 alter table public.student_career_profiles enable row level security;
 alter table public.tutors enable row level security;
 alter table public.ngo_partners enable row level security;
@@ -597,6 +629,34 @@ with check (
 
 create policy "admin_full_access_students"
 on public.students for all
+using (public.current_profile_role() = 'admin')
+with check (public.current_profile_role() = 'admin');
+
+create policy "guardians_select_scoped"
+on public.guardians for select
+using (
+  public.current_profile_role() = 'admin'
+  or profile_id = public.current_profile_id()
+);
+
+create policy "admin_manage_guardians"
+on public.guardians for all
+using (public.current_profile_role() = 'admin')
+with check (public.current_profile_role() = 'admin');
+
+create policy "student_guardians_select_scoped"
+on public.student_guardians for select
+using (
+  public.current_profile_role() = 'admin'
+  or guardian_id in (
+    select g.id
+    from public.guardians g
+    where g.profile_id = public.current_profile_id()
+  )
+);
+
+create policy "admin_manage_student_guardians"
+on public.student_guardians for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 

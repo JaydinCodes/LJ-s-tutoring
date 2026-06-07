@@ -70,6 +70,31 @@ export interface Assignment {
   created_at: string;
 }
 
+export interface Guardian {
+  id: string;
+  profile_id?: string | null;
+  full_name: string;
+  email?: string | null;
+  phone?: string | null;
+  communication_preference: string;
+  notes?: string | null;
+  status: RecordStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudentGuardian {
+  id: string;
+  student_id: string;
+  guardian_id: string;
+  relationship_type: string;
+  is_primary: boolean;
+  can_receive_reports: boolean;
+  status: RecordStatus;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface RubricCriterion {
   id: string;
   label: string;
@@ -239,6 +264,7 @@ export interface StudentDashboardView {
 export interface AdminDashboardView {
   metrics: DashboardMetric[];
   students: Array<Student & { full_name?: string; email?: string; phone?: string | null; ngo_partner?: string }>;
+  guardians: Array<Guardian & { linked_students?: Array<StudentGuardian & { student_name?: string }> }>;
   tutors: Array<Tutor & { full_name?: string; email?: string; phone?: string | null }>;
   assignments: Assignment[];
   submissions: Array<AssignmentSubmission & { assignment_title?: string; student_name?: string }>;

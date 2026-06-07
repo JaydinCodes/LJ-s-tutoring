@@ -3,10 +3,12 @@ import type {
   AssignmentSubmission,
   ClassEnrollment,
   ClassRecord,
+  Guardian,
   NgoPartner,
   Payment,
   Profile,
   Student,
+  StudentGuardian,
   StudentProgress,
   Subject,
   Tutor,
@@ -26,6 +28,8 @@ export interface Database {
     Tables: {
       profiles: Table<Profile, Omit<Profile, 'id' | 'created_at' | 'updated_at'>, Partial<Profile>>;
       students: Table<Student, Omit<Student, 'id' | 'created_at'>, Partial<Student>>;
+      guardians: Table<Guardian, Omit<Guardian, 'id' | 'created_at' | 'updated_at'>, Partial<Guardian>>;
+      student_guardians: Table<StudentGuardian, Omit<StudentGuardian, 'id' | 'created_at' | 'updated_at'>, Partial<StudentGuardian>>;
       tutors: Table<Tutor, Omit<Tutor, 'id' | 'created_at'>, Partial<Tutor>>;
       ngo_partners: Table<NgoPartner, Omit<NgoPartner, 'id' | 'created_at'>, Partial<NgoPartner>>;
       subjects: Table<Subject, Omit<Subject, 'id'>, Partial<Subject>>;

@@ -45,6 +45,14 @@ The current `docs/supabase/schema.sql` is the production schema direction, but i
 - Admin mark editing uses `src/features/assignments/assignmentMutations.ts` and `public.mark_assignment_submission`; the browser must not directly update `assignment_submissions.marks_awarded`, feedback, or status columns.
 - The admin markbook may show named learner rows because it is admin-only. Student-facing result views must continue to show only the signed-in learner's released/private results and anonymized class context.
 
+## Guardian Records
+
+- `guardians` stores parent/guardian contact details, communication preference, optional linked parent profile, and operational notes.
+- `student_guardians` links guardians to learners with relationship type, primary contact flag, report permission, and status.
+- Admins can manage guardian records and links.
+- Parent-role users may read only guardian records linked to their own profile and the link rows for those guardian records.
+- Tutors do not receive guardian contact access by default. Add a separate scoped policy only if the product rules explicitly allow tutor access to guardian contacts.
+
 ## Must Review Before Production Cutover
 
 - `payments` and `tutor_payments`
