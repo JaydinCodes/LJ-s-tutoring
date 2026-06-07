@@ -8,6 +8,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   LogOut,
+  UsersRound,
   ScrollText,
   Settings,
   Sparkles,
@@ -64,6 +65,12 @@ const nav = {
     { to: '/dashboard/tutor/submissions', label: 'Submissions', icon: ScrollText },
     { to: '/dashboard/tutor/reports', label: 'Reports', icon: TrendingUp },
     { to: '/dashboard/tutor/risk', label: 'Risk', icon: Brain },
+  ],
+  parent: [
+    { to: '/dashboard/parent/reports', label: 'Reports', icon: ScrollText },
+  ],
+  ngo: [
+    { to: '/dashboard/ngo/reports', label: 'Cohorts', icon: UsersRound },
   ],
 } satisfies Record<string, DashboardNavItem[]>;
 

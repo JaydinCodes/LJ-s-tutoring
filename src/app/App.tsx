@@ -21,7 +21,9 @@ import { AdminTutorsRoute } from '../features/admin/AdminTutorsRoute';
 import { AdminUsersRoute } from '../features/admin/AdminUsersRoute';
 import { LoginRoute } from '../features/auth/LoginRoute';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
+import { NgoReportsRoute } from '../features/ngo/NgoReportsRoute';
 import { OnboardingRoute } from '../features/onboarding/OnboardingRoute';
+import { ParentReportsRoute } from '../features/parents/ParentReportsRoute';
 import { StudentAssignmentDetailRoute } from '../features/students/StudentAssignmentDetailRoute';
 import { StudentAssignmentsRoute } from '../features/students/StudentAssignmentsRoute';
 import { StudentCareersRoute } from '../features/students/StudentCareersRoute';
@@ -82,6 +84,10 @@ export function App() {
         <Route path="/dashboard/student/community" element={<ProtectedRoute roles={['student']}><StudentCommunityRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/reports" element={<ProtectedRoute roles={['student']}><StudentReportsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/settings" element={<ProtectedRoute roles={['student']}><StudentSettingsRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/parent" element={<Navigate to="/dashboard/parent/reports" replace />} />
+        <Route path="/dashboard/parent/reports" element={<ProtectedRoute roles={['parent']}><ParentReportsRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/ngo" element={<Navigate to="/dashboard/ngo/reports" replace />} />
+        <Route path="/dashboard/ngo/reports" element={<ProtectedRoute roles={['ngo_partner']}><NgoReportsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin" element={<ProtectedRoute roles={['admin']}><AdminDashboardRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/students" element={<ProtectedRoute roles={['admin']}><AdminStudentsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/users" element={<ProtectedRoute roles={['admin']}><AdminUsersRoute /></ProtectedRoute>} />

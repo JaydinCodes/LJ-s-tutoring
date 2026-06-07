@@ -51,4 +51,15 @@ test('protected routes cover Supabase-first access states for every dashboard ro
   assert.match(app, /path="\/dashboard\/student"[\s\S]*<ProtectedRoute roles=\{\['student'\]\}>/, 'student dashboard must require the student role');
   assert.match(app, /path="\/dashboard\/tutor"[\s\S]*<ProtectedRoute roles=\{\['tutor'\]\}>/, 'tutor dashboard must require the tutor role');
   assert.match(app, /path="\/dashboard\/admin"[\s\S]*<ProtectedRoute roles=\{\['admin'\]\}>/, 'admin dashboard must require the admin role');
+  assert.match(app, /path="\/dashboard\/parent\/reports"[\s\S]*<ProtectedRoute roles=\{\['parent'\]\}>/, 'parent reports must require the parent role');
+  assert.match(app, /path="\/dashboard\/ngo\/reports"[\s\S]*<ProtectedRoute roles=\{\['ngo_partner'\]\}>/, 'NGO reports must require the NGO partner role');
+});
+
+test('launch dashboard role normalization includes parent and NGO partner roles', () => {
+  const roles = read('src/features/auth/roles.ts');
+
+  assert.match(roles, /'parent'/, 'parent role must be treated as a valid dashboard role');
+  assert.match(roles, /'ngo_partner'/, 'NGO partner role must be treated as a valid dashboard role');
+  assert.match(roles, /parent: '\/dashboard\/parent\/reports'/);
+  assert.match(roles, /ngo_partner: '\/dashboard\/ngo\/reports'/);
 });

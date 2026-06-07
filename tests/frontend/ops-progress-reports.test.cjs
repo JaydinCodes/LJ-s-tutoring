@@ -41,3 +41,22 @@ test('OPS-08 schema provides a parent-scoped report RPC using linked guardian re
   assert.match(databaseTypes, /get_parent_progress_reports/);
   assert.match(docs, /NGO report rows are aggregate-only/);
 });
+
+test('launch parent and NGO report routes use protected Supabase data paths', () => {
+  const parentRoute = read('src/features/parents/ParentReportsRoute.tsx');
+  const parentRepository = read('src/features/parents/parentReportsRepository.ts');
+  const ngoRoute = read('src/features/ngo/NgoReportsRoute.tsx');
+  const ngoRepository = read('src/features/ngo/ngoReportsRepository.ts');
+
+  assert.match(parentRepository, /rpc\('get_parent_progress_reports'\)/, 'parent portal must use the parent-scoped RPC');
+  assert.match(parentRoute, /Guardian Reports/);
+  assert.match(parentRoute, /No reports available/);
+  assert.match(parentRoute, /Guardian reports unavailable/);
+
+  assert.match(ngoRepository, /from\('ngo_partners'\)/);
+  assert.match(ngoRepository, /marks_released/);
+  assert.match(ngoRoute, /NGO Cohort Reports/);
+  assert.match(ngoRoute, /No cohort reports available/);
+  assert.match(ngoRoute, /learner names, guardian contacts, individual feedback, and raw submission details/);
+  assert.doesNotMatch(ngoRoute, /row\.student_name|row\.feedback|row\.email|row\.phone/, 'NGO route must not render learner identity, guardian contact, or feedback fields');
+});
