@@ -33,6 +33,12 @@ export interface AdminMfaState {
   error: string | null;
 }
 
+export interface AdminMfaEnrollment {
+  factorId: string;
+  qrCode: string;
+  secret: string;
+}
+
 export interface AuthState {
   configured: boolean;
   loading: boolean;
@@ -147,6 +153,28 @@ export async function challengeAdminMfa(factorId: string) {
   }
 
   return { challengeId: challenge.data.id };
+}
+
+export async function enrollAdminMfa(): Promise<AdminMfaEnrollment> {
+  const client = requireSupabase();
+  const enrollment = await client.auth.mfa.enroll({
+    factorType: 'totp',
+    friendlyName: 'Project Odysseus Admin',
+  });
+
+  if (enrollment.error) {
+    captureAppError(enrollment.error, {
+      featureArea: 'auth',
+      action: 'auth.admin_mfa_enroll_failed',
+    });
+    throw enrollment.error;
+  }
+
+  return {
+    factorId: enrollment.data.id,
+    qrCode: enrollment.data.totp.qr_code,
+    secret: enrollment.data.totp.secret,
+  };
 }
 
 export async function verifyAdminMfa(input: { factorId: string; challengeId: string; code: string }) {

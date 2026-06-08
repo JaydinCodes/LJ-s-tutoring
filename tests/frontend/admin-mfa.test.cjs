@@ -16,6 +16,8 @@ test('admin MFA is enforced with Supabase MFA APIs and a production-safe bypass'
 
   assert.match(authService, /auth\.mfa\.getAuthenticatorAssuranceLevel\(\)/);
   assert.match(authService, /auth\.mfa\.listFactors\(\)/);
+  assert.match(authService, /auth\.mfa\.enroll\(\{\s*factorType: 'totp'/);
+  assert.match(authService, /friendlyName: 'Project Odysseus Admin'/);
   assert.match(authService, /auth\.mfa\.challenge\(\{ factorId \}\)/);
   assert.match(authService, /auth\.mfa\.verify\(input\)/);
   assert.match(authService, /!import\.meta\.env\.PROD && import\.meta\.env\.VITE_PO_DEV_ADMIN_MFA_BYPASS === 'true'/);
@@ -25,6 +27,10 @@ test('admin MFA is enforced with Supabase MFA APIs and a production-safe bypass'
 
   assert.match(adminMfaGate, /MFA required/);
   assert.match(adminMfaGate, /MFA setup required/);
+  assert.match(adminMfaGate, /Start MFA setup/);
+  assert.match(adminMfaGate, /Project Odysseus admin MFA QR code/);
+  assert.match(adminMfaGate, /Manual setup secret/);
+  assert.match(adminMfaGate, /Email OTP is not used/);
   assert.match(adminMfaGate, /MFA verification failed/);
   assert.match(adminMfaGate, /MFA verified/);
 });

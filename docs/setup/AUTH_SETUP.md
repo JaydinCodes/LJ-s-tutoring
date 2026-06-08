@@ -20,9 +20,11 @@ Production admin access requires Supabase Auth MFA. The React admin route guard 
 2. A linked `profiles` row with the normalized `admin` role.
 3. Supabase authenticator assurance level `aal2`, or a verified TOTP factor that can be challenged and verified.
 
-Enable MFA in Supabase Dashboard > Authentication > Multi-Factor Auth, then require each admin account to enroll and verify a TOTP factor before using `/dashboard/admin`. Admins without a verified factor see `MFA setup required`; admins with a factor but an `aal1` session see `MFA required` and must enter their authenticator code. If Supabase MFA status cannot be read, admin access remains blocked.
+Enable MFA in Supabase Dashboard > Authentication > Multi-Factor Auth, then require each admin account to enroll and verify a TOTP factor before using `/dashboard/admin`. Admins without a verified factor see `MFA setup required` and can start the in-app setup flow. The app creates a Supabase TOTP factor, shows the QR code and manual secret, asks for the six-digit authenticator code, verifies it, then refreshes the session so Supabase promotes the admin session to `aal2`. Admins with a verified factor but an `aal1` session see `MFA required` and must enter their authenticator code. If Supabase MFA status cannot be read, admin access remains blocked.
 
-The frontend uses `supabase.auth.mfa.getAuthenticatorAssuranceLevel()`, `supabase.auth.mfa.listFactors()`, `supabase.auth.mfa.challenge()`, and `supabase.auth.mfa.verify()`.
+The frontend uses `supabase.auth.mfa.getAuthenticatorAssuranceLevel()`, `supabase.auth.mfa.listFactors()`, `supabase.auth.mfa.enroll()`, `supabase.auth.mfa.challenge()`, and `supabase.auth.mfa.verify()`.
+
+Email OTP is not used as the admin second factor in this implementation. Email/password or magic links can still be first-factor sign-in methods, but the production admin gate requires a verified Supabase TOTP factor for the `aal2` assurance check.
 
 Local UI development can set `VITE_PO_DEV_ADMIN_MFA_BYPASS=true`, but the code ignores that flag in production builds. Do not set it in staging or production.
 
