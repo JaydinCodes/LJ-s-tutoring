@@ -4,7 +4,6 @@ import { loadAssistantConfig } from '../domains/assistant/config.js';
 import { createAssistantService } from '../domains/assistant/service.js';
 import { createOpenRouterProvider } from '../domains/assistant/providers/openrouter.js';
 import { createLmStudioProvider } from '../domains/assistant/providers/lmstudio.js';
-import { createGroqProvider } from '../domains/assistant/providers/groq.js';
 
 const HistoryMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
@@ -111,7 +110,7 @@ async function readAssistantError(response: Response) {
   return response.statusText || 'request_failed';
 }
 
-function extractGroqDelta(payload: string) {
+function extractOpenAiCompatibleDelta(payload: string) {
   try {
     const parsed = JSON.parse(payload) as { choices?: Array<{ delta?: { content?: string } }> };
     return parsed.choices?.[0]?.delta?.content ?? '';
@@ -120,7 +119,7 @@ function extractGroqDelta(payload: string) {
   }
 }
 
-async function streamGroqCareersResponse(input: {
+async function streamOpenRouterCareersResponse(input: {
   apiKey: string;
   model: string;
   message: string;
@@ -129,13 +128,15 @@ async function streamGroqCareersResponse(input: {
   signal: AbortSignal;
   onChunk: (chunk: string) => void;
 }) {
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     signal: input.signal,
     headers: {
       Authorization: `Bearer ${input.apiKey}`,
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
+      'HTTP-Referer': process.env.PUBLIC_BASE_URL ?? 'http://localhost:3001',
+      'X-Title': 'Odie',
       'X-Request-Id': input.requestId ?? '',
     },
     body: JSON.stringify({
@@ -152,7 +153,7 @@ async function streamGroqCareersResponse(input: {
   }
 
   if (!response.body) {
-    throw new Error('groq_stream_unavailable');
+    throw new Error('openrouter_stream_unavailable');
   }
 
   const reader = response.body.getReader();
@@ -163,7 +164,7 @@ async function streamGroqCareersResponse(input: {
     const { value, done } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
-    // Groq streams OpenAI-compatible SSE frames; only delta content is proxied to the browser.
+    // OpenRouter streams OpenAI-compatible SSE frames; only delta content is proxied to the browser.
     const events = buffer.split('\n\n');
     buffer = events.pop() ?? '';
 
@@ -172,7 +173,7 @@ async function streamGroqCareersResponse(input: {
         if (!line.startsWith('data:')) continue;
         const payload = line.replace(/^data:\s*/, '').trim();
         if (!payload || payload === '[DONE]') continue;
-        const delta = extractGroqDelta(payload);
+        const delta = extractOpenAiCompatibleDelta(payload);
         if (delta) input.onChunk(delta);
       }
     }
@@ -211,9 +212,8 @@ export async function assistantRoutes(app: FastifyInstance) {
   const service = createAssistantService(
     config,
     [
-      createLmStudioProvider(config.lmStudioBaseUrl, config.lmStudioModel),
-      createGroqProvider(config.groqApiKey),
       createOpenRouterProvider(config.openRouterApiKey),
+      createLmStudioProvider(config.lmStudioBaseUrl, config.lmStudioModel),
     ],
     app.log.child({ module: 'assistant' }),
   );
@@ -298,8 +298,8 @@ export async function assistantRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
     }
-    if (!config.groqApiKey) {
-      return reply.code(503).send({ error: 'groq_not_configured' });
+    if (!config.openRouterApiKey) {
+      return reply.code(503).send({ error: 'openrouter_not_configured' });
     }
 
     const controller = new AbortController();
@@ -311,9 +311,9 @@ export async function assistantRoutes(app: FastifyInstance) {
     });
 
     try {
-      await streamGroqCareersResponse({
-        apiKey: config.groqApiKey,
-        model: config.groqModel,
+      await streamOpenRouterCareersResponse({
+        apiKey: config.openRouterApiKey,
+        model: config.openRouterModel,
         message: parsed.data.message,
         history: parsed.data.history,
         requestId: req.id,
@@ -323,8 +323,8 @@ export async function assistantRoutes(app: FastifyInstance) {
       reply.raw.end();
       req.log.info({
         event: 'assistant.careers_chat.stream.completed',
-        provider: 'groq',
-        model: config.groqModel,
+        provider: 'openrouter',
+        model: config.openRouterModel,
         requestId: req.id,
       }, 'assistant.careers_chat.stream.completed');
     } catch (error) {

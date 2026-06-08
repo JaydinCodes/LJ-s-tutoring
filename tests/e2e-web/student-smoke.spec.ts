@@ -56,7 +56,7 @@ test('careers chat shows a graceful error when Odie streaming fails', async ({ p
     await route.fulfill({
       status: 500,
       contentType: 'application/json',
-      body: JSON.stringify({ error: 'groq_unavailable' }),
+      body: JSON.stringify({ error: 'openrouter_unavailable' }),
     });
   });
 

@@ -9,7 +9,6 @@ import { getErrorMonitor } from '../lib/error-monitor.js';
 import { countUnreadStudentNotifications, createStudentNotification, listStudentNotifications, markAllStudentNotificationsRead, markStudentNotificationRead } from '../lib/notifications.js';
 import { loadAssistantConfig } from '../domains/assistant/config.js';
 import { createAssistantService } from '../domains/assistant/service.js';
-import { createGroqProvider } from '../domains/assistant/providers/groq.js';
 import { createLmStudioProvider } from '../domains/assistant/providers/lmstudio.js';
 import { createOpenRouterProvider } from '../domains/assistant/providers/openrouter.js';
 import {
@@ -564,9 +563,8 @@ export async function academicRoutes(app: FastifyInstance) {
   const assistantService = createAssistantService(
     assistantConfig,
     [
-      createLmStudioProvider(assistantConfig.lmStudioBaseUrl, assistantConfig.lmStudioModel),
-      createGroqProvider(assistantConfig.groqApiKey),
       createOpenRouterProvider(assistantConfig.openRouterApiKey),
+      createLmStudioProvider(assistantConfig.lmStudioBaseUrl, assistantConfig.lmStudioModel),
     ],
     app.log.child({ module: 'student-odie' }),
   );

@@ -59,7 +59,7 @@ test('careers chat error state is graceful and source-covered by smoke tests', (
   const smoke = read('tests', 'e2e-web', 'student-smoke.spec.ts');
 
   assert.ok(careers.includes('I cannot connect to Odie right now'), 'careers chat must show a friendly connection error');
-  assert.ok(careers.includes('groq_not_configured'), 'Groq configuration errors must be translated for the student');
+  assert.ok(careers.includes('openrouter_not_configured'), 'OpenRouter configuration errors must be translated for the student');
   assert.ok(careers.includes('abortRef.current?.abort()'), 'students must be able to stop a long response');
   assert.ok(smoke.includes("route('**/assistant/careers-chat/stream'"), 'smoke tests must force a streaming failure');
   assert.ok(smoke.includes('I cannot connect to Odie right now'), 'smoke tests must assert the visible error state');

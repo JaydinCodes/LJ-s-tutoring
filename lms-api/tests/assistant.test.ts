@@ -7,9 +7,10 @@ import type { AssistantProvider } from '../src/domains/assistant/provider.js';
 
 function baseConfig(overrides: Partial<AssistantConfig> = {}): AssistantConfig {
   return {
-    groqApiKey: 'test-groq-key',
-    openRouterApiKey: '',
-    defaultModel: 'llama-3.3-70b-versatile',
+    openRouterApiKey: 'test-openrouter-key',
+    openRouterModel: 'google/gemma-4-31b-it:free',
+    lmStudioBaseUrl: '',
+    lmStudioModel: '',
     maxTokens: 1024,
     temperature: 0.4,
     timeoutMs: 5000,
@@ -20,13 +21,12 @@ function baseConfig(overrides: Partial<AssistantConfig> = {}): AssistantConfig {
     chunkOverlap: 20,
     retryAttempts: 0,
     retryDelayMs: 0,
-    openRouterModel: 'llama-3.3-70b-versatile',
     ...overrides,
   };
 }
 
 function createProvider(
-  name: 'groq' | 'openrouter',
+  name: 'openrouter' | 'lmstudio',
   handler: (messages: Array<{ role: string; content: string }>) => Promise<string>,
 ): AssistantProvider {
   return {
@@ -51,7 +51,7 @@ describe('assistant domain', () => {
     const service = new AssistantService(
       baseConfig(),
       [
-        createProvider('groq', async (messages) => {
+        createProvider('openrouter', async (messages) => {
           captured.push(messages);
           return 'Hi there';
         }),
@@ -76,15 +76,14 @@ describe('assistant domain', () => {
     expect(captured[0][3]).toEqual({ role: 'user', content: 'Hello Odie' });
   });
 
-  it('builds a Groq-first provider chain with the 8b fallback and OpenRouter secondary slot', () => {
-    const groq = createProvider('groq', async () => 'g');
+  it('builds an OpenRouter-first provider chain with optional LM Studio fallback', () => {
     const openrouter = createProvider('openrouter', async () => 'o');
-    const plans = buildProviderPlan(baseConfig({ openRouterApiKey: 'router-key' }), [groq, openrouter]);
+    const lmstudio = createProvider('lmstudio', async () => 'l');
+    const plans = buildProviderPlan(baseConfig({ lmStudioBaseUrl: 'http://localhost:1234', lmStudioModel: 'local-model' }), [lmstudio, openrouter]);
 
     expect(plans.map((plan) => `${plan.provider.name}:${plan.model}`)).toEqual([
-      'groq:llama-3.3-70b-versatile',
-      'groq:llama-3.1-8b-instant',
-      'openrouter:llama-3.3-70b-versatile',
+      'openrouter:google/gemma-4-31b-it:free',
+      'lmstudio:local-model',
     ]);
   });
 
@@ -113,21 +112,21 @@ describe('assistant domain', () => {
   });
 
   it('falls back to the next provider after a transient primary failure', async () => {
-    const failingGroq = createProvider('groq', async () => {
-      throw new AssistantError('groq_rate_limited', 'rate limited', { statusCode: 429, transient: true });
+    const failingOpenRouter = createProvider('openrouter', async () => {
+      throw new AssistantError('openrouter_rate_limited', 'rate limited', { statusCode: 429, transient: true });
     });
-    const workingOpenRouter = createProvider('openrouter', async () => 'Fallback answer');
+    const workingLmStudio = createProvider('lmstudio', async () => 'Fallback answer');
     const service = new AssistantService(
-      baseConfig({ openRouterApiKey: 'router-key' }),
-      [failingGroq, workingOpenRouter],
+      baseConfig({ lmStudioBaseUrl: 'http://localhost:1234', lmStudioModel: 'local-model' }),
+      [failingOpenRouter, workingLmStudio],
       console,
     );
 
     const result = await service.chat({ message: 'Use the fallback path' });
 
     expect(result.text).toBe('Fallback answer');
-    expect(result.metadata.provider).toBe('openrouter');
+    expect(result.metadata.provider).toBe('lmstudio');
     expect(result.metadata.fallbackUsed).toBe(true);
-    expect(result.metadata.attempts).toBe(3);
+    expect(result.metadata.attempts).toBe(2);
   });
 });

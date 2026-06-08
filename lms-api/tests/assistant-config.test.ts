@@ -2,16 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { loadAssistantConfig } from '../src/domains/assistant/config.js';
 
 describe('assistant configuration', () => {
-  it('does not send OpenRouter default models to Groq', () => {
+  it('uses OpenRouter as the configured Odie provider', () => {
     const config = loadAssistantConfig({
-      GROQ_API_KEY: 'test-groq-key',
-      GROQ_MODEL: 'llama-3.1-8b-instant',
       OPENROUTER_API_KEY: 'test-openrouter-key',
-      OPENROUTER_MODEL: 'google/gemma-2-9b-it:free',
-      DEFAULT_MODEL: 'google/gemma-4-26b-a4b-it:free',
+      OPENROUTER_MODEL: 'google/gemma-4-31b-it:free',
+      DEFAULT_MODEL: 'legacy-default-model',
     } as NodeJS.ProcessEnv);
 
-    expect(config.groqModel).toBe('llama-3.1-8b-instant');
-    expect(config.openRouterModel).toBe('google/gemma-2-9b-it:free');
+    expect(config.openRouterApiKey).toBe('test-openrouter-key');
+    expect(config.openRouterModel).toBe('google/gemma-4-31b-it:free');
+    expect('groqApiKey' in config).toBe(false);
   });
 });

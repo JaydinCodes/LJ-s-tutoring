@@ -26,14 +26,15 @@ test('career profile API persists learner context with RLS-backed storage', () =
   assert.ok(supabase.includes('students_upsert_own_career_profile'), 'Supabase schema must document student-owned profile writes');
 });
 
-test('streaming Odie career chat is Groq-backed and guarded', () => {
+test('streaming Odie career chat is OpenRouter-backed and guarded', () => {
   const route = read('lms-api', 'src', 'routes', 'assistant.ts');
   const apiClient = read('src', 'lib', 'api', 'client.ts');
   const assistantConfig = read('lms-api', 'src', 'domains', 'assistant', 'config.ts');
 
   assert.ok(route.includes("app.post('/assistant/careers-chat/stream'"), 'streaming careers endpoint must exist');
-  assert.ok(route.includes('https://api.groq.com/openai/v1/chat/completions'), 'streaming endpoint must call Groq');
-  assert.ok(route.includes('Accept: \'text/event-stream\''), 'Groq request must ask for streaming events');
+  assert.ok(route.includes('https://openrouter.ai/api/v1/chat/completions'), 'streaming endpoint must call OpenRouter');
+  assert.ok(route.includes('Accept: \'text/event-stream\''), 'OpenRouter request must ask for streaming events');
+  assert.ok(route.includes('openrouter_not_configured'), 'missing OpenRouter configuration must be explicit');
   assert.ok(route.includes('req.raw.on(\'close\', () => controller.abort())'), 'client disconnect must stop generation');
   assert.ok(route.includes('Do not pretend to be a university admissions officer'), 'guardrails must prevent admissions-officer impersonation');
   assert.ok(route.includes('verify current requirements on official institution pages'), 'guardrails must label uncertainty and require verification');
@@ -41,6 +42,7 @@ test('streaming Odie career chat is Groq-backed and guarded', () => {
   assert.ok(apiClient.includes("readCookie('csrf')"), 'streaming chat must read the CSRF cookie required by authenticated writes');
   assert.ok(apiClient.includes("'x-csrf-token'"), 'streaming chat must send the CSRF header to the LMS API');
   assert.ok(apiClient.includes('...csrfHeaders()'), 'write helpers and stream requests must share CSRF headers');
-  assert.ok(assistantConfig.includes('DEFAULT_MODEL'), 'Groq config must support the existing DEFAULT_MODEL env name');
-  assert.ok(assistantConfig.includes('parsed.DEFAULT_MODEL || parsed.GROQ_MODEL'), 'DEFAULT_MODEL must be accepted as the Groq model fallback');
+  assert.ok(assistantConfig.includes('OPENROUTER_API_KEY'), 'OpenRouter API key must be the Odie provider credential');
+  assert.ok(assistantConfig.includes('OPENROUTER_MODEL'), 'OpenRouter model must be configurable');
+  assert.ok(!assistantConfig.includes('GROQ_API_KEY'), 'Groq must not be required by assistant config');
 });
