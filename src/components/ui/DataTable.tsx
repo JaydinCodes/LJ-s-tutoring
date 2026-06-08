@@ -14,13 +14,13 @@ export function DataTable<T>({ columns, rows, empty }: { columns: Array<Column<T
 
   return (
     <div className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-white/55 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]">
-      <div className="grid gap-3 p-3 md:hidden">
+      <div className="grid gap-3 p-2 sm:p-3 md:hidden">
         {rows.map((row, index) => (
-          <article key={index} className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05]">
+          <article key={index} className="rounded-2xl border border-white/70 bg-white/70 p-3 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05] sm:p-4">
             {columns.map((column) => (
               <div key={column.key} className="grid gap-1 border-b border-slate-950/10 py-2 last:border-b-0 dark:border-white/10">
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">{column.label}</p>
-                <div className="break-words text-sm text-slate-700 dark:text-slate-300">{column.render(row)}</div>
+                <div className="min-w-0 break-words text-sm text-slate-700 dark:text-slate-300 [&_a]:inline-flex [&_a]:min-h-10 [&_a]:items-center [&_button]:min-h-10 [&_button]:touch-manipulation">{column.render(row)}</div>
               </div>
             ))}
           </article>

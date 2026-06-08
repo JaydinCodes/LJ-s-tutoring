@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import {
   Bell,
   BookOpen,
   Brain,
+  Ellipsis,
   Clock,
   Compass,
   GraduationCap,
@@ -98,6 +100,12 @@ function isCurrentPath(pathname: string, item: DashboardNavItem) {
     return pathname === item.to;
   }
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
+}
+
+function getSectionHome(section: DashboardSection) {
+  if (section === 'parent') return '/dashboard/parent/reports';
+  if (section === 'ngo') return '/dashboard/ngo/reports';
+  return `/dashboard/${section}`;
 }
 
 export function DashboardShell(props: ShellProps) {
@@ -280,6 +288,7 @@ function LegacyDashboardShell({ title, subtitle, section, children }: ShellProps
   const auth = useAuth();
   const sectionLabel = `${section} dashboard`;
   const navItems = nav[section];
+  const homeHref = getSectionHome(section);
 
   async function handleSignOut() {
     await signOut();
@@ -319,14 +328,14 @@ function LegacyDashboardShell({ title, subtitle, section, children }: ShellProps
           </nav>
         </aside>
         <main className="min-w-0 flex-1">
-          <header className="rounded-[2rem] border border-white/70 bg-white/72 p-4 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25 sm:p-5">
+          <header className="rounded-[1.5rem] border border-white/70 bg-white/72 p-4 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25 sm:rounded-[2rem] sm:p-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-aegean dark:text-brand-gold">{sectionLabel}</p>
-                <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">{title}</h1>
+                <h1 className="mt-2 break-words text-2xl font-semibold tracking-normal sm:text-3xl md:text-4xl">{title}</h1>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{subtitle}</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
                 <button
                   type="button"
                   aria-label="Dashboard alerts"
@@ -336,11 +345,11 @@ function LegacyDashboardShell({ title, subtitle, section, children }: ShellProps
                   <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900" />
                 </button>
                 {auth.profile ? (
-                  <div className="flex items-center gap-3 rounded-[1.3rem] border border-slate-950/5 bg-white/60 p-2 pr-3 dark:border-white/10 dark:bg-white/[0.05]">
+                  <div className="flex min-w-0 items-center gap-2 rounded-[1.3rem] border border-slate-950/5 bg-white/60 p-2 pr-3 dark:border-white/10 dark:bg-white/[0.05] sm:gap-3">
                     <div className="grid h-10 w-10 place-items-center rounded-[1.1rem] bg-brand-navy text-sm font-bold text-white dark:bg-white dark:text-slate-950">
                       {auth.profile.full_name.charAt(0).toUpperCase()}
                     </div>
-                    <div className="min-w-0">
+                    <div className="hidden min-w-0 sm:block">
                       <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">{auth.profile.full_name}</p>
                       <p className="text-xs capitalize text-slate-500 dark:text-slate-400">{auth.profile.role}</p>
                     </div>
@@ -355,6 +364,108 @@ function LegacyDashboardShell({ title, subtitle, section, children }: ShellProps
           <div className="mt-4 space-y-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-4">{children}</div>
         </main>
       </div>
+      <MobileRoleNav
+        homeHref={homeHref}
+        navItems={navItems}
+        onSignOut={() => void handleSignOut()}
+        section={section}
+      />
     </div>
+  );
+}
+
+function MobileRoleNav({
+  homeHref,
+  navItems,
+  onSignOut,
+  section,
+}: {
+  homeHref: string;
+  navItems: DashboardNavItem[];
+  onSignOut: () => void;
+  section: DashboardSection;
+}) {
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const primaryItems = navItems.length <= 5 ? navItems : navItems.slice(0, 4);
+  const overflowItems = navItems.length <= 5 ? [] : navItems.slice(4);
+  const visibleCount = primaryItems.length + (overflowItems.length ? 1 : 0);
+
+  return (
+    <>
+      {open ? (
+        <div className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-sm lg:hidden" onClick={() => setOpen(false)}>
+          <div
+            className="absolute inset-x-3 bottom-[calc(5.8rem+env(safe-area-inset-bottom))] max-h-[min(32rem,calc(100vh-7rem))] overflow-auto rounded-[1.5rem] border border-white/70 bg-white/95 p-3 shadow-[0_24px_80px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-950/95"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-2 flex items-center justify-between gap-3 px-1">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">{section} navigation</p>
+                <p className="mt-1 truncate text-sm text-slate-600 dark:text-slate-300">Jump to any dashboard area</p>
+              </div>
+              <button className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-slate-950/10 bg-white text-sm font-semibold text-slate-800 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" type="button" onClick={() => setOpen(false)}>
+                Close
+              </button>
+            </div>
+            <nav className="grid gap-2 sm:grid-cols-2" aria-label={`${section} mobile menu`}>
+              {overflowItems.map((item) => <MobileMenuLink key={item.to} item={item} onSelect={() => setOpen(false)} />)}
+            </nav>
+            <div className="mt-3 border-t border-slate-950/10 pt-3 dark:border-white/10">
+              <button className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-950/10 bg-white px-4 text-sm font-semibold text-slate-800 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" type="button" onClick={onSignOut}>
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <nav aria-label={`${section} dashboard`} className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 rounded-[1.45rem] border border-white/70 bg-white/[0.86] p-2 shadow-[0_22px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/[0.82] lg:hidden">
+        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${visibleCount}, minmax(0, 1fr))` }}>
+          {primaryItems.map((item) => {
+            const Icon = item.icon;
+            const active = isCurrentPath(location.pathname, item);
+            return (
+              <NavLink
+                key={item.to}
+                aria-label={item.label}
+                className="rounded-xl px-1.5 py-2 text-center text-[0.68rem] font-semibold leading-tight text-slate-600 transition hover:bg-white/70 data-[active=true]:bg-brand-navy data-[active=true]:text-white data-[active=true]:shadow-[0_10px_24px_rgba(15,23,42,0.14)] dark:text-brand-marble dark:hover:bg-white/[0.08] dark:data-[active=true]:bg-brand-aegean"
+                data-active={active}
+                end={item.to === homeHref}
+                to={item.to}
+              >
+                <Icon className="mx-auto mb-1 h-4 w-4 text-current" aria-hidden="true" />
+                <span className="block truncate">{item.shortLabel ?? item.label}</span>
+              </NavLink>
+            );
+          })}
+          {overflowItems.length ? (
+            <button
+              aria-expanded={open}
+              className="rounded-xl px-1.5 py-2 text-center text-[0.68rem] font-semibold leading-tight text-slate-600 transition hover:bg-white/70 dark:text-brand-marble dark:hover:bg-white/[0.08]"
+              type="button"
+              onClick={() => setOpen(true)}
+            >
+              <Ellipsis className="mx-auto mb-1 h-4 w-4 text-current" aria-hidden="true" />
+              <span className="block truncate">More</span>
+            </button>
+          ) : null}
+        </div>
+      </nav>
+    </>
+  );
+}
+
+function MobileMenuLink({ item, onSelect }: { item: DashboardNavItem; onSelect: () => void }) {
+  const Icon = item.icon;
+  return (
+    <NavLink
+      className={({ isActive }) => `flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition ${isActive ? 'bg-brand-navy text-white dark:bg-brand-aegean' : 'bg-slate-50 text-slate-700 hover:bg-white dark:bg-white/[0.06] dark:text-brand-marble dark:hover:bg-white/[0.09]'}`}
+      to={item.to}
+      onClick={onSelect}
+    >
+      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span className="min-w-0 truncate">{item.label}</span>
+    </NavLink>
   );
 }
