@@ -10,6 +10,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { FormField, TextArea } from '../../components/ui/FormField';
 import { InlineFeedback } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { toUserFacingError } from '../../lib/utils/errors';
 import { formatDate } from '../../lib/utils/format';
 import type { Assignment, AssignmentSubmission, StudentDashboardView, StudentProgress } from '../../types/lms';
@@ -713,6 +714,18 @@ export function AssignmentUploadPanel({
       setMessage(submission ? 'Resubmission saved.' : 'Submission saved.');
       toast.success(submission ? 'Resubmission saved.' : 'Submission uploaded.');
     } catch (err) {
+      captureAppError(err, {
+        featureArea: 'assignments',
+        action: 'assignment_upload.submit_failed',
+        role: 'student',
+        metadata: {
+          assignment_id: assignment.id,
+          has_upload: Boolean(file),
+          upload_size_bytes: file?.size ?? null,
+          mime_type: file?.type || null,
+          has_text_answer: Boolean(textAnswer.trim()),
+        },
+      });
       const nextError = toUserFacingError(err);
       setError(nextError);
       toast.error(nextError);

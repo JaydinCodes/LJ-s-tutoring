@@ -1,5 +1,6 @@
 import type { ErrorInfo, ReactNode } from 'react';
 import { Component } from 'react';
+import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { ErrorState } from './State';
 
 type ErrorBoundaryState = {
@@ -17,6 +18,13 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
     if (typeof console !== 'undefined' && typeof console.error === 'function') {
       console.error('[Project Odysseus] App render error', error, info);
     }
+    captureAppError(error, {
+      featureArea: 'app',
+      action: 'render_error',
+      metadata: {
+        component_stack: info.componentStack,
+      },
+    });
   }
 
   render() {

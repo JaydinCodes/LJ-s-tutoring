@@ -8,6 +8,7 @@ import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
 import { ErrorState, InlineFeedback, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
+import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { formatDate } from '../../lib/utils/format';
 import type { Assignment, AssignmentStatus, AssignmentSubmission } from '../../types/lms';
 import { createAssignment, markSubmission, updateAssignment } from '../assignments/assignmentMutations';
@@ -83,6 +84,16 @@ function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: Assignme
       setMessage('Assignment updated.');
       await onSaved();
     } catch (err) {
+      captureAppError(err, {
+        featureArea: 'admin',
+        action: 'admin_assignment.update_failed',
+        role: 'admin',
+        metadata: {
+          assignment_id: assignment.id,
+          status: nextStatus,
+          has_attachment_replacement: Boolean(attachment),
+        },
+      });
       setError(err instanceof Error ? err.message : 'Could not update assignment.');
     } finally {
       setBusy(false);
@@ -185,6 +196,17 @@ function SubmissionReviewCard({
       setMessage('Submission updated.');
       await onSaved();
     } catch (err) {
+      captureAppError(err, {
+        featureArea: 'admin',
+        action: 'admin_submission_review.save_failed',
+        role: 'admin',
+        metadata: {
+          submission_id: submission.id,
+          status,
+          marks_released: marksReleased,
+          feedback_released: feedbackReleased,
+        },
+      });
       setError(err instanceof Error ? err.message : 'Could not update submission.');
     } finally {
       setBusy(false);
@@ -271,6 +293,15 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
       setMessage('Assignment published.');
       await onCreated();
     } catch (err) {
+      captureAppError(err, {
+        featureArea: 'admin',
+        action: 'admin_assignment.create_failed',
+        role: 'admin',
+        metadata: {
+          has_attachment: Boolean(attachment),
+          due_date_set: Boolean(dueDate),
+        },
+      });
       setError(err instanceof Error ? err.message : 'Could not create assignment.');
     } finally {
       setBusy(false);

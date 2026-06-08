@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
 import { InlineFeedback } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { toUserFacingError } from '../../lib/utils/errors';
 import { formatDate } from '../../lib/utils/format';
 import type { AssignmentSubmission } from '../../types/lms';
@@ -37,6 +38,17 @@ export function TutorSubmissionReviewCard({
       setMessage('Submission review saved.');
       await onSaved();
     } catch (err) {
+      captureAppError(err, {
+        featureArea: 'tutor',
+        action: 'submission_review.save_failed',
+        role: 'tutor',
+        metadata: {
+          submission_id: submission.id,
+          status,
+          marks_released: marksReleased,
+          feedback_released: feedbackReleased,
+        },
+      });
       setError(toUserFacingError(err));
     } finally {
       setBusy(false);

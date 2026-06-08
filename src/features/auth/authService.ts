@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js';
 import { getE2EMockAuthSnapshot, isE2EAuthMockEnabled, signInWithE2EMock, signOutE2EMock } from '../../lib/e2e/mockAuth';
+import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { isSupabaseConfigured, requireSupabase, supabase } from '../../lib/supabase/client';
 import type { Profile } from '../../types/lms';
 import { getDashboardPath, normalizeUserRole, type SupportedDashboardRole } from './roles';
@@ -80,6 +81,10 @@ export async function getAdminMfaState(): Promise<AdminMfaState> {
   const client = requireSupabase();
   const assurance = await client.auth.mfa.getAuthenticatorAssuranceLevel();
   if (assurance.error) {
+    captureAppError(assurance.error, {
+      featureArea: 'auth',
+      action: 'auth.admin_mfa_assurance_failed',
+    });
     return {
       status: 'unavailable',
       currentLevel: null,
@@ -97,6 +102,10 @@ export async function getAdminMfaState(): Promise<AdminMfaState> {
 
   const factorResult = await client.auth.mfa.listFactors();
   if (factorResult.error) {
+    captureAppError(factorResult.error, {
+      featureArea: 'auth',
+      action: 'auth.admin_mfa_factors_failed',
+    });
     return {
       status: 'unavailable',
       currentLevel,
@@ -130,6 +139,10 @@ export async function challengeAdminMfa(factorId: string) {
   const client = requireSupabase();
   const challenge = await client.auth.mfa.challenge({ factorId });
   if (challenge.error) {
+    captureAppError(challenge.error, {
+      featureArea: 'auth',
+      action: 'auth.admin_mfa_challenge_failed',
+    });
     throw challenge.error;
   }
 
@@ -140,6 +153,10 @@ export async function verifyAdminMfa(input: { factorId: string; challengeId: str
   const client = requireSupabase();
   const verification = await client.auth.mfa.verify(input);
   if (verification.error) {
+    captureAppError(verification.error, {
+      featureArea: 'auth',
+      action: 'auth.admin_mfa_verify_failed',
+    });
     throw verification.error;
   }
 
@@ -163,6 +180,10 @@ export async function fetchCurrentProfile() {
 
   const sessionResult = await supabase.auth.getSession();
   if (sessionResult.error) {
+    captureAppError(sessionResult.error, {
+      featureArea: 'auth',
+      action: 'auth.get_session_failed',
+    });
     throw sessionResult.error;
   }
 
@@ -174,6 +195,11 @@ export async function fetchCurrentProfile() {
 
   const profileResult = await supabase.from('profiles').select('*').eq('auth_user_id', authUserId).maybeSingle();
   if (profileResult.error) {
+    captureAppError(profileResult.error, {
+      featureArea: 'auth',
+      action: 'auth.profile_load_failed',
+      metadata: { has_auth_user: true },
+    });
     throw profileResult.error;
   }
 
@@ -210,6 +236,11 @@ export async function signInWithPassword(email: string, password: string) {
   const client = requireSupabase();
   const result = await client.auth.signInWithPassword({ email, password });
   if (result.error) {
+    captureAppError(result.error, {
+      featureArea: 'auth',
+      action: 'auth.password_sign_in_failed',
+      metadata: { method: 'password' },
+    });
     throw result.error;
   }
 
@@ -228,6 +259,11 @@ export async function sendMagicLink(email: string) {
     options: { emailRedirectTo: redirectTo },
   });
   if (result.error) {
+    captureAppError(result.error, {
+      featureArea: 'auth',
+      action: 'auth.magic_link_failed',
+      metadata: { method: 'magic_link' },
+    });
     throw result.error;
   }
 }
@@ -241,6 +277,10 @@ export async function signOut() {
   const client = requireSupabase();
   const result = await client.auth.signOut();
   if (result.error) {
+    captureAppError(result.error, {
+      featureArea: 'auth',
+      action: 'auth.sign_out_failed',
+    });
     throw result.error;
   }
 }

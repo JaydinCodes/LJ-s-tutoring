@@ -1,6 +1,7 @@
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { markE2ESubmission, submitE2EAssignment } from '../../lib/e2e/mockRoleData';
 import { recordAuditEvent } from '../../lib/audit/auditLog';
+import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentStatus, AssignmentSubmission, Profile, Student, Subject } from '../../types/lms';
 
@@ -53,6 +54,14 @@ function mutationError(error: unknown, fallback: string) {
     return error;
   }
   return new Error(fallback);
+}
+
+function captureAssignmentError(action: string, error: unknown, metadata: Record<string, unknown> = {}) {
+  captureAppError(error, {
+    featureArea: 'assignments',
+    action,
+    metadata,
+  });
 }
 
 async function getCurrentProfile() {
@@ -123,6 +132,7 @@ async function findOrCreateSubject(input: { subjectName: string; grade: string; 
     .single();
 
   if (created.error) {
+    captureAssignmentError('assignment.subject_create_failed', created.error);
     throw created.error;
   }
 
@@ -153,7 +163,9 @@ export async function createAssignment(input: CreateAssignmentInput) {
   const client = requireSupabase();
   const profile = await getCurrentProfile();
   if (profile.role !== 'admin' && profile.role !== 'tutor') {
-    throw new Error('Only admins or tutors can create assignments.');
+    const error = new Error('Only admins or tutors can create assignments.');
+    captureAssignmentError('assignment.create_permission_denied', error, { role: profile.role });
+    throw error;
   }
 
   const title = input.title.trim();
@@ -197,6 +209,10 @@ export async function createAssignment(input: CreateAssignmentInput) {
     .single();
 
   if (inserted.error) {
+    captureAssignmentError('assignment.create_failed', inserted.error, {
+      role: profile.role,
+      has_attachment: Boolean(input.attachment),
+    });
     throw inserted.error;
   }
 
@@ -208,6 +224,11 @@ export async function createAssignment(input: CreateAssignmentInput) {
       contentType: input.attachment.type || undefined,
     });
     if (uploaded.error) {
+      captureAssignmentError('assignment.attachment_upload_failed', uploaded.error, {
+        assignment_id: assignment.id,
+        upload_size_bytes: input.attachment.size,
+        mime_type: input.attachment.type || null,
+      });
       throw uploaded.error;
     }
 
@@ -222,6 +243,9 @@ export async function createAssignment(input: CreateAssignmentInput) {
       .single();
 
     if (updated.error) {
+      captureAssignmentError('assignment.attachment_update_failed', updated.error, {
+        assignment_id: assignment.id,
+      });
       throw updated.error;
     }
     assignment = updated.data as Assignment;
@@ -246,7 +270,9 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
   const client = requireSupabase();
   const profile = await getCurrentProfile();
   if (profile.role !== 'admin' && profile.role !== 'tutor') {
-    throw new Error('Only admins or tutors can update assignments.');
+    const error = new Error('Only admins or tutors can update assignments.');
+    captureAssignmentError('assignment.update_permission_denied', error, { role: profile.role });
+    throw error;
   }
 
   const title = input.title.trim();
@@ -256,6 +282,9 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
 
   const existing = await client.from('assignments').select('*').eq('id', input.assignmentId).single();
   if (existing.error) {
+    captureAssignmentError('assignment.load_for_update_failed', existing.error, {
+      assignment_id: input.assignmentId,
+    });
     throw existing.error;
   }
   const current = existing.data as Assignment | null;
@@ -264,7 +293,12 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
   }
 
   if (profile.role === 'tutor' && current.created_by !== profile.id) {
-    throw new Error('Tutors can only update assignments they created.');
+    const error = new Error('Tutors can only update assignments they created.');
+    captureAssignmentError('assignment.update_permission_denied', error, {
+      role: profile.role,
+      assignment_id: input.assignmentId,
+    });
+    throw error;
   }
 
   let subjectId = current.subject_id || null;
@@ -294,6 +328,11 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
       contentType: input.attachment.type || undefined,
     });
     if (uploaded.error) {
+      captureAssignmentError('assignment.attachment_replace_failed', uploaded.error, {
+        assignment_id: input.assignmentId,
+        upload_size_bytes: input.attachment.size,
+        mime_type: input.attachment.type || null,
+      });
       throw uploaded.error;
     }
     payload.attachment_url = uploaded.data.path;
@@ -310,6 +349,11 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
     .single();
 
   if (updated.error) {
+    captureAssignmentError('assignment.update_failed', updated.error, {
+      assignment_id: input.assignmentId,
+      status: input.status,
+      has_attachment: Boolean(input.attachment),
+    });
     throw updated.error;
   }
   assignment = updated.data as Assignment;
@@ -350,7 +394,9 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
   const client = requireSupabase();
   const profile = await getCurrentProfile();
   if (profile.role !== 'student') {
-    throw new Error('Only students can submit assignments.');
+    const error = new Error('Only students can submit assignments.');
+    captureAssignmentError('assignment_submission.permission_denied', error, { role: profile.role });
+    throw error;
   }
 
   const textAnswer = input.textAnswer?.trim() || null;
@@ -361,6 +407,9 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
   const student = await getCurrentStudent(profile.id);
   const assignmentResult = await client.from('assignments').select('*').eq('id', input.assignmentId).single();
   if (assignmentResult.error) {
+    captureAssignmentError('assignment_submission.assignment_load_failed', assignmentResult.error, {
+      assignment_id: input.assignmentId,
+    });
     throw assignmentResult.error;
   }
   const assignment = assignmentResult.data as Assignment | null;
@@ -386,6 +435,11 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
       contentType: input.file.type || undefined,
     });
     if (uploaded.error) {
+      captureAssignmentError('assignment_submission.upload_failed', uploaded.error, {
+        assignment_id: input.assignmentId,
+        upload_size_bytes: input.file.size,
+        mime_type: input.file.type || null,
+      });
       throw uploaded.error;
     }
     fileUrl = uploaded.data.path;
@@ -425,6 +479,11 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
   });
 
   if (submitted.error) {
+    captureAssignmentError('assignment_submission.rpc_failed', submitted.error, {
+      assignment_id: input.assignmentId,
+      has_file: Boolean(input.file),
+      has_text_answer: Boolean(textAnswer),
+    });
     throw mutationError(submitted.error, 'Could not submit assignment.');
   }
 
@@ -435,6 +494,9 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
 
   const saved = await client.from('assignment_submissions').select('*').eq('id', row.submission_id).single();
   if (saved.error) {
+    captureAssignmentError('assignment_submission.reload_failed', saved.error, {
+      assignment_id: input.assignmentId,
+    });
     throw saved.error;
   }
 
@@ -449,7 +511,9 @@ export async function markSubmission(input: MarkSubmissionInput) {
   const client = requireSupabase();
   const profile = await getCurrentProfile();
   if (profile.role !== 'admin' && profile.role !== 'tutor') {
-    throw new Error('Only admins or tutors can mark submissions.');
+    const error = new Error('Only admins or tutors can mark submissions.');
+    captureAssignmentError('submission_marking.permission_denied', error, { role: profile.role });
+    throw error;
   }
 
   const marks = input.marksAwarded?.trim() ? Number(input.marksAwarded) : null;
@@ -481,6 +545,12 @@ export async function markSubmission(input: MarkSubmissionInput) {
   });
 
   if (saved.error) {
+    captureAssignmentError('submission_marking.rpc_failed', saved.error, {
+      submission_id: input.submissionId,
+      status: input.status,
+      marks_released: Boolean(input.marksReleased),
+      feedback_released: Boolean(input.feedbackReleased),
+    });
     throw mutationError(saved.error, 'Could not mark submission.');
   }
 

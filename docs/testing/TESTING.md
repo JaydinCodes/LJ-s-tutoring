@@ -55,6 +55,7 @@ npm run test:e2e:web
 - API E2E resets and seeds the test DB before running.
 - React role smoke E2E is documented in `E2E_SMOKE.md` and uses a dev-only `VITE_E2E_AUTH_MOCK=true` harness so it never depends on production Supabase credentials.
 - Legacy/static browser E2E also uses the test-only login endpoint for deterministic role-based portal access.
+- Production browser error monitoring is documented in `../ops/PRODUCTION_MONITORING_CHECKLIST.md`.
 
 ## 20-Minute Production Live-User Test Scope
 

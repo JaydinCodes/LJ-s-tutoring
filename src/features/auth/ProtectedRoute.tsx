@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
+import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
 import { LoadingState, MissingProfileState, PermissionDeniedState } from '../../components/ui/State';
+import { captureAppMessage } from '../../lib/monitoring/errorReporting';
 import { AdminMfaGate } from './AdminMfaGate';
 import { useAuth } from './AuthProvider';
 import { formatRoleList, getDashboardPath, normalizeUserRole, type SupportedDashboardRole } from './roles';
@@ -30,7 +32,7 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
   }
 
   if (auth.status === 'missing_profile' || !auth.profile) {
-    return <GuardShell><MissingProfileState /></GuardShell>;
+    return <GuardShell><GuardMonitoringEvent action="auth.missing_profile_route" route={location.pathname} /><MissingProfileState /></GuardShell>;
   }
 
   if (auth.status === 'invalid_role' || !currentRole) {
@@ -45,6 +47,12 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
   if (!roles.includes(currentRole)) {
     return (
       <GuardShell>
+        <GuardMonitoringEvent
+          action="auth.unauthorized_route"
+          role={currentRole}
+          route={location.pathname}
+          metadata={{ required_roles: roles.join(',') }}
+        />
         <PermissionDeniedState
           dashboardHref={dashboardHref}
           description={`This route requires ${formatRoleList(roles)} access. Your current role is ${currentRole}.`}
@@ -58,6 +66,30 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
   }
 
   return <>{children}</>;
+}
+
+function GuardMonitoringEvent({
+  action,
+  metadata,
+  role,
+  route,
+}: {
+  action: string;
+  metadata?: Record<string, unknown>;
+  role?: string | null;
+  route: string;
+}) {
+  useEffect(() => {
+    captureAppMessage('Protected route access anomaly', {
+      featureArea: 'auth',
+      action,
+      role,
+      route,
+      metadata,
+    });
+  }, [action, metadata, role, route]);
+
+  return null;
 }
 
 function GuardShell({ children }: { children: ReactNode }) {

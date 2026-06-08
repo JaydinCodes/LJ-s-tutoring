@@ -1,3 +1,5 @@
+import { captureAppError } from '../monitoring/errorReporting';
+
 export function getTechnicalErrorMessage(error: unknown) {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -48,4 +50,8 @@ export function logTechnicalError(scope: string, error: unknown) {
   if (typeof console !== 'undefined' && typeof console.error === 'function') {
     console.error(`[Project Odysseus] ${scope}`, error);
   }
+  captureAppError(error, {
+    featureArea: 'async_resource',
+    action: scope,
+  });
 }

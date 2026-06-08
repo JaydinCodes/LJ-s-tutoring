@@ -9,6 +9,7 @@ import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
 import { ErrorState, InlineFeedback, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
+import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { formatDate } from '../../lib/utils/format';
 import type { DashboardMetric } from '../../types/lms';
 import { markSubmission } from '../assignments/assignmentMutations';
@@ -141,6 +142,17 @@ function MarkEditPanel({ row, onSaved }: { row: AdminMarkbookRow | null; onSaved
       setMessage('Markbook row updated.');
       await onSaved();
     } catch (err) {
+      captureAppError(err, {
+        featureArea: 'admin',
+        action: 'admin_result_release.save_failed',
+        role: 'admin',
+        metadata: {
+          submission_id: selectedRow.id,
+          status,
+          marks_released: marksReleased,
+          feedback_released: feedbackReleased,
+        },
+      });
       setError(err instanceof Error ? err.message : 'Could not update markbook row.');
     } finally {
       setBusy(false);

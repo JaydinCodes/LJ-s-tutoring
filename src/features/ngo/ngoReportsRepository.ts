@@ -1,5 +1,6 @@
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2ENgoReports } from '../../lib/e2e/mockRoleData';
+import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentSubmission, ClassEnrollment, ClassRecord, NgoPartner, Student, StudentProgress } from '../../types/lms';
 
@@ -31,6 +32,11 @@ export async function loadNgoReports(): Promise<{ reports: NgoAggregateReport[] 
 
   for (const result of [partnersResult, studentsResult, submissionsResult, assignmentsResult, classesResult, enrollmentsResult, progressResult]) {
     if (result.error) {
+      captureAppError(result.error, {
+        featureArea: 'ngo',
+        action: 'ngo_reports.load_failed',
+        role: 'ngo_partner',
+      });
       throw result.error;
     }
   }

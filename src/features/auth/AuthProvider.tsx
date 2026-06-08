@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
+import { captureAppError, captureAppMessage, setMonitoringUserContext } from '../../lib/monitoring/errorReporting';
 import { ADMIN_MFA_NOT_APPLICABLE, fetchCurrentProfile, type AuthState } from './authService';
 
 interface AuthContextValue extends AuthState {
@@ -47,6 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : null;
       setState({ configured, loading: false, session, profile, status, adminMfa, error: statusError });
     } catch (error) {
+      captureAppError(error, {
+        featureArea: 'auth',
+        action: 'auth.refresh_failed',
+      });
       setState({
         configured,
         loading: false,
@@ -62,6 +67,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    setMonitoringUserContext({
+      authUserId: state.session?.user.id ?? null,
+      profileId: state.profile?.id ?? null,
+      role: state.profile?.role ?? null,
+    });
+
+    if (!state.loading && state.status === 'missing_profile') {
+      captureAppMessage('Auth profile missing', {
+        featureArea: 'auth',
+        action: 'auth.missing_profile',
+        role: null,
+        metadata: {
+          has_session: Boolean(state.session),
+        },
+      });
+    }
+
+    if (!state.loading && state.status === 'invalid_role') {
+      captureAppMessage('Auth profile role invalid', {
+        featureArea: 'auth',
+        action: 'auth.invalid_role',
+        metadata: {
+          has_session: Boolean(state.session),
+        },
+      });
+    }
+  }, [state.loading, state.profile?.id, state.profile?.role, state.session, state.status]);
 
   useEffect(() => {
     if (!supabase) {

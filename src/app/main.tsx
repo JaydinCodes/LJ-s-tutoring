@@ -7,7 +7,10 @@ import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { AuthProvider } from '../features/auth/AuthProvider';
 import { SmoothScroll } from '../components/animations/SmoothScroll';
 import { queryClient } from '../lib/query/client';
+import { initErrorReporting } from '../lib/monitoring/errorReporting';
 import '../styles/tailwind.css';
+
+initErrorReporting();
 
 const rootNode = document.getElementById('root');
 

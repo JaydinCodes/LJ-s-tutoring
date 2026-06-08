@@ -1,5 +1,6 @@
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2EParentReports } from '../../lib/e2e/mockRoleData';
+import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { ParentProgressReportRow } from '../../types/lms';
 
@@ -29,6 +30,11 @@ export async function loadParentProgressReports(): Promise<{ students: ParentRep
   const client = requireSupabase();
   const result = await client.rpc('get_parent_progress_reports');
   if (result.error) {
+    captureAppError(result.error, {
+      featureArea: 'parent',
+      action: 'parent_reports.rpc_failed',
+      role: 'parent',
+    });
     throw result.error;
   }
 
