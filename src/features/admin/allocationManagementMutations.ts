@@ -1,3 +1,4 @@
+import { recordAuditEvent } from '../../lib/audit/auditLog';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { Profile, RecordStatus, TutorStudentAllocation } from '../../types/lms';
 
@@ -69,7 +70,20 @@ export async function assignTutorToStudent(input: AllocationInput) {
   if (result.error) {
     throw result.error;
   }
-  return result.data as TutorStudentAllocation;
+  const allocation = result.data as TutorStudentAllocation;
+  await recordAuditEvent({
+    action: 'tutor_student_allocation.upserted',
+    entityType: 'tutor_student_allocation',
+    entityId: allocation.id,
+    metadata: {
+      tutor_id: allocation.tutor_id,
+      student_id: allocation.student_id,
+      status: allocation.status,
+      start_date: allocation.start_date,
+      end_date: allocation.end_date,
+    },
+  });
+  return allocation;
 }
 
 export async function updateTutorStudentAllocation(allocationId: string, input: AllocationInput) {
@@ -85,7 +99,20 @@ export async function updateTutorStudentAllocation(allocationId: string, input: 
   if (result.error) {
     throw result.error;
   }
-  return result.data as TutorStudentAllocation;
+  const allocation = result.data as TutorStudentAllocation;
+  await recordAuditEvent({
+    action: 'tutor_student_allocation.updated',
+    entityType: 'tutor_student_allocation',
+    entityId: allocation.id,
+    metadata: {
+      tutor_id: allocation.tutor_id,
+      student_id: allocation.student_id,
+      status: allocation.status,
+      start_date: allocation.start_date,
+      end_date: allocation.end_date,
+    },
+  });
+  return allocation;
 }
 
 export async function deactivateTutorStudentAllocation(allocationId: string) {
@@ -101,5 +128,17 @@ export async function deactivateTutorStudentAllocation(allocationId: string) {
   if (result.error) {
     throw result.error;
   }
-  return result.data as TutorStudentAllocation;
+  const allocation = result.data as TutorStudentAllocation;
+  await recordAuditEvent({
+    action: 'tutor_student_allocation.deactivated',
+    entityType: 'tutor_student_allocation',
+    entityId: allocation.id,
+    metadata: {
+      tutor_id: allocation.tutor_id,
+      student_id: allocation.student_id,
+      status: allocation.status,
+      end_date: allocation.end_date,
+    },
+  });
+  return allocation;
 }

@@ -1,3 +1,4 @@
+import { recordAuditEvent } from '../../lib/audit/auditLog';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { ClassEnrollment, ClassRecord, Profile, RecordStatus } from '../../types/lms';
 
@@ -75,7 +76,27 @@ export async function createClassRecord(input: ClassInput) {
   if (result.error) {
     throw result.error;
   }
-  return result.data as ClassRecord;
+  const classRecord = result.data as ClassRecord;
+  await recordAuditEvent({
+    action: 'class.created',
+    entityType: 'class',
+    entityId: classRecord.id,
+    metadata: {
+      tutor_id: classRecord.tutor_id,
+      subject_id: classRecord.subject_id,
+      status: classRecord.status,
+      ngo_partner_id: classRecord.ngo_partner_id,
+    },
+  });
+  if (classRecord.ngo_partner_id) {
+    await recordAuditEvent({
+      action: 'ngo_cohort_access.updated',
+      entityType: 'class',
+      entityId: classRecord.id,
+      metadata: { ngo_partner_id: classRecord.ngo_partner_id, status: classRecord.status },
+    });
+  }
+  return classRecord;
 }
 
 export async function updateClassRecord(classId: string, input: ClassInput) {
@@ -87,7 +108,25 @@ export async function updateClassRecord(classId: string, input: ClassInput) {
   if (result.error) {
     throw result.error;
   }
-  return result.data as ClassRecord;
+  const classRecord = result.data as ClassRecord;
+  await recordAuditEvent({
+    action: 'class.updated',
+    entityType: 'class',
+    entityId: classRecord.id,
+    metadata: {
+      tutor_id: classRecord.tutor_id,
+      subject_id: classRecord.subject_id,
+      status: classRecord.status,
+      ngo_partner_id: classRecord.ngo_partner_id,
+    },
+  });
+  await recordAuditEvent({
+    action: 'ngo_cohort_access.updated',
+    entityType: 'class',
+    entityId: classRecord.id,
+    metadata: { ngo_partner_id: classRecord.ngo_partner_id, status: classRecord.status },
+  });
+  return classRecord;
 }
 
 export async function archiveClassRecord(classId: string) {
@@ -99,7 +138,18 @@ export async function archiveClassRecord(classId: string) {
   if (result.error) {
     throw result.error;
   }
-  return result.data as ClassRecord;
+  const classRecord = result.data as ClassRecord;
+  await recordAuditEvent({
+    action: 'class.archived',
+    entityType: 'class',
+    entityId: classRecord.id,
+    metadata: {
+      tutor_id: classRecord.tutor_id,
+      ngo_partner_id: classRecord.ngo_partner_id,
+      status: classRecord.status,
+    },
+  });
+  return classRecord;
 }
 
 export async function assignStudentToClass(classId: string, studentId: string) {
@@ -114,7 +164,18 @@ export async function assignStudentToClass(classId: string, studentId: string) {
   if (result.error) {
     throw result.error;
   }
-  return result.data as ClassEnrollment;
+  const enrollment = result.data as ClassEnrollment;
+  await recordAuditEvent({
+    action: 'class_enrollment.upserted',
+    entityType: 'class_enrollment',
+    entityId: enrollment.id,
+    metadata: {
+      class_id: enrollment.class_id,
+      student_id: enrollment.student_id,
+      status: enrollment.status,
+    },
+  });
+  return enrollment;
 }
 
 export async function removeStudentFromClass(classId: string, studentId: string) {
@@ -131,5 +192,16 @@ export async function removeStudentFromClass(classId: string, studentId: string)
   if (result.error) {
     throw result.error;
   }
-  return result.data as ClassEnrollment;
+  const enrollment = result.data as ClassEnrollment;
+  await recordAuditEvent({
+    action: 'class_enrollment.deactivated',
+    entityType: 'class_enrollment',
+    entityId: enrollment.id,
+    metadata: {
+      class_id: enrollment.class_id,
+      student_id: enrollment.student_id,
+      status: enrollment.status,
+    },
+  });
+  return enrollment;
 }

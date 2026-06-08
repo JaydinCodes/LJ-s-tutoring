@@ -1,3 +1,4 @@
+import { recordAuditEvent } from '../../lib/audit/auditLog';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { Guardian, RecordStatus, StudentGuardian } from '../../types/lms';
 
@@ -56,7 +57,18 @@ export async function createGuardianRecord(input: GuardianInput) {
     throw created.error;
   }
 
-  return created.data as Guardian;
+  const guardian = created.data as Guardian;
+  await recordAuditEvent({
+    action: 'guardian.created',
+    entityType: 'guardian',
+    entityId: guardian.id,
+    metadata: {
+      profile_id: guardian.profile_id,
+      status: guardian.status,
+      communication_preference: guardian.communication_preference,
+    },
+  });
+  return guardian;
 }
 
 export async function updateGuardianRecord(input: GuardianInput & { guardianId: string }) {
@@ -71,7 +83,18 @@ export async function updateGuardianRecord(input: GuardianInput & { guardianId: 
     throw updated.error;
   }
 
-  return updated.data as Guardian;
+  const guardian = updated.data as Guardian;
+  await recordAuditEvent({
+    action: 'guardian.updated',
+    entityType: 'guardian',
+    entityId: guardian.id,
+    metadata: {
+      profile_id: guardian.profile_id,
+      status: guardian.status,
+      communication_preference: guardian.communication_preference,
+    },
+  });
+  return guardian;
 }
 
 export async function linkGuardianToStudent(input: StudentGuardianInput) {
@@ -106,7 +129,20 @@ export async function linkGuardianToStudent(input: StudentGuardianInput) {
     throw linked.error;
   }
 
-  return linked.data as StudentGuardian;
+  const link = linked.data as StudentGuardian;
+  await recordAuditEvent({
+    action: 'guardian_access.upserted',
+    entityType: 'student_guardian',
+    entityId: link.id,
+    metadata: {
+      student_id: link.student_id,
+      guardian_id: link.guardian_id,
+      can_receive_reports: link.can_receive_reports,
+      is_primary: link.is_primary,
+      status: link.status,
+    },
+  });
+  return link;
 }
 
 export async function deactivateGuardianLink(linkId: string) {
@@ -120,4 +156,11 @@ export async function deactivateGuardianLink(linkId: string) {
   if (updated.error) {
     throw updated.error;
   }
+
+  await recordAuditEvent({
+    action: 'guardian_access.deactivated',
+    entityType: 'student_guardian',
+    entityId: linkId,
+    metadata: { status: 'inactive' },
+  });
 }

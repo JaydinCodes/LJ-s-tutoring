@@ -6,6 +6,7 @@ import { FormField, TextInput } from '../../components/ui/FormField';
 import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
+import { recordAuditEvent } from '../../lib/audit/auditLog';
 import { apiPost } from '../../lib/api/client';
 import type { NgoPartner, RecordStatus, UserRole } from '../../types/lms';
 import { loadAdminDashboard } from './adminDashboardRepository';
@@ -108,6 +109,16 @@ function AdminInviteUserForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartn
           hourlyRate: hourlyRate.trim() ? Number(hourlyRate) : undefined,
           status,
         } : undefined,
+      });
+      await recordAuditEvent({
+        action: response.mode === 'invite' ? 'user.invited' : 'user.created',
+        entityType: 'profile',
+        entityId: response.profileId,
+        metadata: {
+          role: response.role,
+          mode: response.mode,
+          auth_user_id: response.userId,
+        },
       });
       setMessage(`${titleCase(response.role)} ${response.mode === 'invite' ? 'invited' : 'created'} with profile ${response.profileId}.`);
       resetForm();

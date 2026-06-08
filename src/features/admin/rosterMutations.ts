@@ -1,3 +1,4 @@
+import { recordAuditEvent } from '../../lib/audit/auditLog';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { Profile, RecordStatus, Student, Tutor } from '../../types/lms';
 
@@ -140,7 +141,27 @@ export async function createStudentRecord(input: CreateStudentInput) {
   if (studentResult.error) {
     throw studentResult.error;
   }
-  return studentResult.data as Student;
+  const student = studentResult.data as Student;
+  await recordAuditEvent({
+    action: 'user_profile.created',
+    entityType: 'profile',
+    entityId: profile.id,
+    metadata: {
+      role: 'student',
+      student_id: student.id,
+      status: student.status,
+      ngo_partner_id: student.ngo_partner_id,
+    },
+  });
+  if (student.ngo_partner_id) {
+    await recordAuditEvent({
+      action: 'ngo_cohort_access.updated',
+      entityType: 'student',
+      entityId: student.id,
+      metadata: { ngo_partner_id: student.ngo_partner_id, status: student.status },
+    });
+  }
+  return student;
 }
 
 export async function updateStudentRecord(input: UpdateStudentInput) {
@@ -192,7 +213,25 @@ export async function updateStudentRecord(input: UpdateStudentInput) {
   if (studentResult.error) {
     throw studentResult.error;
   }
-  return studentResult.data as Student;
+  const student = studentResult.data as Student;
+  await recordAuditEvent({
+    action: 'user_profile.updated',
+    entityType: 'profile',
+    entityId: input.profileId,
+    metadata: {
+      role: 'student',
+      student_id: student.id,
+      status: student.status,
+      ngo_partner_id: student.ngo_partner_id,
+    },
+  });
+  await recordAuditEvent({
+    action: 'ngo_cohort_access.updated',
+    entityType: 'student',
+    entityId: student.id,
+    metadata: { ngo_partner_id: student.ngo_partner_id, status: student.status },
+  });
+  return student;
 }
 
 export async function createTutorRecord(input: CreateTutorInput) {
@@ -240,7 +279,20 @@ export async function createTutorRecord(input: CreateTutorInput) {
   if (tutorResult.error) {
     throw tutorResult.error;
   }
-  return tutorResult.data as Tutor;
+  const tutor = tutorResult.data as Tutor;
+  await recordAuditEvent({
+    action: 'user_profile.created',
+    entityType: 'profile',
+    entityId: profile.id,
+    metadata: {
+      role: 'tutor',
+      tutor_id: tutor.id,
+      status: tutor.status,
+      subjects: tutor.subjects,
+      grades: tutor.grades,
+    },
+  });
+  return tutor;
 }
 
 export async function updateTutorRecord(input: UpdateTutorInput) {
@@ -285,5 +337,18 @@ export async function updateTutorRecord(input: UpdateTutorInput) {
   if (tutorResult.error) {
     throw tutorResult.error;
   }
-  return tutorResult.data as Tutor;
+  const tutor = tutorResult.data as Tutor;
+  await recordAuditEvent({
+    action: 'user_profile.updated',
+    entityType: 'profile',
+    entityId: input.profileId,
+    metadata: {
+      role: 'tutor',
+      tutor_id: tutor.id,
+      status: tutor.status,
+      subjects: tutor.subjects,
+      grades: tutor.grades,
+    },
+  });
+  return tutor;
 }

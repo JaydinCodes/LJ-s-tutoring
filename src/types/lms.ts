@@ -124,6 +124,17 @@ export interface AssignmentSubmission {
   released_at?: string | null;
 }
 
+export interface AuditLogEntry {
+  id: string;
+  actor_user_id?: string | null;
+  actor_role?: UserRole | null;
+  action: string;
+  entity_type: string;
+  entity_id?: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface StudentProgress {
   id: string;
   student_id: string;

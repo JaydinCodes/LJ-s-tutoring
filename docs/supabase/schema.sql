@@ -137,6 +137,17 @@ create table if not exists public.assignment_submissions (
   unique (assignment_id, student_id, version_number)
 );
 
+create table if not exists public.audit_log (
+  id uuid primary key default gen_random_uuid(),
+  actor_user_id uuid references auth.users(id) on delete set null,
+  actor_role public.user_role,
+  action text not null,
+  entity_type text not null,
+  entity_id text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 alter table public.assignment_submissions
   add constraint assignment_submissions_marks_range
   check (marks_awarded is null or (marks_awarded >= 0 and marks_awarded <= 100));
@@ -243,6 +254,10 @@ create unique index if not exists idx_submissions_latest_assignment_student
   where is_latest;
 create index if not exists idx_submissions_assignment_versions
   on public.assignment_submissions(assignment_id, student_id, version_number desc);
+create index if not exists idx_audit_log_created_at on public.audit_log(created_at desc);
+create index if not exists idx_audit_log_action on public.audit_log(action);
+create index if not exists idx_audit_log_entity on public.audit_log(entity_type, entity_id);
+create index if not exists idx_audit_log_actor on public.audit_log(actor_user_id);
 create index if not exists idx_progress_student_recorded on public.student_progress(student_id, recorded_at desc);
 create index if not exists idx_payments_student_status on public.payments(student_id, status);
 create index if not exists idx_classes_tutor on public.classes(tutor_id);
@@ -262,6 +277,7 @@ alter table public.ngo_partners enable row level security;
 alter table public.subjects enable row level security;
 alter table public.assignments enable row level security;
 alter table public.assignment_submissions enable row level security;
+alter table public.audit_log enable row level security;
 alter table public.student_progress enable row level security;
 alter table public.payments enable row level security;
 alter table public.tutor_payments enable row level security;
@@ -334,6 +350,81 @@ as $$
     ),
     false
   )
+$$;
+
+create or replace function public.log_audit_event(
+  p_action text,
+  p_entity_type text,
+  p_entity_id text,
+  p_metadata jsonb default '{}'::jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_audit_id uuid;
+  v_actor_role public.user_role := public.current_profile_role();
+begin
+  if nullif(btrim(coalesce(p_action, '')), '') is null then
+    raise exception 'audit_action_required' using errcode = '23514';
+  end if;
+
+  if nullif(btrim(coalesce(p_entity_type, '')), '') is null then
+    raise exception 'audit_entity_type_required' using errcode = '23514';
+  end if;
+
+  insert into public.audit_log (
+    actor_user_id,
+    actor_role,
+    action,
+    entity_type,
+    entity_id,
+    metadata
+  )
+  values (
+    auth.uid(),
+    v_actor_role,
+    btrim(p_action),
+    btrim(p_entity_type),
+    nullif(btrim(coalesce(p_entity_id, '')), ''),
+    coalesce(p_metadata, '{}'::jsonb)
+  )
+  returning id into v_audit_id;
+
+  return v_audit_id;
+end;
+$$;
+
+create or replace function public.record_audit_event(
+  p_action text,
+  p_entity_type text,
+  p_entity_id text,
+  p_metadata jsonb default '{}'::jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_role public.user_role := public.current_profile_role();
+begin
+  if v_role is null then
+    raise exception 'audit_actor_required' using errcode = '42501';
+  end if;
+
+  if v_role = 'admin' then
+    return public.log_audit_event(p_action, p_entity_type, p_entity_id, p_metadata);
+  end if;
+
+  if v_role = 'tutor' and p_action in ('assignment.created', 'assignment.updated', 'assignment.attachment_replaced') then
+    return public.log_audit_event(p_action, p_entity_type, p_entity_id, p_metadata);
+  end if;
+
+  raise exception 'audit_action_not_allowed' using errcode = '42501';
+end;
 $$;
 
 create or replace function public.submit_assignment_submission(
@@ -431,6 +522,32 @@ begin
     null
   );
 
+  perform public.log_audit_event(
+    'assignment_submission.created',
+    'assignment_submission',
+    v_submission_id::text,
+    jsonb_build_object(
+      'assignment_id', p_assignment_id,
+      'student_id', v_student_id,
+      'version_number', v_next_version,
+      'file_uploaded', nullif(p_storage_key, '') is not null,
+      'text_answer_provided', v_text_answer is not null
+    )
+  );
+
+  if v_next_version > 1 and nullif(p_storage_key, '') is not null then
+    perform public.log_audit_event(
+      'assignment_submission.file_replaced',
+      'assignment_submission',
+      v_submission_id::text,
+      jsonb_build_object(
+        'assignment_id', p_assignment_id,
+        'student_id', v_student_id,
+        'version_number', v_next_version
+      )
+    );
+  end if;
+
   return query select v_submission_id;
 end;
 $$;
@@ -450,6 +567,7 @@ security definer
 set search_path = public
 as $$
 declare
+  v_previous public.assignment_submissions%rowtype;
   v_submission public.assignment_submissions%rowtype;
   v_assignment public.assignments%rowtype;
 begin
@@ -469,6 +587,14 @@ begin
     raise exception 'invalid_rubric_scores' using errcode = '23514';
   end if;
 
+  select * into v_previous
+  from public.assignment_submissions
+  where id = p_submission_id;
+
+  if not found then
+    raise exception 'submission_not_found' using errcode = 'P0002';
+  end if;
+
   update public.assignment_submissions
   set marks_awarded = p_marks_awarded,
       feedback = nullif(btrim(coalesce(p_feedback, '')), ''),
@@ -485,6 +611,66 @@ begin
 
   if not found then
     raise exception 'submission_not_found' using errcode = 'P0002';
+  end if;
+
+  perform public.log_audit_event(
+    'submission.marked',
+    'assignment_submission',
+    v_submission.id::text,
+    jsonb_build_object(
+      'assignment_id', v_submission.assignment_id,
+      'student_id', v_submission.student_id,
+      'previous_status', v_previous.status,
+      'new_status', v_submission.status,
+      'previous_marks_awarded', v_previous.marks_awarded,
+      'new_marks_awarded', v_submission.marks_awarded
+    )
+  );
+
+  if v_previous.feedback is distinct from v_submission.feedback
+    or v_previous.rubric_scores_json is distinct from v_submission.rubric_scores_json then
+    perform public.log_audit_event(
+      'feedback.updated',
+      'assignment_submission',
+      v_submission.id::text,
+      jsonb_build_object(
+        'assignment_id', v_submission.assignment_id,
+        'student_id', v_submission.student_id,
+        'feedback_present', v_submission.feedback is not null,
+        'rubric_scores_present', v_submission.rubric_scores_json <> '{}'::jsonb
+      )
+    );
+  end if;
+
+  if (not coalesce(v_previous.marks_released, false) and coalesce(v_submission.marks_released, false))
+    or (not coalesce(v_previous.feedback_released, false) and coalesce(v_submission.feedback_released, false)) then
+    perform public.log_audit_event(
+      'result.released',
+      'assignment_submission',
+      v_submission.id::text,
+      jsonb_build_object(
+        'assignment_id', v_submission.assignment_id,
+        'student_id', v_submission.student_id,
+        'marks_released', v_submission.marks_released,
+        'feedback_released', v_submission.feedback_released,
+        'released_at', v_submission.released_at
+      )
+    );
+  end if;
+
+  if (coalesce(v_previous.marks_released, false) and not coalesce(v_submission.marks_released, false))
+    or (coalesce(v_previous.feedback_released, false) and not coalesce(v_submission.feedback_released, false)) then
+    perform public.log_audit_event(
+      'result.unreleased',
+      'assignment_submission',
+      v_submission.id::text,
+      jsonb_build_object(
+        'assignment_id', v_submission.assignment_id,
+        'student_id', v_submission.student_id,
+        'marks_released', v_submission.marks_released,
+        'feedback_released', v_submission.feedback_released
+      )
+    );
   end if;
 
   if p_status = 'marked' and p_marks_awarded is not null then
@@ -621,6 +807,10 @@ grant execute on function public.submit_assignment_submission(uuid, uuid, text, 
 grant execute on function public.mark_assignment_submission(uuid, numeric, text, public.submission_status, jsonb, boolean, boolean) to authenticated;
 grant execute on function public.get_student_assignment_submissions() to authenticated;
 grant execute on function public.get_parent_progress_reports() to authenticated;
+revoke execute on function public.log_audit_event(text, text, text, jsonb) from public;
+revoke execute on function public.log_audit_event(text, text, text, jsonb) from anon;
+revoke execute on function public.log_audit_event(text, text, text, jsonb) from authenticated;
+grant execute on function public.record_audit_event(text, text, text, jsonb) to authenticated;
 
 create policy "profiles_select_self_or_admin"
 on public.profiles for select
@@ -656,6 +846,23 @@ create policy "admin_full_access_profiles"
 on public.profiles for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
+
+create policy "admin_select_audit_log"
+on public.audit_log for select
+using (public.current_profile_role() = 'admin');
+
+create policy "no_direct_audit_log_insert"
+on public.audit_log for insert
+with check (false);
+
+create policy "no_direct_audit_log_update"
+on public.audit_log for update
+using (false)
+with check (false);
+
+create policy "no_direct_audit_log_delete"
+on public.audit_log for delete
+using (false);
 
 create policy "students_select_self_or_admin"
 on public.students for select

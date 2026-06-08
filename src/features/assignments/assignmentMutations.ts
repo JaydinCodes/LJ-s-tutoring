@@ -1,5 +1,6 @@
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { markE2ESubmission, submitE2EAssignment } from '../../lib/e2e/mockRoleData';
+import { recordAuditEvent } from '../../lib/audit/auditLog';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentStatus, AssignmentSubmission, Profile, Student, Subject } from '../../types/lms';
 
@@ -226,6 +227,18 @@ export async function createAssignment(input: CreateAssignmentInput) {
     assignment = updated.data as Assignment;
   }
 
+  await recordAuditEvent({
+    action: 'assignment.created',
+    entityType: 'assignment',
+    entityId: assignment.id,
+    metadata: {
+      grade: assignment.grade,
+      status: assignment.status,
+      subject_id: assignment.subject_id,
+      attachment_uploaded: Boolean(input.attachment),
+    },
+  });
+
   return assignment;
 }
 
@@ -300,6 +313,31 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
     throw updated.error;
   }
   assignment = updated.data as Assignment;
+
+  await recordAuditEvent({
+    action: 'assignment.updated',
+    entityType: 'assignment',
+    entityId: assignment.id,
+    metadata: {
+      previous_status: current.status,
+      new_status: assignment.status,
+      grade: assignment.grade,
+      subject_id: assignment.subject_id,
+      attachment_replaced: Boolean(input.attachment),
+    },
+  });
+
+  if (input.attachment) {
+    await recordAuditEvent({
+      action: 'assignment.attachment_replaced',
+      entityType: 'assignment',
+      entityId: assignment.id,
+      metadata: {
+        previous_attachment_url: current.attachment_url,
+        new_attachment_url: assignment.attachment_url,
+      },
+    });
+  }
 
   return assignment;
 }

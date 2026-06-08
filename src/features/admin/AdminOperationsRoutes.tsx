@@ -125,24 +125,61 @@ export function AdminPrivacyRequestsRoute() {
 }
 
 export function AdminAuditRoute() {
+  const [action, setAction] = useState('');
   const [entityType, setEntityType] = useState('');
+  const [actor, setActor] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const params = useMemo(() => {
     const next = new URLSearchParams({ page: '1', pageSize: '25' });
+    if (action) {
+      next.set('action', action);
+    }
     if (entityType) {
       next.set('entityType', entityType);
     }
+    if (actor) {
+      next.set('actor', actor);
+    }
+    if (dateFrom) {
+      next.set('dateFrom', dateFrom);
+    }
+    if (dateTo) {
+      next.set('dateTo', dateTo);
+    }
     return next;
-  }, [entityType]);
+  }, [action, actor, dateFrom, dateTo, entityType]);
   const { data, loading, error, reload } = useAsyncResource(() => loadAuditEntries(params), [params]);
 
   return (
     <DashboardShell title="Audit" subtitle="Immutable audit trail reader for admin actions and operational evidence." section="admin">
       <Card>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <FormField label="Entity type">
-            <TextInput value={entityType} onChange={(event) => setEntityType(event.target.value)} placeholder="session, payment, privacy_request" />
+        <div className="grid gap-4 lg:grid-cols-5">
+          <FormField label="Action">
+            <TextInput value={action} onChange={(event) => setAction(event.target.value)} placeholder="submission.marked" />
           </FormField>
+          <FormField label="Entity type">
+            <TextInput value={entityType} onChange={(event) => setEntityType(event.target.value)} placeholder="assignment_submission" />
+          </FormField>
+          <FormField label="Actor auth ID">
+            <TextInput value={actor} onChange={(event) => setActor(event.target.value)} placeholder="auth user UUID" />
+          </FormField>
+          <FormField label="From">
+            <TextInput type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
+          </FormField>
+          <FormField label="To">
+            <TextInput type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+          </FormField>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" type="button" onClick={() => void reload()}>Refresh</button>
+          <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800" type="button" onClick={() => {
+            setAction('');
+            setEntityType('');
+            setActor('');
+            setDateFrom('');
+            setDateTo('');
+          }}>Clear filters</button>
         </div>
         <StatusLine loading={loading} error={error} onRetry={reload} />
         {data ? (
@@ -156,6 +193,7 @@ export function AdminAuditRoute() {
                 { key: 'entity', label: 'Entity', render: (row) => [row.entityType, row.entityId].filter(Boolean).join(':') || 'System' },
                 { key: 'actor', label: 'Actor', render: (row) => row.actor?.email || row.actor?.role || 'System' },
                 { key: 'correlation', label: 'Correlation', render: (row) => row.correlationId || '-' },
+                { key: 'metadata', label: 'Metadata', render: (row) => <span className="font-mono text-xs">{row.metadata ? JSON.stringify(row.metadata) : '{}'}</span> },
               ]}
             />
           </div>

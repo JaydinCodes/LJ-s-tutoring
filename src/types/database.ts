@@ -15,6 +15,7 @@ import type {
   Tutor,
   TutorPayment,
   TutorStudentAllocation,
+  AuditLogEntry,
 } from './lms';
 
 type Table<Row, Insert, Update> = {
@@ -36,6 +37,7 @@ export interface Database {
       subjects: Table<Subject, Omit<Subject, 'id'>, Partial<Subject>>;
       assignments: Table<Assignment, Omit<Assignment, 'id' | 'created_at'>, Partial<Assignment>>;
       assignment_submissions: Table<AssignmentSubmission, Omit<AssignmentSubmission, 'id'>, Partial<AssignmentSubmission>>;
+      audit_log: Table<AuditLogEntry, Omit<AuditLogEntry, 'id' | 'created_at'>, never>;
       student_progress: Table<StudentProgress, Omit<StudentProgress, 'id'>, Partial<StudentProgress>>;
       payments: Table<Payment, Omit<Payment, 'id'>, Partial<Payment>>;
       tutor_payments: Table<TutorPayment, Omit<TutorPayment, 'id'>, Partial<TutorPayment>>;
@@ -52,6 +54,15 @@ export interface Database {
       get_parent_progress_reports: {
         Args: Record<string, never>;
         Returns: ParentProgressReportRow[];
+      };
+      record_audit_event: {
+        Args: {
+          p_action: string;
+          p_entity_type: string;
+          p_entity_id: string | null;
+          p_metadata?: Record<string, unknown>;
+        };
+        Returns: string;
       };
     };
     Enums: Record<string, never>;
