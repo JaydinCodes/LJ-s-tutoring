@@ -1,3 +1,5 @@
+import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
+import { getE2ETutorDashboard } from '../../lib/e2e/mockRoleData';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, Tutor, TutorDashboardView, TutorStudentAllocation } from '../../types/lms';
 import { loadTutorSessions, type TutorSession } from './tutorOperationsRepository';
@@ -35,6 +37,10 @@ async function getCurrentTutor() {
 }
 
 export async function loadTutorDashboard(): Promise<TutorDashboardView> {
+  if (isE2EAuthMockEnabled()) {
+    return getE2ETutorDashboard();
+  }
+
   const client = requireSupabase();
   const { profile, tutor } = await getCurrentTutor();
 

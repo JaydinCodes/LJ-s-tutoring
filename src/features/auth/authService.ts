@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import { getE2EMockAuthSnapshot, isE2EAuthMockEnabled, signInWithE2EMock, signOutE2EMock } from '../../lib/e2e/mockAuth';
 import { isSupabaseConfigured, requireSupabase, supabase } from '../../lib/supabase/client';
 import type { Profile } from '../../types/lms';
 import { getDashboardPath, normalizeUserRole, type SupportedDashboardRole } from './roles';
@@ -146,6 +147,16 @@ export async function verifyAdminMfa(input: { factorId: string; challengeId: str
 }
 
 export async function fetchCurrentProfile() {
+  if (isE2EAuthMockEnabled()) {
+    const snapshot = getE2EMockAuthSnapshot();
+    return {
+      ...snapshot,
+      adminMfa: snapshot.profile?.role === 'admin'
+        ? { status: 'dev_bypass', currentLevel: 'dev_bypass', nextLevel: 'dev_bypass', factorId: null, error: null } satisfies AdminMfaState
+        : ADMIN_MFA_NOT_APPLICABLE,
+    };
+  }
+
   if (!isSupabaseConfigured || !supabase) {
     return { session: null, profile: null, status: 'error' as const, adminMfa: ADMIN_MFA_NOT_APPLICABLE };
   }
@@ -186,6 +197,16 @@ export async function fetchCurrentProfile() {
 }
 
 export async function signInWithPassword(email: string, password: string) {
+  if (isE2EAuthMockEnabled()) {
+    const snapshot = await signInWithE2EMock(email, password);
+    return {
+      ...snapshot,
+      adminMfa: snapshot.profile?.role === 'admin'
+        ? { status: 'dev_bypass', currentLevel: 'dev_bypass', nextLevel: 'dev_bypass', factorId: null, error: null } satisfies AdminMfaState
+        : ADMIN_MFA_NOT_APPLICABLE,
+    };
+  }
+
   const client = requireSupabase();
   const result = await client.auth.signInWithPassword({ email, password });
   if (result.error) {
@@ -196,6 +217,10 @@ export async function signInWithPassword(email: string, password: string) {
 }
 
 export async function sendMagicLink(email: string) {
+  if (isE2EAuthMockEnabled()) {
+    throw new Error(`Magic links are not used in E2E smoke mode. Sign in with ${email || 'a documented E2E test user'} and the shared test password.`);
+  }
+
   const client = requireSupabase();
   const redirectTo = `${window.location.origin}/dashboard/login/`;
   const result = await client.auth.signInWithOtp({
@@ -208,6 +233,11 @@ export async function sendMagicLink(email: string) {
 }
 
 export async function signOut() {
+  if (isE2EAuthMockEnabled()) {
+    await signOutE2EMock();
+    return;
+  }
+
   const client = requireSupabase();
   const result = await client.auth.signOut();
   if (result.error) {

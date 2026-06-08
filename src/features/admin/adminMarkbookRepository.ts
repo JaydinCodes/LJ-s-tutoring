@@ -1,3 +1,5 @@
+import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
+import { getE2EAdminMarkbook } from '../../lib/e2e/mockRoleData';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentSubmission, ClassEnrollment, ClassRecord, Profile, Student, Subject } from '../../types/lms';
 
@@ -28,6 +30,10 @@ export interface AdminMarkbookView {
 }
 
 export async function loadAdminMarkbook(): Promise<AdminMarkbookView> {
+  if (isE2EAuthMockEnabled()) {
+    return getE2EAdminMarkbook();
+  }
+
   const client = requireSupabase();
   const [studentsResult, profilesResult, classesResult, enrollmentsResult, assignmentsResult, submissionsResult, subjectsResult] = await Promise.all([
     client.from('students').select('*').order('created_at', { ascending: false }),

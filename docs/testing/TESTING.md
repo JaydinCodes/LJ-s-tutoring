@@ -39,7 +39,11 @@ npm run test:api
 # LMS API E2E (Vitest)
 npm run test:e2e:api
 
-# Browser E2E (Playwright)
+# React role smoke E2E (Playwright, dev-only mock Supabase auth/data)
+npx playwright install --with-deps chromium
+npm run test:e2e
+
+# Legacy/static browser E2E (Playwright)
 npx playwright install --with-deps chromium
 npm run test:e2e:web
 ```
@@ -49,7 +53,8 @@ npm run test:e2e:web
 - Local Supabase setup is documented in `docs/supabase/LOCAL_DEVELOPMENT.md`.
 - LMS API E2E uses the test-only login endpoint enabled when `NODE_ENV=test`.
 - API E2E resets and seeds the test DB before running.
-- Browser E2E also uses the test-only login endpoint for deterministic role-based portal access.
+- React role smoke E2E is documented in `E2E_SMOKE.md` and uses a dev-only `VITE_E2E_AUTH_MOCK=true` harness so it never depends on production Supabase credentials.
+- Legacy/static browser E2E also uses the test-only login endpoint for deterministic role-based portal access.
 
 ## 20-Minute Production Live-User Test Scope
 

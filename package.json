@@ -75,6 +75,8 @@
     "test:release:evidence": "node --test tests/release-evidence.test.cjs",
     "test:api": "npm run test --prefix lms-api",
     "test:e2e:api": "npm run test:e2e --prefix lms-api",
+    "test:e2e": "playwright test --config playwright.react.config.ts",
+    "test:e2e:ui": "playwright test --config playwright.react.config.ts --ui",
     "test:e2e:web": "playwright test",
     "test:e2e:web:headed": "playwright test --headed",
     "test:unit": "npm run test:frontend:unit",

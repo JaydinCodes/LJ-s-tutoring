@@ -1,3 +1,5 @@
+import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
+import { getE2EParentReports } from '../../lib/e2e/mockRoleData';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { ParentProgressReportRow } from '../../types/lms';
 
@@ -20,6 +22,10 @@ export interface ParentReportStudent {
 }
 
 export async function loadParentProgressReports(): Promise<{ students: ParentReportStudent[] }> {
+  if (isE2EAuthMockEnabled()) {
+    return getE2EParentReports();
+  }
+
   const client = requireSupabase();
   const result = await client.rpc('get_parent_progress_reports');
   if (result.error) {

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { ADMIN_MFA_NOT_APPLICABLE, fetchCurrentProfile, type AuthState } from './authService';
 
 interface AuthContextValue extends AuthState {
@@ -10,8 +11,9 @@ interface AuthContextValue extends AuthState {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const authConfigured = isSupabaseConfigured || isE2EAuthMockEnabled();
   const [state, setState] = useState<AuthState>({
-    configured: isSupabaseConfigured,
+    configured: authConfigured,
     loading: true,
     session: null,
     profile: null,
@@ -21,7 +23,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const refresh = useCallback(async () => {
-    if (!isSupabaseConfigured) {
+    const configured = isSupabaseConfigured || isE2EAuthMockEnabled();
+    if (!configured) {
       setState({
         configured: false,
         loading: false,
@@ -34,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setState((current) => ({ ...current, configured: true, loading: true, status: 'loading', error: null }));
+    setState((current) => ({ ...current, configured, loading: true, status: 'loading', error: null }));
     try {
       const { session, profile, status, adminMfa } = await fetchCurrentProfile();
       const statusError = status === 'missing_profile'
@@ -42,10 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         : status === 'invalid_role'
           ? 'Your profile has a role that is not enabled for this portal.'
           : null;
-      setState({ configured: true, loading: false, session, profile, status, adminMfa, error: statusError });
+      setState({ configured, loading: false, session, profile, status, adminMfa, error: statusError });
     } catch (error) {
       setState({
-        configured: true,
+        configured,
         loading: false,
         session: null,
         profile: null,

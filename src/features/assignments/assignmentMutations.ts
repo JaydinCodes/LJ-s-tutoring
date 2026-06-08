@@ -1,3 +1,5 @@
+import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
+import { markE2ESubmission, submitE2EAssignment } from '../../lib/e2e/mockRoleData';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentStatus, AssignmentSubmission, Profile, Student, Subject } from '../../types/lms';
 
@@ -303,6 +305,10 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
 }
 
 export async function submitAssignment(input: SubmitAssignmentInput) {
+  if (isE2EAuthMockEnabled()) {
+    return submitE2EAssignment(input);
+  }
+
   const client = requireSupabase();
   const profile = await getCurrentProfile();
   if (profile.role !== 'student') {
@@ -398,6 +404,10 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
 }
 
 export async function markSubmission(input: MarkSubmissionInput) {
+  if (isE2EAuthMockEnabled()) {
+    return markE2ESubmission(input);
+  }
+
   const client = requireSupabase();
   const profile = await getCurrentProfile();
   if (profile.role !== 'admin' && profile.role !== 'tutor') {

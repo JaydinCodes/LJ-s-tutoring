@@ -1,3 +1,5 @@
+import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
+import { getE2ENgoReports } from '../../lib/e2e/mockRoleData';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentSubmission, ClassEnrollment, ClassRecord, NgoPartner, Student, StudentProgress } from '../../types/lms';
 
@@ -12,6 +14,10 @@ export interface NgoAggregateReport {
 }
 
 export async function loadNgoReports(): Promise<{ reports: NgoAggregateReport[] }> {
+  if (isE2EAuthMockEnabled()) {
+    return getE2ENgoReports();
+  }
+
   const client = requireSupabase();
   const [partnersResult, studentsResult, submissionsResult, assignmentsResult, classesResult, enrollmentsResult, progressResult] = await Promise.all([
     client.from('ngo_partners').select('*').order('name', { ascending: true }),

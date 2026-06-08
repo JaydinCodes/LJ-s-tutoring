@@ -1,4 +1,6 @@
 import { optionalApiGet } from '../../lib/api/client';
+import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
+import { getE2EStudentDashboard } from '../../lib/e2e/mockRoleData';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, StudentDashboardView, StudentProgress, Tutor, TutorStudentAllocation } from '../../types/lms';
 import {
@@ -244,6 +246,10 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
 }
 
 export async function loadStudentDashboard(): Promise<StudentDashboardView> {
+  if (isE2EAuthMockEnabled()) {
+    return getE2EStudentDashboard();
+  }
+
   const supabaseView = await loadFromSupabase();
   return supabaseView || loadFromApi();
 }

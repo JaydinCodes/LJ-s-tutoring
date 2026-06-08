@@ -1,5 +1,7 @@
 import { optionalApiGet } from '../../lib/api/client';
 import { formatCurrency } from '../../lib/utils/format';
+import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
+import { getE2EAdminDashboard } from '../../lib/e2e/mockRoleData';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import type { AdminDashboardView, Assignment, AssignmentSubmission, Guardian, NgoPartner, Payment, Profile, Student, StudentGuardian, Tutor, TutorPayment } from '../../types/lms';
 
@@ -133,6 +135,10 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
 }
 
 export async function loadAdminDashboard(): Promise<AdminDashboardView> {
+  if (isE2EAuthMockEnabled()) {
+    return getE2EAdminDashboard();
+  }
+
   const supabaseView = await loadFromSupabase();
   return supabaseView || loadFromApi();
 }
