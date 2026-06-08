@@ -427,10 +427,88 @@ export function MatricMathsMistakesGuideRoute() {
 export function PrivacyRoute() {
   return (
     <LegalRoute title="Privacy">
-      <p>Project Odysseus processes learner and tutor data for tutoring operations, progress analytics, session workflows, and safety controls.</p>
-      <p>Learner account data may include name, grade, guardian contact details, login email, tutor assignments, attendance/session records, learning progress, community activity, and support or privacy request history.</p>
-      <p>Data is used only to provide tutoring services, maintain account security, support learner progress, meet operational/legal duties, and handle access, correction, deletion, or retention requests.</p>
-      <p>Operational cookies are used for authenticated portal access. We limit browser-visible information to what is required for secure access and site functionality.</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Last updated: 8 June 2026</p>
+      <p>
+        This privacy notice explains how Project Odysseus handles personal information for tutoring, learner progress tracking,
+        parent or guardian reporting, tutor operations, NGO partner reporting, and platform administration. It is written for
+        practical launch readiness and should be reviewed by a legal professional.
+      </p>
+
+      <LegalSection title="Information We Collect">
+        <p>Depending on how you use the platform, we may collect and process:</p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>Learner information such as name, grade, school context, contact details, account email, assigned tutor, cohort, status, and onboarding information.</li>
+          <li>Parent or guardian information such as name, email, phone number, relationship to the learner, communication preference, and report-access permissions.</li>
+          <li>Tutor information such as profile details, assigned learners or classes, session records, notes needed for tutoring operations, availability or workflow status, and payment-adjacent admin records where applicable.</li>
+          <li>Academic and operational records such as assignments, submissions, uploaded files, marks, feedback, released results, progress summaries, attendance, session notes, and support history.</li>
+          <li>NGO partner records such as partner name, permitted cohorts, contact person, and aggregate reporting outputs.</li>
+          <li>Account, security, and technical information such as login events, role permissions, audit logs, privacy request records, browser or device diagnostics, and error reports.</li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection title="Learners And Minors">
+        <p>
+          Many learners using Project Odysseus are minors. We treat learner names, contact details, marks, feedback, uploaded
+          work, tutor notes, attendance, and progress information as sensitive education data. Parent or guardian involvement
+          may be required for onboarding, reporting, correction requests, deletion requests, and other privacy decisions.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="How We Use Information">
+        <p>We use personal information to:</p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>provide tutoring services, assignments, feedback, progress tracking, and learner support;</li>
+          <li>manage accounts, roles, tutor allocations, classes, results, releases, reports, and operational workflows;</li>
+          <li>communicate with learners, parents, guardians, tutors, admins, and approved partners;</li>
+          <li>protect the platform through authentication, role-based access, audit logs, retention controls, and error monitoring;</li>
+          <li>respond to access, correction, deletion, retention, safety, and support requests.</li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection title="Who Can Access Data">
+        <p>
+          Access is role-based. Learners see their own dashboard, assignments, results, progress, and support surfaces. Tutors
+          see only the learners, classes, submissions, and session workflows assigned to them. Admin users can manage operational
+          records needed to run the tutoring service. Parents or guardians can see released reports only for linked learners
+          where report access is enabled. NGO partners receive cohort-level reporting intended to exclude learner names,
+          guardian contacts, individual feedback, and raw submission content.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Uploads And Learning Records">
+        <p>
+          Assignment submissions and uploaded files may include learner answers, images, documents, or other schoolwork. These
+          files are used for review, marking, feedback, progress tracking, and auditability. Learners and guardians should avoid
+          uploading unrelated personal documents or sensitive information that is not needed for tutoring.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Third-Party Services">
+        <p>
+          Project Odysseus uses service providers to operate the platform, including Supabase for authentication, database, and
+          storage services, hosting providers for the website and portal, communication tools such as email or WhatsApp links,
+          form handling where configured, and error monitoring for technical diagnostics. We do not intentionally send learner
+          marks, private notes, uploaded file contents, or guardian contact details to monitoring tools.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Security And Retention">
+        <p>
+          We use Supabase authentication, role-based access controls, row-level security, audit logging, and operational
+          retention processes to reduce the risk of unauthorised access. No online service can guarantee perfect security.
+          Records are retained only as long as needed for tutoring operations, support, audit, legal, financial, or safety
+          reasons, then deleted or anonymised where the platform retention process allows.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="POPIA And Privacy Requests" id="privacy-requests">
+        <p>
+          You may ask to access, correct, or delete personal information, subject to identity checks, guardian authority where
+          a learner is a minor, and any retention duties that require us to keep or anonymise records instead of deleting them.
+          To make a privacy request, email <a className="font-semibold text-brand-deepBlue underline-offset-4 hover:underline" href={`mailto:${contactEmail}?subject=${encodeURIComponent('Privacy request - Project Odysseus')}`}>{contactEmail}</a> with your name,
+          the learner or account involved, the request type, and enough detail for us to verify and respond safely.
+        </p>
+      </LegalSection>
     </LegalRoute>
   );
 }
@@ -438,10 +516,81 @@ export function PrivacyRoute() {
 export function TermsRoute() {
   return (
     <LegalRoute title="Terms">
-      <p>These terms govern use of Project Odysseus learning services, tutor workflows, and portal features.</p>
-      <p>Access is role-based and controlled by account permissions. Students and guardians are responsible for keeping login details private and reporting incorrect account or learner information promptly.</p>
-      <p>Misuse of portal access, impersonation controls, community features, or protected data may result in account suspension.</p>
-      <p>Project Odysseus provides tutoring support and progress information, but it does not guarantee academic results or replace school, medical, legal, or professional advice.</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Last updated: 8 June 2026</p>
+      <p>
+        These terms apply to Project Odysseus tutoring services, learner dashboards, tutor workflows, parent or guardian report
+        access, NGO partner reporting, and related admin features.
+      </p>
+
+      <LegalSection title="Tutoring Service Expectations">
+        <p>
+          Project Odysseus provides educational support, tutoring structure, assignments, feedback, and progress visibility. It
+          does not replace school attendance, school assessment duties, medical advice, legal advice, or professional educational
+          assessments, and it does not guarantee a specific mark, grade, result, or admission outcome.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Accounts And Role Access">
+        <p>
+          Portal access is role-based. Students, parents or guardians, tutors, admins, and NGO partners must use only their own
+          accounts and must not try to view another role's protected information. Login details must be kept private. If account
+          details, learner records, guardian links, tutor allocations, or report permissions look incorrect, tell Project
+          Odysseus promptly so the record can be reviewed.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Learner Work, Uploads, And Feedback">
+        <p>
+          Learners may submit assignments, documents, images, answers, or other schoolwork for tutoring review. Uploaded content
+          must be relevant to the tutoring task and must not include material the learner is not allowed to share. Tutors and
+          admins may review, mark, return, replace, or remove submissions where needed for the tutoring workflow, safety, or
+          platform operation.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Sessions, Attendance, And Communication">
+        <p>
+          Tutoring sessions depend on agreed scheduling, learner readiness, accurate contact details, and respectful
+          communication. Session notes, attendance records, progress summaries, and parent or guardian communications may be
+          recorded so the team can support the learner consistently and resolve disputes or operational questions.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Parent, Guardian, And NGO Access">
+        <p>
+          Parent or guardian access is limited to linked learners and released reports that Project Odysseus has enabled for
+          that guardian relationship. NGO partner reports are intended for authorised cohort-level reporting and should not be
+          used to identify individual learners unless a separate, approved process exists.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Acceptable Use">
+        <p>You must not misuse the service, including by:</p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>impersonating another learner, parent, guardian, tutor, admin, or partner;</li>
+          <li>attempting to bypass role permissions, Supabase security rules, or protected routes;</li>
+          <li>uploading harmful, illegal, unrelated, or privacy-invasive content;</li>
+          <li>sharing another person's academic records, feedback, contact details, or private notes without permission;</li>
+          <li>using tutoring communication channels for harassment, spam, or non-tutoring purposes.</li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection title="Payments And Admin Records">
+        <p>
+          Where payments, packages, invoices, tutor pay, or reconciliation records apply, those records are handled for
+          operational administration, support, and retention purposes. Specific pricing, cancellation, refund, or package terms
+          may be confirmed separately during onboarding or direct communication.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Suspension, Corrections, And Changes">
+        <p>
+          Project Odysseus may restrict access where an account is misused, where a learner safety or privacy concern exists,
+          where payment or operational records need review, or where the platform must protect other users. We may update these
+          terms as the tutoring platform changes. For account, correction, deletion, or privacy questions, contact
+          <a className="ml-1 font-semibold text-brand-deepBlue underline-offset-4 hover:underline" href={`mailto:${contactEmail}?subject=${encodeURIComponent('Terms or account question - Project Odysseus')}`}>{contactEmail}</a>.
+        </p>
+      </LegalSection>
     </LegalRoute>
   );
 }
@@ -523,6 +672,7 @@ function PublicLayout({ children }: { children: ReactNode }) {
           <p>Project Odysseus</p>
           <div className="flex gap-4">
             <Link to="/privacy">Privacy</Link>
+            <a href="/privacy#privacy-requests">POPIA requests</a>
             <Link to="/terms">Terms</Link>
           </div>
         </div>
@@ -1018,6 +1168,15 @@ function LegalRoute({ title, children }: { title: string; children: ReactNode })
         </article>
       </main>
     </PublicLayout>
+  );
+}
+
+function LegalSection({ title, id, children }: { title: string; id?: string; children: ReactNode }) {
+  return (
+    <section id={id} className="space-y-3">
+      <h2 className="text-xl font-semibold tracking-tight text-slate-950">{title}</h2>
+      <div className="space-y-3">{children}</div>
+    </section>
   );
 }
 
