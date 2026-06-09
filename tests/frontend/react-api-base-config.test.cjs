@@ -25,14 +25,14 @@ test('dashboard React shells load portal config before the React bundle', () => 
   assert.ok(build.includes('? `${configScript}'), 'protected dashboard shells must still load portal config');
 });
 
-test('DigitalOcean config exposes same-origin /api for browser API calls', () => {
+test('DigitalOcean config sends browser API calls to the API subdomain and keeps /api ingress available', () => {
   const appSpec = read('.do', 'app.yaml');
   const portalConfig = read('assets', 'portal-config.js');
   const injectConfig = read('scripts', 'inject-config.js');
 
-  assert.ok(appSpec.includes('value: /api'), 'browser API base must not depend on the api subdomain');
+  assert.ok(appSpec.includes('value: https://api.projectodysseus.live'), 'browser API base must use the API subdomain in production');
   assert.ok(appSpec.includes('prefix: /api'), 'App Platform must route /api to the API service');
   assert.ok(appSpec.includes('preserve_path_prefix: false'), 'App Platform must strip /api before forwarding to Fastify');
-  assert.ok(portalConfig.includes("window.__PO_API_BASE__ = '/api';"), 'runtime portal config must default to same-origin /api');
-  assert.ok(injectConfig.includes("raw === 'https://api.projectodysseus.live'"), 'config injection must normalize the unresolved api subdomain');
+  assert.ok(portalConfig.includes("window.__PO_API_BASE__ = 'https://api.projectodysseus.live';"), 'runtime portal config must default to the API subdomain');
+  assert.ok(!injectConfig.includes("raw === 'https://api.projectodysseus.live'"), 'config injection must not rewrite the API subdomain to /api');
 });

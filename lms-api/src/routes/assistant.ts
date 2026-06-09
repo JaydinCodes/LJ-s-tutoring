@@ -4,6 +4,7 @@ import { loadAssistantConfig } from '../domains/assistant/config.js';
 import { createAssistantService } from '../domains/assistant/service.js';
 import { createOpenRouterProvider } from '../domains/assistant/providers/openrouter.js';
 import { createLmStudioProvider } from '../domains/assistant/providers/lmstudio.js';
+import { pool } from '../db/pool.js';
 
 const HistoryMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
@@ -108,6 +109,109 @@ async function readAssistantError(response: Response) {
     return text.slice(0, 300);
   }
   return response.statusText || 'request_failed';
+}
+
+function getBearerTokenFromRequest(req: any) {
+  const authHeader = req.headers?.authorization;
+  const authValue = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+  if (authValue && /^Bearer\s+/i.test(authValue)) {
+    return authValue.replace(/^Bearer\s+/i, '').trim();
+  }
+  return '';
+}
+
+function supabaseAuthConfig() {
+  const url = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+  if (!url || !anonKey) {
+    throw new Error('supabase_auth_not_configured');
+  }
+  return { url, anonKey };
+}
+
+async function fetchSupabaseUser(token: string) {
+  const config = supabaseAuthConfig();
+  const response = await fetch(`${config.url}/auth/v1/user`, {
+    headers: {
+      apikey: config.anonKey,
+      authorization: `Bearer ${token}`,
+      accept: 'application/json',
+    },
+  });
+  if (!response.ok) {
+    throw new Error('supabase_bearer_invalid');
+  }
+  return await response.json() as { id?: string; email?: string; user_metadata?: { full_name?: string; name?: string; picture?: string; avatar_url?: string } };
+}
+
+async function authenticateCareersStudent(app: FastifyInstance, req: any, reply: any) {
+  const sessionCookie = req.cookies?.session;
+  if (sessionCookie) {
+    try {
+      const decoded: any = await (app as any).jwt.verify(sessionCookie);
+      if (decoded?.role !== 'STUDENT') {
+        return reply.code(403).send({ error: 'forbidden' });
+      }
+      req.user = {
+        userId: decoded.userId,
+        role: decoded.role,
+        tutorId: decoded.tutorId,
+        studentId: decoded.studentId,
+        profile: decoded.profile,
+      };
+      return;
+    } catch {
+      // Fall through to the Supabase bearer token used by the React dashboard.
+    }
+  }
+
+  const token = getBearerTokenFromRequest(req);
+  if (!token) {
+    return reply.code(401).send({ error: 'assistant_auth_required' });
+  }
+
+  let user: { id?: string; email?: string; user_metadata?: { full_name?: string; name?: string; picture?: string; avatar_url?: string } };
+  try {
+    user = await fetchSupabaseUser(token);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'supabase_bearer_invalid';
+    const status = message === 'supabase_auth_not_configured' ? 503 : 401;
+    return reply.code(status).send({ error: message });
+  }
+
+  if (!user.id) {
+    return reply.code(401).send({ error: 'supabase_bearer_invalid' });
+  }
+
+  const profile = await pool.query(
+    `select p.id as profile_id, p.email, p.full_name, p.role, s.id as student_id
+     from profiles p
+     left join students s on s.profile_id = p.id
+     where p.auth_user_id = $1::uuid
+     limit 1`,
+    [user.id],
+  );
+  const row = profile.rows[0] as { profile_id?: string; email?: string; full_name?: string; role?: string; student_id?: string } | undefined;
+  if (!row) {
+    return reply.code(401).send({ error: 'student_profile_missing' });
+  }
+  if (String(row.role || '').toLowerCase() !== 'student') {
+    return reply.code(403).send({ error: 'forbidden' });
+  }
+  if (!row.student_id) {
+    return reply.code(403).send({ error: 'student_record_missing' });
+  }
+
+  req.user = {
+    userId: row.profile_id,
+    role: 'STUDENT',
+    studentId: row.student_id,
+    profile: {
+      email: row.email || user.email,
+      name: row.full_name || user.user_metadata?.full_name || user.user_metadata?.name,
+      picture: user.user_metadata?.picture || user.user_metadata?.avatar_url,
+    },
+  };
 }
 
 function extractOpenAiCompatibleDelta(payload: string) {
@@ -255,6 +359,7 @@ export async function assistantRoutes(app: FastifyInstance) {
   });
 
   app.post('/assistant/careers-chat', {
+    preHandler: [(req, reply) => authenticateCareersStudent(app, req, reply)],
     config: {
       rateLimit: {
         max: 20,
@@ -286,6 +391,7 @@ export async function assistantRoutes(app: FastifyInstance) {
   });
 
   app.post('/assistant/careers-chat/stream', {
+    preHandler: [(req, reply) => authenticateCareersStudent(app, req, reply)],
     config: {
       rateLimit: {
         max: 20,

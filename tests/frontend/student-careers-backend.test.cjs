@@ -36,6 +36,9 @@ test('streaming Odie career chat is OpenRouter-backed and guarded', () => {
   assert.ok(route.includes('Accept: \'text/event-stream\''), 'OpenRouter request must ask for streaming events');
   assert.ok(route.includes('openrouter_not_configured'), 'missing OpenRouter configuration must be explicit');
   assert.ok(route.includes('req.raw.on(\'close\', () => controller.abort())'), 'client disconnect must stop generation');
+  assert.ok(route.includes('getBearerTokenFromRequest'), 'streaming careers endpoint must read the Supabase bearer token');
+  assert.ok(route.includes('/auth/v1/user'), 'streaming careers endpoint must validate the bearer token with Supabase Auth');
+  assert.ok(route.includes("String(row.role || '').toLowerCase() !== 'student'"), 'streaming careers endpoint must require a student profile');
   assert.ok(route.includes('Do not pretend to be a university admissions officer'), 'guardrails must prevent admissions-officer impersonation');
   assert.ok(route.includes('verify current requirements on official institution pages'), 'guardrails must label uncertainty and require verification');
   assert.ok(route.includes('Never reveal, infer, or reference another student'), 'guardrails must protect other students data');
