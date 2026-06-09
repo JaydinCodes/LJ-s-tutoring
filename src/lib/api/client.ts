@@ -166,21 +166,40 @@ export async function apiStreamText(
     throw new Error(responseBody || `request_failed:${response.status}`);
   }
 
+  const contentType = (response.headers.get('content-type') || '').toLowerCase();
+  if (contentType.includes('text/html')) {
+    throw new Error(`api_html_response:${response.status}`);
+  }
+  if (contentType && !contentType.includes('text/plain') && !contentType.includes('text/event-stream')) {
+    throw new Error(`api_unexpected_stream_response:${response.status}`);
+  }
+
   if (!response.body) {
     throw new Error('api_stream_unavailable');
   }
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  let hasAcceptedContent = false;
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
     const chunk = decoder.decode(value, { stream: true });
-    if (chunk) onChunk(chunk);
+    if (!chunk) continue;
+    if (!hasAcceptedContent && /^(\s*)(<!doctype\s+html|<html[\s>])/i.test(chunk)) {
+      throw new Error(`api_html_response:${response.status}`);
+    }
+    hasAcceptedContent = true;
+    onChunk(chunk);
   }
 
   const finalChunk = decoder.decode();
-  if (finalChunk) onChunk(finalChunk);
+  if (finalChunk) {
+    if (!hasAcceptedContent && /^(\s*)(<!doctype\s+html|<html[\s>])/i.test(finalChunk)) {
+      throw new Error(`api_html_response:${response.status}`);
+    }
+    onChunk(finalChunk);
+  }
 }
 
 export async function optionalApiGet<T>(path: string, fallback: T): Promise<T> {

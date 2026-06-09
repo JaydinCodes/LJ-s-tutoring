@@ -33,6 +33,8 @@ test('Odie career chat streams with stop support and bounded memory', () => {
   assert.ok(source.includes('MAX_CHAT_MESSAGES = 12'), 'chat state must have a max message limit');
   assert.ok(source.includes('slice(-MAX_CHAT_MESSAGES)'), 'chat history must be trimmed');
   assert.ok(client.includes('response.body.getReader()'), 'API client must read streamed chunks');
+  assert.ok(client.includes("contentType.includes('text/html')"), 'stream client must reject SPA fallback HTML');
+  assert.ok(client.includes('api_html_response'), 'stream client must guard against HTML chunks being rendered as chat');
 });
 
 test('Odie remains scoped to the careers student route', () => {
