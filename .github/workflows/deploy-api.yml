@@ -12,9 +12,9 @@ on:
         required: false
         default: 'false'
       sync_app_spec:
-        description: Apply .do/app.yaml before deployment (defaults to false for code-only deploys)
+        description: Apply .do/app.yaml before deployment so /api routing is current
         required: false
-        default: 'false'
+        default: 'true'
 
 jobs:
   preflight:
@@ -164,11 +164,11 @@ jobs:
               }
 
               app_has_api_route() {
-                grep -Eq '"path"[[:space:]]*:[[:space:]]*"/api("|/)' <<<"$app_json"
+                grep -Eq '"prefix"[[:space:]]*:[[:space:]]*"/api"' <<<"$app_json"
               }
 
               app_has_api_component() {
-                grep -Eq '"name"[[:space:]]*:[[:space:]]*"api"' <<<"$app_json"
+                grep -Eq '"name"[[:space:]]*:[[:space:]]*"(api|lms-api)"' <<<"$app_json"
               }
 
               if app_has_api_component; then
@@ -282,8 +282,8 @@ jobs:
 
       - name: Post-deploy health check
         env:
-          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL || vars.HEALTHCHECK_URL || 'https://projectodysseus.live' }}
-          SYNC_APP_SPEC: ${{ github.event.inputs.sync_app_spec || vars.SYNC_APP_SPEC || 'false' }}
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL || vars.HEALTHCHECK_URL || 'https://projectodysseus.live/api' }}
+          SYNC_APP_SPEC: ${{ github.event.inputs.sync_app_spec || vars.SYNC_APP_SPEC || 'true' }}
         run: |
           max_checks=20
           sleep_seconds=10

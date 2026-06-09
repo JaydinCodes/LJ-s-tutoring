@@ -10,16 +10,14 @@ domains:
     type: ALIAS
   - domain: student.projectodysseus.live
     type: ALIAS
-  - domain: api.projectodysseus.live
-    type: ALIAS
 
 envs:
   - key: PUBLIC_PO_API_BASE
     scope: RUN_AND_BUILD_TIME
-    value: https://api.projectodysseus.live
+    value: /api
   - key: PUBLIC_BASE_URL
     scope: RUN_AND_BUILD_TIME
-    value: https://api.projectodysseus.live
+    value: https://projectodysseus.live
   - key: NODE_ENV
     scope: RUN_AND_BUILD_TIME
     value: production
@@ -46,13 +44,13 @@ envs:
     value: .projectodysseus.live
   - key: GOOGLE_CALLBACK_URL
     scope: RUN_AND_BUILD_TIME
-    value: https://api.projectodysseus.live/auth/google/callback
+    value: https://projectodysseus.live/api/auth/google/callback
   - key: GOOGLE_STUDENT_CALLBACK_URL
     scope: RUN_AND_BUILD_TIME
-    value: https://api.projectodysseus.live/auth/google/student/callback
+    value: https://student.projectodysseus.live/api/auth/google/student/callback
   - key: GOOGLE_ADMIN_CALLBACK_URL
     scope: RUN_AND_BUILD_TIME
-    value: https://api.projectodysseus.live/auth/google/admin/callback
+    value: https://admin.projectodysseus.live/api/auth/google/admin/callback
   - key: JWT_EXPIRES_IN
     scope: RUN_AND_BUILD_TIME
     value: 15m
@@ -143,15 +141,6 @@ envs:
 
 ingress:
   rules:
-    - match:
-        authority:
-          exact: api.projectodysseus.live
-        path:
-          prefix: /
-      component:
-        name: lms-api
-        preserve_path_prefix: true
-
     - match:
         authority:
           exact: projectodysseus.live
@@ -392,7 +381,7 @@ static_sites:
     envs:
       - key: PUBLIC_PO_API_BASE
         scope: BUILD_TIME
-        value: https://api.projectodysseus.live
+        value: /api
       - key: ASSISTANT_ENABLED
         scope: BUILD_TIME
         value: "true"

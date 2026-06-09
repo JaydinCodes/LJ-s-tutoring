@@ -13,6 +13,10 @@ loadEnvFile(path.resolve(root, '.env.local'));
 loadEnvFile(path.resolve(root, '.env'));
 
 function resolveApiBase(raw) {
+  if (raw === 'https://api.projectodysseus.live') {
+    return '/api';
+  }
+
   const codespaceName = process.env.CODESPACE_NAME;
   const forwardingDomain = process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN;
 

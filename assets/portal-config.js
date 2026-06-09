@@ -1,6 +1,6 @@
 // This file is rewritten by `npm run inject:config` during builds.
-// Keep a safe placeholder in-repo so production defaults call the API service directly.
-window.__PO_API_BASE__ = 'https://api.projectodysseus.live';
+// Keep a safe placeholder in-repo so production defaults use same-origin API routing.
+window.__PO_API_BASE__ = '/api';
 // Assistant access keys are never shipped to the browser. The Odie endpoints
 // use server-side authentication (session cookie + role check) and a feature
 // flag. Leaving a public placeholder here so legacy code paths fail safely

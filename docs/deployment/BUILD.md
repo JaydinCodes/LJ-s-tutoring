@@ -52,8 +52,8 @@ Routing note:
 
 - The DigitalOcean app spec in `.do/app.yaml` is the production routing source of truth.
 - Role subdomains redirect to the unified React dashboards: admin to `/dashboard/admin/`, tutor to `/dashboard/tutor/`, and student to `/dashboard/student/`.
-- The static site sets `PUBLIC_PO_API_BASE=https://api.projectodysseus.live` so browser calls land on the API subdomain.
-- Without this route setup, API endpoints can return static-site 404 pages.
+- The static site sets `PUBLIC_PO_API_BASE=/api` so browser calls use the active portal domain and App Platform forwards `/api/*` to the API service before dashboard redirects.
+- Without this route setup, API endpoints can be caught by dashboard redirects or static-site fallbacks.
 
 ### GitHub Deploy Workflow Inputs
 
@@ -74,7 +74,7 @@ Special case supported by workflow:
 	- optional `DIGITAL_APP_NAME` (or `DIGITALOCEAN_APP_NAME`, default `projectodysseus`) to auto-resolve app ID if ID is stale/missing
 	- optional `DOCTL_VERSION` (defaults to `1.154.0`)
 	- optional `DO_DEPLOY_MAX_CHECKS` (defaults to `120`) and `DO_DEPLOY_POLL_SECONDS` (defaults to `10`) for deployment phase polling
-	- optional workflow input `sync_app_spec` (defaults to `false`; when `true`, `.do/app.yaml` is applied before deployment)
+	- optional workflow input `sync_app_spec` (defaults to `true`; `.do/app.yaml` is applied before deployment so `/api` routing stays current)
 
 Resolver behavior:
 

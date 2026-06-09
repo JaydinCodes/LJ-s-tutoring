@@ -41,9 +41,9 @@ The Fastify API still contains Google OAuth routes from the older API-session mo
    - Local student callback: `http://localhost:3001/auth/google/student/callback`
    - Local tutor callback: `http://localhost:3001/auth/google/callback`
    - Local admin callback: `http://localhost:3001/auth/google/admin/callback`
-   - Production student callback: `https://<api-host>/auth/google/student/callback`
-   - Production tutor callback: `https://<api-host>/auth/google/callback`
-   - Production admin callback: `https://<api-host>/auth/google/admin/callback`
+   - Production student callback: `https://student.projectodysseus.live/api/auth/google/student/callback`
+   - Production tutor callback: `https://projectodysseus.live/api/auth/google/callback`
+   - Production admin callback: `https://admin.projectodysseus.live/api/auth/google/admin/callback`
 5. Copy the client ID and client secret into environment variables. Do not commit real secrets.
 
 ## Required Environment
@@ -51,8 +51,8 @@ The Fastify API still contains Google OAuth routes from the older API-session mo
 Set these for local development:
 
 ```env
-PUBLIC_PO_API_BASE=https://api.projectodysseus.live
-PUBLIC_BASE_URL=https://api.projectodysseus.live
+PUBLIC_PO_API_BASE=/api
+PUBLIC_BASE_URL=https://projectodysseus.live
 STUDENT_PORTAL_URL=https://student.projectodysseus.live
 TUTOR_PORTAL_URL=https://tutor.projectodysseus.live
 ADMIN_PORTAL_URL=https://admin.projectodysseus.live
@@ -63,9 +63,9 @@ JWT_EXPIRES_IN=15m
 SESSION_MAX_AGE_SECONDS=900
 GOOGLE_CLIENT_ID=replace_with_google_client_id
 GOOGLE_CLIENT_SECRET=replace_with_google_client_secret
-GOOGLE_CALLBACK_URL=https://api.projectodysseus.live/auth/google/callback
-GOOGLE_STUDENT_CALLBACK_URL=https://api.projectodysseus.live/auth/google/student/callback
-GOOGLE_ADMIN_CALLBACK_URL=https://api.projectodysseus.live/auth/google/admin/callback
+GOOGLE_CALLBACK_URL=https://projectodysseus.live/api/auth/google/callback
+GOOGLE_STUDENT_CALLBACK_URL=https://student.projectodysseus.live/api/auth/google/student/callback
+GOOGLE_ADMIN_CALLBACK_URL=https://admin.projectodysseus.live/api/auth/google/admin/callback
 ```
 
 Production additionally fails fast unless `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `PUBLIC_BASE_URL`, `STUDENT_PORTAL_URL`, and `GOOGLE_STUDENT_CALLBACK_URL` are present. Production URL values must use HTTPS.
