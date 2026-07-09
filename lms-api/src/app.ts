@@ -350,6 +350,10 @@ export async function buildApp() {
   process.on('uncaughtException', (err) => {
     errorMonitor.captureException(err);
     app.log?.error?.(err, 'uncaughtException');
+    // After an uncaught exception the process is in an undefined state and must
+    // not keep serving requests. Give the error monitor a brief window to flush,
+    // then exit non-zero so the platform (DigitalOcean) restarts a clean instance.
+    setTimeout(() => process.exit(1), 100).unref();
   });
 
   app.addHook('onResponse', async (req, reply) => {

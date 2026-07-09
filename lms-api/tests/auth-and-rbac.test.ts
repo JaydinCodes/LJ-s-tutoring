@@ -132,7 +132,7 @@ describe('Auth + RBAC', () => {
     await app.close();
   });
 
-  it('allows admin password login without MFA', async () => {
+  it('rejects admin password login and issues no session (Supabase-first, MFA-gated)', async () => {
     const app = await buildApp();
 
     const passwordHash = await hashPassword('correct-horse-battery-staple');
@@ -143,18 +143,35 @@ describe('Auth + RBAC', () => {
       ['admin-mfa@example.com', passwordHash]
     );
 
+    // The legacy Fastify password path must never mint an admin session (AUDIT.md
+    // Critical): admins sign in via Supabase, which enforces MFA/AAL2 server-side.
     const login = await app.inject({
       method: 'POST',
       url: '/auth/login',
       payload: { email: res.rows[0].email, password: 'correct-horse-battery-staple' }
     });
 
-    expect(login.statusCode).toBe(200);
-    expect(login.json().ok).toBe(true);
-    expect(login.json().role).toBe('ADMIN');
+    expect(login.statusCode).toBe(403);
+    expect(login.json().error).toBe('admin_login_via_supabase');
     const cookies = login.headers['set-cookie'];
     const cookieHeader = Array.isArray(cookies) ? cookies.join('; ') : String(cookies ?? '');
-    expect(cookieHeader).toContain('session=');
+    expect(cookieHeader).not.toContain('session=');
+    await app.close();
+  });
+
+  it('retires the dedicated /auth/admin/login endpoint (410, no session)', async () => {
+    const app = await buildApp();
+
+    const login = await app.inject({
+      method: 'POST',
+      url: '/auth/admin/login',
+      payload: { email: 'admin-mfa@example.com', password: 'correct-horse-battery-staple' }
+    });
+
+    expect(login.statusCode).toBe(410);
+    const cookies = login.headers['set-cookie'];
+    const cookieHeader = Array.isArray(cookies) ? cookies.join('; ') : String(cookies ?? '');
+    expect(cookieHeader).not.toContain('session=');
     await app.close();
   });
 

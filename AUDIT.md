@@ -17,6 +17,21 @@
 
 ---
 
+## Remediation status (updated 2026-07-08)
+
+Phase-A hardening progress on the 4 Criticals. Code changes are verified by TypeScript compile (API) and a full schema load against Postgres 16 (Supabase SQL); **the vitest API suite and live Supabase `test:rls` still need to run in an environment with the test DB before deploy.**
+
+| # | Critical | Status | Fix |
+|---|----------|--------|-----|
+| 1 | Admin-MFA bypass via legacy login | ✅ Fixed | Retired `/auth/admin/login` (410) **and** blocked ADMIN role from the shared password helper (closes `/auth/login` too); test updated. `auth.ts` |
+| 2 | RLS submission-RPC bypass | ✅ Fixed | Dropped `submissions_student_rpc_insert_shape` (with explicit `drop policy if exists` for existing DBs); deny-guard remains. `schema.sql` |
+| 3 | No POPIA erasure path (Supabase) | ✅ Fixed | Added `export_student_data` / `anonymize_student` / `process_privacy_request` + `privacy_requests` table. Two service-role follow-ups remain (storage-file purge, `auth.users` deletion) — see `docs/compliance/POPIA_DATA_MAP.md` §6. |
+| 4 | `uncaughtException` doesn't exit | ✅ Fixed | Flush then `process.exit(1)`. `app.ts` |
+
+The **email-OTP plaintext logging (High)** and **OpenRouter transfer documentation (High)** remain open; OpenRouter is now documented in `POPIA_DATA_MAP.md` §3 but still needs a transfer basis + zero-retention model.
+
+---
+
 ## Phase 1: Architecture Map
 
 ### Request lifecycle

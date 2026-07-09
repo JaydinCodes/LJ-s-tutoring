@@ -69,7 +69,12 @@ envs:
   - key: ODIE_ALLOW_ACCESS_KEY_FALLBACK
     scope: RUN_AND_BUILD_TIME
     value: "false"
-  - key: DEFAULT_MODEL
+  # OPENROUTER_MODEL is the active Odie model variable. DEFAULT_MODEL was being
+  # IGNORED here because OPENROUTER_MODEL has a non-empty code default, so setting
+  # the model via DEFAULT_MODEL had no effect. For learner PII, prefer an OpenRouter
+  # provider with a zero-data-retention policy over a :free model — see
+  # docs/compliance/POPIA_DATA_MAP.md.
+  - key: OPENROUTER_MODEL
     scope: RUN_AND_BUILD_TIME
     value: google/gemma-4-26b-a4b-it:free
   - key: MAX_TOKENS
