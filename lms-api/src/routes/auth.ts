@@ -430,6 +430,22 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: 'invalid_credentials' });
     }
 
+    // SECURITY (AUDIT.md Critical): admin sign-in is Supabase-first and MFA-gated
+    // (AAL2). The legacy Fastify password path must never issue an ADMIN session —
+    // doing so bypassed MFA entirely. This closes the generic /auth/login door in
+    // addition to the retired /auth/admin/login. Checked after password
+    // verification so it does not reveal which emails are admin accounts.
+    if (user.role === 'ADMIN') {
+      await writeAuthAuditSafe(req, {
+        actorUserId: user.id,
+        actorRole: user.role,
+        action: 'auth.login.blocked',
+        entityId: user.id,
+        meta: { provider: 'password', reason: 'admin_supabase_only' }
+      });
+      return reply.code(403).send({ error: 'admin_login_via_supabase' });
+    }
+
     if (user.role === 'TUTOR' && !user.tutor_profile_id) {
       return reply.code(500).send({ error: 'tutor_profile_missing' });
     }
@@ -539,53 +555,17 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send({ ok: true });
   });
 
-  // ── Admin 2-step login ────────────────────────────────────────────────────
-
-  const checkAdminLoginLimit = createWindowLimiter(15 * 60 * 1000, 10);
-
+  // ── Admin login (retired) ──────────────────────────────────────────────────
+  // SECURITY (AUDIT.md Critical, fixed): this endpoint previously minted a full
+  // ADMIN session from email+password with NO server-side MFA, so a direct API
+  // caller (curl/Postman) could obtain an authenticated admin session and bypass
+  // the Supabase AAL2 gate that only the React UI enforced. Admin sign-in is now
+  // Supabase-first and MFA-gated; the legacy Fastify admin password path is
+  // closed, matching the already-retired /auth/admin/verify-otp below.
   app.post('/auth/admin/login', {
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } }
-  }, async (req, reply) => {
-    const parsed = AdminLoginSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_request', details: parsed.error.flatten() });
-    }
-
-    const ip    = req.ip ?? 'unknown';
-    const email = normalizeEmail(parsed.data.email);
-
-    if (checkAdminLoginLimit(`ip:${ip}`) || checkAdminLoginLimit(`email:${email}`)) {
-      return reply.code(429).send({ error: 'rate_limited' });
-    }
-
-    const user = await findUserByEmail(pool, email);
-    // Constant-time response regardless of whether user exists
-    if (!user || user.role !== 'ADMIN' || !user.is_active || !user.password_hash) {
-      return reply.code(401).send({ error: 'invalid_credentials' });
-    }
-
-    const passwordOk = await verifyPassword(user.password_hash, parsed.data.password);
-    if (!passwordOk) {
-      return reply.code(401).send({ error: 'invalid_credentials' });
-    }
-
-    // Legacy Fastify admin login is transitional only. Browser admin access is
-    // Supabase-first and must pass the React Supabase MFA gate before rendering.
-    const jwt = await issueTrackedSessionJwt(app, {
-      userId: user.id,
-      role: 'ADMIN',
-    }, req);
-
-    const csrfToken = setAuthCookies(reply, jwt);
-    reply.clearCookie('mfa_pending', clearAuthCookieOptions());
-
-    return reply.send({
-      ok: true,
-      token: jwt,
-      csrfToken,
-      role: 'ADMIN',
-      redirectTo: portalRedirectTarget('ADMIN')
-    });
+  }, async (_req, reply) => {
+    return reply.code(410).send({ error: 'admin_login_via_supabase' });
   });
 
   app.post('/auth/admin/verify-otp', {

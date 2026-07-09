@@ -82,22 +82,28 @@ Implement as a **scheduled Supabase Edge Function** (per ADR-0003), not the Pris
 
 ---
 
-## 6. Erasure / data-subject requests (Supabase) — to implement *(closes audit Critical)*
+## 6. Erasure / data-subject requests (Supabase) — IMPLEMENTED *(closes audit Critical)*
 
-Currently there is **no way to export or erase a learner's Supabase data** on request. Required:
+Implemented in `docs/supabase/schema.sql` (verified: full schema loads clean against Postgres 16). All functions are `SECURITY DEFINER` and **admin-gated internally**:
 
-- A **`SECURITY DEFINER` erasure/anonymisation RPC** for the Supabase tables (parallels the existing Prisma `privacy.ts` flow), that either deletes or anonymises a subject across `profiles`, `students`, `guardians`, `assignment_submissions` (+ storage), `student_progress`, career profiles, and Odie chat history — respecting financial-retention holds (anonymise instead of delete where a payment must be kept).
-- An **access/export RPC** returning all of a subject's data as JSON.
-- A **`privacy_requests` table (or reuse) in Supabase** linking a request to the subject's auth/profile id, with status and audit trail.
-- Every erasure/export/correction writes to `audit_log`.
+- **`export_student_data(p_student_id)`** — ACCESS: returns all of a learner's data (profile, student row, guardians, career profile, submissions, progress, enrolments, allocations, payments) as one JSON object.
+- **`anonymize_student(p_student_id)`** — DELETION: removes identifiable academic content (career profile, submissions, progress, submission files) and strips identity on `students`/`profiles`; **anonymises rather than hard-deletes when a financial-retention hold applies** (rows in `payments`). Returns a summary.
+- **`process_privacy_request(p_request_id)`** — workflow wrapper that dispatches a tracked request by type, stores the result, and closes it.
+- **`privacy_requests`** table (admin-only RLS) tracks each request; every action writes to `audit_log`.
 
-Request types (POPIA): **ACCESS** (export), **CORRECTION** (update), **DELETION** (delete or anonymise under retention holds). Guardian authority required for a minor.
+Request types (POPIA): **ACCESS** (export), **CORRECTION** (applied via normal admin RLS UPDATEs — no function needed), **DELETION** (anonymise/delete under retention holds). Guardian authority required for a minor.
+
+**Two follow-ups needed for *complete* erasure (must run via the service-role, not this SQL):**
+1. **Storage files** — the function deletes `storage.objects` rows for the learner's folder, but if the definer role lacks storage privilege it returns `files_removed = -1` as a signal to purge the files via the service-role storage client.
+2. **Auth identity** — the function anonymises `profiles.email`, but the login identity in **`auth.users`** (a separate schema) must be deleted/disabled via the Supabase Admin Auth API (service-role). Until then the account credential still exists.
+
+*(Odie chat history lives in the legacy Prisma DB, not Supabase — handled by the Fastify retention/privacy pipeline, out of scope here.)*
 
 ---
 
 ## 7. Open items
 
-1. **Implement §5 retention + §6 erasure for Supabase** (Phase A/B — closes the audit Critical). Highest compliance priority.
+1. **§6 erasure/export — DONE** (functions in schema.sql). Remaining: **§5 retention** (scheduled Edge Function) + the two service-role follow-ups in §6 (storage-file purge, `auth.users` deletion).
 2. **Document OpenRouter transfer basis** + pin a zero-retention model for PII-bearing calls.
 3. **Remove `students.parent_name`/`parent_contact` duplication** (data minimisation).
 4. **Reconcile/retire** the two legacy compliance docs once the Prisma stack is gone (ADR-0003).

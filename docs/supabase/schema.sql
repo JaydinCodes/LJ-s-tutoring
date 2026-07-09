@@ -1020,6 +1020,10 @@ drop policy if exists "submissions_student_update_self" on public.assignment_sub
 drop policy if exists "submissions_student_mark_previous_versions" on public.assignment_submissions;
 drop policy if exists "tutors_update_own_assignment_submissions" on public.assignment_submissions;
 drop policy if exists "tutor_insert_progress" on public.student_progress;
+-- AUDIT.md Critical (fixed): explicitly drop the permissive student INSERT policy so
+-- existing databases lose it on apply, not just fresh builds. See the note further
+-- down where this policy's create statement was removed.
+drop policy if exists "submissions_student_rpc_insert_shape" on public.assignment_submissions;
 
 create policy "submissions_student_insert_via_rpc_guard"
 on public.assignment_submissions for insert
@@ -1045,25 +1049,18 @@ with check (
   false
 );
 
-create policy "submissions_student_rpc_insert_shape"
-on public.assignment_submissions for insert
-with check (
-  status = 'submitted'
-  and is_latest = true
-  and marks_awarded is null
-  and feedback is null
-  and exists (
-    select 1 from public.assignments a
-    where a.id = assignment_id
-      and a.status = 'published'
-  )
-  and
-  student_id in (
-    select s.id from public.students s
-    join public.profiles p on p.id = s.profile_id
-    where p.auth_user_id = auth.uid()
-  )
-);
+-- SECURITY (AUDIT.md Critical, fixed): the previous permissive policy
+-- "submissions_student_rpc_insert_shape" allowed students to INSERT directly via
+-- PostgREST, bypassing submit_assignment_submission()'s storage-path validation,
+-- advisory-lock version sequencing, and log_audit_event() call. Because Postgres
+-- ORs permissive INSERT policies together, that shape policy overrode the
+-- "with check (false)" guard above and left the RPC's guarantees unenforced.
+-- It is removed. The only remaining INSERT policy is
+-- "submissions_student_insert_via_rpc_guard" (with check false), so no client can
+-- insert a submission row directly; all submissions must go through the
+-- SECURITY DEFINER submit_assignment_submission() RPC, which bypasses RLS by
+-- design and is the single audited, validated write path. The frontend already
+-- calls only this RPC (src/features/assignments/assignmentMutations.ts).
 
 create policy "admin_manage_submissions"
 on public.assignment_submissions for all
@@ -1249,3 +1246,243 @@ using (
     )
   )
 );
+
+-- ============================================================================
+-- POPIA data-subject requests: access (export), correction, deletion (erasure).
+-- Closes AUDIT.md Critical: Supabase-stored learner PII previously had no export
+-- or erasure path (the Prisma retention job only covered the legacy schema).
+--
+-- Design:
+--  * All functions are SECURITY DEFINER and ADMIN-gated internally, so privileged
+--    erasure/export cannot be triggered by a student/tutor even if granted EXECUTE.
+--  * DELETION anonymises rather than hard-deletes when a statutory retention hold
+--    applies (financial records in public.payments), keeping the row but stripping
+--    identity; otherwise it removes identifiable academic content.
+--  * Every action writes to audit_log via log_audit_event().
+--  * CORRECTION requests are applied by admins through normal RLS-scoped UPDATEs,
+--    so no dedicated function is needed here.
+--  * NOTE: Odie chat history (odie_conversations/odie_messages) lives in the legacy
+--    Prisma database, not Supabase, and is handled by the Fastify retention/privacy
+--    pipeline — it is out of scope for these Supabase functions.
+-- ============================================================================
+
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'privacy_request_type') then
+    create type public.privacy_request_type as enum ('access', 'correction', 'deletion');
+  end if;
+end
+$$;
+
+create table if not exists public.privacy_requests (
+  id uuid primary key default gen_random_uuid(),
+  subject_student_id uuid references public.students(id) on delete set null,
+  subject_profile_id uuid references public.profiles(id) on delete set null,
+  request_type public.privacy_request_type not null,
+  status public.record_status not null default 'pending',
+  requested_by uuid references public.profiles(id),
+  notes text,
+  result jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_privacy_requests_subject_student
+  on public.privacy_requests(subject_student_id);
+
+alter table public.privacy_requests enable row level security;
+
+drop policy if exists "privacy_requests_admin_all" on public.privacy_requests;
+create policy "privacy_requests_admin_all"
+on public.privacy_requests for all
+using (public.current_profile_role() = 'admin')
+with check (public.current_profile_role() = 'admin');
+
+-- ACCESS: export everything the platform holds about a learner as one JSON object.
+create or replace function public.export_student_data(p_student_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_profile_id uuid;
+  v_result jsonb;
+begin
+  if public.current_profile_role() <> 'admin' then
+    raise exception 'not_authorized' using errcode = '42501';
+  end if;
+
+  select profile_id into v_profile_id from public.students where id = p_student_id;
+  if v_profile_id is null then
+    raise exception 'student_not_found' using errcode = 'P0002';
+  end if;
+
+  select jsonb_build_object(
+    'exported_at', now(),
+    'student', (select to_jsonb(s) from public.students s where s.id = p_student_id),
+    'profile', (select to_jsonb(p) from public.profiles p where p.id = v_profile_id),
+    'guardians', (select coalesce(jsonb_agg(to_jsonb(g)), '[]'::jsonb)
+                  from public.guardians g
+                  join public.student_guardians sg on sg.guardian_id = g.id
+                  where sg.student_id = p_student_id),
+    'career_profile', (select to_jsonb(c) from public.student_career_profiles c
+                       where c.student_id = p_student_id),
+    'submissions', (select coalesce(jsonb_agg(to_jsonb(sub)), '[]'::jsonb)
+                    from public.assignment_submissions sub where sub.student_id = p_student_id),
+    'progress', (select coalesce(jsonb_agg(to_jsonb(pr)), '[]'::jsonb)
+                 from public.student_progress pr where pr.student_id = p_student_id),
+    'enrollments', (select coalesce(jsonb_agg(to_jsonb(e)), '[]'::jsonb)
+                    from public.class_enrollments e where e.student_id = p_student_id),
+    'allocations', (select coalesce(jsonb_agg(to_jsonb(al)), '[]'::jsonb)
+                    from public.tutor_student_allocations al where al.student_id = p_student_id),
+    'payments', (select coalesce(jsonb_agg(to_jsonb(pay)), '[]'::jsonb)
+                 from public.payments pay where pay.student_id = p_student_id)
+  ) into v_result;
+
+  perform public.log_audit_event('privacy.data_exported', 'student', p_student_id::text,
+    jsonb_build_object('subject_profile_id', v_profile_id));
+
+  return v_result;
+end;
+$$;
+
+-- DELETION: anonymise a learner (retain financially-held rows, strip identity) or
+-- remove identifiable academic content. Returns a summary of what was done.
+create or replace function public.anonymize_student(p_student_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_profile_id uuid;
+  v_has_financial boolean;
+  v_mode text;
+  v_submissions_removed integer := 0;
+  v_files_removed integer := 0;
+begin
+  if public.current_profile_role() <> 'admin' then
+    raise exception 'not_authorized' using errcode = '42501';
+  end if;
+
+  select profile_id into v_profile_id from public.students where id = p_student_id;
+  if v_profile_id is null then
+    raise exception 'student_not_found' using errcode = 'P0002';
+  end if;
+
+  -- Financial records carry a statutory retention hold: keep the rows, strip identity.
+  select exists(select 1 from public.payments where student_id = p_student_id)
+    into v_has_financial;
+  v_mode := case when v_has_financial then 'anonymized_financial_hold' else 'anonymized' end;
+
+  -- Remove self-service / free-text personal content.
+  delete from public.student_career_profiles where student_id = p_student_id;
+
+  -- Remove uploaded submission files from Storage (scoped to the learner's folder).
+  -- Wrapped so a storage-privilege error reports rather than aborting the erasure;
+  -- -1 signals "remove via the service-role storage client as a follow-up".
+  begin
+    delete from storage.objects
+     where bucket_id = 'assignment-submissions'
+       and (storage.foldername(name))[1] = p_student_id::text;
+    get diagnostics v_files_removed = row_count;
+  exception
+    when insufficient_privilege then v_files_removed := -1;
+  end;
+
+  -- Remove identifiable academic records.
+  delete from public.assignment_submissions where student_id = p_student_id;
+  get diagnostics v_submissions_removed = row_count;
+  delete from public.student_progress where student_id = p_student_id;
+
+  -- Detach guardians; delete guardian rows no longer linked to anyone and not
+  -- themselves platform users.
+  delete from public.student_guardians where student_id = p_student_id;
+  delete from public.guardians g
+   where g.profile_id is null
+     and not exists (select 1 from public.student_guardians sg where sg.guardian_id = g.id);
+
+  -- Strip inline PII on the learner row.
+  update public.students
+     set parent_name = null,
+         parent_contact = null,
+         school = null,
+         status = 'inactive'
+   where id = p_student_id;
+
+  -- Strip identity on the profile (email is unique/not-null → unique placeholder).
+  update public.profiles
+     set full_name = 'Redacted Learner',
+         email = 'redacted+' || v_profile_id::text || '@removed.invalid',
+         phone = null
+   where id = v_profile_id;
+
+  perform public.log_audit_event('privacy.subject_anonymized', 'student', p_student_id::text,
+    jsonb_build_object('mode', v_mode,
+                       'submissions_removed', v_submissions_removed,
+                       'files_removed', v_files_removed));
+
+  return jsonb_build_object(
+    'student_id', p_student_id,
+    'mode', v_mode,
+    'submissions_removed', v_submissions_removed,
+    'files_removed', v_files_removed
+  );
+end;
+$$;
+
+-- Workflow wrapper: process a tracked privacy_requests row by dispatching on type,
+-- storing the result, and closing the request. Admin-gated (both the wrapper and
+-- the functions it calls).
+create or replace function public.process_privacy_request(p_request_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_req public.privacy_requests;
+  v_result jsonb;
+  v_status public.record_status;
+begin
+  if public.current_profile_role() <> 'admin' then
+    raise exception 'not_authorized' using errcode = '42501';
+  end if;
+
+  select * into v_req from public.privacy_requests where id = p_request_id;
+  if v_req.id is null then
+    raise exception 'privacy_request_not_found' using errcode = 'P0002';
+  end if;
+  if v_req.subject_student_id is null then
+    raise exception 'privacy_request_subject_required' using errcode = '23514';
+  end if;
+
+  if v_req.request_type = 'access' then
+    v_result := public.export_student_data(v_req.subject_student_id);
+    v_status := 'approved';
+  elsif v_req.request_type = 'deletion' then
+    v_result := public.anonymize_student(v_req.subject_student_id);
+    v_status := 'approved';
+  else
+    -- correction is applied via normal admin UPDATEs; just record acknowledgement.
+    v_result := jsonb_build_object('note', 'correction applied via admin update');
+    v_status := 'approved';
+  end if;
+
+  update public.privacy_requests
+     set status = v_status, result = v_result, updated_at = now()
+   where id = p_request_id;
+
+  perform public.log_audit_event('privacy.request_processed', 'privacy_request', p_request_id::text,
+    jsonb_build_object('request_type', v_req.request_type, 'status', v_status));
+
+  return v_result;
+end;
+$$;
+
+-- Admin-gated internally; EXECUTE granted to authenticated (the internal role check
+-- is the real guard, matching the other privileged RPCs above).
+grant execute on function public.export_student_data(uuid) to authenticated;
+grant execute on function public.anonymize_student(uuid) to authenticated;
+grant execute on function public.process_privacy_request(uuid) to authenticated;
