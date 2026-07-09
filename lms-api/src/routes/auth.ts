@@ -19,7 +19,6 @@ declare module 'fastify' {
 import { pool } from '../db/pool.js';
 import { normalizeEmail, generateCsrfToken, verifyPassword, hashPassword, hashToken } from '../lib/security.js';
 import { LoginSchema, MagicLinkRequestSchema, RegisterAdminSchema, AdminLoginSchema, AdminOtpSchema, TestLoginSchema } from '../lib/schemas.js';
-import { sendOtpEmail } from '../lib/email.js';
 import { safeAuditMeta, writeAuditLog } from '../lib/audit.js';
 import { findUserByEmail, requestMagicLink, verifyMagicLink } from '../domains/auth/service.js';
 import {

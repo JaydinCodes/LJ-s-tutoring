@@ -104,7 +104,7 @@ Request types (POPIA): **ACCESS** (export), **CORRECTION** (applied via normal a
 ## 7. Open items
 
 1. **§6 erasure/export — DONE** (functions in schema.sql). Remaining: **§5 retention** (scheduled Edge Function) + the two service-role follow-ups in §6 (storage-file purge, `auth.users` deletion).
-2. **Document OpenRouter transfer basis** + pin a zero-retention model for PII-bearing calls.
+2. **OpenRouter** — ✅ now disclosed in the public privacy notice (Third-Party Services) and data map §3. Remaining: a documented cross-border transfer **basis** (POPIA §72) and pinning a **zero-data-retention** provider/model for PII-bearing calls (prod currently runs a `:free` model — see `.do/app.yaml` `OPENROUTER_MODEL`).
 3. **Remove `students.parent_name`/`parent_contact` duplication** (data minimisation).
 4. **Reconcile/retire** the two legacy compliance docs once the Prisma stack is gone (ADR-0003).
 5. **Legal review** of this map, the transfer bases, and the minors'-consent artefacts.

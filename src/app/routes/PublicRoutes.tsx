@@ -490,6 +490,14 @@ export function PrivacyRoute() {
           form handling where configured, and error monitoring for technical diagnostics. We do not intentionally send learner
           marks, private notes, uploaded file contents, or guardian contact details to monitoring tools.
         </p>
+        <p>
+          Project Odysseus includes an AI study assistant ("Odie"). To generate tutoring help, some learning context — such as a
+          learner's grade, the subject and content of the current task, and recent assessment results — may be sent to a
+          third-party AI provider (currently OpenRouter and the underlying model providers it routes to), which may process this
+          information on servers outside South Africa. We aim to send only the minimum context needed, and we do not send
+          guardian contact details or full identity records to the AI provider. If you would prefer that your child not use the
+          AI assistant, please contact us.
+        </p>
       </LegalSection>
 
       <LegalSection title="Security And Retention">
