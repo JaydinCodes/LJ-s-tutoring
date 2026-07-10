@@ -44,5 +44,7 @@ test('admin MFA setup is documented and disabled by default in example env', () 
   assert.match(authDocs, /Production admin access requires Supabase Auth MFA/);
   assert.match(authDocs, /getAuthenticatorAssuranceLevel\(\)/);
   assert.match(authDocs, /Do not set it in staging or production/);
-  assert.match(fastifyAuth, /Legacy Fastify admin login is transitional only/);
+  // Legacy Fastify admin login was retired (AUDIT.md Critical): it minted an admin
+  // session with no server-side MFA. It now returns admin_login_via_supabase.
+  assert.match(fastifyAuth, /admin_login_via_supabase/);
 });

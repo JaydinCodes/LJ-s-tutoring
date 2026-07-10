@@ -41,8 +41,11 @@ test('backend locking rejects uploads to closed or archived assignments with cle
   assert.ok(api.includes("assignment.status === 'closed' || assignment.status === 'archived'"), 'API must check locked assignment states');
   assert.ok(api.includes("error: 'assignment_locked'"), 'API must return a clear locked-assignment error code');
   assert.ok(api.includes('no longer accepts uploads'), 'API must return a clear locked-assignment message');
-  assert.ok(schema.includes("a.status = 'published'"), 'Supabase RLS must only allow student uploads to published assignments');
-  assert.ok(schema.includes("status = 'submitted'"), 'Supabase RLS must prevent students from spoofing marked statuses on insert');
+  // The permissive student INSERT policy (which carried these checks) was removed as
+  // an AUDIT.md Critical bypass; the protection now lives in the SECURITY DEFINER RPC
+  // (rejects non-published) plus the deny-guard that blocks all direct student inserts.
+  assert.ok(schema.includes("v_assignment.status <> 'published'"), 'submit RPC must reject uploads to non-published (incl. closed/archived) assignments');
+  assert.ok(schema.includes('submissions_student_insert_via_rpc_guard'), 'direct student inserts must be blocked; all submissions go through the RPC');
 });
 
 test('student and tutor/admin views expose submission version history and latest marker', () => {

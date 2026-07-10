@@ -56,8 +56,11 @@ test('students cannot update review fields directly through submission policies'
   assert.match(schema, /create policy "submissions_no_direct_student_update"/);
   assert.match(schema, /create policy "submissions_tutor_mark_via_rpc_only"/);
   assert.match(schema, /with check \(\s*false\s*\)/);
-  assert.match(schema, /marks_awarded is null/);
-  assert.match(schema, /feedback is null/);
+  // Students cannot insert submission rows directly at all: the permissive
+  // "shape" INSERT policy that once let them set fields was removed (AUDIT.md
+  // Critical) and must stay removed; the only insert path is the RPC.
+  assert.match(schema, /create policy "submissions_student_insert_via_rpc_guard"[\s\S]*?with check \(\s*false\s*\)/);
+  assert.doesNotMatch(schema, /create policy "submissions_student_rpc_insert_shape"/);
   assert.match(schema, /assignment_submissions_marks_range/);
 });
 
