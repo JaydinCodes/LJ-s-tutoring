@@ -1486,3 +1486,92 @@ $$;
 grant execute on function public.export_student_data(uuid) to authenticated;
 grant execute on function public.anonymize_student(uuid) to authenticated;
 grant execute on function public.process_privacy_request(uuid) to authenticated;
+
+-- ============================================================================
+-- Retention cleanup for Supabase-owned data (POPIA_DATA_MAP §5).
+-- SECURITY DEFINER. **DEFAULTS TO A DRY RUN**: with p_apply => false (the
+-- default) it only COUNTS eligible rows and deletes nothing. Pass p_apply => true
+-- to actually purge. Retention windows are named constants below; move them to a
+-- config table if they ever need runtime tuning.
+--
+-- Schedule the real run with pg_cron or a scheduled Edge Function:
+--     select public.run_retention_cleanup(true);
+--
+-- Notes:
+--  * Only SETTLED payments (paid_at set) past the financial window are purged —
+--    pending/unpaid financial records are never touched.
+--  * Odie chat history lives in the legacy Prisma DB and is purged by the Fastify
+--    retention job, not here.
+-- ============================================================================
+create or replace function public.run_retention_cleanup(p_apply boolean default false)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_submissions_years int := 3;   -- academic submissions + uploaded files
+  v_progress_years    int := 3;   -- per-concept score history
+  v_audit_years       int := 5;   -- audit trail (compliance)
+  v_financial_years   int := 7;   -- settled payments (tax/financial retention)
+  v_now  timestamptz := now();
+  v_sub_cut  timestamptz := v_now - make_interval(years => v_submissions_years);
+  v_prog_cut timestamptz := v_now - make_interval(years => v_progress_years);
+  v_aud_cut  timestamptz := v_now - make_interval(years => v_audit_years);
+  v_fin_cut  timestamptz := v_now - make_interval(years => v_financial_years);
+  v_submissions int; v_progress int; v_audit int; v_payments int; v_tutor_payments int;
+  v_files int := 0;
+begin
+  -- Allow admins (manual runs) and trusted server contexts with no browser JWT
+  -- (pg_cron / service_role / scheduled Edge Function), where auth.uid() is null.
+  -- Regular signed-in non-admins are blocked; anon has no EXECUTE grant at all.
+  if not (public.current_profile_role() = 'admin' or auth.uid() is null) then
+    raise exception 'not_authorized' using errcode = '42501';
+  end if;
+
+  select count(*) into v_submissions    from public.assignment_submissions where submitted_at < v_sub_cut;
+  select count(*) into v_progress       from public.student_progress       where recorded_at  < v_prog_cut;
+  select count(*) into v_audit          from public.audit_log              where created_at   < v_aud_cut;
+  select count(*) into v_payments       from public.payments               where paid_at is not null and paid_at < v_fin_cut;
+  select count(*) into v_tutor_payments from public.tutor_payments         where paid_at is not null and paid_at < v_fin_cut;
+
+  if p_apply then
+    -- Remove submission files from Storage first (path: student/assignment/submission/file).
+    begin
+      delete from storage.objects o
+       where o.bucket_id = 'assignment-submissions'
+         and exists (
+           select 1 from public.assignment_submissions s
+           where s.submitted_at < v_sub_cut
+             and (storage.foldername(o.name))[1] = s.student_id::text
+             and (storage.foldername(o.name))[3] = s.id::text
+         );
+      get diagnostics v_files = row_count;
+    exception when insufficient_privilege then v_files := -1;
+    end;
+
+    delete from public.assignment_submissions where submitted_at < v_sub_cut;
+    delete from public.student_progress       where recorded_at  < v_prog_cut;
+    delete from public.payments               where paid_at is not null and paid_at < v_fin_cut;
+    delete from public.tutor_payments         where paid_at is not null and paid_at < v_fin_cut;
+    delete from public.audit_log              where created_at   < v_aud_cut;
+
+    perform public.log_audit_event('retention.cleanup_applied', 'system', null,
+      jsonb_build_object('submissions', v_submissions, 'progress', v_progress,
+                         'payments', v_payments, 'tutor_payments', v_tutor_payments,
+                         'audit', v_audit, 'files', v_files));
+  end if;
+
+  return jsonb_build_object(
+    'applied', p_apply,
+    'as_of', v_now,
+    'windows_years', jsonb_build_object('submissions', v_submissions_years, 'progress', v_progress_years,
+                                        'audit', v_audit_years, 'financial', v_financial_years),
+    'eligible', jsonb_build_object('submissions', v_submissions, 'progress', v_progress,
+                                   'payments', v_payments, 'tutor_payments', v_tutor_payments, 'audit', v_audit),
+    'files_removed', case when p_apply then v_files else null end
+  );
+end;
+$$;
+
+grant execute on function public.run_retention_cleanup(boolean) to authenticated;

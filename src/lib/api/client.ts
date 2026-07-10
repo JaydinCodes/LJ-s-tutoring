@@ -14,8 +14,18 @@ async function supabaseAccessToken() {
 
 export function resolveApiBase() {
   const configured = (import.meta.env.VITE_PO_API_BASE || window.__PO_API_BASE__) as string | undefined;
-  const raw = String(configured || '').replace(/\/$/, '');
+  let raw = String(configured || '').replace(/\/$/, '');
   const host = window.location.hostname;
+
+  // The api.projectodysseus.live subdomain was retired. A stale value baked into
+  // VITE_PO_API_BASE at build time (it wins over the correct /api in
+  // portal-config.js) or an old injected config would otherwise send every API
+  // call to a dead host (net::ERR_NAME_NOT_RESOLVED), which breaks Odie and the
+  // legacy API reads. Coerce it to the same-origin /api path — the gateway routes
+  // /api to the backend — mirroring scripts/inject-config.js.
+  if (/^https?:\/\/api\.projectodysseus\.live/i.test(raw)) {
+    raw = '/api';
+  }
 
   if (!raw) {
     return isLocalHost(host) ? `${window.location.protocol}//${host}:3001` : '/api';

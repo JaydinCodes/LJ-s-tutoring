@@ -65,20 +65,20 @@ POPIA requires documented safeguards for operators (processors) and for personal
 
 ---
 
-## 5. Retention (Supabase) — to implement
+## 5. Retention (Supabase) — IMPLEMENTED
 
-The existing retention job covers **only** Prisma tables. Supabase tables currently have **no retention mechanism**. Proposed policy (mirror the existing env-driven windows where sensible):
+Implemented as **`run_retention_cleanup(p_apply boolean default false)`** in `docs/supabase/schema.sql` (verified: full schema loads clean against Postgres 16). It **defaults to a dry run** (counts only, deletes nothing); pass `true` to purge. Admin-gated, and also callable by a trusted no-JWT scheduler. Windows:
 
-| Data | Retention | On expiry |
+| Data | Window | Applied |
 |---|---|---|
-| `assignment_submissions` + storage files | While enrolled + N years (e.g. 3) | Delete files; anonymise/aggregate marks |
-| `student_progress` | While enrolled + N years | Anonymise (keep aggregate, drop identity) |
-| `profiles` / `students` / `guardians` | While active + grace period after leaving | Anonymise on account closure |
-| `odie_conversations` / `odie_messages` | Short (e.g. 12 months) | Delete — closes AUDIT.md gap |
-| `audit_log` | 5 years (compliance) | Retain then purge |
-| `payments` / `tutor_payments` | 7 years (financial/tax) | Retain then purge |
+| `assignment_submissions` + storage files | 3 years (by `submitted_at`) | Delete rows + files |
+| `student_progress` | 3 years (by `recorded_at`) | Delete |
+| `audit_log` | 5 years (by `created_at`) | Delete |
+| `payments` / `tutor_payments` | 7 years (by `paid_at`; **settled only**) | Delete |
 
-Implement as a **scheduled Supabase Edge Function** (per ADR-0003), not the Prisma cron.
+**Schedule the real run** via pg_cron or a scheduled Edge Function: `select public.run_retention_cleanup(true);`
+
+**Not yet covered (follow-ups):** account-level anonymisation of inactive `profiles`/`students`/`guardians` after a grace period (currently handled on-request via `anonymize_student`); and `odie_conversations`/`odie_messages`, which live in the legacy Prisma DB and are purged by the Fastify retention job.
 
 ---
 
@@ -103,7 +103,7 @@ Request types (POPIA): **ACCESS** (export), **CORRECTION** (applied via normal a
 
 ## 7. Open items
 
-1. **§6 erasure/export — DONE** (functions in schema.sql). Remaining: **§5 retention** (scheduled Edge Function) + the two service-role follow-ups in §6 (storage-file purge, `auth.users` deletion).
+1. **§5 retention + §6 erasure/export — DONE** (functions in schema.sql). Remaining: **wire a scheduler** to `run_retention_cleanup(true)` (pg_cron/Edge Function), account-level anonymisation of inactive accounts, and the two service-role follow-ups in §6 (storage-file purge, `auth.users` deletion).
 2. **OpenRouter** — ✅ now disclosed in the public privacy notice (Third-Party Services) and data map §3. Remaining: a documented cross-border transfer **basis** (POPIA §72) and pinning a **zero-data-retention** provider/model for PII-bearing calls (prod currently runs a `:free` model — see `.do/app.yaml` `OPENROUTER_MODEL`).
 3. **Remove `students.parent_name`/`parent_contact` duplication** (data minimisation).
 4. **Reconcile/retire** the two legacy compliance docs once the Prisma stack is gone (ADR-0003).

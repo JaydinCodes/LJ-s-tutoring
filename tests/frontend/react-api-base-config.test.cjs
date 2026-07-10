@@ -14,6 +14,7 @@ test('React API client reads runtime portal API base before falling back to /api
 
   assert.ok(client.includes('window.__PO_API_BASE__'), 'React API client must read the injected runtime API base');
   assert.ok(!client.includes('import.meta.env.PUBLIC_PO_API_BASE'), 'React API client must not rely on non-Vite PUBLIC env variables');
+  assert.ok(client.includes('api\\.projectodysseus\\.live'), 'React API client must coerce the retired api.projectodysseus.live subdomain to /api (guards a stale baked VITE_PO_API_BASE)');
 });
 
 test('dashboard React shells load portal config before the React bundle', () => {
