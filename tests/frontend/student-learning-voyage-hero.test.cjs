@@ -24,7 +24,7 @@ test('Learning Voyage hero renders concrete learner state and Oracle Insight', (
   assert.ok(source.includes('completionRate'), 'hero must show visible assignment completion');
   assert.ok(dataType.includes('examCalendar?:'), 'dashboard view must carry exam calendar state');
   assert.ok(dataType.includes('supportStatus?:'), 'dashboard view must carry academic support status');
-  assert.ok(repository.includes('nextExamTitle:'), 'repository must preserve next exam title');
+  assert.ok(repository.includes('averageScore:'), 'repository must project the learner average into the Oracle Insight daily context (exam-calendar was legacy-API-only; not in the Supabase path)');
   assert.ok(repository.includes('currentAcademicStatus:'), 'repository must preserve current academic status');
   assert.ok(api.includes('currentAcademicStatus: supportStatus.label'), 'API must project academic status into dashboard context');
 });

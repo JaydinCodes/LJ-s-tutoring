@@ -57,7 +57,7 @@ test('student and tutor/admin views expose submission version history and latest
   assert.ok(detail.includes('submissionHistory'), 'student detail route must build submission history');
   assert.ok(detail.includes('Latest version'), 'student history must clearly mark the latest version');
   assert.ok(detail.includes('Version ${submission.version_number || 1}'), 'student history must show version numbers');
-  assert.ok(repository.includes('submission_versions'), 'API submission versions must be projected into React state');
+  assert.ok(repository.includes('get_student_assignment_submissions'), 'student submissions (with version_number/is_latest) come from the redacted Supabase RPC; version history is built in the detail route');
   assert.ok(admin.includes('submission_versions'), 'admin assignment overview must expose previous versions');
   assert.ok(tutor.includes('submission_versions'), 'tutor assignment overview must expose previous versions');
 });

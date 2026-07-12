@@ -11,6 +11,7 @@ import type {
   Student,
   StudentGuardian,
   StudentProgress,
+  StudentCareerProfileRow,
   Subject,
   Tutor,
   TutorPayment,
@@ -39,6 +40,7 @@ export interface Database {
       assignment_submissions: Table<AssignmentSubmission, Omit<AssignmentSubmission, 'id'>, Partial<AssignmentSubmission>>;
       audit_log: Table<AuditLogEntry, Omit<AuditLogEntry, 'id' | 'created_at'>, never>;
       student_progress: Table<StudentProgress, Omit<StudentProgress, 'id'>, Partial<StudentProgress>>;
+      student_career_profiles: Table<StudentCareerProfileRow, Omit<StudentCareerProfileRow, 'id' | 'created_at'>, Partial<StudentCareerProfileRow>>;
       payments: Table<Payment, Omit<Payment, 'id'>, Partial<Payment>>;
       tutor_payments: Table<TutorPayment, Omit<TutorPayment, 'id'>, Partial<TutorPayment>>;
       classes: Table<ClassRecord, Omit<ClassRecord, 'id' | 'created_at' | 'updated_at'>, Partial<ClassRecord>>;

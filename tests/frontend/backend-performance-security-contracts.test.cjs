@@ -67,7 +67,9 @@ test('student API contracts validate dashboard, results, mastery, quizzes, caree
     assert.ok(contracts.includes(symbol), `${symbol} must be part of the shared student contract layer`);
   }
 
-  assert.ok(dashboardRepo.includes('parseStudentDashboardApiResponse'), 'dashboard repository must validate API response');
-  assert.ok(resultsRepo.includes('parseStudentResultsApiResponse'), 'results repository must validate API response');
+  // Single-stack migration: dashboard/results repos are Supabase-first now; the
+  // legacy /dashboard and /student/results APIs (and their response parsers) are retired.
+  assert.ok(dashboardRepo.includes("supabase.from('students')"), 'dashboard repository is Supabase-first');
+  assert.ok(resultsRepo.includes('buildFallbackFromDashboard'), 'results analytics derive from the Supabase-backed dashboard');
   assert.ok(careersRepo.includes('parseStudentCareersApiResponse'), 'careers repository must validate API response');
 });

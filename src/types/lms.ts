@@ -146,6 +146,20 @@ export interface StudentProgress {
   recorded_at: string;
 }
 
+// Supabase student_career_profiles row (snake_case DB shape). The camelCase
+// StudentCareerProfile used by the careers UI lives in the careers repository.
+export interface StudentCareerProfileRow {
+  id: string;
+  student_id: string;
+  interests_json: string[];
+  preferred_subjects_json: string[];
+  target_careers_json: string[];
+  aps_target: number | null;
+  saved_careers_json: string[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ParentProgressReportRow {
   student_id: string;
   student_name: string;
