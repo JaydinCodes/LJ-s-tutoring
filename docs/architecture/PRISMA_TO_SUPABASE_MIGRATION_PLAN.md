@@ -1,9 +1,8 @@
 # Prisma → Supabase Data Migration Plan
 
-**Status:** Draft for decisions. This is the plan that unblocks the rest of the
+**Status:** Decisions locked (§7). This is the plan that unblocks the rest of the
 single-stack migration ([ADR-0003](ADR-0003-single-stack-supabase.md)).
-**Depends on / coordinates with:** [ADR-0002 multi-org model](MULTI_ORG_MODEL_PLAN.md) — every table that moves to Supabase must be designed with `organization_id` from day one, not retrofitted.
-**Owner decisions required:** yes — §3D and §6 (keep/cut per feature domain).
+**Depends on / coordinates with:** [ADR-0002 multi-org model](MULTI_ORG_MODEL_PLAN.md) — every table that moves to Supabase must be designed with `organization_id` from day one, not retrofitted. **The owner has confirmed the multi-org model lands alongside/before the sessions migration** (see §7.5) — treat ADR-0002 as in scope for this phase, not a later add-on.
 
 ---
 
@@ -35,7 +34,7 @@ The Prisma `Session` model (tutor + student + assignment, date/times, attendance
 | `TutorProfile` | `tutors` | Supabase minimal; migrate the richer approval/qualification fields (→ §3C tutor-onboarding). |
 | `AuditLog` | `audit_log` | Divergent shapes; unify on the Supabase append-only table. |
 | `PrivacyRequest` | `privacy_requests` | Supabase table exists (Phase A); migrate open requests' data. |
-| `Assignment` | `assignments` | ⚠️ **Divergent concept** — Prisma `Assignment` = a tutor-student *engagement/contract*; Supabase `assignments` = *homework*. These are different entities sharing a name. The engagement concept likely becomes part of `tutor_student_allocations` / `sessions`; decide explicitly. |
+| `Assignment` | `assignments` | ⚠️ **Divergent concept — RESOLVED.** Prisma `Assignment` = a tutor-student *engagement/contract*; Supabase `assignments` = *homework*. **Decision: the engagement/contract concept folds into `tutor_student_allocations`/`sessions` (not into Supabase `assignments`, which stays homework-only).** |
 
 ### B. Retire with the Fastify stack — no Supabase table needed
 These die when legacy cookie-auth / backend infra is removed (ADR-0003):
@@ -47,20 +46,23 @@ Grouped by domain (see §4 for keep/cut and target shapes):
 - **Finance / payroll:** `Invoice`, `InvoiceLine`, `PayPeriod`, `Adjustment`
 - **Reports & notifications:** `WeeklyReport`, (student notifications)
 - **Tutor onboarding:** `TutorApplication`, `TutorDocument`, `TutorAvailabilitySlot`
-- **Tutor↔student mapping:** `TutorStudentMap` → ⚠️ **duplicates** Supabase `tutor_student_allocations`; reconcile into one.
+- **Tutor↔student mapping:** `TutorStudentMap` → ⚠️ **duplicates** Supabase `tutor_student_allocations` — **RESOLVED: reconcile into the single Supabase `tutor_student_allocations` table** (see §7.4); `TutorStudentMap` is retired, not migrated as a separate table. The engagement/contract fields from Prisma `Assignment` (§3A) land here too.
 - **Academic extras:** `LearningAssignment`, `BaselineAssessment`, `LearningGoal`, `StudentExamEvent`
 - **Volunteering:** `VolunteerEvent`, `VolunteerLog` (ties to the tutor/volunteer model)
-- **Gamification:** `StudyActivityEvent`, `StudyStreak`
+- **Growth monitoring / risk:** `StudentScoreSnapshot`, `CareerProgressSnapshot` — **KEEP** (see §3D).
 
-### D. Decide keep-or-cut — question priority against the roadmap ⚠️ owner call
-| Prisma model(s) | Feature | Recommendation |
+### D. Keep-or-cut decisions — LOCKED
+
+| Prisma model(s) | Feature | Decision |
 |---|---|---|
-| `StudyRoom`, `StudyRoomMember`, `StudyRoomMessage`, `StudyRoomPinnedResource`, `CommunityProfile` | Community study rooms | **Defer or cut** for v1 — not core to content-first Maths; heavy to migrate + moderate. |
-| `Challenge`, `ChallengeSubmission` | Weekly challenges (gamification) | Defer or cut. |
-| `Question`, `Answer` | Community Q&A | Defer or cut. |
-| `CommunityReport`, `CommunityBlock` | Community moderation | Only if community stays. |
-| `StudentScoreSnapshot`, `CareerProgressSnapshot` | Predictive scores / risk | Keep if the tutor risk view is used; else cut. |
-| `CareerGoalSelection` | Career goal picks | Likely fold into `student_career_profiles`. |
+| `StudyRoom`, `StudyRoomMember`, `StudyRoomMessage`, `StudyRoomPinnedResource`, `CommunityProfile` | Community study rooms | ✅ **CUT for now.** Deferred — revisit later, not part of this migration. |
+| `Challenge`, `ChallengeSubmission` | Weekly challenges (gamification) | ✅ **CUT for now.** Deferred with the rest of the community suite. |
+| `Question`, `Answer` | Community Q&A | ✅ **CUT for now.** Deferred with the rest of the community suite. |
+| `CommunityReport`, `CommunityBlock` | Community moderation | ✅ **CUT for now.** Only needed if/when community is revived. |
+| `StudentScoreSnapshot`, `CareerProgressSnapshot` | Predictive scores / risk | ✅ **KEEP — migrate.** Owner's explicit reason: track each student's growth over time and identify **where a student is failing, tied to the specific assignments they were given.** This means the scoring model should stay tightly joined to `assignments`/`assignment_submissions`/`student_progress` (topic- and assignment-level signal), not just a generic trend line — design the migrated table with that traceability in mind. |
+| `CareerGoalSelection` | Career goal picks | Fold into `student_career_profiles` (unchanged from original recommendation — no objection raised). |
+
+**Community suite is parked, not deleted from Prisma yet** — no urgency to actively drop those tables now; they simply do not get migrated to Supabase in this pass. Revisit "cut vs. revive" later per the roadmap.
 
 ---
 
@@ -74,8 +76,10 @@ Every migrated table gets `organization_id` (ADR-0002) and RLS from the start.
 - **`weekly_reports`** — per-student report payload (jsonb) + week range; RLS: student/guardian read released, tutor/admin manage. Rebuild `buildWeeklyReportPayload` against Supabase (`sessions`, `student_progress`, `assignment_submissions`).
 - **`notifications`** — per-user notifications; RLS owner-read.
 - **Tutor onboarding** (`tutor_applications`, `tutor_documents`, `tutor_availability`) — ties into the vetting gate (tutor/volunteer model). Documents → private Storage bucket.
-- **Reconcile** `TutorStudentMap` ↔ `tutor_student_allocations` into the single Supabase table.
-- **Academic extras / volunteering / gamification** — migrate only the ones that survive §3D triage.
+- **Reconcile** `TutorStudentMap` ↔ `tutor_student_allocations` into the single Supabase table (also absorbs the Prisma `Assignment` engagement/contract fields per §3A).
+- **Growth monitoring / risk** (`student_score_snapshots`, `career_progress_snapshots`) — org-scoped; RLS: owning student + tutor(s) + admin. **Design requirement (owner-specified):** snapshots must be traceable to the specific `assignments`/`assignment_submissions`/`student_progress` rows that drove them, so a tutor/admin can see not just "this student is struggling" but *which assignment/topic* triggered the signal. Don't build this as a black-box score.
+- **Academic extras / volunteering** — migrate (`LearningAssignment`, `BaselineAssessment`, `LearningGoal`, `StudentExamEvent`, `VolunteerEvent`, `VolunteerLog`).
+- **Community suite** — not migrated in this pass (§3D); remains parked in Prisma.
 
 ---
 
@@ -93,28 +97,27 @@ For each table, in order:
 
 ---
 
-## 6. Sequencing (recommended)
+## 6. Sequencing (locked)
 
-1. **Reconcile the duplicates first** (§3A) — cheapest wins; removes confusion (esp. `TutorStudentMap` vs `tutor_student_allocations`, and the `Assignment` concept clash).
+0. **Multi-org model (ADR-0002) lands alongside/before this work** — per §7.5, confirmed by the owner. Every table touched below is designed org-scoped from the start; do not retrofit `organization_id` later.
+1. **Reconcile the duplicates first** (§3A/§3C) — `TutorStudentMap` + the `Assignment` engagement/contract fields fold into `tutor_student_allocations`. Cheapest win; removes confusion before anything else moves.
 2. **Sessions & attendance** — the linchpin; unblocks everything operational.
 3. **Finance / payroll** — depends on sessions.
 4. **Weekly reports + notifications** — depend on sessions.
-5. **Tutor onboarding** — ties to the vetting gate; needed before hiring beyond family/friends.
-6. **Decide §3D (community/gamification)** — then migrate survivors or delete.
-7. **Retire the Fastify stack** (§3B) and decommission `lms-api`.
-
-Coordinate with **ADR-0002**: ideally the multi-org model lands *around* the sessions/finance migration so those tables are born org-scoped rather than retrofitted.
+5. **Growth monitoring / risk** (`student_score_snapshots`, `career_progress_snapshots`) — depends on sessions + assignments + progress being in Supabase, since traceability to specific assignments is a hard requirement.
+6. **Tutor onboarding** — ties to the vetting gate; needed before hiring beyond family/friends.
+7. **Retire the Fastify stack** (§3B) and decommission `lms-api`. Community suite (§3D) stays parked in Prisma / out of scope — revisit later.
 
 ---
 
-## 7. Decisions for the owner
+## 7. Decisions (locked by owner)
 
-1. **Keep or cut the community suite** (study rooms, challenges, Q&A, moderation)? Biggest single scope lever — recommend **defer/cut for v1**.
-2. **Keep the predictive-score / tutor-risk feature** (`StudentScoreSnapshot`, `CareerProgressSnapshot`)?
-3. **`Assignment` concept clash** — confirm the Prisma "engagement/contract" concept folds into `tutor_student_allocations`/`sessions` (vs. Supabase `assignments` = homework).
-4. **Reconcile `TutorStudentMap` → `tutor_student_allocations`** (confirm one canonical mapping table).
-5. **Sequencing vs. multi-org** — do the multi-org model (ADR-0002) *before or alongside* the sessions/finance migration so migrated tables are org-scoped from day one? (Recommended: yes.)
+1. **Community suite** (study rooms, challenges, Q&A, moderation) — ✅ **Cut for now.** Not migrated; parked in Prisma for possible later revival.
+2. **Predictive-score / tutor-risk feature** (`StudentScoreSnapshot`, `CareerProgressSnapshot`) — ✅ **Keep, migrate.** Purpose: monitor student growth over time and identify where a student is failing *in relation to the specific assignments given to them* — the migrated design must preserve that assignment-level traceability (see §4).
+3. **`Assignment` concept clash** — ✅ **Go with the recommendation:** the Prisma engagement/contract concept folds into `tutor_student_allocations`/`sessions`; Supabase `assignments` stays homework-only.
+4. **`TutorStudentMap` → `tutor_student_allocations`** — ✅ **Go with the recommendation:** reconcile into one canonical mapping table.
+5. **Sequencing vs. multi-org** — ✅ **Multi-org (ADR-0002) lands alongside/before** the sessions/finance migration, as the owner explicitly wants. Reflected in §6 step 0.
 
 ## 8. Honest scope note
 
-This is the **largest** piece of the single-stack migration — multiple domains, real data movement, and RLS on money and minors' operational data. It is genuinely multi-session work. The triage above is what keeps it tractable: retire ~13, migrate ~15, and cut what the roadmap doesn't need rather than carrying 46 models across.
+This is still the **largest** piece of the single-stack migration — multiple domains, real data movement, and RLS on money and minors' operational data, now combined with standing up the multi-org model at the same time (per the locked sequencing). It is genuinely multi-session work. The triage keeps it tractable: cutting the community suite removes ~9 models from scope entirely, leaving a focused set (sessions, finance, reports, tutor onboarding, growth/risk) to migrate — all born org-scoped from the start.
