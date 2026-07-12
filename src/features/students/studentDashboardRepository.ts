@@ -1,19 +1,7 @@
-import { optionalApiGet } from '../../lib/api/client';
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2EStudentDashboard } from '../../lib/e2e/mockRoleData';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, StudentDashboardView, StudentProgress, Tutor, TutorStudentAllocation } from '../../types/lms';
-import {
-  parseStudentAssignmentsApiResponse,
-  parseStudentDashboardApiResponse,
-  parseStudentMasteryItems,
-  parseStudentQuizItems,
-} from '../../types/studentApiContracts';
-
-interface LegacyResults {
-  results?: Array<{ percentage?: number }>;
-  items?: Array<{ percentage?: number }>;
-}
 
 function average(values: number[]) {
   if (!values.length) {
@@ -31,101 +19,35 @@ function academicStatus(score: number | null) {
   return 'Urgent support';
 }
 
-async function loadFromApi(): Promise<StudentDashboardView> {
-  const [dashboardRaw, assignmentsRaw, resultsPayload] = await Promise.all([
-    optionalApiGet<unknown>('/dashboard', {}),
-    optionalApiGet<unknown>('/student/assignments', { assignments: [] }),
-    optionalApiGet<LegacyResults>('/student/results', { results: [] }),
-  ]);
-
-  const dashboard = parseStudentDashboardApiResponse(dashboardRaw);
-  const assignments = parseStudentAssignmentsApiResponse(assignmentsRaw).assignments;
-  const results = resultsPayload.results || resultsPayload.items || [];
-  const submissions = assignments
-    .flatMap((item) => {
-      const versions = item.submission_versions || [];
-      if (versions.length) {
-        return versions.map((version) => ({
-          id: version.id,
-          assignment_id: item.id,
-          student_id: 'current',
-          file_url: version.file_url || null,
-          original_filename: version.original_filename || null,
-          mime_type: version.mime_type || null,
-          size_bytes: version.size_bytes ?? null,
-          submitted_at: version.submitted_at || null,
-          status: version.status || 'submitted',
-          version_number: version.version_number ?? null,
-          is_latest: version.is_latest ?? false,
-        } as AssignmentSubmission));
-      }
-      if (!item.submission_id) {
-        return [];
-      }
-      return [{
-        id: item.submission_id || `${item.id}-submission`,
-        assignment_id: item.id,
-        student_id: 'current',
-        file_url: item.original_filename || null,
-        original_filename: item.original_filename || null,
-        mime_type: item.mime_type || null,
-        size_bytes: item.size_bytes ?? null,
-        submitted_at: item.submitted_at || null,
-        status: item.submission_status || 'submitted',
-        version_number: item.version_number ?? null,
-        is_latest: item.is_latest ?? true,
-      } as AssignmentSubmission];
-    });
-  const completed = submissions.filter((item) => ['submitted', 'late', 'reviewed', 'marked'].includes(String(item.status || '').toLowerCase())).length;
-  const attendanceRate = dashboard.attendance?.total ? Math.round(((dashboard.attendance.attended || 0) / dashboard.attendance.total) * 100) : 0;
-  const score = average(results.map((item) => Number(item.percentage)).filter(Number.isFinite));
-  const weakestProgress = (dashboard.progressSnapshot || [])
-    .filter((item) => Number.isFinite(Number(item.completion)))
-    .sort((left, right) => Number(left.completion) - Number(right.completion) || left.topic.localeCompare(right.topic))[0];
-
+// Single-stack migration: the legacy /dashboard, /student/assignments and
+// /student/results APIs are retired. When Supabase can't produce a view (not
+// configured, or no auth/profile/student record) we render an empty dashboard
+// rather than calling the dead API, which only returned empty fallbacks in prod.
+function emptyStudentDashboard(): StudentDashboardView {
   return {
-    profile: {
-      name: dashboard.profile?.name || 'Student',
-      grade: dashboard.academicProfile?.grade || dashboard.profile?.grade,
-      school: dashboard.academicProfile?.school || dashboard.profile?.school,
-      parent: dashboard.profile?.guardian?.name,
-      ngoPartner: dashboard.profile?.partnerAffiliation,
-    },
+    profile: { name: 'Student' },
     metrics: [
-      { label: 'Overall score', value: score == null ? '--' : `${score}%`, helper: 'Recent marked work average.', tone: 'violet' },
-      { label: 'Assignments completed', value: String(completed), helper: 'Submitted or marked assignments.', tone: 'teal' },
-      { label: 'Open assignments', value: String(Math.max(0, assignments.length - completed)), helper: 'Work still requiring action.', tone: 'amber' },
-      { label: 'Attendance', value: `${attendanceRate}%`, helper: `${dashboard.streak?.current || 0} day study streak.`, tone: 'blue' },
+      { label: 'Overall score', value: '--', helper: 'No progress records yet.', tone: 'violet' },
+      { label: 'Assignments completed', value: '0', helper: 'No submissions yet.', tone: 'teal' },
+      { label: 'Open assignments', value: '0', helper: 'No published work yet.', tone: 'amber' },
+      { label: 'Classes', value: '0', helper: 'No classes yet.', tone: 'blue' },
     ],
-    assignments,
-    progress: parseStudentMasteryItems((dashboard.progressSnapshot || []).map((item, index) => ({
-      id: `legacy-progress-${index}`,
-      student_id: 'current',
-      topic: item.topic,
-      score: item.completion,
-      recorded_at: new Date().toISOString(),
-    }))),
+    assignments: [],
+    progress: [],
     classes: [],
-    submissions,
-    recommendedNext: dashboard.recommendedNext,
-    recommendedQuiz: dashboard.recommendedQuiz || parseStudentQuizItems(weakestProgress ? [{
-      id: `quiz-${weakestProgress.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'focus'}`,
-      title: `${weakestProgress.topic} quick check`,
-      topic: weakestProgress.topic,
-      estimatedMinutes: 12,
-    }] : [])[0] || null,
-    careerGoals: dashboard.careerGoals || [],
-    examCalendar: dashboard.examCalendar,
-    supportStatus: dashboard.supportStatus,
+    submissions: [],
+    recommendedNext: null,
+    recommendedQuiz: null,
+    careerGoals: [],
+    supportStatus: {
+      band: 'awaiting_results',
+      label: academicStatus(null),
+      explanation: 'No progress records available yet.',
+      recommendedAction: 'Start with your next assignment.',
+    },
     dailyInsightContext: {
-      studentId: dashboard.dailyInsightContext?.studentId || dashboard.profile?.id || 'current',
-      nextExamTitle: dashboard.dailyInsightContext?.nextExamTitle || dashboard.examCalendar?.nextExam?.title,
-      nextExamSubject: dashboard.dailyInsightContext?.nextExamSubject || dashboard.examCalendar?.nextExam?.subject,
-      nextExamDate: dashboard.dailyInsightContext?.nextExamDate || dashboard.examCalendar?.nextExam?.examDate,
-      currentAcademicStatus: dashboard.dailyInsightContext?.currentAcademicStatus || dashboard.supportStatus?.label || academicStatus(score),
-      attendanceRate: dashboard.dailyInsightContext?.attendanceRate ?? attendanceRate,
-      averageScore: score ?? undefined,
-      streakDays: dashboard.dailyInsightContext?.streakDays ?? dashboard.streak?.current ?? 0,
+      studentId: 'current',
+      currentAcademicStatus: academicStatus(null),
     },
   };
 }
@@ -251,5 +173,5 @@ export async function loadStudentDashboard(): Promise<StudentDashboardView> {
   }
 
   const supabaseView = await loadFromSupabase();
-  return supabaseView || loadFromApi();
+  return supabaseView ?? emptyStudentDashboard();
 }

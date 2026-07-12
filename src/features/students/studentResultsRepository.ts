@@ -1,4 +1,3 @@
-import { optionalApiGet } from '../../lib/api/client';
 import type { StudentDashboardView } from '../../types/lms';
 import { parseStudentResultsApiResponse } from '../../types/studentApiContracts';
 import { loadStudentDashboard } from './studentDashboardRepository';
@@ -224,24 +223,8 @@ function buildFallbackFromDashboard(data: StudentDashboardView): StudentResultsA
 }
 
 export async function loadStudentResultsAnalytics(): Promise<StudentResultsAnalyticsView> {
-  const apiView = parseStudentResultsApiResponse(await optionalApiGet<unknown>('/student/results', null));
-  if (apiView?.summary && Array.isArray(apiView.items)) {
-    return {
-      ...apiView,
-      items: apiView.items.map((item) => ({
-        ...item,
-        cognitiveBreakdown: Array.isArray(item.cognitiveBreakdown)
-          ? item.cognitiveBreakdown
-          : normalizeCognitiveBreakdown(item.cognitiveBreakdown),
-      })),
-      classAnalytics: {
-        ...apiView.classAnalytics,
-        distribution: apiView.classAnalytics?.distribution?.length ? apiView.classAnalytics.distribution : emptyDistribution,
-        trends: apiView.classAnalytics?.trends || [],
-        subjectTrends: apiView.classAnalytics?.subjectTrends || [],
-      },
-    };
-  }
-
+  // Single-stack migration: the legacy /student/results API is retired. Results
+  // analytics are derived from the Supabase-backed student dashboard, which is
+  // exactly what already ran in production (the legacy route no longer resolves).
   return buildFallbackFromDashboard(await loadStudentDashboard());
 }

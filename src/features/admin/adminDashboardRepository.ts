@@ -1,33 +1,24 @@
-import { optionalApiGet } from '../../lib/api/client';
 import { formatCurrency } from '../../lib/utils/format';
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2EAdminDashboard } from '../../lib/e2e/mockRoleData';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import type { AdminDashboardView, Assignment, AssignmentSubmission, Guardian, NgoPartner, Payment, Profile, Student, StudentGuardian, Tutor, TutorPayment } from '../../types/lms';
 
-interface LegacyAdminDashboard {
-  tutors?: number;
-  students?: number;
-  pendingApprovalsCount?: number;
-  openPrivacyRequestsCount?: number;
-  payrollWeek?: { approvedMinutes?: number; pendingCount?: number };
-  pendingApprovals?: Assignment[];
-}
-
-async function loadFromApi(): Promise<AdminDashboardView> {
-  const dashboard = await optionalApiGet<LegacyAdminDashboard>('/admin/dashboard', {});
-
+// Single-stack migration: the legacy /admin/dashboard API is retired. When
+// Supabase is unavailable we render an empty dashboard rather than calling the
+// dead API (which only ever returned empty fallbacks in production anyway).
+function emptyAdminDashboard(): AdminDashboardView {
   return {
     metrics: [
-      { label: 'Students', value: String(dashboard.students ?? 0), helper: 'Active learners in the current LMS API.', tone: 'teal' },
-      { label: 'Tutors', value: String(dashboard.tutors ?? 0), helper: 'Tutor profiles visible to admin operations.', tone: 'violet' },
-      { label: 'Pending approvals', value: String(dashboard.pendingApprovalsCount ?? 0), helper: 'Session or operational approvals awaiting admin action.', tone: 'amber' },
-      { label: 'Privacy requests', value: String(dashboard.openPrivacyRequestsCount ?? 0), helper: 'POPIA requests still open.', tone: 'blue' },
+      { label: 'Students', value: '0', helper: 'No learner records available.', tone: 'teal' },
+      { label: 'Tutors', value: '0', helper: 'No tutor records available.', tone: 'violet' },
+      { label: 'Pending approvals', value: '0', helper: 'Nothing awaiting approval.', tone: 'amber' },
+      { label: 'Privacy requests', value: '0', helper: 'No open POPIA requests.', tone: 'blue' },
     ],
     students: [],
     guardians: [],
     tutors: [],
-    assignments: dashboard.pendingApprovals || [],
+    assignments: [],
     submissions: [],
     payments: [],
     tutorPayments: [],
@@ -140,5 +131,5 @@ export async function loadAdminDashboard(): Promise<AdminDashboardView> {
   }
 
   const supabaseView = await loadFromSupabase();
-  return supabaseView || loadFromApi();
+  return supabaseView ?? emptyAdminDashboard();
 }

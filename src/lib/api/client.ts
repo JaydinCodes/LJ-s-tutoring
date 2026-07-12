@@ -211,15 +211,3 @@ export async function apiStreamText(
     onChunk(finalChunk);
   }
 }
-
-export async function optionalApiGet<T>(path: string, fallback: T): Promise<T> {
-  try {
-    return await apiGet<T>(path);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '';
-    if (message.includes('404') || message.includes('501') || message.includes('Failed to fetch') || message.includes('api_non_json_response')) {
-      return fallback;
-    }
-    throw error;
-  }
-}
