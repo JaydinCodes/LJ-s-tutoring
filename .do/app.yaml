@@ -362,7 +362,7 @@ ingress:
 services:
   - name: lms-api
     github:
-      repo: JustTryingToDoBetter/LJ-s-tutoring
+      repo: JaydinCodes/LJ-s-tutoring
       branch: main
       deploy_on_push: true
     source_dir: lms-api
@@ -378,7 +378,7 @@ static_sites:
     build_command: npm ci && npm run build
     output_dir: dist
     github:
-      repo: JustTryingToDoBetter/LJ-s-tutoring
+      repo: JaydinCodes/LJ-s-tutoring
       branch: main
       deploy_on_push: true
     catchall_document: index.html
