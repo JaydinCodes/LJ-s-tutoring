@@ -81,7 +81,14 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     supabase.from('class_enrollments').select('class_id').eq('student_id', student.id).eq('status', 'active'),
     // Student submission reads must go through the redacted RPC so unreleased marks and feedback stay hidden.
     supabase.rpc('get_student_assignment_submissions'),
-    supabase.from('tutor_student_allocations').select('*').eq('student_id', student.id).eq('status', 'active'),
+    // Explicit column list (NOT select('*')): tutor_student_allocations now carries
+    // `rate_override` (the tutor's negotiated pay rate for this engagement), which must
+    // never reach a student's own dashboard response. Schedule/subject fields are fine.
+    supabase
+      .from('tutor_student_allocations')
+      .select('id, tutor_id, student_id, status, start_date, end_date, focus_notes, subject_id, allowed_days_json, allowed_time_ranges_json')
+      .eq('student_id', student.id)
+      .eq('status', 'active'),
   ]);
 
   const assignments = (assignmentsResult.data || []) as Assignment[];

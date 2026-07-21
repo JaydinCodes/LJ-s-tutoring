@@ -227,6 +227,13 @@ export interface TutorStudentAllocation {
   start_date?: string | null;
   end_date?: string | null;
   focus_notes?: string | null;
+  // Engagement/contract fields folded in from the retired Prisma `Assignment`
+  // model (migration plan §3A). `rate_override` is tutor/admin-only and is
+  // deliberately excluded from the student dashboard's column selection.
+  subject_id?: string | null;
+  rate_override?: string | number | null;
+  allowed_days_json?: unknown | null;
+  allowed_time_ranges_json?: unknown | null;
   created_at: string;
   updated_at: string;
 }
