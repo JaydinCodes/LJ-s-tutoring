@@ -235,11 +235,23 @@ Cross-org isolation is the test that must exist before a single real NGO/school 
 
 ## 10. Milestones
 
-1. Accept this plan → promote to ADR-0002.
-2. Phase 0–1 migration (orgs + backfill) behind no behaviour change.
-3. Phase 2 migration (RLS enforcement + audit-fix) with the cross-org test suite green.
-4. Coordinator + partner-viewer dashboards (frontend) — scoped, aggregate-only for viewers.
-5. Phase 3 cleanup + docs.
+1. Accept this plan → promote to ADR-0002. **✅ Done (2026-07-08).**
+2. **Phase 0–1 migration (orgs + backfill) behind no behaviour change. ✅ Landed 2026-07-21.**
+   `docs/supabase/schema.sql`: added the `organization_type` / `org_member_role` enums, the
+   `organizations` table (generalises `ngo_partners`, which stays in place until Phase 3),
+   `organization_members`, and nullable `organization_id` on `students` / `classes` /
+   `assignments`. Seeded the `direct` org and backfilled: NGO-linked students/classes → their
+   NGO org (via a preserved-ID copy of `ngo_partners` into `organizations`), everyone else →
+   `direct`; assignments (no NGO signal in the current schema) all land in `direct` for now;
+   `organization_members` backfilled for tutors from their classes and active
+   `tutor_student_allocations`. Coordinators are **not** backfilled — nothing in the current
+   schema marks a profile as a coordinator, so pilot-org coordinators still need manual
+   platform-admin assignment (§11.2). `organization_id` remains nullable and no RLS policy
+   references it yet — this phase is intentionally inert. `npm run test:rls` and
+   `npm run typecheck` both green after the change.
+3. Phase 2 migration (RLS enforcement + audit-fix) with the cross-org test suite green. **Not started** — `current_org_*` helpers, org-scoped policies, `organization_id` `NOT NULL`, and the submission-insert/draft-assignment audit fixes (§6) are all still to do.
+4. Coordinator + partner-viewer dashboards (frontend) — scoped, aggregate-only for viewers. **Not started**, depends on 3.
+5. Phase 3 cleanup + docs (drop `ngo_partner_id` columns, retire direct `ngo_partners` references). **Not started**, depends on 3.
 
 ---
 

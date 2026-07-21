@@ -1575,3 +1575,151 @@ end;
 $$;
 
 grant execute on function public.run_retention_cleanup(boolean) to authenticated;
+
+-- ============================================================================
+-- Multi-organisation model — Phase 0 (prep) + Phase 1 (additive backfill).
+-- ADR-0002: docs/architecture/MULTI_ORG_MODEL_PLAN.md.
+--
+-- Phase 0: `organization_type` / `org_member_role` enums, the `organizations`
+-- table (generalises `ngo_partners`, which stays in place for now — retiring
+-- it is Phase 3), and a seeded `direct` org for today's private clients.
+--
+-- Phase 1: nullable `organization_id` on students/classes/assignments,
+-- `organization_members`, and one-off backfill statements that stamp every
+-- existing row with its home org. Nothing here is enforced yet — no RLS
+-- policy references these columns, and `organization_id` stays nullable
+-- until Phase 2 (RLS enforcement + the cross-org isolation test suite), per
+-- the plan §7. Every statement below is idempotent so it is safe to re-run
+-- against an already-migrated database (matches this file's existing
+-- `create ... if not exists` / guarded-enum conventions).
+-- ============================================================================
+
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'organization_type') then
+    create type public.organization_type as enum ('direct', 'ngo', 'school', 'community');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'org_member_role') then
+    create type public.org_member_role as enum ('coordinator', 'tutor', 'student', 'parent', 'partner_viewer');
+  end if;
+end
+$$;
+
+create table if not exists public.organizations (
+  id            uuid primary key default gen_random_uuid(),
+  name          text not null,
+  type          public.organization_type not null,
+  contact_person text,
+  contact_email text,
+  contact_phone text,
+  location      text,
+  notes         text,
+  status        public.record_status not null default 'active',
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+-- RLS is deliberately NOT enabled yet: no policies exist for this table
+-- until Phase 2, and enabling RLS with zero policies is the exact
+-- anti-pattern AUDIT.md flagged for `ngo_partners` (Medium finding). Enable
+-- it alongside its real org-scoped policies in the Phase 2 migration.
+
+create table if not exists public.organization_members (
+  id              uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  profile_id      uuid not null references public.profiles(id) on delete cascade,
+  org_role        public.org_member_role not null,
+  status          public.record_status not null default 'active',
+  created_at      timestamptz not null default now(),
+  unique (organization_id, profile_id, org_role)
+);
+
+-- Added nullable, backfilled below. NOT NULL is Phase 2, once RLS and the
+-- cross-org test suite are green (plan §7) — do not tighten here.
+alter table public.students add column if not exists organization_id uuid references public.organizations(id);
+alter table public.classes add column if not exists organization_id uuid references public.organizations(id);
+alter table public.assignments add column if not exists organization_id uuid references public.organizations(id);
+
+create index if not exists idx_organization_members_profile on public.organization_members(profile_id, status);
+create index if not exists idx_organization_members_org_role on public.organization_members(organization_id, org_role);
+create index if not exists idx_students_organization on public.students(organization_id);
+create index if not exists idx_classes_organization on public.classes(organization_id);
+create index if not exists idx_assignments_organization on public.assignments(organization_id);
+
+-- Seed the `direct` org: home for every existing private client and the
+-- default for any row with no other organisational signal.
+insert into public.organizations (name, type, status)
+select 'Project Odysseus — Direct', 'direct'::public.organization_type, 'active'::public.record_status
+where not exists (select 1 from public.organizations where type = 'direct');
+
+-- Backfill: migrate `ngo_partners` rows into `organizations` (type `ngo`),
+-- preserving IDs so existing `students.ngo_partner_id` / `classes.ngo_partner_id`
+-- values still resolve as `organizations.id` values.
+insert into public.organizations (
+  id, name, type, contact_person, contact_email, contact_phone, location, notes, status, created_at
+)
+select
+  np.id,
+  np.name,
+  'ngo'::public.organization_type,
+  np.contact_person,
+  np.contact_email,
+  np.contact_phone,
+  np.location,
+  np.notes,
+  'active'::public.record_status,
+  np.created_at
+from public.ngo_partners np
+where not exists (select 1 from public.organizations o where o.id = np.id);
+
+-- Backfill: NGO-linked students/classes -> their NGO org; everyone else ->
+-- the `direct` org.
+update public.students s
+set organization_id = s.ngo_partner_id
+where s.ngo_partner_id is not null
+  and s.organization_id is distinct from s.ngo_partner_id;
+
+update public.students s
+set organization_id = (select o.id from public.organizations o where o.type = 'direct' limit 1)
+where s.ngo_partner_id is null
+  and s.organization_id is null;
+
+update public.classes c
+set organization_id = c.ngo_partner_id
+where c.ngo_partner_id is not null
+  and c.organization_id is distinct from c.ngo_partner_id;
+
+update public.classes c
+set organization_id = (select o.id from public.organizations o where o.type = 'direct' limit 1)
+where c.ngo_partner_id is null
+  and c.organization_id is null;
+
+-- Assignments carry no NGO signal today (no `ngo_partner_id` column), so
+-- every existing assignment lands in the `direct` org for now. Phase 2 can
+-- revisit deriving an assignment's org from its creating tutor's org
+-- membership once `organization_members` is populated end to end.
+update public.assignments a
+set organization_id = (select o.id from public.organizations o where o.type = 'direct' limit 1)
+where a.organization_id is null;
+
+-- Backfill: `organization_members` from existing tutors — a tutor becomes a
+-- member of every org their classes or active tutor_student_allocations
+-- touch. Coordinators are NOT backfilled here: nothing in the current schema
+-- marks a profile as a coordinator, so pilot-org coordinators must be
+-- assigned manually by a platform admin (plan §7, §11.2 — platform-admin-only
+-- provisioning to start).
+insert into public.organization_members (organization_id, profile_id, org_role, status)
+select distinct c.organization_id, t.profile_id, 'tutor'::public.org_member_role, 'active'::public.record_status
+from public.classes c
+join public.tutors t on t.id = c.tutor_id
+where c.organization_id is not null
+on conflict (organization_id, profile_id, org_role) do nothing;
+
+insert into public.organization_members (organization_id, profile_id, org_role, status)
+select distinct s.organization_id, t.profile_id, 'tutor'::public.org_member_role, 'active'::public.record_status
+from public.tutor_student_allocations tsa
+join public.tutors t on t.id = tsa.tutor_id
+join public.students s on s.id = tsa.student_id
+where tsa.status = 'active'
+  and s.organization_id is not null
+on conflict (organization_id, profile_id, org_role) do nothing;
