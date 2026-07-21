@@ -235,6 +235,14 @@ create table if not exists public.tutor_student_allocations (
   start_date date,
   end_date date,
   focus_notes text,
+  -- Engagement/contract fields folded in from the retired Prisma `Assignment`
+  -- model (migration plan §3A). Nullable/additive: no NOT NULL, no backfill.
+  -- `rate_override` is the tutor's negotiated pay rate for this engagement and
+  -- is tutor/admin-only — student-facing readers must NOT select it.
+  subject_id uuid references public.subjects(id),
+  rate_override numeric(12, 2),
+  allowed_days_json jsonb,
+  allowed_time_ranges_json jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (tutor_id, student_id)

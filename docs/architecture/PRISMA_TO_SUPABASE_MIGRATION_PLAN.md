@@ -34,7 +34,7 @@ The Prisma `Session` model (tutor + student + assignment, date/times, attendance
 | `TutorProfile` | `tutors` | Supabase minimal; migrate the richer approval/qualification fields (→ §3C tutor-onboarding). |
 | `AuditLog` | `audit_log` | Divergent shapes; unify on the Supabase append-only table. |
 | `PrivacyRequest` | `privacy_requests` | Supabase table exists (Phase A); migrate open requests' data. |
-| `Assignment` | `assignments` | ⚠️ **Divergent concept — RESOLVED.** Prisma `Assignment` = a tutor-student *engagement/contract*; Supabase `assignments` = *homework*. **Decision: the engagement/contract concept folds into `tutor_student_allocations`/`sessions` (not into Supabase `assignments`, which stays homework-only).** |
+| `Assignment` | `assignments` | ⚠️ **Divergent concept — RESOLVED, schema landed.** Prisma `Assignment` = a tutor-student *engagement/contract*; Supabase `assignments` = *homework*. **Decision: the engagement/contract concept folds into `tutor_student_allocations`/`sessions` (not into Supabase `assignments`, which stays homework-only).** ✅ **Schema landed (§6 step 1):** `tutor_student_allocations` now carries the genuinely-new contract fields — `subject_id` (FK to `subjects`, mapping Prisma's free-text `subject`), `rate_override numeric(12,2)`, `allowed_days_json jsonb`, `allowed_time_ranges_json jsonb` (all nullable/additive). `start_date`/`end_date`/tutor-student pairing were already present; `active` maps to the existing `status` (`record_status`) enum. `rate_override` is tutor/admin-only — the student dashboard read was narrowed to an explicit column list that excludes it. The Prisma `Assignment` model itself is retired later with the Fastify stack (§6 step 7). |
 
 ### B. Retire with the Fastify stack — no Supabase table needed
 These die when legacy cookie-auth / backend infra is removed (ADR-0003):
@@ -46,7 +46,7 @@ Grouped by domain (see §4 for keep/cut and target shapes):
 - **Finance / payroll:** `Invoice`, `InvoiceLine`, `PayPeriod`, `Adjustment`
 - **Reports & notifications:** `WeeklyReport`, (student notifications)
 - **Tutor onboarding:** `TutorApplication`, `TutorDocument`, `TutorAvailabilitySlot`
-- **Tutor↔student mapping:** `TutorStudentMap` → ⚠️ **duplicates** Supabase `tutor_student_allocations` — **RESOLVED: reconcile into the single Supabase `tutor_student_allocations` table** (see §7.4); `TutorStudentMap` is retired, not migrated as a separate table. The engagement/contract fields from Prisma `Assignment` (§3A) land here too.
+- **Tutor↔student mapping:** `TutorStudentMap` → ⚠️ **duplicates** Supabase `tutor_student_allocations` — **RESOLVED, schema landed: reconcile into the single Supabase `tutor_student_allocations` table** (see §7.4); `TutorStudentMap` is retired, not migrated as a separate table. ✅ **`TutorStudentMap` has nothing left to migrate** — its `tutor_id`/`student_id`/`created_at` are already fully covered by `tutor_student_allocations`; it is retired (not table-migrated) once the Fastify stack goes away (§6 step 7). The engagement/contract fields from Prisma `Assignment` (§3A) have now landed on this table too.
 - **Academic extras:** `LearningAssignment`, `BaselineAssessment`, `LearningGoal`, `StudentExamEvent`
 - **Volunteering:** `VolunteerEvent`, `VolunteerLog` (ties to the tutor/volunteer model)
 - **Growth monitoring / risk:** `StudentScoreSnapshot`, `CareerProgressSnapshot` — **KEEP** (see §3D).
@@ -76,7 +76,7 @@ Every migrated table gets `organization_id` (ADR-0002) and RLS from the start.
 - **`weekly_reports`** — per-student report payload (jsonb) + week range; RLS: student/guardian read released, tutor/admin manage. Rebuild `buildWeeklyReportPayload` against Supabase (`sessions`, `student_progress`, `assignment_submissions`).
 - **`notifications`** — per-user notifications; RLS owner-read.
 - **Tutor onboarding** (`tutor_applications`, `tutor_documents`, `tutor_availability`) — ties into the vetting gate (tutor/volunteer model). Documents → private Storage bucket.
-- **Reconcile** `TutorStudentMap` ↔ `tutor_student_allocations` into the single Supabase table (also absorbs the Prisma `Assignment` engagement/contract fields per §3A).
+- **Reconcile** `TutorStudentMap` ↔ `tutor_student_allocations` into the single Supabase table (also absorbs the Prisma `Assignment` engagement/contract fields per §3A). ✅ **Schema landed** — contract columns (`subject_id`, `rate_override`, `allowed_days_json`, `allowed_time_ranges_json`) added; student-dashboard read narrowed to exclude `rate_override`. Prisma-side retirement deferred to §6 step 7 (Fastify-stack removal).
 - **Growth monitoring / risk** (`student_score_snapshots`, `career_progress_snapshots`) — org-scoped; RLS: owning student + tutor(s) + admin. **Design requirement (owner-specified):** snapshots must be traceable to the specific `assignments`/`assignment_submissions`/`student_progress` rows that drove them, so a tutor/admin can see not just "this student is struggling" but *which assignment/topic* triggered the signal. Don't build this as a black-box score.
 - **Academic extras / volunteering** — migrate (`LearningAssignment`, `BaselineAssessment`, `LearningGoal`, `StudentExamEvent`, `VolunteerEvent`, `VolunteerLog`).
 - **Community suite** — not migrated in this pass (§3D); remains parked in Prisma.

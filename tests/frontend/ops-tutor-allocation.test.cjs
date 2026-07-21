@@ -34,6 +34,10 @@ test('tutor and student dashboards consume allocation-scoped data', () => {
   assert.match(tutorRepo, /from\('tutor_student_allocations'\)\.select\('\*'\)\.eq\('tutor_id', tutor\.id\)\.eq\('status', 'active'\)/);
   assert.match(tutorRepo, /allocatedStudents:/);
   assert.match(tutorRoute, /Allocated students/);
-  assert.match(studentRepo, /from\('tutor_student_allocations'\)\.select\('\*'\)\.eq\('student_id', student\.id\)\.eq\('status', 'active'\)/);
+  // The student read is deliberately narrowed to an explicit column list (NOT
+  // select('*')) so the tutor's `rate_override` pay rate never reaches a
+  // student's dashboard response. See allocation-contract-fields.test.cjs.
+  assert.match(studentRepo, /from\('tutor_student_allocations'\)[\s\S]*?\.select\([^)]*subject_id[^)]*\)[\s\S]*?\.eq\('student_id', student\.id\)[\s\S]*?\.eq\('status', 'active'\)/);
+  assert.doesNotMatch(studentRepo, /from\('tutor_student_allocations'\)[\s\S]*?rate_override[\s\S]*?\.eq\('student_id', student\.id\)/);
   assert.match(studentRepo, /assignedTutors:/);
 });
