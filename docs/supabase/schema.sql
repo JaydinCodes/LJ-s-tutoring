@@ -1723,3 +1723,300 @@ join public.students s on s.id = tsa.student_id
 where tsa.status = 'active'
   and s.organization_id is not null
 on conflict (organization_id, profile_id, org_role) do nothing;
+
+-- ============================================================================
+-- Multi-organisation model — Phase 2 (Enforce), step 1 of 2: additive only.
+-- ADR-0002: docs/architecture/MULTI_ORG_MODEL_PLAN.md §5, §7, §8.
+--
+-- This step adds the `current_org_*` helpers, the indexes they need, and
+-- org-scoped RLS policies ALONGSIDE every existing policy from Phase 0/1 and
+-- earlier. Nothing here removes, replaces, or weakens any pre-existing
+-- policy, and `organization_id` stays nullable. The full RLS/cross-org test
+-- suite (tests/frontend/multi-org-rls-isolation.test.cjs) must be green
+-- before step 2 of Phase 2 (fix the submission-insert/draft-assignment
+-- bypasses, set `organization_id NOT NULL`, remove superseded permissive
+-- policies) is allowed to proceed, per the plan's "additive, verify green,
+-- then cut over" discipline.
+-- ============================================================================
+
+-- --- 5.1 Helper functions (SECURITY DEFINER, indexed-backed) ---------------
+
+create or replace function public.current_org_ids()
+returns setof uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select om.organization_id
+  from public.organization_members om
+  join public.profiles p on p.id = om.profile_id
+  where p.auth_user_id = auth.uid()
+    and om.status = 'active'
+$$;
+
+create or replace function public.current_student_org_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select s.organization_id
+  from public.students s
+  join public.profiles p on p.id = s.profile_id
+  where p.auth_user_id = auth.uid()
+$$;
+
+-- Role check within a specific org. If a profile somehow holds more than one
+-- org_role row for the same org (the unique constraint on organization_members
+-- is (organization_id, profile_id, org_role), so this is possible), prefer
+-- 'coordinator' deterministically so a coexisting lower-privilege row can
+-- never mask a real coordinator grant in a security check.
+create or replace function public.current_org_role(org uuid)
+returns public.org_member_role
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select om.org_role
+  from public.organization_members om
+  join public.profiles p on p.id = om.profile_id
+  where p.auth_user_id = auth.uid()
+    and om.organization_id = org
+    and om.status = 'active'
+  order by case om.org_role when 'coordinator' then 0 else 1 end
+  limit 1
+$$;
+
+create or replace function public.is_platform_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.current_profile_role() = 'admin'
+$$;
+
+-- --- 8. Indexes --------------------------------------------------------
+-- organization_members(profile_id, status), organization_members(organization_id, org_role),
+-- students/classes/assignments(organization_id) already exist from Phase 1
+-- (idx_organization_members_profile, idx_organization_members_org_role,
+-- idx_students_organization, idx_classes_organization,
+-- idx_assignments_organization above) and are confirmed still present.
+-- current_org_role() additionally filters on (profile_id, organization_id,
+-- status) together, which the Phase 1 indexes only partially cover, so add a
+-- composite index for that lookup shape.
+create index if not exists idx_organization_members_profile_org_status
+  on public.organization_members(profile_id, organization_id, status);
+
+-- --- 5.2 Org-scoped policies (additive; existing policies untouched) ------
+
+alter table public.organizations enable row level security;
+alter table public.organization_members enable row level security;
+
+create policy "organizations_select_member_or_admin"
+on public.organizations for select
+using (
+  public.is_platform_admin()
+  or id in (select public.current_org_ids())
+);
+
+create policy "admin_manage_organizations"
+on public.organizations for all
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
+
+create policy "organization_members_select_scoped"
+on public.organization_members for select
+using (
+  public.is_platform_admin()
+  or profile_id = public.current_profile_id()
+  or organization_id in (select public.current_org_ids())
+);
+
+-- Coordinators may manage membership rows for their own org (e.g. adding a
+-- tutor), but NEVER rows with org_role = 'coordinator' — coordinator
+-- provisioning stays platform-admin-only (plan §11.2), so a coordinator
+-- cannot create, edit, or remove another coordinator (or self-escalate) via
+-- this policy. Both using() and with check() carry the guard so it applies
+-- to select/update/delete visibility as well as insert/update values.
+create policy "organization_members_coordinator_manage"
+on public.organization_members for all
+using (
+  public.is_platform_admin()
+  or (
+    public.current_org_role(organization_id) = 'coordinator'
+    and org_role <> 'coordinator'
+  )
+)
+with check (
+  public.is_platform_admin()
+  or (
+    public.current_org_role(organization_id) = 'coordinator'
+    and org_role <> 'coordinator'
+  )
+);
+
+create policy "admin_manage_organization_members"
+on public.organization_members for all
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
+
+-- Students carry direct learner PII, so (unlike classes/assignments below)
+-- this pass does NOT add a blanket "any org member can read" policy here —
+-- that would hand a partner_viewer (or a same-org tutor with no allocation
+-- to this learner) new read access to raw student rows, which §5.3/§11.4
+-- forbid. Only the org's coordinator gets new (additive) access, matching
+-- the role table in §4 ("Coordinator: manage that org's ... learners").
+create policy "students_coordinator_org_manage"
+on public.students for all
+using (
+  public.is_platform_admin()
+  or public.current_org_role(organization_id) = 'coordinator'
+)
+with check (
+  public.is_platform_admin()
+  or public.current_org_role(organization_id) = 'coordinator'
+);
+
+-- Classes carry no learner PII by themselves (name/tutor/subject/schedule),
+-- so — matching the plan's §5.2 example verbatim — any active org member may
+-- read them; only the org's coordinator can manage them.
+create policy "classes_org_scoped_read"
+on public.classes for select
+using (
+  public.is_platform_admin()
+  or organization_id in (select public.current_org_ids())
+);
+
+create policy "classes_coordinator_manage"
+on public.classes for all
+using (
+  public.is_platform_admin()
+  or public.current_org_role(organization_id) = 'coordinator'
+)
+with check (
+  public.is_platform_admin()
+  or public.current_org_role(organization_id) = 'coordinator'
+);
+
+-- KNOWN GAP (AUDIT.md High / plan §6, deferred to Phase 2 step 2 / "2b"):
+-- "assignments_read_authenticated" (below, unchanged in this pass) still
+-- reads `using (auth.uid() is not null)`, letting ANY authenticated user
+-- (including students, and members of other orgs) read ANY assignment row
+-- regardless of draft/published status or org. This additive
+-- "assignments_org_scoped_read" policy does not close that gap — permissive
+-- policies OR together, so the older, broader policy still wins today. 2b
+-- folds `status = 'published'` scoping into a replacement org-scoped read
+-- policy and removes "assignments_read_authenticated" in the same migration
+-- that sets organization_id NOT NULL. Do not remove it here.
+create policy "assignments_org_scoped_read"
+on public.assignments for select
+using (
+  public.is_platform_admin()
+  or organization_id in (select public.current_org_ids())
+);
+
+create policy "assignments_coordinator_manage"
+on public.assignments for all
+using (
+  public.is_platform_admin()
+  or public.current_org_role(organization_id) = 'coordinator'
+)
+with check (
+  public.is_platform_admin()
+  or public.current_org_role(organization_id) = 'coordinator'
+);
+
+-- --- 5.3 Partner-viewer aggregate access (POPIA-critical) ------------------
+-- `partner_viewer` gets NO select policy anywhere above on students,
+-- assignment_submissions, student_progress, or guardians — their only path
+-- to org data is this SECURITY DEFINER RPC, which returns aggregates only
+-- (counts/averages/distributions; no names, ids, or guardian contacts) and
+-- applies the small-cohort suppression rule from plan §11.6.
+
+create or replace function public.get_org_cohort_report(p_org_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  -- Small-cohort suppression threshold (plan §11.6): cohorts below this many
+  -- learners return a suppressed report instead of real aggregates, to guard
+  -- against re-identification. Named constant, not a magic number, so it is
+  -- one obvious edit (or a future config-table read) to retune.
+  v_min_cohort_size constant int := 5;
+  v_learner_count int;
+  v_avg_progress_score numeric;
+  v_submission_count int;
+  v_marked_submission_count int;
+  v_progress_distribution jsonb;
+begin
+  if not exists (
+    select 1
+    from public.organization_members om
+    join public.profiles p on p.id = om.profile_id
+    where p.auth_user_id = auth.uid()
+      and om.organization_id = p_org_id
+      and om.org_role = 'partner_viewer'
+      and om.status = 'active'
+  ) then
+    raise exception 'not_authorized' using errcode = '42501';
+  end if;
+
+  select count(*) into v_learner_count
+  from public.students s
+  where s.organization_id = p_org_id;
+
+  if v_learner_count < v_min_cohort_size then
+    return jsonb_build_object(
+      'organization_id', p_org_id,
+      'learner_count', v_learner_count,
+      'suppressed', true,
+      'suppression_reason', format('cohort below minimum reporting size (fewer than %s learners)', v_min_cohort_size)
+    );
+  end if;
+
+  select avg(sp.score) into v_avg_progress_score
+  from public.student_progress sp
+  join public.students s on s.id = sp.student_id
+  where s.organization_id = p_org_id;
+
+  select count(*) into v_submission_count
+  from public.assignment_submissions sub
+  join public.students s on s.id = sub.student_id
+  where s.organization_id = p_org_id;
+
+  select count(*) into v_marked_submission_count
+  from public.assignment_submissions sub
+  join public.students s on s.id = sub.student_id
+  where s.organization_id = p_org_id
+    and sub.status = 'marked';
+
+  select coalesce(jsonb_agg(jsonb_build_object('cognitive_level', bucket.cognitive_level, 'count', bucket.learner_count)), '[]'::jsonb)
+  into v_progress_distribution
+  from (
+    select sp.cognitive_level, count(*) as learner_count
+    from public.student_progress sp
+    join public.students s on s.id = sp.student_id
+    where s.organization_id = p_org_id
+    group by sp.cognitive_level
+  ) bucket;
+
+  return jsonb_build_object(
+    'organization_id', p_org_id,
+    'learner_count', v_learner_count,
+    'suppressed', false,
+    'average_progress_score', round(coalesce(v_avg_progress_score, 0), 2),
+    'submission_count', v_submission_count,
+    'marked_submission_count', v_marked_submission_count,
+    'progress_distribution_by_cognitive_level', v_progress_distribution
+  );
+end;
+$$;
+
+grant execute on function public.get_org_cohort_report(uuid) to authenticated;
