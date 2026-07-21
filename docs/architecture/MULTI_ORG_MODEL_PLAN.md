@@ -249,7 +249,27 @@ Cross-org isolation is the test that must exist before a single real NGO/school 
    platform-admin assignment (§11.2). `organization_id` remains nullable and no RLS policy
    references it yet — this phase is intentionally inert. `npm run test:rls` and
    `npm run typecheck` both green after the change.
-3. Phase 2 migration (RLS enforcement + audit-fix) with the cross-org test suite green. **Not started** — `current_org_*` helpers, org-scoped policies, `organization_id` `NOT NULL`, and the submission-insert/draft-assignment audit fixes (§6) are all still to do.
+3. **Phase 2 migration (RLS enforcement + audit-fix) with the cross-org test suite green. ✅ Fully landed 2026-07-21.**
+   - **Step 1 (additive, ✅):** added the `current_org_*` helpers + composite index and org-scoped
+     RLS policies **alongside** every existing policy (nothing removed, `organization_id` still
+     nullable); the cross-org isolation suite (`tests/frontend/multi-org-rls-isolation.test.cjs`)
+     went green.
+   - **Step 2 (cutover, ✅):** set `organization_id` `NOT NULL` on `students` / `classes` /
+     `assignments` and removed the superseded permissive policy. To make `NOT NULL` safe without
+     touching frontend code (no insert path sets `organization_id` yet — the org-selection UI is
+     milestone 4), a single reusable **`BEFORE INSERT` trigger** `public.fill_organization_id()`
+     is attached to all three tables and auto-fills the column when the caller omits it. Fallback
+     precedence: caller-supplied value → `ngo_partner_id` (students/classes only; it *is* the org
+     id, since Phase 1 preserved `organizations.id = ngo_partners.id`) → the creator's own active
+     `organization_members` org (via `auth.uid()`) → the seeded `direct` org. **Note for the
+     coordinator-UI work (milestone 4):** new org-scoped inserts *should* pass `organization_id`
+     explicitly once that UI exists, but are not *required* to — the trigger back-fills it, and an
+     explicitly-supplied value always wins. The draft/cross-org assignment over-exposure bug (§6)
+     is fixed: `assignments_read_authenticated` (`auth.uid() is not null`) is dropped and replaced
+     by `assignments_student_read_published_own_org` (`status = 'published' and organization_id =
+     current_student_org_id()`); the submission-insert bypass was already fixed in the prior audit
+     pass. `npm run test:rls`, `npm run typecheck`, and `npm run test:frontend:unit` all green
+     after the change.
 4. Coordinator + partner-viewer dashboards (frontend) — scoped, aggregate-only for viewers. **Not started**, depends on 3.
 5. Phase 3 cleanup + docs (drop `ngo_partner_id` columns, retire direct `ngo_partners` references). **Not started**, depends on 3.
 

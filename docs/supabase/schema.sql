@@ -989,9 +989,13 @@ create policy "tutors_insert_subjects"
 on public.subjects for insert
 with check (public.current_profile_role() = 'tutor');
 
-create policy "assignments_read_authenticated"
-on public.assignments for select
-using (auth.uid() is not null);
+-- SECURITY (AUDIT.md High, fixed in Phase 2 step 2): the previous
+-- "assignments_read_authenticated" policy (using auth.uid() is not null) let
+-- ANY authenticated user read ANY assignment — any status, any org. It is
+-- removed here (create statement deleted) and explicitly dropped at the end of
+-- this file so existing databases lose it on apply too. Its replacement,
+-- "assignments_student_read_published_own_org", scopes student reads to
+-- published assignments in their own org. See §7.4 at the end of this file.
 
 create policy "admin_manage_assignments"
 on public.assignments for all
@@ -2020,3 +2024,160 @@ end;
 $$;
 
 grant execute on function public.get_org_cohort_report(uuid) to authenticated;
+
+-- ============================================================================
+-- Multi-organisation model — Phase 2 (Enforce), step 2 of 2: the cutover.
+-- ADR-0002: docs/architecture/MULTI_ORG_MODEL_PLAN.md §7, §10.
+--
+-- Step 1 (above) added org-scoped RLS policies alongside the existing ones and
+-- the cross-org test suite went green. Per the plan's §7 ("once step 1's tests
+-- are green, set organization_id NOT NULL and remove the superseded permissive
+-- policies"), this step:
+--   1. adds a BEFORE INSERT trigger that auto-fills organization_id, so
+--      NOT NULL is safe without any frontend change (no insert path sets the
+--      column yet — the org-selection UI is a later milestone);
+--   2. defensively backfills any stray null organization_id rows;
+--   3. sets organization_id NOT NULL on students, classes, assignments;
+--   4. replaces the over-permissive assignments_read_authenticated policy with
+--      a correctly-scoped student read policy and drops the old one.
+-- ============================================================================
+
+-- --- 7.1 Auto-fill trigger for organization_id -----------------------------
+-- One reusable trigger function, attached to all three org-scoped tables, so
+-- inserts that don't yet supply organization_id (every current production
+-- write path — none has org-selection UI) still land in the right org and the
+-- NOT NULL constraint below never fires. Fallback precedence mirrors
+-- coalesce(new.organization_id, <ngo-derived org>, <creator's own org>, <direct org>):
+--   1. Caller supplied organization_id explicitly (a future coordinator UI) —
+--      always respected, this trigger never overrides it.
+--   2. students/classes only: new.ngo_partner_id, which IS the org id — Phase 1
+--      preserved organizations.id = ngo_partners.id for every NGO, so this is a
+--      direct mapping, not a lookup by name. (assignments has no such column.)
+--   3. The creator's own org: the active organization_members row for the
+--      profile behind auth.uid() (same join shape as current_org_ids()). This
+--      keeps the trigger correct once real coordinators/tutors are provisioned
+--      into non-direct orgs, not just for today's direct-org-only inserts.
+--   4. Final fallback: the seeded `direct` org.
+-- SECURITY DEFINER so the auth.uid()->org lookup reads organization_members and
+-- profiles regardless of the inserting caller's RLS; it only ever WRITES
+-- new.organization_id on the row being inserted.
+create or replace function public.fill_organization_id()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_org uuid;
+begin
+  -- 1. Explicit value wins; never override a caller-supplied org.
+  if new.organization_id is not null then
+    return new;
+  end if;
+
+  -- 2. NGO branch (students/classes carry ngo_partner_id; assignments does not).
+  --    Guarded by TG_TABLE_NAME so new.ngo_partner_id is only referenced for
+  --    tables that have the column.
+  if tg_table_name in ('students', 'classes') and new.ngo_partner_id is not null then
+    new.organization_id := new.ngo_partner_id;
+    return new;
+  end if;
+
+  -- 3. Creator's own org via active membership for the profile behind auth.uid().
+  select om.organization_id into v_org
+  from public.organization_members om
+  join public.profiles p on p.id = om.profile_id
+  where p.auth_user_id = auth.uid()
+    and om.status = 'active'
+  limit 1;
+
+  if v_org is not null then
+    new.organization_id := v_org;
+    return new;
+  end if;
+
+  -- 4. Final fallback: the seeded `direct` org.
+  select id into v_org
+  from public.organizations
+  where type = 'direct'
+  limit 1;
+
+  new.organization_id := v_org;
+  return new;
+end;
+$$;
+
+-- drop-then-create keeps this idempotent across re-applies on any supported
+-- Postgres version (create trigger has no IF NOT EXISTS).
+drop trigger if exists trg_fill_organization_id on public.students;
+create trigger trg_fill_organization_id
+  before insert on public.students
+  for each row execute function public.fill_organization_id();
+
+drop trigger if exists trg_fill_organization_id on public.classes;
+create trigger trg_fill_organization_id
+  before insert on public.classes
+  for each row execute function public.fill_organization_id();
+
+drop trigger if exists trg_fill_organization_id on public.assignments;
+create trigger trg_fill_organization_id
+  before insert on public.assignments
+  for each row execute function public.fill_organization_id();
+
+-- --- 7.2 Defensive backfill (belt-and-suspenders) --------------------------
+-- Phase 1 already backfilled organization_id (ngo/direct mapping) above. These
+-- statements are idempotent and only touch rows that somehow still hold a null
+-- (e.g. slipped in between Phase 1 landing and this cutover), sending them to
+-- the direct org so the NOT NULL constraint below can be applied safely.
+update public.students
+set organization_id = (select id from public.organizations where type = 'direct' limit 1)
+where organization_id is null;
+
+update public.classes
+set organization_id = (select id from public.organizations where type = 'direct' limit 1)
+where organization_id is null;
+
+update public.assignments
+set organization_id = (select id from public.organizations where type = 'direct' limit 1)
+where organization_id is null;
+
+-- --- 7.3 Enforce organization_id NOT NULL ----------------------------------
+-- Safe now: the trigger fills it on every insert and the backfill cleared any
+-- residual nulls. Every org-scoped RLS policy from step 1 can now assume a
+-- non-null organization_id.
+alter table public.students alter column organization_id set not null;
+alter table public.classes alter column organization_id set not null;
+alter table public.assignments alter column organization_id set not null;
+
+-- --- 7.4 Fix the draft/cross-org assignment over-exposure bug ---------------
+-- The old "assignments_read_authenticated" policy (using auth.uid() is not null)
+-- let ANY authenticated user read ANY assignment — any status, any org. Simply
+-- dropping it and leaning on step 1's "assignments_org_scoped_read"
+-- (organization_id in current_org_ids()) would break student assignment
+-- visibility: students are never rows in organization_members by design
+-- (§3.3), so current_org_ids() is empty for them, and
+-- src/features/students/studentDashboardRepository.ts reads the assignments
+-- table directly. This replacement policy grants students SELECT on exactly the
+-- rows they legitimately need — published assignments in their OWN org (org
+-- resolved via students.organization_id through current_student_org_id()) —
+-- closing the bug on both axes (no drafts, no cross-org) at once. Parent access
+-- is unaffected: parentReportsRepository uses get_parent_progress_reports(),
+-- which is SECURITY DEFINER and bypasses RLS.
+create policy "assignments_student_read_published_own_org"
+on public.assignments for select
+using (
+  status = 'published'
+  and organization_id = public.current_student_org_id()
+);
+
+-- Now that a correct, strictly-narrower replacement exists and is verified by
+-- the RLS test suite, drop the superseded permissive policy. This is the single
+-- "remove the superseded permissive policies" removal called for by the plan's
+-- §7 cutover. Students/classes were reviewed for similarly-superseded broad
+-- policies: none qualify — students_select_self_or_admin,
+-- classes_select_scoped, and class_enrollments_select_scoped are role-based
+-- (self / admin / allocated-tutor / enrolled-student), not strictly broader
+-- than any org-scoped policy, so they are legitimately still needed and left
+-- in place. assignments_read_authenticated is the only genuinely-superseded
+-- policy, so it is the only removal.
+drop policy if exists "assignments_read_authenticated" on public.assignments;
