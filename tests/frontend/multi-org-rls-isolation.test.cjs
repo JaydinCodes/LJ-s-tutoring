@@ -133,14 +133,56 @@ test('students get an additive coordinator-scoped policy, but NOT a blanket any-
   assert.match(schema, /create policy "admin_full_access_students"/);
 });
 
-test('the known draft-assignment over-exposure bug is left untouched and documented as deferred to Phase 2 step 2', () => {
+test('Phase 2 step 2 cutover: the draft/cross-org assignment over-exposure bug is now fixed (assignments_read_authenticated removed, scoped replacement added)', () => {
+  // The over-permissive policy must be gone — no create statement, and an
+  // explicit drop so existing databases lose it on apply too.
+  assert.doesNotMatch(schema, /create policy "assignments_read_authenticated"/);
+  assert.match(schema, /drop policy if exists "assignments_read_authenticated" on public\.assignments;/);
+
+  // Its replacement must exist and scope to published assignments in the
+  // student's OWN org (closing both the draft-exposure and cross-org axes).
+  const block = statements.find((chunk) =>
+    chunk.includes('create policy "assignments_student_read_published_own_org"'),
+  );
+  assert.ok(block, 'assignments_student_read_published_own_org must exist');
+  assert.match(block, /on public\.assignments for select/);
+  assert.match(block, /status = 'published'/);
+  assert.match(block, /organization_id = public\.current_student_org_id\(\)/);
+});
+
+test('Phase 2 step 2 cutover: fill_organization_id() trigger function exists and is attached to all three org-scoped tables', () => {
+  // Single reusable SECURITY DEFINER trigger function.
   assert.match(
     schema,
-    /create policy "assignments_read_authenticated"\s*\non public\.assignments for select\s*\nusing \(auth\.uid\(\) is not null\);/,
+    /create or replace function public\.fill_organization_id\(\)\s*\nreturns trigger\s*\nlanguage plpgsql\s*\nsecurity definer\s*\nset search_path = public/,
   );
-  assert.match(schema, /KNOWN GAP[\s\S]*?assignments_read_authenticated/);
-  assert.match(schema, /folds `status = 'published'` scoping into a replacement org-scoped read/);
-  assert.match(schema, /KNOWN GAP \(AUDIT\.md High \/ plan §6, deferred to Phase 2 step 2 \/ "2b"\)/);
+  const fnMatch = schema.match(/create or replace function public\.fill_organization_id\(\)[\s\S]*?\n\$\$;/);
+  assert.ok(fnMatch, 'fill_organization_id function body must be present');
+  const fn = fnMatch[0];
+  // Fallback precedence: explicit value, then ngo_partner_id (students/classes),
+  // then creator org via active membership, then the seeded direct org.
+  assert.match(fn, /if new\.organization_id is not null then/);
+  assert.match(fn, /tg_table_name in \('students', 'classes'\) and new\.ngo_partner_id is not null/);
+  assert.match(fn, /new\.organization_id := new\.ngo_partner_id/);
+  assert.match(fn, /from public\.organization_members om[\s\S]*?om\.status = 'active'/);
+  assert.match(fn, /where type = 'direct'/);
+
+  // Attached BEFORE INSERT to each of the three tables.
+  for (const table of ['students', 'classes', 'assignments']) {
+    const trigRe = new RegExp(
+      `create trigger trg_fill_organization_id\\s*\\n\\s*before insert on public\\.${table}\\s*\\n\\s*for each row execute function public\\.fill_organization_id\\(\\);`,
+    );
+    assert.match(schema, trigRe, `trigger must be attached before insert on ${table}`);
+  }
+});
+
+test('Phase 2 step 2 cutover: organization_id is NOT NULL on students, classes, and assignments', () => {
+  for (const table of ['students', 'classes', 'assignments']) {
+    const alterRe = new RegExp(
+      `alter table public\\.${table} alter column organization_id set not null;`,
+    );
+    assert.match(schema, alterRe, `organization_id must be set NOT NULL on ${table}`);
+  }
 });
 
 test('partner_viewer has zero direct SELECT policies on students, assignment_submissions, student_progress, or guardians', () => {
