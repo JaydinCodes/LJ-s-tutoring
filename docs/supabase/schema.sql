@@ -2819,6 +2819,15 @@ begin
     raise exception 'session_not_found' using errcode = 'P0002';
   end if;
 
+  -- Fastify's approveSession re-checks the tutor is still active before
+  -- approving (a tutor may have been deactivated between submission and
+  -- approval) -- mirrored here using the best-available Supabase equivalent
+  -- (status = 'active'; the richer active/approval_status check lands with
+  -- the tutor-onboarding migration, same caveat as create/update/submit).
+  if not exists (select 1 from public.tutors t where t.id = v_current.tutor_id and t.status = 'active') then
+    raise exception 'tutor_not_active' using errcode = '42501';
+  end if;
+
   if public.session_date_pay_period_locked(v_current.date) then
     raise exception 'pay_period_locked' using errcode = '42501';
   end if;
