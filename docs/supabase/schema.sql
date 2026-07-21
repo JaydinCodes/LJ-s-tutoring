@@ -2189,3 +2189,812 @@ using (
 -- in place. assignments_read_authenticated is the only genuinely-superseded
 -- policy, so it is the only removal.
 drop policy if exists "assignments_read_authenticated" on public.assignments;
+
+-- ============================================================================
+-- Sessions linchpin migration (PRISMA_TO_SUPABASE_MIGRATION_PLAN.md §2).
+--
+-- Ports the Prisma `Session` / `SessionHistory` models and the full Fastify
+-- session business-logic layer (window/overlap/lock validation, the
+-- DRAFT -> SUBMITTED -> APPROVED/REJECTED state machine, append-only audit
+-- history) into a Supabase-native schema + RLS + SECURITY DEFINER RPC layer.
+-- Source of truth ported from lms-api: prisma/schema.prisma (Session ~L516,
+-- SessionHistory ~L554), src/routes/tutor.ts (session routes), src/lib/
+-- scheduling.ts (window/duration), src/domains/admin/approvals/service.ts
+-- (approve/reject), src/lib/rbac.ts (requireTutorSelfScope), src/lib/schemas.ts
+-- (field validation).
+--
+-- This lands FULLY BUILT BUT UNUSED. Explicitly deferred to later phases:
+--   * Real data backfill from the Prisma sessions/session_history tables.
+--   * Frontend repoint (tutor/admin/student UIs still call the Fastify
+--     lms-api routes; this task does not touch src/ or lms-api/).
+--   * Wiring the pay-period-lock stub once `pay_periods` migrates (see
+--     session_date_pay_period_locked below).
+--   * Wiring student-notification dispatch once `notifications` migrates
+--     (see the "notification deferred" comments in the report/submit/approve
+--     paths — Fastify calls createStudentNotification there; we do not).
+--   * Retirement of the Fastify session routes.
+-- ============================================================================
+
+-- Lowercase to match this schema's enum convention (record_status,
+-- assignment_status, ...), even though Prisma's SessionStatus was uppercase.
+create type public.session_status as enum ('draft', 'submitted', 'approved', 'rejected');
+
+-- Org-scoped from birth (ADR-0002). organization_id is derived from the
+-- session's STUDENT by the dedicated fill_session_organization_id() trigger
+-- below (NOT the generic multi-org fill_organization_id fallback chain).
+-- tutor_student_allocation_id replaces Prisma's assignment_id: the
+-- engagement/contract concept now lives in tutor_student_allocations (plan
+-- §3A). tutor_private_notes / report_review_note / payout_override are
+-- tutor/admin-only (financial/internal) and must never reach a student read
+-- path (see get_student_sessions and RLS below).
+create table if not exists public.sessions (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id),
+  tutor_id uuid not null references public.tutors(id),
+  student_id uuid not null references public.students(id),
+  tutor_student_allocation_id uuid not null references public.tutor_student_allocations(id),
+  date date not null,
+  start_time time not null,
+  end_time time not null,
+  duration_minutes int not null,
+  mode text not null,
+  location text,
+  notes text,
+  attendance_status text,
+  topics_covered text,
+  learner_struggles text,
+  homework_assigned text,
+  tutor_private_notes text,
+  student_summary text,
+  report_review_note text,
+  payout_override boolean not null default false,
+  sync_key text,
+  status public.session_status not null default 'draft',
+  created_at timestamptz not null default now(),
+  submitted_at timestamptz,
+  approved_at timestamptz,
+  approved_by uuid references public.profiles(id),
+  constraint sessions_attendance_status_check check (attendance_status is null or attendance_status in ('present', 'absent', 'late', 'excused')),
+  constraint sessions_duration_minutes_positive check (duration_minutes > 0),
+  constraint sessions_mode_len check (char_length(mode) between 1 and 40),
+  constraint sessions_location_len check (location is null or char_length(location) <= 120),
+  constraint sessions_notes_len check (notes is null or char_length(notes) <= 2000),
+  constraint sessions_topics_covered_len check (topics_covered is null or char_length(topics_covered) <= 3000),
+  constraint sessions_learner_struggles_len check (learner_struggles is null or char_length(learner_struggles) <= 3000),
+  constraint sessions_homework_assigned_len check (homework_assigned is null or char_length(homework_assigned) <= 3000),
+  constraint sessions_tutor_private_notes_len check (tutor_private_notes is null or char_length(tutor_private_notes) <= 3000),
+  constraint sessions_student_summary_len check (student_summary is null or char_length(student_summary) <= 3000),
+  constraint sessions_report_review_note_len check (report_review_note is null or char_length(report_review_note) <= 3000)
+);
+
+-- Append-only audit trail, mirroring the audit_log immutability pattern:
+-- admin-only SELECT, no direct writes for anyone, rows created ONLY via the
+-- SECURITY DEFINER insert_session_history() helper (execute revoked below).
+create table if not exists public.session_history (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references public.sessions(id),
+  changed_by_profile_id uuid references public.profiles(id),
+  change_type text not null,
+  before_json jsonb,
+  after_json jsonb,
+  created_at timestamptz not null default now(),
+  constraint session_history_change_type_check check (change_type in ('create', 'edit', 'report_update', 'submit', 'approve', 'reject'))
+);
+
+create index if not exists idx_sessions_tutor_date on public.sessions(tutor_id, date);
+create index if not exists idx_sessions_student_date on public.sessions(student_id, date desc, start_time desc);
+create index if not exists idx_sessions_organization on public.sessions(organization_id);
+-- Idempotency defense-in-depth: Fastify only did a manual check-then-insert on
+-- (tutor_id, sync_key); since create_session runs as one atomic transaction a
+-- partial unique index is a strict improvement, not a behaviour change.
+create unique index if not exists idx_sessions_tutor_sync_key on public.sessions(tutor_id, sync_key) where sync_key is not null;
+create index if not exists idx_session_history_session on public.session_history(session_id);
+
+alter table public.sessions enable row level security;
+alter table public.session_history enable row level security;
+
+-- Dedicated org-derivation trigger for sessions. IMPORTANT: this is NOT the
+-- generic multi-org fill_organization_id() trigger. A session's org must ALWAYS
+-- equal its STUDENT's org (students.organization_id), full stop. The generic
+-- trigger's fallback chain (ngo_partner_id -> creator's own org membership ->
+-- direct org) is wrong here: an admin (not org-scoped) or a multi-org tutor
+-- creating the session could silently misfile it into the wrong org. So we look
+-- the org up from the student and raise rather than defaulting to `direct` if
+-- that lookup comes back null (it never should — students.organization_id is
+-- NOT NULL). A caller-supplied organization_id is respected (future coordinator
+-- UI), matching the generic trigger's "explicit value wins" rule.
+create or replace function public.fill_session_organization_id()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_org uuid;
+begin
+  if new.organization_id is not null then
+    return new;
+  end if;
+
+  select organization_id into v_org
+  from public.students
+  where id = new.student_id;
+
+  if v_org is null then
+    raise exception 'session_org_unresolved' using errcode = '23502';
+  end if;
+
+  new.organization_id := v_org;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_fill_session_organization_id on public.sessions;
+create trigger trg_fill_session_organization_id
+  before insert on public.sessions
+  for each row execute function public.fill_session_organization_id();
+
+-- STUB until the finance/payroll migration lands `pay_periods` in Supabase --
+-- wire this up then, do not leave it silently unimplemented. Fastify's
+-- isDateLocked() (lms-api/src/routes/tutor.ts L53) checks
+-- pay_periods.status = 'LOCKED' for the pay period containing the date. That
+-- table does not exist in Supabase yet (sequenced AFTER sessions), so this
+-- always returns false. Every session RPC that mutates state calls this at the
+-- same point Fastify checks isDateLocked, so no call site changes when it is
+-- wired up later.
+create or replace function public.session_date_pay_period_locked(p_date date)
+returns boolean
+language sql
+immutable
+set search_path = public
+as $$
+  select false;
+$$;
+
+-- Faithful PL/pgSQL port of lms-api/src/lib/scheduling.ts
+-- isWithinAssignmentWindow. Day-of-week: JS getUTCDay() returns
+-- 0=Sunday..6=Saturday and Postgres extract(dow) matches exactly, so
+-- allowed_days integers port 1:1. NOTE: Prisma's Assignment.start_date was NOT
+-- NULL, but tutor_student_allocations.start_date is nullable; a null start/end
+-- means "no bound on that side" (the Fastify check is simply skipped).
+create or replace function public.session_within_allocation_window(
+  p_date date,
+  p_start_time time,
+  p_end_time time,
+  p_start_date date,
+  p_end_date date,
+  p_allowed_days jsonb,
+  p_allowed_time_ranges jsonb
+)
+returns boolean
+language plpgsql
+immutable
+set search_path = public
+as $$
+declare
+  v_day int;
+  v_in_range boolean;
+begin
+  if p_end_time <= p_start_time then
+    return false;
+  end if;
+
+  if p_start_date is not null and p_date < p_start_date then
+    return false;
+  end if;
+
+  if p_end_date is not null and p_date > p_end_date then
+    return false;
+  end if;
+
+  v_day := extract(dow from p_date)::int;
+
+  if p_allowed_days is not null
+     and jsonb_typeof(p_allowed_days) = 'array'
+     and jsonb_array_length(p_allowed_days) > 0 then
+    if not exists (
+      select 1 from jsonb_array_elements(p_allowed_days) elem
+      where (elem#>>'{}')::int = v_day
+    ) then
+      return false;
+    end if;
+  end if;
+
+  if p_allowed_time_ranges is not null
+     and jsonb_typeof(p_allowed_time_ranges) = 'array'
+     and jsonb_array_length(p_allowed_time_ranges) > 0 then
+    select exists (
+      select 1 from jsonb_array_elements(p_allowed_time_ranges) r
+      where p_start_time >= (r->>'start')::time
+        and p_end_time <= (r->>'end')::time
+    ) into v_in_range;
+    if not v_in_range then
+      return false;
+    end if;
+  end if;
+
+  return true;
+end;
+$$;
+
+-- Internal append-only history writer, mirroring log_audit_event's lockdown:
+-- SECURITY DEFINER, and execute revoked from public/anon/authenticated below
+-- so the ONLY way a session_history row is created is via the session RPCs.
+create or replace function public.insert_session_history(
+  p_session_id uuid,
+  p_change_type text,
+  p_before_json jsonb,
+  p_after_json jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+begin
+  insert into public.session_history (
+    session_id, changed_by_profile_id, change_type, before_json, after_json
+  )
+  values (
+    p_session_id, public.current_profile_id(), p_change_type, p_before_json, p_after_json
+  )
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+-- create_session: mirrors POST /tutor/sessions. Resolves the caller's tutor via
+-- current_tutor_id() (never a client-supplied tutor id, replicating rbac.ts
+-- requireTutorSelfScope); verifies the allocation belongs to that tutor, matches
+-- the student, and is active; checks the pay-period stub; validates the window;
+-- checks duration > 0; checks overlap; dedupes on (tutor_id, sync_key); inserts
+-- as 'draft'; logs history ('create').
+create or replace function public.create_session(
+  p_tutor_student_allocation_id uuid,
+  p_student_id uuid,
+  p_date date,
+  p_start_time time,
+  p_end_time time,
+  p_mode text,
+  p_location text,
+  p_notes text,
+  p_idempotency_key text
+)
+returns public.sessions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_tutor_id uuid := public.current_tutor_id();
+  v_alloc public.tutor_student_allocations%rowtype;
+  v_minutes int;
+  v_mode text := btrim(coalesce(p_mode, ''));
+  v_key text := nullif(btrim(coalesce(p_idempotency_key, '')), '');
+  v_existing public.sessions%rowtype;
+  v_session public.sessions%rowtype;
+begin
+  if v_tutor_id is null then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  -- ensureTutorActive equivalent (gap 3): Supabase tutors only has `status`;
+  -- the richer active/approval_status check lands with the tutor-onboarding
+  -- migration. status = 'active' is the best-available equivalent for now.
+  if not exists (select 1 from public.tutors t where t.id = v_tutor_id and t.status = 'active') then
+    raise exception 'tutor_not_active' using errcode = '42501';
+  end if;
+
+  if char_length(v_mode) < 1 or char_length(v_mode) > 40 then
+    raise exception 'invalid_request' using errcode = '23514';
+  end if;
+
+  select * into v_alloc
+  from public.tutor_student_allocations
+  where id = p_tutor_student_allocation_id;
+  if not found then
+    raise exception 'assignment_not_found' using errcode = 'P0002';
+  end if;
+
+  if v_alloc.tutor_id <> v_tutor_id then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  if v_alloc.student_id <> p_student_id then
+    raise exception 'student_mismatch' using errcode = '23514';
+  end if;
+
+  if v_alloc.status <> 'active' then
+    raise exception 'assignment_inactive' using errcode = '42501';
+  end if;
+
+  if public.session_date_pay_period_locked(p_date) then
+    raise exception 'pay_period_locked' using errcode = '42501';
+  end if;
+
+  if not public.session_within_allocation_window(
+       p_date, p_start_time, p_end_time,
+       v_alloc.start_date, v_alloc.end_date,
+       v_alloc.allowed_days_json, v_alloc.allowed_time_ranges_json) then
+    raise exception 'outside_assignment_window' using errcode = '23514';
+  end if;
+
+  v_minutes := (extract(epoch from (p_end_time - p_start_time)) / 60)::int;
+  if v_minutes <= 0 then
+    raise exception 'invalid_duration_minutes' using errcode = '23514';
+  end if;
+
+  -- Idempotency dedupe (matches Fastify's check-then-return-existing shape).
+  if v_key is not null then
+    select * into v_existing
+    from public.sessions
+    where tutor_id = v_tutor_id and sync_key = v_key
+    limit 1;
+    if found then
+      return v_existing;
+    end if;
+  end if;
+
+  -- Overlap against the tutor's other sessions on that date (same predicate as
+  -- Fastify: not (end <= new.start or start >= new.end)).
+  if exists (
+    select 1 from public.sessions
+    where tutor_id = v_tutor_id
+      and date = p_date
+      and not (end_time <= p_start_time or start_time >= p_end_time)
+  ) then
+    raise exception 'overlapping_session' using errcode = '23505';
+  end if;
+
+  -- organization_id intentionally omitted: fill_session_organization_id()
+  -- derives it from the student before the NOT NULL check.
+  insert into public.sessions (
+    tutor_id, student_id, tutor_student_allocation_id, date, start_time, end_time,
+    duration_minutes, mode, location, notes, status, sync_key
+  )
+  values (
+    v_tutor_id, p_student_id, p_tutor_student_allocation_id, p_date, p_start_time, p_end_time,
+    v_minutes, v_mode, nullif(btrim(coalesce(p_location, '')), ''),
+    nullif(btrim(coalesce(p_notes, '')), ''), 'draft', v_key
+  )
+  returning * into v_session;
+
+  perform public.insert_session_history(v_session.id, 'create', null, to_jsonb(v_session));
+  return v_session;
+end;
+$$;
+
+-- update_session: mirrors PATCH /tutor/sessions/:id. Tutor-owned, draft-only,
+-- re-validates duration/pay-period-stub/window/overlap, logs history ('edit').
+-- Field-merge semantics match Fastify's `parsed.data.x ?? current.x` (a null
+-- argument keeps the current value; there is no explicit "clear to null").
+create or replace function public.update_session(
+  p_session_id uuid,
+  p_date date,
+  p_start_time time,
+  p_end_time time,
+  p_mode text,
+  p_location text,
+  p_notes text
+)
+returns public.sessions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_tutor_id uuid := public.current_tutor_id();
+  v_current public.sessions%rowtype;
+  v_alloc public.tutor_student_allocations%rowtype;
+  v_date date;
+  v_start time;
+  v_end time;
+  v_mode text;
+  v_minutes int;
+  v_updated public.sessions%rowtype;
+begin
+  if v_tutor_id is null then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  if not exists (select 1 from public.tutors t where t.id = v_tutor_id and t.status = 'active') then
+    raise exception 'tutor_not_active' using errcode = '42501';
+  end if;
+
+  select * into v_current
+  from public.sessions
+  where id = p_session_id and tutor_id = v_tutor_id;
+  if not found then
+    raise exception 'session_not_found' using errcode = 'P0002';
+  end if;
+
+  if v_current.status <> 'draft' then
+    raise exception 'only_draft_editable';
+  end if;
+
+  v_date := coalesce(p_date, v_current.date);
+  v_start := coalesce(p_start_time, v_current.start_time);
+  v_end := coalesce(p_end_time, v_current.end_time);
+  v_mode := coalesce(nullif(btrim(coalesce(p_mode, '')), ''), v_current.mode);
+
+  if char_length(v_mode) < 1 or char_length(v_mode) > 40 then
+    raise exception 'invalid_request' using errcode = '23514';
+  end if;
+
+  v_minutes := (extract(epoch from (v_end - v_start)) / 60)::int;
+  if v_minutes <= 0 then
+    raise exception 'invalid_duration_minutes' using errcode = '23514';
+  end if;
+
+  if public.session_date_pay_period_locked(v_date) then
+    raise exception 'pay_period_locked' using errcode = '42501';
+  end if;
+
+  select * into v_alloc
+  from public.tutor_student_allocations
+  where id = v_current.tutor_student_allocation_id;
+  if not found then
+    raise exception 'assignment_not_found' using errcode = 'P0002';
+  end if;
+
+  if v_alloc.status <> 'active' then
+    raise exception 'assignment_inactive' using errcode = '42501';
+  end if;
+
+  if not public.session_within_allocation_window(
+       v_date, v_start, v_end,
+       v_alloc.start_date, v_alloc.end_date,
+       v_alloc.allowed_days_json, v_alloc.allowed_time_ranges_json) then
+    raise exception 'outside_assignment_window' using errcode = '23514';
+  end if;
+
+  if exists (
+    select 1 from public.sessions
+    where tutor_id = v_tutor_id
+      and date = v_date
+      and id <> p_session_id
+      and not (end_time <= v_start or start_time >= v_end)
+  ) then
+    raise exception 'overlapping_session' using errcode = '23505';
+  end if;
+
+  update public.sessions set
+    date = v_date,
+    start_time = v_start,
+    end_time = v_end,
+    duration_minutes = v_minutes,
+    mode = v_mode,
+    location = coalesce(nullif(btrim(coalesce(p_location, '')), ''), v_current.location),
+    notes = coalesce(nullif(btrim(coalesce(p_notes, '')), ''), v_current.notes)
+  where id = p_session_id
+  returning * into v_updated;
+
+  perform public.insert_session_history(p_session_id, 'edit', to_jsonb(v_current), to_jsonb(v_updated));
+  return v_updated;
+end;
+$$;
+
+-- submit_session_report: mirrors PATCH /tutor/sessions/:id/report. Tutor-owned,
+-- draft-only, updates report fields only (does NOT change status). Report fields
+-- are overwritten wholesale (Fastify sets each to `value ?? null`), and notes is
+-- backfilled from student_summary (Fastify's `notes = coalesce(studentSummary,
+-- notes)`). Notification dispatch is deferred (gap 2 -- Fastify calls
+-- createStudentNotification here; the notifications table does not exist in
+-- Supabase yet). Logs history ('report_update') -- an added-for-consistency
+-- audit entry the plan calls for (Fastify's report route does not itself log).
+create or replace function public.submit_session_report(
+  p_session_id uuid,
+  p_attendance_status text,
+  p_topics_covered text,
+  p_learner_struggles text,
+  p_homework_assigned text,
+  p_tutor_private_notes text,
+  p_student_summary text
+)
+returns public.sessions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_tutor_id uuid := public.current_tutor_id();
+  v_current public.sessions%rowtype;
+  v_updated public.sessions%rowtype;
+  v_attendance text := nullif(btrim(coalesce(p_attendance_status, '')), '');
+  v_summary text := nullif(btrim(coalesce(p_student_summary, '')), '');
+begin
+  if v_tutor_id is null then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  if not exists (select 1 from public.tutors t where t.id = v_tutor_id and t.status = 'active') then
+    raise exception 'tutor_not_active' using errcode = '42501';
+  end if;
+
+  select * into v_current
+  from public.sessions
+  where id = p_session_id and tutor_id = v_tutor_id;
+  if not found then
+    raise exception 'session_not_found' using errcode = 'P0002';
+  end if;
+
+  if v_current.status <> 'draft' then
+    raise exception 'only_draft_editable';
+  end if;
+
+  if v_attendance is not null and v_attendance not in ('present', 'absent', 'late', 'excused') then
+    raise exception 'invalid_request' using errcode = '23514';
+  end if;
+
+  update public.sessions set
+    attendance_status = v_attendance,
+    topics_covered = nullif(btrim(coalesce(p_topics_covered, '')), ''),
+    learner_struggles = nullif(btrim(coalesce(p_learner_struggles, '')), ''),
+    homework_assigned = nullif(btrim(coalesce(p_homework_assigned, '')), ''),
+    tutor_private_notes = nullif(btrim(coalesce(p_tutor_private_notes, '')), ''),
+    student_summary = v_summary,
+    notes = coalesce(v_summary, notes)
+  where id = p_session_id and tutor_id = v_tutor_id
+  returning * into v_updated;
+
+  -- Notification dispatch deferred to the notifications migration (gap 2).
+  perform public.insert_session_history(p_session_id, 'report_update', to_jsonb(v_current), to_jsonb(v_updated));
+  return v_updated;
+end;
+$$;
+
+-- submit_session: mirrors POST /tutor/sessions/:id/submit. Tutor-owned,
+-- draft-only, pay-period-stub check, transition to 'submitted', logs history
+-- ('submit'). Notification deferred (gap 2).
+create or replace function public.submit_session(p_session_id uuid)
+returns public.sessions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_tutor_id uuid := public.current_tutor_id();
+  v_current public.sessions%rowtype;
+  v_updated public.sessions%rowtype;
+begin
+  if v_tutor_id is null then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  if not exists (select 1 from public.tutors t where t.id = v_tutor_id and t.status = 'active') then
+    raise exception 'tutor_not_active' using errcode = '42501';
+  end if;
+
+  select * into v_current
+  from public.sessions
+  where id = p_session_id and tutor_id = v_tutor_id;
+  if not found then
+    raise exception 'session_not_found' using errcode = 'P0002';
+  end if;
+
+  if v_current.status <> 'draft' then
+    raise exception 'only_draft_submittable';
+  end if;
+
+  if public.session_date_pay_period_locked(v_current.date) then
+    raise exception 'pay_period_locked' using errcode = '42501';
+  end if;
+
+  update public.sessions set
+    status = 'submitted',
+    submitted_at = now()
+  where id = p_session_id
+  returning * into v_updated;
+
+  -- Notification dispatch deferred to the notifications migration (gap 2).
+  perform public.insert_session_history(p_session_id, 'submit', to_jsonb(v_current), to_jsonb(v_updated));
+  return v_updated;
+end;
+$$;
+
+-- approve_session: mirrors approvals/service.ts approveSession. Admin-only,
+-- only if status = 'submitted', pay-period-stub check, transition to 'approved'
+-- (approved_at = now(), approved_by = current_profile_id()), logs history
+-- ('approve'). Notification deferred (gap 2).
+create or replace function public.approve_session(p_session_id uuid)
+returns public.sessions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_current public.sessions%rowtype;
+  v_updated public.sessions%rowtype;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  select * into v_current
+  from public.sessions
+  where id = p_session_id;
+  if not found then
+    raise exception 'session_not_found' using errcode = 'P0002';
+  end if;
+
+  -- Fastify's approveSession re-checks the tutor is still active before
+  -- approving (a tutor may have been deactivated between submission and
+  -- approval) -- mirrored here using the best-available Supabase equivalent
+  -- (status = 'active'; the richer active/approval_status check lands with
+  -- the tutor-onboarding migration, same caveat as create/update/submit).
+  if not exists (select 1 from public.tutors t where t.id = v_current.tutor_id and t.status = 'active') then
+    raise exception 'tutor_not_active' using errcode = '42501';
+  end if;
+
+  if public.session_date_pay_period_locked(v_current.date) then
+    raise exception 'pay_period_locked' using errcode = '42501';
+  end if;
+
+  if v_current.status <> 'submitted' then
+    raise exception 'only_submitted_approvable';
+  end if;
+
+  update public.sessions set
+    status = 'approved',
+    approved_at = now(),
+    approved_by = public.current_profile_id()
+  where id = p_session_id
+  returning * into v_updated;
+
+  -- Notification dispatch deferred to the notifications migration (gap 2).
+  perform public.insert_session_history(p_session_id, 'approve', to_jsonb(v_current), to_jsonb(v_updated));
+  return v_updated;
+end;
+$$;
+
+-- reject_session: mirrors approvals/service.ts rejectSession. Admin-only, only
+-- if status = 'submitted', pay-period-stub check, transition to 'rejected'. The
+-- reason is folded into after_json (Fastify's `{ ...updated, reject_reason }`).
+-- Logs history ('reject'). Notification deferred (gap 2).
+create or replace function public.reject_session(p_session_id uuid, p_reason text)
+returns public.sessions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_current public.sessions%rowtype;
+  v_updated public.sessions%rowtype;
+  v_reason text := nullif(btrim(coalesce(p_reason, '')), '');
+begin
+  if not public.is_platform_admin() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  if v_reason is not null and char_length(v_reason) > 500 then
+    raise exception 'invalid_request' using errcode = '23514';
+  end if;
+
+  select * into v_current
+  from public.sessions
+  where id = p_session_id;
+  if not found then
+    raise exception 'session_not_found' using errcode = 'P0002';
+  end if;
+
+  if public.session_date_pay_period_locked(v_current.date) then
+    raise exception 'pay_period_locked' using errcode = '42501';
+  end if;
+
+  if v_current.status <> 'submitted' then
+    raise exception 'only_submitted_rejectable';
+  end if;
+
+  update public.sessions set
+    status = 'rejected'
+  where id = p_session_id
+  returning * into v_updated;
+
+  -- Notification dispatch deferred to the notifications migration (gap 2).
+  perform public.insert_session_history(
+    p_session_id, 'reject', to_jsonb(v_current),
+    to_jsonb(v_updated) || jsonb_build_object('reject_reason', v_reason)
+  );
+  return v_updated;
+end;
+$$;
+
+-- get_student_sessions: the student-facing read path (students have ZERO direct
+-- SELECT policies on public.sessions). Scoped to current_student_id()'s own
+-- sessions. Returns ONLY student-safe columns and EXCLUDES tutor_private_notes,
+-- report_review_note, payout_override, notes, approved_by, sync_key -- the same
+-- financial/internal-confidentiality reasoning behind the rate_override
+-- exclusion in the previous (tutor_student_allocations) migration step.
+create or replace function public.get_student_sessions()
+returns table (
+  id uuid,
+  date date,
+  start_time time,
+  end_time time,
+  mode text,
+  location text,
+  attendance_status text,
+  topics_covered text,
+  homework_assigned text,
+  student_summary text,
+  status public.session_status
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    s.id,
+    s.date,
+    s.start_time,
+    s.end_time,
+    s.mode,
+    s.location,
+    s.attendance_status,
+    s.topics_covered,
+    s.homework_assigned,
+    s.student_summary,
+    s.status
+  from public.sessions s
+  where s.student_id = public.current_student_id()
+  order by s.date desc, s.start_time desc;
+$$;
+
+-- --- Sessions RLS: no direct writes by anyone; all mutation via the RPCs -----
+-- Follows the assignment_submissions precedent: SELECT is scoped (admin all;
+-- tutor own, full columns), and INSERT/UPDATE/DELETE are with check (false) /
+-- using (false) so the SECURITY DEFINER RPCs are the only write path. Students
+-- get NO direct policy at all; their only read path is get_student_sessions().
+create policy "admin_select_all_sessions"
+on public.sessions for select
+using (public.is_platform_admin());
+
+create policy "tutors_select_own_sessions"
+on public.sessions for select
+using (tutor_id = public.current_tutor_id());
+
+create policy "sessions_no_direct_insert"
+on public.sessions for insert
+with check (false);
+
+create policy "sessions_no_direct_update"
+on public.sessions for update
+using (false)
+with check (false);
+
+create policy "sessions_no_direct_delete"
+on public.sessions for delete
+using (false);
+
+-- --- session_history RLS: append-only, mirroring audit_log exactly -----------
+create policy "admin_select_session_history"
+on public.session_history for select
+using (public.is_platform_admin());
+
+create policy "no_direct_session_history_insert"
+on public.session_history for insert
+with check (false);
+
+create policy "no_direct_session_history_update"
+on public.session_history for update
+using (false)
+with check (false);
+
+create policy "no_direct_session_history_delete"
+on public.session_history for delete
+using (false);
+
+-- --- Grants: the six mutation RPCs + the student read RPC are callable by
+-- authenticated; the internal history writer is locked down like log_audit_event.
+grant execute on function public.create_session(uuid, uuid, date, time, time, text, text, text, text) to authenticated;
+grant execute on function public.update_session(uuid, date, time, time, text, text, text) to authenticated;
+grant execute on function public.submit_session_report(uuid, text, text, text, text, text, text) to authenticated;
+grant execute on function public.submit_session(uuid) to authenticated;
+grant execute on function public.approve_session(uuid) to authenticated;
+grant execute on function public.reject_session(uuid, text) to authenticated;
+grant execute on function public.get_student_sessions() to authenticated;
+revoke execute on function public.insert_session_history(uuid, text, jsonb, jsonb) from public;
+revoke execute on function public.insert_session_history(uuid, text, jsonb, jsonb) from anon;
+revoke execute on function public.insert_session_history(uuid, text, jsonb, jsonb) from authenticated;

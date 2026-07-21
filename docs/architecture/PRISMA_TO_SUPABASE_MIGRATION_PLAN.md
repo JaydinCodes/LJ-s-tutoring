@@ -22,6 +22,23 @@ Doing this triage first means we migrate ~15 tables, retire ~13, and consciously
 
 The Prisma `Session` model (tutor + student + assignment, date/times, attendance, notes, payout override, `DRAFT→submitted→approved` status) is the **operational core**. Attendance, weekly reports, and payroll all derive from it (`Session → InvoiceLine → Invoice`; `Session → attendance → WeeklyReport`). **Nothing operational migrates cleanly until `sessions` is in Supabase.** It is the first migration target and the dependency root for the whole finance/reporting chain.
 
+### Status: ✅ Supabase schema + RLS + RPC layer LANDED (schema-only; unused pending repoint)
+
+The Supabase-native `sessions` layer is now built in `docs/supabase/schema.sql` and locked by `tests/frontend/sessions-migration.test.cjs` (wired into `test:rls`). What landed:
+
+- **Tables:** `public.sessions` (org-scoped from birth, `organization_id NOT NULL`, `tutor_student_allocation_id` replacing Prisma's `assignment_id`) and append-only `public.session_history` (mirrors the `audit_log` immutability pattern). `public.session_status` enum (`draft/submitted/approved/rejected`, lowercase per this schema's convention).
+- **Org derivation:** a **dedicated** `fill_session_organization_id()` before-insert trigger that derives a session's org from its **student** (`students.organization_id`) — deliberately NOT the generic multi-org `fill_organization_id()` fallback chain, which could misfile a session created by an admin or multi-org tutor.
+- **RLS:** no direct writes for anyone (`with check (false)`/`using (false)`), admin + own-tutor SELECT only, students have zero direct policies (read only via `get_student_sessions()`), following the `assignment_submissions` precedent.
+- **RPC business-logic layer (all `SECURITY DEFINER`, identity resolved internally via `current_tutor_id()`/`is_platform_admin()`):** `create_session`, `update_session`, `submit_session_report`, `submit_session`, `approve_session`, `reject_session`, the student read `get_student_sessions()`, and the locked-down internal `insert_session_history()` helper — porting Fastify's window/overlap/duration validation and the full `DRAFT→SUBMITTED→APPROVED/REJECTED` state machine with distinct error codes.
+
+**Explicitly deferred (NOT done in this step, by design):**
+- **(a) Real data backfill** from the Prisma `sessions`/`session_history` tables — this step is schema-only, no rows moved.
+- **(b) Frontend repoint** — tutor/admin/student UIs still call the Fastify `lms-api` session routes; `src/` and `lms-api/` are untouched.
+- **(c) Pay-period-lock wiring** — `session_date_pay_period_locked()` is a stub returning `false` (called at every point Fastify checks `isDateLocked`); wire it up when the finance/payroll step lands `pay_periods` (§6 step 3).
+- **(d) Student-notification dispatch** — Fastify's `createStudentNotification` side effects on report-update/submit/approve are skipped; wire them when the notifications step lands (§6 step 4).
+- **(e) Retirement of the Fastify session routes** — happens at §6 step 7.
+- Also using `tutors.status = 'active'` as the best-available `ensureTutorActive` equivalent until the richer tutor-onboarding approval model migrates (§6 step 6).
+
 ---
 
 ## 3. Full model triage
@@ -101,9 +118,9 @@ For each table, in order:
 
 0. **Multi-org model (ADR-0002) lands alongside/before this work** — per §7.5, confirmed by the owner. Every table touched below is designed org-scoped from the start; do not retrofit `organization_id` later.
 1. **Reconcile the duplicates first** (§3A/§3C) — `TutorStudentMap` + the `Assignment` engagement/contract fields fold into `tutor_student_allocations`. Cheapest win; removes confusion before anything else moves.
-2. **Sessions & attendance** — the linchpin; unblocks everything operational.
-3. **Finance / payroll** — depends on sessions.
-4. **Weekly reports + notifications** — depend on sessions.
+2. **Sessions & attendance** — the linchpin; unblocks everything operational. ✅ **Supabase schema + RLS + RPC layer landed** (see §2 "Status") — schema-only; real-data backfill, frontend repoint, and Fastify-route retirement still pending.
+3. **Finance / payroll** — depends on sessions. **On landing, wire the `session_date_pay_period_locked()` stub to the real `pay_periods` table** (it currently always returns `false`; the call sites in the session RPCs are already in place).
+4. **Weekly reports + notifications** — depend on sessions. **On landing, wire the deferred student-notification dispatch** into `submit_session_report`/`submit_session`/`approve_session` (Fastify's `createStudentNotification` side effects, skipped for now).
 5. **Growth monitoring / risk** (`student_score_snapshots`, `career_progress_snapshots`) — depends on sessions + assignments + progress being in Supabase, since traceability to specific assignments is a hard requirement.
 6. **Tutor onboarding** — ties to the vetting gate; needed before hiring beyond family/friends.
 7. **Retire the Fastify stack** (§3B) and decommission `lms-api`. Community suite (§3D) stays parked in Prisma / out of scope — revisit later.
