@@ -71,7 +71,7 @@
     "supabase:reset": "npm run supabase:migration:sync && npx supabase db reset --local",
     "supabase:status": "npx supabase status",
     "test:frontend:unit": "node --test tests/frontend",
-    "test:rls": "npm run supabase:migration:sync && node --test tests/frontend/supabase-schema-policy.test.cjs tests/frontend/assignment-versioning-locking.test.cjs tests/frontend/multi-org-rls-isolation.test.cjs tests/frontend/allocation-contract-fields.test.cjs tests/frontend/sessions-migration.test.cjs tests/frontend/finance-payroll-migration.test.cjs tests/frontend/weekly-reports-notifications-migration.test.cjs tests/frontend/tutor-onboarding-migration.test.cjs tests/frontend/growth-risk-monitoring-migration.test.cjs tests/frontend/academic-extras-volunteering-migration.test.cjs",
+    "test:rls": "npm run supabase:migration:sync && node --test tests/frontend/supabase-schema-policy.test.cjs tests/frontend/assignment-versioning-locking.test.cjs tests/frontend/multi-org-rls-isolation.test.cjs tests/frontend/allocation-contract-fields.test.cjs tests/frontend/sessions-migration.test.cjs tests/frontend/finance-payroll-migration.test.cjs tests/frontend/weekly-reports-notifications-migration.test.cjs tests/frontend/tutor-onboarding-migration.test.cjs tests/frontend/growth-risk-monitoring-migration.test.cjs tests/frontend/academic-extras-volunteering-migration.test.cjs tests/frontend/rls-recursion-safety.test.cjs",
     "verify:supabase:roles": "node scripts/verify-supabase-dashboard-access.cjs",
     "test:release:evidence": "node --test tests/release-evidence.test.cjs",
     "test:api": "npm run test --prefix lms-api",

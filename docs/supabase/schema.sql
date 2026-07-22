@@ -293,6 +293,78 @@ alter table public.classes enable row level security;
 alter table public.class_enrollments enable row level security;
 alter table public.tutor_student_allocations enable row level security;
 
+-- ============================================================================
+-- Identity lookup shadow table -- fixes a real "infinite recursion detected in
+-- policy for relation ..." bug, not a design choice. Every current_*() helper
+-- below used to join straight into public.profiles (and, for
+-- current_tutor_id/current_student_id, into public.tutors/public.students
+-- too). Confirmed by direct testing against a real local Postgres: ANY access
+-- to public.profiles from within evaluating public.profiles's OWN RLS
+-- policies recurses -- REGARDLESS of SECURITY DEFINER, the role's BYPASSRLS
+-- attribute, or an explicit `set local row_security = off` inside the
+-- function (all three were tried and all three still recursed). This is a
+-- hard Postgres limitation: a table's RLS policy (or anything it calls, no
+-- matter how it's wrapped) must never scan that same table again while its
+-- own policy is being evaluated. The recursion cascades further than
+-- profiles alone: public.tutors and public.students each had a raw subquery
+-- directly on public.profiles in their own "select self" policies, and
+-- profiles' own policies read back into students/tutors
+-- (profiles_select_allocated_learning_relationship) -- so evaluating
+-- tutors'/students' policies could re-enter profiles' policies, which could
+-- re-enter tutors/students, recursing there too (confirmed: querying
+-- public.tutors or public.students directly as an authenticated role also
+-- raised "infinite recursion detected in policy for relation ...").
+--
+-- The fix: every current_*() helper below now resolves auth_user_id ->
+-- profile_id/role from this tiny denormalized table instead of scanning
+-- public.profiles. RLS is NOT enabled here at all (not "using (false)" --
+-- literally no RLS), and table privileges are revoked from anon/authenticated
+-- below, so it is reachable ONLY through these SECURITY DEFINER functions --
+-- never a real client read/write path, so there is nothing to protect with
+-- RLS in the first place, and nothing left to recurse.
+create table if not exists public.profile_identities (
+  auth_user_id uuid primary key references auth.users(id) on delete cascade,
+  profile_id uuid not null references public.profiles(id) on delete cascade,
+  role public.user_role not null
+);
+
+create unique index if not exists idx_profile_identities_profile on public.profile_identities(profile_id);
+
+revoke all on public.profile_identities from anon, authenticated;
+
+create or replace function public.sync_profile_identity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'DELETE' then
+    delete from public.profile_identities where profile_id = old.id;
+    return old;
+  end if;
+
+  insert into public.profile_identities (auth_user_id, profile_id, role)
+  values (new.auth_user_id, new.id, new.role)
+  on conflict (auth_user_id) do update set
+    profile_id = excluded.profile_id,
+    role = excluded.role;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_sync_profile_identity on public.profiles;
+create trigger trg_sync_profile_identity
+  after insert or update of auth_user_id, role or delete on public.profiles
+  for each row execute function public.sync_profile_identity();
+
+-- One-time backfill for any profiles rows that existed before this trigger.
+insert into public.profile_identities (auth_user_id, profile_id, role)
+select auth_user_id, id, role from public.profiles
+on conflict (auth_user_id) do update set
+  profile_id = excluded.profile_id,
+  role = excluded.role;
+
 create or replace function public.current_profile_role()
 returns public.user_role
 language sql
@@ -300,7 +372,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select role from public.profiles where auth_user_id = auth.uid()
+  select role from public.profile_identities where auth_user_id = auth.uid()
 $$;
 
 create or replace function public.current_profile_id()
@@ -310,7 +382,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select id from public.profiles where auth_user_id = auth.uid()
+  select profile_id from public.profile_identities where auth_user_id = auth.uid()
 $$;
 
 create or replace function public.current_student_id()
@@ -322,8 +394,8 @@ set search_path = public
 as $$
   select s.id
   from public.students s
-  join public.profiles p on p.id = s.profile_id
-  where p.auth_user_id = auth.uid()
+  join public.profile_identities pi on pi.profile_id = s.profile_id
+  where pi.auth_user_id = auth.uid()
 $$;
 
 create or replace function public.current_tutor_id()
@@ -335,8 +407,8 @@ set search_path = public
 as $$
   select t.id
   from public.tutors t
-  join public.profiles p on p.id = t.profile_id
-  where p.auth_user_id = auth.uid()
+  join public.profile_identities pi on pi.profile_id = t.profile_id
+  where pi.auth_user_id = auth.uid()
 $$;
 
 create or replace function public.can_mark_submission(p_submission_id uuid)
@@ -876,7 +948,7 @@ create policy "students_select_self_or_admin"
 on public.students for select
 using (
   public.current_profile_role() = 'admin'
-  or profile_id in (select id from public.profiles where auth_user_id = auth.uid())
+  or profile_id = public.current_profile_id()
   or id in (
     select tsa.student_id
     from public.tutor_student_allocations tsa
@@ -885,14 +957,14 @@ using (
   )
 );
 
+-- Raw subqueries on public.profiles here would recurse (see the "Identity
+-- lookup shadow table" comment near current_profile_role()); current_profile_id()/
+-- current_profile_role() now resolve via public.profile_identities instead.
 create policy "students_insert_self"
 on public.students for insert
 with check (
-  profile_id in (
-    select id from public.profiles
-    where auth_user_id = auth.uid()
-    and role = 'student'
-  )
+  profile_id = public.current_profile_id()
+  and public.current_profile_role() = 'student'
 );
 
 create policy "admin_full_access_students"
@@ -928,38 +1000,29 @@ on public.student_guardians for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
+-- Raw joins into public.profiles here would recurse (see the "Identity
+-- lookup shadow table" comment near current_profile_role()); current_student_id()
+-- now resolves via public.profile_identities instead of public.profiles directly.
 create policy "students_select_own_career_profile"
 on public.student_career_profiles for select
 using (
-  student_id in (
-    select s.id from public.students s
-    join public.profiles p on p.id = s.profile_id
-    where p.auth_user_id = auth.uid()
-  )
+  student_id = public.current_student_id()
 );
 
 create policy "students_upsert_own_career_profile"
 on public.student_career_profiles for all
 using (
-  student_id in (
-    select s.id from public.students s
-    join public.profiles p on p.id = s.profile_id
-    where p.auth_user_id = auth.uid()
-  )
+  student_id = public.current_student_id()
 )
 with check (
-  student_id in (
-    select s.id from public.students s
-    join public.profiles p on p.id = s.profile_id
-    where p.auth_user_id = auth.uid()
-  )
+  student_id = public.current_student_id()
 );
 
 create policy "tutors_select_self_or_admin"
 on public.tutors for select
 using (
   public.current_profile_role() = 'admin'
-  or profile_id in (select id from public.profiles where auth_user_id = auth.uid())
+  or profile_id = public.current_profile_id()
   or id in (
     select tsa.tutor_id
     from public.tutor_student_allocations tsa
@@ -968,15 +1031,15 @@ using (
   )
 );
 
+-- Raw subqueries on public.profiles here would recurse (see the "Identity
+-- lookup shadow table" comment near current_profile_role()); current_profile_id()/
+-- current_profile_role() now resolve via public.profile_identities instead.
 create policy "tutors_insert_self_pending"
 on public.tutors for insert
 with check (
   status = 'pending'
-  and profile_id in (
-    select id from public.profiles
-    where auth_user_id = auth.uid()
-    and role = 'tutor'
-  )
+  and profile_id = public.current_profile_id()
+  and public.current_profile_role() = 'tutor'
 );
 
 create policy "admin_full_access_tutors"
@@ -1079,26 +1142,29 @@ on public.assignment_submissions for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
+-- Raw join into public.profiles here would recurse (see the "Identity lookup
+-- shadow table" comment near current_profile_role()); rewritten to use
+-- current_profile_id()/current_profile_role() (public.profile_identities)
+-- instead. Same semantics: only a tutor viewing submissions for assignments
+-- they themselves created.
 create policy "tutors_select_own_assignment_submissions"
 on public.assignment_submissions for select
 using (
-  assignment_id in (
+  public.current_profile_role() = 'tutor'
+  and assignment_id in (
     select a.id from public.assignments a
-    join public.profiles p on p.id = a.created_by
-    where p.auth_user_id = auth.uid()
-      and p.role = 'tutor'
+    where a.created_by = public.current_profile_id()
   )
 );
 
+-- Raw join into public.profiles here would recurse (see the "Identity lookup
+-- shadow table" comment near current_profile_role()); current_student_id()
+-- now resolves via public.profile_identities instead of public.profiles directly.
 create policy "student_progress_self_or_admin"
 on public.student_progress for select
 using (
   public.current_profile_role() = 'admin'
-  or student_id in (
-    select s.id from public.students s
-    join public.profiles p on p.id = s.profile_id
-    where p.auth_user_id = auth.uid()
-  )
+  or student_id = public.current_student_id()
 );
 
 create policy "admin_manage_progress"
@@ -1197,17 +1263,17 @@ using (
   and auth.uid() is not null
 );
 
+-- Raw joins into public.profiles in these four storage policies would recurse
+-- (see the "Identity lookup shadow table" comment near current_profile_role());
+-- rewritten to use current_student_id()/current_profile_id() (public.profile_identities)
+-- instead of public.profiles directly.
 create policy "students_upload_own_submission_files"
 on storage.objects for insert
 with check (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
   and array_length(storage.foldername(name), 1) = 4
-  and (storage.foldername(name))[1] in (
-    select s.id::text from public.students s
-    join public.profiles p on p.id = s.profile_id
-    where p.auth_user_id = auth.uid()
-  )
+  and (storage.foldername(name))[1] = public.current_student_id()::text
   and (storage.foldername(name))[2] in (
     select a.id::text from public.assignments a
     where a.status = 'published'
@@ -1220,21 +1286,13 @@ using (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
   and array_length(storage.foldername(name), 1) = 4
-  and (storage.foldername(name))[1] in (
-    select s.id::text from public.students s
-    join public.profiles p on p.id = s.profile_id
-    where p.auth_user_id = auth.uid()
-  )
+  and (storage.foldername(name))[1] = public.current_student_id()::text
 )
 with check (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
   and array_length(storage.foldername(name), 1) = 4
-  and (storage.foldername(name))[1] in (
-    select s.id::text from public.students s
-    join public.profiles p on p.id = s.profile_id
-    where p.auth_user_id = auth.uid()
-  )
+  and (storage.foldername(name))[1] = public.current_student_id()::text
 );
 
 create policy "students_read_own_submission_files_or_admin"
@@ -1247,15 +1305,10 @@ using (
       public.current_profile_role() = 'tutor'
       and (storage.foldername(name))[2] in (
         select a.id::text from public.assignments a
-        join public.profiles p on p.id = a.created_by
-        where p.auth_user_id = auth.uid()
+        where a.created_by = public.current_profile_id()
       )
     )
-    or (storage.foldername(name))[1] in (
-      select s.id::text from public.students s
-      join public.profiles p on p.id = s.profile_id
-      where p.auth_user_id = auth.uid()
-    )
+    or (storage.foldername(name))[1] = public.current_student_id()::text
   )
 );
 
@@ -1753,6 +1806,10 @@ on conflict (organization_id, profile_id, org_role) do nothing;
 
 -- --- 5.1 Helper functions (SECURITY DEFINER, indexed-backed) ---------------
 
+-- Joins public.profile_identities (not public.profiles directly) -- see the
+-- "Identity lookup shadow table" comment near current_profile_role() for why:
+-- a raw join into profiles here would recurse if this function is ever
+-- invoked while profiles' own RLS policy is being evaluated.
 create or replace function public.current_org_ids()
 returns setof uuid
 language sql
@@ -1762,8 +1819,8 @@ set search_path = public
 as $$
   select om.organization_id
   from public.organization_members om
-  join public.profiles p on p.id = om.profile_id
-  where p.auth_user_id = auth.uid()
+  join public.profile_identities pi on pi.profile_id = om.profile_id
+  where pi.auth_user_id = auth.uid()
     and om.status = 'active'
 $$;
 
@@ -1776,8 +1833,8 @@ set search_path = public
 as $$
   select s.organization_id
   from public.students s
-  join public.profiles p on p.id = s.profile_id
-  where p.auth_user_id = auth.uid()
+  join public.profile_identities pi on pi.profile_id = s.profile_id
+  where pi.auth_user_id = auth.uid()
 $$;
 
 -- Role check within a specific org. If a profile somehow holds more than one
@@ -1794,8 +1851,8 @@ set search_path = public
 as $$
   select om.org_role
   from public.organization_members om
-  join public.profiles p on p.id = om.profile_id
-  where p.auth_user_id = auth.uid()
+  join public.profile_identities pi on pi.profile_id = om.profile_id
+  where pi.auth_user_id = auth.uid()
     and om.organization_id = org
     and om.status = 'active'
   order by case om.org_role when 'coordinator' then 0 else 1 end
@@ -6028,3 +6085,33 @@ grant execute on function public.create_exam_event(uuid, text, text, date) to au
 grant execute on function public.create_volunteer_event(text, text, date, time, time, text, text, public.volunteer_event_status) to authenticated;
 grant execute on function public.create_volunteer_log(uuid, numeric, date, text, uuid) to authenticated;
 grant execute on function public.verify_volunteer_log(uuid, public.volunteer_log_status, text) to authenticated;
+
+-- ============================================================================
+-- Base table privileges for anon/authenticated/service_role -- fixes a real
+-- gap, not a design choice. This schema was written assuming the standard
+-- Supabase project bootstrap (which auto-grants SELECT/INSERT/UPDATE/DELETE
+-- on public schema tables to these three roles when a project is created
+-- through the dashboard/platform) would always be present. Confirmed by
+-- directly applying this schema to a freshly-created local Postgres via the
+-- Supabase CLI: `\dp public.profiles` showed anon/authenticated/service_role
+-- with only Dxt (delete/references/trigger) -- missing r/a/w (select/insert/
+-- update) entirely -- so every table in this schema was, in that scenario,
+-- completely unreachable via PostgREST for anon/authenticated regardless of
+-- RLS, and even service_role (which bypasses RLS via BYPASSRLS) still needs
+-- these ordinary GRANTs, since RLS bypass and table-level privilege are two
+-- separate Postgres permission systems. RLS (already defined per-table above)
+-- remains the actual access boundary for anon/authenticated; granting broad
+-- table privileges here is the standard, safe PostgREST-with-RLS pattern
+-- (grant broadly at the SQL layer, restrict via policy). `alter default
+-- privileges` additionally covers any table created after this point without
+-- a full schema.sql replay.
+grant usage on schema public to anon, authenticated, service_role;
+grant select, insert, update, delete on all tables in schema public to anon, authenticated, service_role;
+grant usage, select on all sequences in schema public to anon, authenticated, service_role;
+alter default privileges in schema public grant select, insert, update, delete on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant usage, select on sequences to anon, authenticated, service_role;
+
+-- public.profile_identities is the one deliberate exception (see the
+-- "Identity lookup shadow table" comment far above, near current_profile_role()):
+-- it must stay reachable ONLY by SECURITY DEFINER functions, never directly.
+revoke all on public.profile_identities from anon, authenticated;
