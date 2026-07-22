@@ -434,6 +434,26 @@ export interface PayPeriodIntegritySnapshot {
   duplicateSessions: Array<{ tutor_id: string; student_id: string; date: string; start_time: string; end_time: string; count: number }>;
 }
 
+// Supabase public.privacy_requests row (see docs/supabase/schema.sql). Student
+// subjects only -- there is no tutor-subject path in this schema (a known,
+// deliberate gap, not an oversight of the repoint). status uses the shared
+// RecordStatus enum: 'pending' (open) -> 'approved' (processed/closed) once
+// process_privacy_request() has run.
+export type PrivacyRequestType = 'access' | 'correction' | 'deletion';
+
+export interface PrivacyRequestRecord {
+  id: string;
+  subject_student_id: string;
+  subject_profile_id?: string | null;
+  request_type: PrivacyRequestType;
+  status: RecordStatus;
+  requested_by?: string | null;
+  notes?: string | null;
+  result: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DashboardMetric {
   label: string;
   value: string;
