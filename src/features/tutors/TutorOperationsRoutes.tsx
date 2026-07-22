@@ -25,7 +25,7 @@ import {
 
 export function TutorSessionsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadTutorSessions, []);
-  const sessions = data?.sessions || data?.items || [];
+  const sessions = data?.sessions || [];
   const [selected, setSelected] = useState<TutorSession | null>(null);
 
   return (

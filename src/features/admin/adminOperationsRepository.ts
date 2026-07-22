@@ -1,6 +1,7 @@
 import { apiGet, apiPost } from '../../lib/api/client';
-import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
-import type { AuditLogEntry, Profile } from '../../types/lms';
+import { isSupabaseConfigured, requireSupabase, supabase } from '../../lib/supabase/client';
+import { callRpc } from '../../lib/supabase/rpc';
+import type { AuditLogEntry, Profile, SessionRecord, Student, Tutor } from '../../types/lms';
 
 export interface AdminSession {
   id: string;
@@ -14,6 +15,24 @@ export interface AdminSession {
   rate?: number | null;
   notes?: string | null;
   status: string;
+}
+
+// Session status in Supabase (session_status enum) is lowercase; the existing
+// AdminApprovalsRoute contract was written against Fastify's uppercase
+// Prisma-era strings ('SUBMITTED'/'APPROVED'/...). Mapping here keeps the
+// component unchanged.
+function mapAdminSessionRow(row: SessionRecord, tutorName?: string, studentName?: string): AdminSession {
+  return {
+    id: row.id,
+    tutor_name: tutorName,
+    student_name: studentName,
+    date: row.date,
+    start_time: row.start_time,
+    end_time: row.end_time,
+    duration_minutes: row.duration_minutes,
+    notes: row.notes,
+    status: row.status.toUpperCase(),
+  };
 }
 
 export interface AdminSessionList {
@@ -68,16 +87,85 @@ export interface AuditList {
   pageSize: number;
 }
 
-export function loadApprovalQueue(params: URLSearchParams) {
-  return apiGet<AdminSessionList>(`/admin/sessions?${params.toString()}`);
+export async function loadApprovalQueue(params: URLSearchParams): Promise<AdminSessionList> {
+  const client = requireSupabase();
+
+  const status = params.get('status')?.toLowerCase();
+  const page = Math.max(1, Number(params.get('page') || 1));
+  const pageSize = Math.min(200, Math.max(1, Number(params.get('pageSize') || 25)));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const ascending = params.get('order') === 'asc';
+
+  let query = client
+    .from('sessions')
+    .select('*', { count: 'exact' })
+    .order('date', { ascending })
+    .order('start_time', { ascending })
+    .range(from, to);
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const sessionsResult = await query;
+  if (sessionsResult.error) {
+    throw sessionsResult.error;
+  }
+  const rows = (sessionsResult.data || []) as SessionRecord[];
+
+  const tutorIds = Array.from(new Set(rows.map((row) => row.tutor_id)));
+  const studentIds = Array.from(new Set(rows.map((row) => row.student_id)));
+  const [tutorsResult, studentsResult] = await Promise.all([
+    tutorIds.length ? client.from('tutors').select('*').in('id', tutorIds) : Promise.resolve({ data: [], error: null }),
+    studentIds.length ? client.from('students').select('*').in('id', studentIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (tutorsResult.error) {
+    throw tutorsResult.error;
+  }
+  if (studentsResult.error) {
+    throw studentsResult.error;
+  }
+  const tutors = (tutorsResult.data || []) as Tutor[];
+  const students = (studentsResult.data || []) as Student[];
+  const tutorById = new Map(tutors.map((tutor) => [tutor.id, tutor]));
+  const studentById = new Map(students.map((student) => [student.id, student]));
+
+  const profileIds = Array.from(new Set([
+    ...tutors.map((tutor) => tutor.profile_id),
+    ...students.map((student) => student.profile_id),
+  ].filter(Boolean)));
+  const profilesResult = profileIds.length
+    ? await client.from('profiles').select('*').in('id', profileIds)
+    : { data: [], error: null };
+  if (profilesResult.error) {
+    throw profilesResult.error;
+  }
+  const profileById = new Map(((profilesResult.data || []) as Profile[]).map((profile) => [profile.id, profile]));
+
+  return {
+    // aggregates intentionally omitted: AdminApprovalsRoute already falls back
+    // to computing summary counts from the current page when this is undefined.
+    items: rows.map((row) => {
+      const tutorName = profileById.get(tutorById.get(row.tutor_id)?.profile_id ?? '')?.full_name;
+      const studentName = profileById.get(studentById.get(row.student_id)?.profile_id ?? '')?.full_name;
+      return mapAdminSessionRow(row, tutorName, studentName);
+    }),
+    total: sessionsResult.count ?? rows.length,
+    page,
+    pageSize,
+  };
 }
 
-export function approveSession(sessionId: string) {
-  return apiPost<{ session: AdminSession }>(`/admin/sessions/${sessionId}/approve`);
+export async function approveSession(sessionId: string): Promise<{ session: AdminSession }> {
+  const client = requireSupabase();
+  const session = await callRpc(client, 'approve_session', { p_session_id: sessionId });
+  return { session: mapAdminSessionRow(session) };
 }
 
-export function rejectSession(sessionId: string, reason?: string) {
-  return apiPost<{ session: AdminSession }>(`/admin/sessions/${sessionId}/reject`, { reason });
+export async function rejectSession(sessionId: string, reason?: string): Promise<{ session: AdminSession }> {
+  const client = requireSupabase();
+  const session = await callRpc(client, 'reject_session', { p_session_id: sessionId, p_reason: reason ?? null });
+  return { session: mapAdminSessionRow(session) };
 }
 
 export function loadPrivacyRequests(status = '') {

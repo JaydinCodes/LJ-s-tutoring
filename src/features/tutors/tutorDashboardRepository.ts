@@ -48,8 +48,7 @@ export async function loadTutorDashboard(): Promise<TutorDashboardView> {
     client.from('classes').select('*').eq('tutor_id', tutor.id).neq('status', 'inactive').order('day_of_week', { ascending: true }),
     client.from('assignments').select('*').eq('created_by', profile.id).order('created_at', { ascending: false }),
     client.from('tutor_student_allocations').select('*').eq('tutor_id', tutor.id).eq('status', 'active').order('created_at', { ascending: false }),
-    // Session operations are still transitional API-backed, so the dashboard treats them as optional.
-    loadTutorSessions().catch(() => ({ sessions: [] as TutorSession[] })),
+    loadTutorSessions(),
   ]);
 
   if (classesResult.error) {
@@ -111,8 +110,7 @@ export async function loadTutorDashboard(): Promise<TutorDashboardView> {
     student_label: studentLabelById.get(submission.student_id),
   }));
   const markingQueue = enrichedSubmissions.filter((submission) => isNeedsMarking(submission));
-  const sessionPayload = sessionsResult as { sessions?: TutorSession[]; items?: TutorSession[] };
-  const sessionRows = normalizeTutorSessions(sessionPayload.sessions || sessionPayload.items || []);
+  const sessionRows = normalizeTutorSessions(sessionsResult.sessions);
 
   return {
     profile: {

@@ -8,10 +8,13 @@ import type {
   ParentProgressReportRow,
   Payment,
   Profile,
+  SessionHistoryRecord,
+  SessionRecord,
   Student,
   StudentGuardian,
   StudentProgress,
   StudentCareerProfileRow,
+  StudentSessionRow,
   Subject,
   Tutor,
   TutorPayment,
@@ -46,6 +49,8 @@ export interface Database {
       classes: Table<ClassRecord, Omit<ClassRecord, 'id' | 'created_at' | 'updated_at'>, Partial<ClassRecord>>;
       class_enrollments: Table<ClassEnrollment, Omit<ClassEnrollment, 'id' | 'created_at'>, Partial<ClassEnrollment>>;
       tutor_student_allocations: Table<TutorStudentAllocation, Omit<TutorStudentAllocation, 'id' | 'created_at' | 'updated_at'>, Partial<TutorStudentAllocation>>;
+      sessions: Table<SessionRecord, never, never>;
+      session_history: Table<SessionHistoryRecord, never, never>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -65,6 +70,60 @@ export interface Database {
           p_metadata?: Record<string, unknown>;
         };
         Returns: string;
+      };
+      create_session: {
+        Args: {
+          p_tutor_student_allocation_id: string;
+          p_student_id: string;
+          p_date: string;
+          p_start_time: string;
+          p_end_time: string;
+          p_mode: string;
+          p_location: string | null;
+          p_notes: string | null;
+          p_idempotency_key: string | null;
+        };
+        Returns: SessionRecord;
+      };
+      update_session: {
+        Args: {
+          p_session_id: string;
+          p_date: string | null;
+          p_start_time: string | null;
+          p_end_time: string | null;
+          p_mode: string | null;
+          p_location: string | null;
+          p_notes: string | null;
+        };
+        Returns: SessionRecord;
+      };
+      submit_session_report: {
+        Args: {
+          p_session_id: string;
+          p_attendance_status: string | null;
+          p_topics_covered: string | null;
+          p_learner_struggles: string | null;
+          p_homework_assigned: string | null;
+          p_tutor_private_notes: string | null;
+          p_student_summary: string | null;
+        };
+        Returns: SessionRecord;
+      };
+      submit_session: {
+        Args: { p_session_id: string };
+        Returns: SessionRecord;
+      };
+      approve_session: {
+        Args: { p_session_id: string };
+        Returns: SessionRecord;
+      };
+      reject_session: {
+        Args: { p_session_id: string; p_reason: string | null };
+        Returns: SessionRecord;
+      };
+      get_student_sessions: {
+        Args: Record<string, never>;
+        Returns: StudentSessionRow[];
       };
     };
     Enums: Record<string, never>;

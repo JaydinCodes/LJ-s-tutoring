@@ -158,7 +158,7 @@ function ActionLink({ href, icon: Icon, label, meta }: { href: string; icon: typ
 
 function SessionPreview({ data }: { data: TutorDashboardView }) {
   return (
-    <InsightCard title="Upcoming and recent sessions" description="Session records are loaded from the transitional tutor operations API." tone="gold">
+    <InsightCard title="Upcoming and recent sessions" description="Session records are loaded directly from Supabase." tone="gold">
       <div className="space-y-3">
         {data.sessions.map((session) => (
           <TimelineCard

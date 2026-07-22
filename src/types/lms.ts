@@ -248,6 +248,67 @@ export interface TutorStudentAllocation {
   updated_at: string;
 }
 
+export type SessionStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+
+// Supabase public.sessions row (snake_case DB shape, lowercase status). Named
+// `SessionRecord` (not `Session`) to avoid colliding with @supabase/supabase-js's
+// own `Session` auth type, already imported elsewhere in this codebase.
+export interface SessionRecord {
+  id: string;
+  organization_id: string;
+  tutor_id: string;
+  student_id: string;
+  tutor_student_allocation_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  mode: string;
+  location?: string | null;
+  notes?: string | null;
+  attendance_status?: string | null;
+  topics_covered?: string | null;
+  learner_struggles?: string | null;
+  homework_assigned?: string | null;
+  tutor_private_notes?: string | null;
+  student_summary?: string | null;
+  report_review_note?: string | null;
+  payout_override: boolean;
+  sync_key?: string | null;
+  status: SessionStatus;
+  created_at: string;
+  submitted_at?: string | null;
+  approved_at?: string | null;
+  approved_by?: string | null;
+}
+
+export interface SessionHistoryRecord {
+  id: string;
+  session_id: string;
+  changed_by_profile_id?: string | null;
+  change_type: string;
+  before_json?: Record<string, unknown> | null;
+  after_json?: Record<string, unknown> | null;
+  created_at: string;
+}
+
+// Supabase get_student_sessions() RPC row: the redacted student-safe subset of
+// SessionRecord (excludes tutor_private_notes/report_review_note/payout_override/
+// notes/approved_by/sync_key -- see the RPC comment in docs/supabase/schema.sql).
+export interface StudentSessionRow {
+  id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  mode: string;
+  location?: string | null;
+  attendance_status?: string | null;
+  topics_covered?: string | null;
+  homework_assigned?: string | null;
+  student_summary?: string | null;
+  status: SessionStatus;
+}
+
 export interface DashboardMetric {
   label: string;
   value: string;
