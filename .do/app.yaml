@@ -60,12 +60,18 @@ envs:
   - key: ASSISTANT_ENABLED
     scope: RUN_AND_BUILD_TIME
     value: "true"
+  # Literal values, not ${VAR} self-references -- that interpolation syntax
+  # never actually resolved on this app (confirmed: it baked the literal
+  # placeholder text into the built JS bundle, breaking sign-in on every
+  # portal until this was set directly, both here and on the website
+  # component below). VITE_SUPABASE_ANON_KEY is Supabase's public anon key,
+  # meant to ship inside the client bundle -- not a secret.
   - key: VITE_SUPABASE_URL
     scope: RUN_AND_BUILD_TIME
-    value: ${VITE_SUPABASE_URL}
+    value: https://jscrgpwyniphagitliuz.supabase.co
   - key: VITE_SUPABASE_ANON_KEY
     scope: RUN_AND_BUILD_TIME
-    value: ${VITE_SUPABASE_ANON_KEY}
+    value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzY3JncHd5bmlwaGFnaXRsaXV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MjAwMDgsImV4cCI6MjA5NTM5NjAwOH0.W--APZ5jnNK7tzUtlwl91YJnt8ZL6_Op5AYQ8GysPsM
   - key: ODIE_ALLOW_ACCESS_KEY_FALLBACK
     scope: RUN_AND_BUILD_TIME
     value: "false"
@@ -396,9 +402,11 @@ static_sites:
       - key: ASSISTANT_ENABLED
         scope: BUILD_TIME
         value: "true"
+      # Literal values -- see the note on the app-level entries above for why
+      # the ${VAR} form is deliberately not used here.
       - key: VITE_SUPABASE_URL
         scope: BUILD_TIME
-        value: ${VITE_SUPABASE_URL}
+        value: https://jscrgpwyniphagitliuz.supabase.co
       - key: VITE_SUPABASE_ANON_KEY
         scope: BUILD_TIME
-        value: ${VITE_SUPABASE_ANON_KEY}
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzY3JncHd5bmlwaGFnaXRsaXV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MjAwMDgsImV4cCI6MjA5NTM5NjAwOH0.W--APZ5jnNK7tzUtlwl91YJnt8ZL6_Op5AYQ8GysPsM
