@@ -463,24 +463,21 @@ function ReportHistoryCard({ report, onOpen }: { report: WeeklyReportListItem; o
 }
 
 function WeeklyReportDetail({ report }: { report: WeeklyReport }) {
-  const payload = report.payload || {};
+  const payload = report.payload;
+  const topicProgress = (payload?.topicProgress || []).map(
+    (item) => `${item.subject} — ${item.topic}: ${item.completion}%`,
+  );
   return (
     <div className="mt-4 space-y-4">
       <dl className="grid gap-3 text-sm">
         <DetailLine label="Week" value={`${formatDate(report.weekStart || report.week_start)} - ${formatDate(report.weekEnd || report.week_end)}`} />
         <DetailLine label="Generated" value={formatDate(report.createdAt || report.created_at)} />
-        <DetailLine label="Sessions attended" value={String(payload.sessionsAttended ?? 0)} />
-        <DetailLine label="Minutes studied" value={String(payload.minutesStudied ?? 0)} />
+        <DetailLine label="Sessions attended" value={String(payload?.metrics.sessionsAttended ?? 0)} />
+        <DetailLine label="Minutes studied" value={String(payload?.metrics.timeStudiedMinutes ?? 0)} />
       </dl>
-      {payload.summary ? <p className="rounded-lg bg-slate-50 p-4 text-sm leading-6 text-slate-700">{payload.summary}</p> : null}
-      <ReportList title="Topics covered" items={payload.topics || []} />
-      <ReportList title="Assignment highlights" items={payload.assignmentHighlights || []} />
-      {payload.nextBestStep ? (
-        <div className="rounded-lg border border-teal-200 bg-teal-50 p-4">
-          <p className="text-sm font-semibold text-teal-900">Next best step</p>
-          <p className="mt-1 text-sm leading-6 text-teal-800">{payload.nextBestStep}</p>
-        </div>
-      ) : null}
+      <ReportList title="Topic progress" items={topicProgress} />
+      <ReportList title="Tutor notes this week" items={payload?.tutorNotesSummary || []} />
+      <ReportList title="Goals for next week" items={payload?.goalsNextWeek || []} />
     </div>
   );
 }
