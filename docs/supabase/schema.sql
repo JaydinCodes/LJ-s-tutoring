@@ -210,6 +210,18 @@ begin
       add constraint assignment_submissions_rubric_scores_object
       check (jsonb_typeof(rubric_scores_json) = 'object');
   end if;
+  -- Size caps (64KB): nothing previously stopped a client from storing a
+  -- multi-megabyte rubric/rubric-scores JSON document.
+  if not exists (select 1 from pg_constraint where conname = 'assignments_rubric_json_size') then
+    alter table public.assignments
+      add constraint assignments_rubric_json_size
+      check (octet_length(rubric_json::text) < 65536);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'assignment_submissions_rubric_scores_size') then
+    alter table public.assignment_submissions
+      add constraint assignment_submissions_rubric_scores_size
+      check (octet_length(rubric_scores_json::text) < 65536);
+  end if;
 end
 $$;
 
@@ -220,8 +232,28 @@ create table if not exists public.student_progress (
   topic text not null,
   score numeric(5, 2) not null check (score >= 0 and score <= 100),
   cognitive_level text,
-  recorded_at timestamptz not null default now()
+  recorded_at timestamptz not null default now(),
+  assignment_submission_id uuid references public.assignment_submissions(id) on delete cascade
 );
+
+-- Backfill for a pre-existing production table (the inline column above is a
+-- no-op there -- see the "Identity lookup shadow table" / assignment_submissions
+-- backfill precedent elsewhere in this file for why this second statement is
+-- required, not redundant).
+alter table public.student_progress add column if not exists assignment_submission_id uuid references public.assignment_submissions(id) on delete cascade;
+
+-- Real bug fix, not a design choice: mark_assignment_submission() used to do
+-- a plain INSERT into student_progress every time a submission was (re-)marked,
+-- so re-marking the same submission (e.g. 65 -> 70 -> 72) created a new
+-- progress row each time instead of updating the one that already represented
+-- it, inflating averages/history. This partial unique index lets the RPC
+-- upsert on (assignment_submission_id) instead. Partial (not a plain unique
+-- constraint) because older progress rows predating this column, or any
+-- future non-submission-derived progress entry, legitimately have no
+-- assignment_submission_id and must not be forced to collide on NULL.
+create unique index if not exists idx_student_progress_submission_unique
+  on public.student_progress(assignment_submission_id)
+  where assignment_submission_id is not null;
 
 create table if not exists public.payments (
   id uuid primary key default gen_random_uuid(),
@@ -260,6 +292,18 @@ create table if not exists public.classes (
   updated_at timestamptz not null default now()
 );
 
+-- Guarded ALTER (idempotent, matching the tutors_approval_status_check
+-- pattern): nothing previously stopped end_time <= start_time from being saved.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'classes_time_range') then
+    alter table public.classes
+      add constraint classes_time_range
+      check (end_time is null or start_time is null or end_time > start_time);
+  end if;
+end
+$$;
+
 alter table public.classes add column if not exists name text not null default 'Class';
 alter table public.classes add column if not exists status public.record_status not null default 'active';
 alter table public.classes add column if not exists created_at timestamptz not null default now();
@@ -295,6 +339,23 @@ create table if not exists public.tutor_student_allocations (
   unique (tutor_id, student_id)
 );
 
+-- Size caps (64KB): these are admin-set contract fields, but nothing
+-- previously stopped an oversized JSON document from being stored regardless.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'tutor_student_allocations_allowed_days_size') then
+    alter table public.tutor_student_allocations
+      add constraint tutor_student_allocations_allowed_days_size
+      check (allowed_days_json is null or octet_length(allowed_days_json::text) < 65536);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'tutor_student_allocations_allowed_time_ranges_size') then
+    alter table public.tutor_student_allocations
+      add constraint tutor_student_allocations_allowed_time_ranges_size
+      check (allowed_time_ranges_json is null or octet_length(allowed_time_ranges_json::text) < 65536);
+  end if;
+end
+$$;
+
 create index if not exists idx_profiles_role on public.profiles(role);
 create index if not exists idx_students_ngo_partner on public.students(ngo_partner_id);
 create index if not exists idx_guardians_profile on public.guardians(profile_id);
@@ -302,8 +363,10 @@ create index if not exists idx_student_guardians_student on public.student_guard
 create index if not exists idx_student_guardians_guardian on public.student_guardians(guardian_id, status);
 create index if not exists idx_student_career_profiles_student_updated on public.student_career_profiles(student_id, updated_at desc);
 create index if not exists idx_assignments_due_date on public.assignments(due_date);
+create index if not exists idx_assignments_created_by on public.assignments(created_by);
 create index if not exists idx_submissions_student on public.assignment_submissions(student_id);
 create index if not exists idx_submissions_student_assignment on public.assignment_submissions(student_id, assignment_id);
+create index if not exists idx_submissions_assignment_status on public.assignment_submissions(assignment_id, status);
 create unique index if not exists idx_submissions_latest_assignment_student
   on public.assignment_submissions(assignment_id, student_id)
   where is_latest;
@@ -805,13 +868,18 @@ begin
     from public.assignments
     where id = v_submission.assignment_id;
 
+    -- Upsert on assignment_submission_id (real bug fix, not a design choice --
+    -- see the idx_student_progress_submission_unique comment): re-marking the
+    -- same submission must update its existing progress row, not insert a new
+    -- one every time the mark changes.
     insert into public.student_progress (
       student_id,
       subject_id,
       topic,
       score,
       cognitive_level,
-      recorded_at
+      recorded_at,
+      assignment_submission_id
     )
     values (
       v_submission.student_id,
@@ -819,8 +887,16 @@ begin
       coalesce(v_assignment.title, 'Marked assignment'),
       p_marks_awarded,
       null,
-      now()
-    );
+      now(),
+      v_submission.id
+    )
+    on conflict (assignment_submission_id) where assignment_submission_id is not null
+    do update set
+      student_id = excluded.student_id,
+      subject_id = excluded.subject_id,
+      topic = excluded.topic,
+      score = excluded.score,
+      recorded_at = excluded.recorded_at;
   end if;
 
   return next v_submission;
@@ -1372,6 +1448,14 @@ with check (
   )
 );
 
+-- Real bug fix, not a design choice: this policy used to validate only the
+-- student_id folder segment on UPDATE, unlike the INSERT policy above (which
+-- also validates the assignment_id segment is a published assignment). Since
+-- storage.objects UPDATE is how a client renames/moves an object, a student
+-- could move `<own_id>/assignmentA/file.pdf` to `<own_id>/assignmentB/file.pdf`
+-- (or to a non-existent/unpublished assignment id) without this check, because
+-- assignment ownership was never re-validated. Both using and with check now
+-- mirror the INSERT policy's assignment validation exactly.
 drop policy if exists "students_update_own_submission_files" on storage.objects;
 create policy "students_update_own_submission_files"
 on storage.objects for update
@@ -1380,12 +1464,20 @@ using (
   and public.current_profile_role() = 'student'
   and array_length(storage.foldername(name), 1) = 4
   and (storage.foldername(name))[1] = public.current_student_id()::text
+  and (storage.foldername(name))[2] in (
+    select a.id::text from public.assignments a
+    where a.status = 'published'
+  )
 )
 with check (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
   and array_length(storage.foldername(name), 1) = 4
   and (storage.foldername(name))[1] = public.current_student_id()::text
+  and (storage.foldername(name))[2] in (
+    select a.id::text from public.assignments a
+    where a.status = 'published'
+  )
 );
 
 drop policy if exists "students_read_own_submission_files_or_admin" on storage.objects;
@@ -1448,6 +1540,8 @@ create table if not exists public.privacy_requests (
 
 create index if not exists idx_privacy_requests_subject_student
   on public.privacy_requests(subject_student_id);
+create index if not exists idx_privacy_requests_status
+  on public.privacy_requests(status);
 
 alter table public.privacy_requests enable row level security;
 
@@ -2245,11 +2339,22 @@ begin
   end if;
 
   -- 2. NGO branch (students/classes carry ngo_partner_id; assignments does not).
-  --    Guarded by TG_TABLE_NAME so new.ngo_partner_id is only referenced for
-  --    tables that have the column.
-  if tg_table_name in ('students', 'classes') and new.ngo_partner_id is not null then
-    new.organization_id := new.ngo_partner_id;
-    return new;
+  -- Real bug fix, not a design choice: this used to be a single `if A and B`
+  -- expression, relying on A (the TG_TABLE_NAME check) short-circuiting
+  -- before B (`new.ngo_partner_id`) was evaluated for tables without that
+  -- column. Postgres does NOT guarantee left-to-right short-circuit
+  -- evaluation of AND/OR -- confirmed live: inserting into public.assignments
+  -- (which has no ngo_partner_id column) raised `record "new" has no field
+  -- "ngo_partner_id"` on every single insert, because NEW is a generic RECORD
+  -- shared across every table this trigger is attached to. Nesting the check
+  -- as a real control-flow IF (not a boolean expression) guarantees
+  -- new.ngo_partner_id is only ever evaluated for tables where TG_TABLE_NAME
+  -- has already been confirmed to be 'students' or 'classes'.
+  if tg_table_name in ('students', 'classes') then
+    if new.ngo_partner_id is not null then
+      new.organization_id := new.ngo_partner_id;
+      return new;
+    end if;
   end if;
 
   -- 3. Creator's own org via active membership for the profile behind auth.uid().
