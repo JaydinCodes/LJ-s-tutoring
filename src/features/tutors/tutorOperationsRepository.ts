@@ -1,8 +1,7 @@
-import { apiGet } from '../../lib/api/client';
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { requireSupabase } from '../../lib/supabase/client';
 import { callRpc } from '../../lib/supabase/rpc';
-import type { Profile, SessionRecord, Student, WeeklyReportPayload, WeeklyReportRecord } from '../../types/lms';
+import type { Profile, SessionRecord, Student, StudentScoreSnapshotRecord, WeeklyReportPayload, WeeklyReportRecord } from '../../types/lms';
 
 export interface TutorSession {
   id: string;
@@ -53,24 +52,6 @@ export interface TutorRiskScore {
   momentum_score?: number;
   reasons?: Array<string | { label?: string; detail?: string }>;
   modelReasons?: Array<string | { label?: string; detail?: string }>;
-}
-
-async function optionalTutorGet<T>(path: string, fallback: T): Promise<T> {
-  try {
-    return await apiGet<T>(path);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '';
-    if (
-      message.includes('401') ||
-      message.includes('403') ||
-      message.includes('404') ||
-      message.includes('501') ||
-      message.includes('Failed to fetch')
-    ) {
-      return fallback;
-    }
-    throw error;
-  }
 }
 
 async function getCurrentTutorId(): Promise<string> {
@@ -283,6 +264,75 @@ export async function regenerateTutorReport(studentId: string): Promise<{ report
   return { report: mapReport(report) };
 }
 
-export function loadTutorRiskScores() {
-  return optionalTutorGet<{ items: TutorRiskScore[]; total?: number }>('/tutor/scores?page=1&pageSize=25', { items: [] });
+export async function loadTutorRiskScores(): Promise<{ items: TutorRiskScore[] }> {
+  const client = requireSupabase();
+  const tutorId = await getCurrentTutorId();
+
+  const allocationsResult = await client
+    .from('tutor_student_allocations')
+    .select('student_id')
+    .eq('tutor_id', tutorId)
+    .eq('status', 'active');
+  if (allocationsResult.error) {
+    throw allocationsResult.error;
+  }
+  const allocationRows = (allocationsResult.data || []) as Array<{ student_id: string }>;
+  const studentIds = Array.from(new Set(allocationRows.map((row) => row.student_id)));
+  if (!studentIds.length) {
+    return { items: [] };
+  }
+
+  // No RPC needed here -- GET /tutor/scores never triggers a recompute, it
+  // only ever reads the latest existing snapshot per student. RLS already
+  // scopes student_score_snapshots to the caller's own active-allocation
+  // students. There's no "distinct on"/"top-1-per-group" via PostgREST, so
+  // the latest-per-student reduction happens client-side after ordering by
+  // score_date desc -- fine at this scale (one row per student per day).
+  const snapshotsResult = await client
+    .from('student_score_snapshots')
+    .select('*')
+    .in('student_id', studentIds)
+    .order('score_date', { ascending: false });
+  if (snapshotsResult.error) {
+    throw snapshotsResult.error;
+  }
+  const snapshots = (snapshotsResult.data || []) as StudentScoreSnapshotRecord[];
+  const latestByStudent = new Map<string, StudentScoreSnapshotRecord>();
+  for (const snapshot of snapshots) {
+    if (!latestByStudent.has(snapshot.student_id)) {
+      latestByStudent.set(snapshot.student_id, snapshot);
+    }
+  }
+
+  const studentsResult = await client.from('students').select('*').in('id', studentIds);
+  if (studentsResult.error) {
+    throw studentsResult.error;
+  }
+  const students = (studentsResult.data || []) as Student[];
+  const studentById = new Map(students.map((student) => [student.id, student]));
+
+  const profileIds = Array.from(new Set(students.map((student) => student.profile_id).filter(Boolean)));
+  const profilesResult = profileIds.length
+    ? await client.from('profiles').select('*').in('id', profileIds)
+    : { data: [], error: null };
+  if (profilesResult.error) {
+    throw profilesResult.error;
+  }
+  const profileById = new Map(((profilesResult.data || []) as Profile[]).map((profile) => [profile.id, profile]));
+
+  return {
+    items: studentIds.map((studentId) => {
+      const snapshot = latestByStudent.get(studentId);
+      const student = studentById.get(studentId);
+      const studentName = student ? profileById.get(student.profile_id)?.full_name : undefined;
+      return {
+        id: snapshot?.id,
+        student_id: studentId,
+        student_name: studentName,
+        risk_score: snapshot?.risk_score,
+        momentum_score: snapshot?.momentum_score,
+        reasons: snapshot?.reasons_json,
+      };
+    }),
+  };
 }

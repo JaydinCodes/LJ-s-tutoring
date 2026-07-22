@@ -4109,8 +4109,14 @@ declare
 begin
   -- Permission gate (ported userCanAccessStudent). Non-tutors get null from
   -- current_tutor_id(), so the tutor branch never matches for them; likewise
-  -- current_student_id() is null for non-students.
-  if not (
+  -- current_student_id() is null for non-students. FIX (real bug, found via
+  -- direct testing, not a design choice): Postgres's IF treats a NULL
+  -- condition as false, so `if not (A or B or C)` where the OR-chain itself
+  -- evaluates to NULL (is_platform_admin() false, current_student_id() null
+  -- for a non-student, exists(...) false) skips the raise entirely --
+  -- silently ALLOWING an unrelated caller instead of denying them. coalesce
+  -- forces the whole expression to a real boolean before negating it.
+  if not coalesce(
     public.is_platform_admin()
     or public.current_student_id() = p_student_id
     or exists (
@@ -4118,7 +4124,8 @@ begin
       where tsa.tutor_id = public.current_tutor_id()
         and tsa.student_id = p_student_id
         and tsa.status = 'active'
-    )
+    ),
+    false
   ) then
     raise exception 'forbidden' using errcode = '42501';
   end if;
@@ -5166,7 +5173,14 @@ declare
   v_metrics jsonb;
   v_snapshot public.student_score_snapshots;
 begin
-  if not (public.is_platform_admin() or public.current_student_id() = p_student_id) then
+  -- FIX (real bug, found via direct testing, not a design choice): Postgres's
+  -- IF treats a NULL condition as false, so `if not (A or B)` where the
+  -- OR-chain itself evaluates to NULL (is_platform_admin() false,
+  -- current_student_id() null for a non-student caller, e.g. a tutor) skips
+  -- the raise entirely -- silently ALLOWING any non-admin, non-student
+  -- caller to recompute an arbitrary student's risk snapshot. coalesce
+  -- forces the whole expression to a real boolean before negating it.
+  if not coalesce(public.is_platform_admin() or public.current_student_id() = p_student_id, false) then
     raise exception 'forbidden' using errcode = '42501';
   end if;
 

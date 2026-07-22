@@ -14,6 +14,7 @@ import type {
   StudentGuardian,
   StudentProgress,
   StudentCareerProfileRow,
+  StudentScoreSnapshotRecord,
   StudentSessionRow,
   Subject,
   Tutor,
@@ -53,6 +54,7 @@ export interface Database {
       sessions: Table<SessionRecord, never, never>;
       session_history: Table<SessionHistoryRecord, never, never>;
       weekly_reports: Table<WeeklyReportRecord, never, never>;
+      student_score_snapshots: Table<StudentScoreSnapshotRecord, never, never>;
     };
     Views: Record<string, never>;
     Functions: {
