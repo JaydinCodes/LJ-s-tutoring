@@ -178,6 +178,21 @@ end
 $$;
 
 alter table public.assignments add column if not exists rubric_json jsonb not null default '[]'::jsonb;
+-- These columns are also in the inline CREATE TABLE above, which is a no-op
+-- against a database where assignment_submissions already existed before
+-- this column set was designed (confirmed live in production: `create table
+-- if not exists` skips the WHOLE statement if the table exists at all, it
+-- does not add missing columns to an existing table) -- so every column
+-- needs its own ADD COLUMN IF NOT EXISTS backfill, not just the four that
+-- already had one.
+alter table public.assignment_submissions add column if not exists storage_key text;
+alter table public.assignment_submissions add column if not exists file_url text;
+alter table public.assignment_submissions add column if not exists original_filename text;
+alter table public.assignment_submissions add column if not exists mime_type text;
+alter table public.assignment_submissions add column if not exists size_bytes bigint;
+alter table public.assignment_submissions add column if not exists text_answer text;
+alter table public.assignment_submissions add column if not exists version_number integer not null default 1;
+alter table public.assignment_submissions add column if not exists is_latest boolean not null default true;
 alter table public.assignment_submissions add column if not exists rubric_scores_json jsonb not null default '{}'::jsonb;
 alter table public.assignment_submissions add column if not exists marks_released boolean not null default false;
 alter table public.assignment_submissions add column if not exists feedback_released boolean not null default false;
