@@ -332,6 +332,32 @@ export interface WeeklyReportRecord {
   created_at: string;
 }
 
+// Supabase public.student_score_snapshots row (see docs/supabase/schema.sql).
+// reasons_json entries carry {label, detail, ...} -- matching shape RiskCard
+// already expects (reason.label || reason.detail).
+export interface StudentScoreSnapshotReason {
+  key?: string;
+  label?: string;
+  impact?: string;
+  value?: number;
+  detail?: string;
+  source_type?: string | null;
+  source_id?: string | null;
+}
+
+export interface StudentScoreSnapshotRecord {
+  id: string;
+  organization_id: string;
+  student_id: string;
+  score_date: string;
+  risk_score: number;
+  momentum_score: number;
+  reasons_json: StudentScoreSnapshotReason[];
+  metrics_json: Record<string, unknown>;
+  recommended_actions_json: Array<{ label: string; href: string }>;
+  created_at: string;
+}
+
 export interface DashboardMetric {
   label: string;
   value: string;
