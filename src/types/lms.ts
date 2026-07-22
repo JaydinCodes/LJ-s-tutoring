@@ -358,6 +358,82 @@ export interface StudentScoreSnapshotRecord {
   created_at: string;
 }
 
+// Supabase public.pay_periods / adjustments / invoices / invoice_lines rows
+// (see docs/supabase/schema.sql, "Finance/payroll" section). Statuses and
+// adjustment/invoice-line types are lowercase in this schema, unlike the
+// retired Fastify API's uppercase Prisma-era strings -- the repository layer
+// maps case at the boundary so components can keep using uppercase.
+export type PayPeriodStatus = 'open' | 'locked';
+export type AdjustmentType = 'bonus' | 'correction' | 'penalty';
+export type AdjustmentStatus = 'draft' | 'approved';
+export type InvoiceStatus = 'draft' | 'issued' | 'paid';
+export type InvoiceLineType = 'session' | 'adjustment';
+
+export interface PayPeriodRecord {
+  id: string;
+  period_start_date: string;
+  period_end_date: string;
+  status: PayPeriodStatus;
+  locked_at?: string | null;
+  locked_by?: string | null;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface AdjustmentRecord {
+  id: string;
+  tutor_id: string;
+  pay_period_id: string;
+  type: AdjustmentType;
+  amount: number;
+  reason: string;
+  status: AdjustmentStatus;
+  created_by: string;
+  approved_by?: string | null;
+  created_at: string;
+  approved_at?: string | null;
+  voided_at?: string | null;
+  voided_by?: string | null;
+  void_reason?: string | null;
+  related_session_id?: string | null;
+}
+
+export interface InvoiceRecord {
+  id: string;
+  tutor_id: string;
+  period_start: string;
+  period_end: string;
+  invoice_number: string;
+  total_amount: number;
+  status: InvoiceStatus;
+  created_at: string;
+}
+
+export interface InvoiceLineRecord {
+  id: string;
+  invoice_id: string;
+  session_id?: string | null;
+  adjustment_id?: string | null;
+  line_type: InvoiceLineType;
+  description: string;
+  minutes?: number | null;
+  rate?: number | null;
+  amount: number;
+}
+
+// Shape returned by the get_pay_period_integrity() RPC -- deliberately mirrors
+// the retired Fastify GET /admin/integrity/pay-period/:weekStart response 1:1
+// so the frontend needs no reshaping.
+export interface PayPeriodIntegritySnapshot {
+  payPeriod: { id?: string; status?: string };
+  overlaps: Array<{ session_id: string; tutor_id: string; student_id: string; date: string; start_time: string; end_time: string; overlap_id: string }>;
+  outsideAssignmentWindow: Array<{ id: string; tutor_id: string; student_id: string; date: string; start_time: string; end_time: string }>;
+  missingInvoiceLines: Array<{ id: string; tutor_id: string; date: string }>;
+  invoiceTotalMismatches: Array<{ id: string; invoice_number: string; total_amount: number; line_total: number }>;
+  pendingSubmissions: Array<{ tutor_id: string; tutor_name?: string; pending: number }>;
+  duplicateSessions: Array<{ tutor_id: string; student_id: string; date: string; start_time: string; end_time: string; count: number }>;
+}
+
 export interface DashboardMetric {
   label: string;
   value: string;

@@ -3984,6 +3984,118 @@ begin
 end;
 $$;
 
+-- get_pay_period_integrity: read-only port of admin.ts's
+-- GET /admin/integrity/pay-period/:weekStart (the six diagnostic queries used
+-- by the payroll dashboard). Returns one jsonb payload with the same shape the
+-- Fastify endpoint sent, so the frontend repoint needs no reshaping:
+-- payPeriod/overlaps/outsideAssignmentWindow/missingInvoiceLines/
+-- invoiceTotalMismatches/pendingSubmissions/duplicateSessions. The Fastify
+-- version joined sessions to `assignments` for the window check; this schema
+-- moved those window fields onto tutor_student_allocations (see
+-- session_within_allocation_window above), so this joins to allocations
+-- instead -- same check, correct table for this schema.
+create or replace function public.get_pay_period_integrity(p_week_start date)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_week_end date := p_week_start + 6;
+  v_result jsonb;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  select jsonb_build_object(
+    'payPeriod', (
+      select coalesce(
+        (select jsonb_build_object('id', id, 'status', status) from public.pay_periods where period_start_date = p_week_start),
+        jsonb_build_object('status', 'open')
+      )
+    ),
+    'overlaps', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'session_id', s1.id, 'tutor_id', s1.tutor_id, 'student_id', s1.student_id,
+        'date', s1.date, 'start_time', s1.start_time, 'end_time', s1.end_time,
+        'overlap_id', s2.id
+      )), '[]'::jsonb)
+      from public.sessions s1
+      join public.sessions s2
+        on s1.tutor_id = s2.tutor_id
+       and s1.id < s2.id
+       and s1.date = s2.date
+       and not (s1.end_time <= s2.start_time or s1.start_time >= s2.end_time)
+      where s1.date between p_week_start and v_week_end
+    ),
+    'outsideAssignmentWindow', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'id', s.id, 'tutor_id', s.tutor_id, 'student_id', s.student_id,
+        'date', s.date, 'start_time', s.start_time, 'end_time', s.end_time
+      )), '[]'::jsonb)
+      from public.sessions s
+      join public.tutor_student_allocations a on a.id = s.tutor_student_allocation_id
+      where s.date between p_week_start and v_week_end
+        and not public.session_within_allocation_window(
+          s.date, s.start_time, s.end_time,
+          a.start_date, a.end_date, a.allowed_days_json, a.allowed_time_ranges_json
+        )
+    ),
+    'missingInvoiceLines', (
+      select coalesce(jsonb_agg(jsonb_build_object('id', s.id, 'tutor_id', s.tutor_id, 'date', s.date)), '[]'::jsonb)
+      from public.sessions s
+      left join public.invoice_lines l on l.session_id = s.id and l.line_type = 'session'
+      where s.status = 'approved'
+        and s.date between p_week_start and v_week_end
+        and l.id is null
+    ),
+    'invoiceTotalMismatches', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'id', m.id, 'invoice_number', m.invoice_number, 'total_amount', m.total_amount, 'line_total', m.line_total
+      )), '[]'::jsonb)
+      from (
+        select i.id, i.invoice_number, i.total_amount, coalesce(sum(l.amount), 0) as line_total
+        from public.invoices i
+        left join public.invoice_lines l on l.invoice_id = i.id
+        where i.period_start = p_week_start
+        group by i.id
+        having i.total_amount <> coalesce(sum(l.amount), 0)
+      ) m
+    ),
+    'pendingSubmissions', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'tutor_id', p.tutor_id, 'tutor_name', p.tutor_name, 'pending', p.pending
+      ) order by p.tutor_name asc), '[]'::jsonb)
+      from (
+        select s.tutor_id, pr.full_name as tutor_name, count(*) as pending
+        from public.sessions s
+        join public.tutors t on t.id = s.tutor_id
+        join public.profiles pr on pr.id = t.profile_id
+        where s.status = 'submitted'
+          and s.date between p_week_start and v_week_end
+        group by s.tutor_id, pr.full_name
+      ) p
+    ),
+    'duplicateSessions', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'tutor_id', d.tutor_id, 'student_id', d.student_id, 'date', d.date,
+        'start_time', d.start_time, 'end_time', d.end_time, 'count', d.cnt
+      ) order by d.date asc), '[]'::jsonb)
+      from (
+        select tutor_id, student_id, date, start_time, end_time, count(*) as cnt
+        from public.sessions
+        where date between p_week_start and v_week_end
+        group by tutor_id, student_id, date, start_time, end_time
+        having count(*) > 1
+      ) d
+    )
+  ) into v_result;
+
+  return v_result;
+end;
+$$;
+
 -- --- Grants: the payroll RPCs are callable by authenticated; each self-gates on
 -- is_platform_admin() internally (Fastify's routes are all admin-only). Direct
 -- table writes remain closed to everyone (RLS above), so these RPCs are the only
@@ -3994,6 +4106,7 @@ grant execute on function public.generate_payroll_week(date) to authenticated;
 grant execute on function public.lock_pay_period(date) to authenticated;
 grant execute on function public.create_adjustment(uuid, public.adjustment_type, numeric, text, uuid, date) to authenticated;
 grant execute on function public.void_adjustment(uuid, text) to authenticated;
+grant execute on function public.get_pay_period_integrity(date) to authenticated;
 
 -- ============================================================================
 -- Weekly reports + student notifications migration
