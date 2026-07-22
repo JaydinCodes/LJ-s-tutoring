@@ -1,6 +1,7 @@
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2EStudentDashboard } from '../../lib/e2e/mockRoleData';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+import { resolveSignedUrls } from '../../lib/supabase/storage';
 import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, StudentDashboardView, StudentProgress, Tutor, TutorStudentAllocation } from '../../types/lms';
 
 function average(values: number[]) {
@@ -124,9 +125,24 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     ? await supabase.from('subjects').select('*').in('id', subjectIds)
     : { data: [], error: null };
   const subjectNameById = new Map(((subjectsResult.data || []) as Array<{ id: string; name?: string }>).map((subject) => [subject.id, subject.name]));
+
+  // Both storage buckets are private (see docs/supabase/schema.sql), so the
+  // raw paths stored in attachment_url/file_url can't be opened directly --
+  // resolve them to short-lived signed URLs here so the existing component
+  // contract (assignment.attachment_url / submission.file_url as a working
+  // href) keeps working unchanged.
+  const [attachmentUrlByPath, submissionUrlByPath] = await Promise.all([
+    resolveSignedUrls(supabase, 'assignment-files', assignments.map((assignment) => assignment.attachment_url)),
+    resolveSignedUrls(supabase, 'assignment-submissions', submissions.map((submission) => submission.file_url)),
+  ]);
+  const submissionsWithSignedUrls = submissions.map((submission) => ({
+    ...submission,
+    file_url: (submission.file_url && submissionUrlByPath.get(submission.file_url)) || submission.file_url,
+  }));
   const assignmentsWithSubjects = assignments.map((assignment) => ({
     ...assignment,
     subject: assignment.subject || (assignment.subject_id ? subjectNameById.get(assignment.subject_id) : undefined),
+    attachment_url: (assignment.attachment_url && attachmentUrlByPath.get(assignment.attachment_url)) || assignment.attachment_url,
   }));
   const weakestProgress = [...progress]
     .filter((item) => Number.isFinite(Number(item.score)))
@@ -153,7 +169,7 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
       full_name: tutorProfileById.get(tutor.profile_id)?.full_name,
       email: tutorProfileById.get(tutor.profile_id)?.email,
     })),
-    submissions,
+    submissions: submissionsWithSignedUrls,
     recommendedNext: weakestProgress ? {
       title: `Recommended next: ${weakestProgress.topic}`,
       description: `Spend one focused block on ${weakestProgress.topic}.`,

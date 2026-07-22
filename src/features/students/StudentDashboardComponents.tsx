@@ -624,7 +624,7 @@ function SubmissionPreview({ submission }: { submission: AssignmentSubmission })
       <div className="flex flex-wrap items-center justify-between gap-2">
         <StatusBadge value={calculateAssignmentStatus({ assignment: { status: 'published', due_date: null }, submission })} />
       </div>
-      {submission.file_url ? <p className="mt-2 break-all text-sm text-slate-600 dark:text-brand-marble"><span className="font-semibold">File:</span> <span className="font-mono text-xs">{submission.file_url}</span></p> : null}
+      {submission.file_url ? <p className="mt-2 text-sm text-slate-600 dark:text-brand-marble"><a className="font-semibold text-brand-aegean hover:text-brand-gold" href={submission.file_url} rel="noreferrer" target="_blank">Open submitted file</a></p> : null}
       {submission.marks_awarded != null ? <p className="mt-2 text-sm font-semibold text-brand-aegean dark:text-brand-gold">Mark: {submission.marks_awarded}%</p> : null}
     </TimelineCard>
   );

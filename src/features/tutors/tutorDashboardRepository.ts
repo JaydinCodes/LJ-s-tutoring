@@ -1,6 +1,7 @@
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2ETutorDashboard } from '../../lib/e2e/mockRoleData';
 import { requireSupabase } from '../../lib/supabase/client';
+import { resolveSignedUrls } from '../../lib/supabase/storage';
 import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, Tutor, TutorDashboardView, TutorStudentAllocation } from '../../types/lms';
 import { loadTutorSessions, type TutorSession } from './tutorOperationsRepository';
 
@@ -104,10 +105,15 @@ export async function loadTutorDashboard(): Promise<TutorDashboardView> {
     studentProfileById.get(student.profile_id)?.full_name || [student.grade, student.school].filter(Boolean).join(' | ') || student.id,
   ]));
   const markedCount = submissions.filter((submission) => submission.status === 'marked').length;
+  // assignment-submissions is a private bucket -- resolve the stored path to a
+  // short-lived signed URL so the tutor can actually open the file (see
+  // src/lib/supabase/storage.ts).
+  const submissionUrlByPath = await resolveSignedUrls(client, 'assignment-submissions', submissions.map((submission) => submission.file_url));
   const enrichedSubmissions = submissions.map((submission) => ({
     ...submission,
     assignment_title: assignmentTitleById.get(submission.assignment_id),
     student_label: studentLabelById.get(submission.student_id),
+    file_url: (submission.file_url && submissionUrlByPath.get(submission.file_url)) || submission.file_url,
   }));
   const markingQueue = enrichedSubmissions.filter((submission) => isNeedsMarking(submission));
   const sessionRows = normalizeTutorSessions(sessionsResult.sessions);

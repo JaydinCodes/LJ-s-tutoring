@@ -224,7 +224,7 @@ function SubmissionReviewCard({
       </div>
       <dl className="mt-4 grid gap-2 text-sm text-slate-600">
         <div><dt className="font-semibold text-slate-800">Submitted</dt><dd>{formatDate(submission.submitted_at)}</dd></div>
-        {submission.file_url ? <div><dt className="font-semibold text-slate-800">File</dt><dd className="break-all font-mono text-xs">{submission.file_url}</dd></div> : null}
+        {submission.file_url ? <div><dt className="font-semibold text-slate-800">File</dt><dd><a className="break-all text-xs font-semibold text-brand-aegean hover:text-brand-gold" href={submission.file_url} rel="noreferrer" target="_blank">Open submitted file</a></dd></div> : null}
         {submission.text_answer ? <div><dt className="font-semibold text-slate-800">Answer</dt><dd className="rounded-lg bg-slate-50 p-3">{submission.text_answer}</dd></div> : null}
       </dl>
       <form className="mt-4 grid gap-3" onSubmit={(event) => void submit(event)}>
