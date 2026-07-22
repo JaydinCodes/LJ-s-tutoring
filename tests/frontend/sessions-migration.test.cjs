@@ -120,14 +120,19 @@ test('sessions never uses the generic fill_organization_id() trigger', () => {
   );
 });
 
-test('pay-period-lock STUB exists, is clearly named a stub, and returns false', () => {
+test('pay-period-lock check exists, returns boolean, and is now WIRED UP to pay_periods', () => {
+  // The finance/payroll migration un-stubbed this: it no longer returns a bare
+  // `false`; it looks up pay_periods.status for the date's Monday week-start.
   const body = functionBody('session_date_pay_period_locked');
   assert.match(body, /returns boolean/);
-  assert.match(body, /select false/);
-  // The prominent stub comment lives in the block preceding the function.
+  assert.doesNotMatch(body, /select false/);
+  assert.match(body, /public\.pay_periods/);
+  assert.match(body, /status = 'locked'/);
+  assert.match(body, /date_trunc\('week'/);
+  // The preceding comment now reflects that the loop is closed, not open.
   const start = schema.indexOf('create or replace function public.session_date_pay_period_locked(');
-  const preamble = schema.slice(Math.max(0, start - 900), start);
-  assert.match(preamble, /STUB until the finance\/payroll migration lands `pay_periods`/);
+  const preamble = schema.slice(Math.max(0, start - 1600), start);
+  assert.match(preamble, /WIRED UP by the finance\/payroll migration/);
 });
 
 test('every state-mutating RPC references the pay-period-lock stub at its check point', () => {

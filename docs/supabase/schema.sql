@@ -2334,21 +2334,36 @@ create trigger trg_fill_session_organization_id
   before insert on public.sessions
   for each row execute function public.fill_session_organization_id();
 
--- STUB until the finance/payroll migration lands `pay_periods` in Supabase --
--- wire this up then, do not leave it silently unimplemented. Fastify's
--- isDateLocked() (lms-api/src/routes/tutor.ts L53) checks
--- pay_periods.status = 'LOCKED' for the pay period containing the date. That
--- table does not exist in Supabase yet (sequenced AFTER sessions), so this
--- always returns false. Every session RPC that mutates state calls this at the
--- same point Fastify checks isDateLocked, so no call site changes when it is
--- wired up later.
+-- WIRED UP by the finance/payroll migration (PRISMA_TO_SUPABASE_MIGRATION_PLAN.md
+-- §4/§6) below: `pay_periods` now exists, so this is the real port of Fastify's
+-- isDateLocked() (lms-api/src/domains/admin/approvals/internal.ts L182 /
+-- lms-api/src/routes/tutor.ts L53) -- this closes the loop the sessions
+-- migration deliberately left open as a stub. Given a date, resolve its
+-- pay-period week-start (Monday) via date_trunc('week', ...) -- which returns the
+-- ISO Monday, exactly equivalent to Fastify's (day + 6) % 7 offset math -- look
+-- up pay_periods.status for that period_start_date, and return true iff a row
+-- exists AND status = 'locked'. Every session RPC that mutates state already
+-- calls this at the same point Fastify checks isDateLocked, so no session call
+-- site changes now that it is wired up.
+--
+-- NOTE: this is `language plpgsql` (was `language sql` while a stub) so the
+-- forward reference to public.pay_periods -- created later in this same file, in
+-- the finance/payroll section -- resolves at run time, not create time; and
+-- `stable` (was `immutable`) because it now reads a table.
 create or replace function public.session_date_pay_period_locked(p_date date)
 returns boolean
-language sql
-immutable
+language plpgsql
+stable
 set search_path = public
 as $$
-  select false;
+declare
+  v_locked boolean;
+begin
+  select (p.status = 'locked') into v_locked
+  from public.pay_periods p
+  where p.period_start_date = date_trunc('week', p_date::timestamp)::date;
+  return coalesce(v_locked, false);
+end;
 $$;
 
 -- Faithful PL/pgSQL port of lms-api/src/lib/scheduling.ts
@@ -2998,3 +3013,559 @@ grant execute on function public.get_student_sessions() to authenticated;
 revoke execute on function public.insert_session_history(uuid, text, jsonb, jsonb) from public;
 revoke execute on function public.insert_session_history(uuid, text, jsonb, jsonb) from anon;
 revoke execute on function public.insert_session_history(uuid, text, jsonb, jsonb) from authenticated;
+
+-- ============================================================================
+-- Finance / payroll migration (PRISMA_TO_SUPABASE_MIGRATION_PLAN.md §4/§6).
+--
+-- Ports the Prisma `PayPeriod` / `Adjustment` / `Invoice` / `InvoiceLine` models
+-- and the full Fastify payroll business-logic layer (get-or-create pay period,
+-- the per-week invoice-generation algorithm, the lock precondition state
+-- machine, admin adjustment create/void) into a Supabase-native schema + RLS +
+-- SECURITY DEFINER RPC layer. Sequenced right after sessions because invoices
+-- and adjustments derive from APPROVED sessions.
+--
+-- Source of truth ported from lms-api: prisma/schema.prisma (PayPeriod ~L130,
+-- Adjustment ~L146, Invoice ~L572, InvoiceLine ~L592), src/lib/pay-periods.ts
+-- (Monday-Sunday week math), src/domains/admin/payroll/internal.ts
+-- (getOrCreatePayPeriod, generateInvoicesForWeek, getSignedAmount),
+-- src/domains/admin/payroll/service.ts (generatePayrollWeek, lockPayPeriod,
+-- createAdjustment, deleteAdjustment), src/routes/tutor.ts (~L921/L1000-1100:
+-- tutors read their OWN invoices/invoice_lines/adjustments unredacted).
+--
+-- This lands FULLY BUILT BUT UNUSED, same pattern as the sessions migration.
+-- Explicitly deferred to later phases:
+--   * Real data backfill from the Prisma pay_periods/adjustments/invoices/
+--     invoice_lines tables.
+--   * Frontend repoint (admin AdminPayrollRoute/AdminPaymentsRoute /
+--     adminPayrollRepository and the tutor invoice-viewing routes still call the
+--     Fastify lms-api routes; this task does not touch src/ or lms-api/).
+--   * Invoice PDF/HTML rendering (lms-api/src/lib/invoices.js buildInvoicePdf /
+--     renderInvoiceHtml -- presentation logic for a later frontend-repoint pass,
+--     deliberately NOT replicated here).
+--   * Retirement of the Fastify payroll routes.
+--
+-- Also closes the loop opened by the sessions migration: the
+-- session_date_pay_period_locked() stub above is now the real pay_periods lock
+-- lookup (see its comment).
+--
+-- NOTE on org-scoping: NO organization_id on any of these four tables. This is
+-- deliberate -- MULTI_ORG_MODEL_PLAN.md §9 explicitly defers finance-table
+-- org-scoping as backend-only follow-on work, not required now.
+-- ============================================================================
+
+-- Lowercase to match this schema's enum convention (record_status,
+-- session_status, ...), even though Prisma's were uppercase.
+create type public.pay_period_status as enum ('open', 'locked');
+create type public.invoice_status as enum ('draft', 'issued', 'paid');
+create type public.adjustment_type as enum ('bonus', 'correction', 'penalty');
+create type public.adjustment_status as enum ('draft', 'approved');
+create type public.invoice_line_type as enum ('session', 'adjustment');
+
+-- pay_periods: one row per Monday-start payroll week. period_start_date is UNIQUE
+-- (mirrors Prisma @@unique([periodStartDate])) and is the get-or-create key.
+-- locked_by references profiles(id) (Prisma's locked_by_user_id pointed at the
+-- retired users table; the Supabase actor identity is profiles).
+create table if not exists public.pay_periods (
+  id uuid primary key default gen_random_uuid(),
+  period_start_date date not null unique,
+  period_end_date date not null,
+  status public.pay_period_status not null default 'open',
+  locked_at timestamptz,
+  locked_by uuid references public.profiles(id),
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+-- adjustments: admin-created-and-approved-in-one-step signed corrections to a
+-- tutor's pay for a period. `amount` is always a positive magnitude (check
+-- amount > 0, mirroring Fastify's Zod .positive()); the sign is applied at
+-- read/invoice-generation time by the bonus/correction/penalty logic (Fastify's
+-- getSignedAmount). status defaults 'approved' -- the 'draft' enum value exists
+-- for Prisma parity but no current write path uses it (do not invent a
+-- draft-approval workflow). created_by/approved_by/voided_by reference profiles.
+create table if not exists public.adjustments (
+  id uuid primary key default gen_random_uuid(),
+  tutor_id uuid not null references public.tutors(id),
+  pay_period_id uuid not null references public.pay_periods(id),
+  type public.adjustment_type not null,
+  amount numeric(12, 2) not null check (amount > 0),
+  reason text not null,
+  status public.adjustment_status not null default 'approved',
+  created_by uuid not null references public.profiles(id),
+  approved_by uuid references public.profiles(id),
+  created_at timestamptz not null default now(),
+  approved_at timestamptz,
+  voided_at timestamptz,
+  voided_by uuid references public.profiles(id),
+  void_reason text,
+  related_session_id uuid references public.sessions(id)
+);
+
+-- invoices: one per tutor per generated payroll week. invoice_number is UNIQUE
+-- and follows the exact Fastify format 'INV-' || weekStart-no-dashes || '-' ||
+-- first-8-of-tutor-id. Generation writes status = 'issued'.
+create table if not exists public.invoices (
+  id uuid primary key default gen_random_uuid(),
+  tutor_id uuid not null references public.tutors(id),
+  period_start date not null,
+  period_end date not null,
+  invoice_number text not null unique,
+  total_amount numeric(12, 2) not null,
+  status public.invoice_status not null default 'draft',
+  created_at timestamptz not null default now()
+);
+
+-- invoice_lines: SESSION lines (minutes/60 * rate) or ADJUSTMENT lines (signed
+-- amount, minutes = rate = 0). A tutor reads these unredacted for their own
+-- invoices (description/minutes/rate/amount is exactly what a tutor should see
+-- about their own pay).
+create table if not exists public.invoice_lines (
+  id uuid primary key default gen_random_uuid(),
+  invoice_id uuid not null references public.invoices(id),
+  session_id uuid references public.sessions(id),
+  adjustment_id uuid references public.adjustments(id),
+  line_type public.invoice_line_type not null default 'session',
+  description text not null,
+  minutes int not null,
+  rate numeric(12, 2) not null,
+  amount numeric(12, 2) not null
+);
+
+create index if not exists idx_adjustments_tutor_pay_period on public.adjustments(tutor_id, pay_period_id);
+create index if not exists idx_adjustments_pay_period on public.adjustments(pay_period_id);
+create index if not exists idx_invoices_tutor_period_start on public.invoices(tutor_id, period_start);
+create index if not exists idx_invoice_lines_invoice on public.invoice_lines(invoice_id);
+create index if not exists idx_invoice_lines_session on public.invoice_lines(session_id);
+create index if not exists idx_invoice_lines_adjustment on public.invoice_lines(adjustment_id);
+
+alter table public.pay_periods enable row level security;
+alter table public.adjustments enable row level security;
+alter table public.invoices enable row level security;
+alter table public.invoice_lines enable row level security;
+
+-- --- Finance RLS: all writes via the SECURITY DEFINER RPCs below --------------
+-- Design choice: this domain follows the `sessions` precedent (no direct
+-- INSERT/UPDATE/DELETE grantable to ANYONE, admin included -- writes go
+-- exclusively through the RPCs so the get-or-create / lock / void precondition
+-- logic can never be bypassed) rather than the plain "admin manage" precedent.
+-- Reason: every write here has real business-rule preconditions worth
+-- centralising (period lock checks, invoice-already-generated guards, pending
+-- sessions, signed-amount math), exactly like sessions. SELECT is scoped: admin
+-- sees all; a tutor sees only their OWN adjustments/invoices/invoice_lines,
+-- unredacted (confirmed against src/routes/tutor.ts -- the line fields
+-- description/minutes/rate/amount and adjustment type/amount/reason are exactly
+-- what a tutor should see about their own pay). No student policy anywhere:
+-- students never see tutor pay. pay_periods has NO tutor policy at all -- it is
+-- admin-only end to end.
+
+-- pay_periods: admin-only SELECT; no direct writes by anyone.
+create policy "admin_select_pay_periods"
+on public.pay_periods for select
+using (public.is_platform_admin());
+
+create policy "pay_periods_no_direct_insert"
+on public.pay_periods for insert
+with check (false);
+
+create policy "pay_periods_no_direct_update"
+on public.pay_periods for update
+using (false)
+with check (false);
+
+create policy "pay_periods_no_direct_delete"
+on public.pay_periods for delete
+using (false);
+
+-- adjustments: admin SELECT all; tutor SELECT own; no direct writes by anyone.
+create policy "admin_select_all_adjustments"
+on public.adjustments for select
+using (public.is_platform_admin());
+
+create policy "tutors_select_own_adjustments"
+on public.adjustments for select
+using (tutor_id = public.current_tutor_id());
+
+create policy "adjustments_no_direct_insert"
+on public.adjustments for insert
+with check (false);
+
+create policy "adjustments_no_direct_update"
+on public.adjustments for update
+using (false)
+with check (false);
+
+create policy "adjustments_no_direct_delete"
+on public.adjustments for delete
+using (false);
+
+-- invoices: admin SELECT all; tutor SELECT own; no direct writes by anyone.
+create policy "admin_select_all_invoices"
+on public.invoices for select
+using (public.is_platform_admin());
+
+create policy "tutors_select_own_invoices"
+on public.invoices for select
+using (tutor_id = public.current_tutor_id());
+
+create policy "invoices_no_direct_insert"
+on public.invoices for insert
+with check (false);
+
+create policy "invoices_no_direct_update"
+on public.invoices for update
+using (false)
+with check (false);
+
+create policy "invoices_no_direct_delete"
+on public.invoices for delete
+using (false);
+
+-- invoice_lines: admin SELECT all; tutor SELECT own via the parent invoice's
+-- tutor_id; no direct writes by anyone.
+create policy "admin_select_all_invoice_lines"
+on public.invoice_lines for select
+using (public.is_platform_admin());
+
+create policy "tutors_select_own_invoice_lines"
+on public.invoice_lines for select
+using (exists (
+  select 1 from public.invoices i
+  where i.id = invoice_lines.invoice_id
+    and i.tutor_id = public.current_tutor_id()
+));
+
+create policy "invoice_lines_no_direct_insert"
+on public.invoice_lines for insert
+with check (false);
+
+create policy "invoice_lines_no_direct_update"
+on public.invoice_lines for update
+using (false)
+with check (false);
+
+create policy "invoice_lines_no_direct_delete"
+on public.invoice_lines for delete
+using (false);
+
+-- --- Payroll business-logic RPCs (all SECURITY DEFINER, admin-gated) ----------
+
+-- get_or_create_pay_period: port of internal.ts getOrCreatePayPeriod. Idempotent
+-- get-or-create keyed on period_start_date; period_end_date is week-start + 6
+-- (Monday..Sunday). Returns the (possibly pre-existing) row.
+create or replace function public.get_or_create_pay_period(p_period_start_date date)
+returns public.pay_periods
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_period public.pay_periods;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  insert into public.pay_periods (period_start_date, period_end_date, status)
+  values (p_period_start_date, p_period_start_date + 6, 'open')
+  on conflict (period_start_date) do nothing;
+
+  select * into v_period
+  from public.pay_periods
+  where period_start_date = p_period_start_date;
+
+  return v_period;
+end;
+$$;
+
+-- generate_payroll_week: port of service.ts generatePayrollWeek +
+-- internal.ts generateInvoicesForWeek. Refuses if invoices already exist for the
+-- period-start ('invoices_already_generated') or the pay period is locked
+-- ('pay_period_locked'). For every tutor with an APPROVED session or an
+-- APPROVED/non-voided adjustment in the week, builds session-lines
+-- (amount = duration_minutes / 60.0 * coalesce(allocation.rate_override,
+-- tutor.hourly_rate)) and adjustment-lines (signed: penalty negative, else
+-- positive), sums to total_amount, and inserts one 'issued' invoice + its lines.
+-- The whole body is one implicit transaction (no explicit BEGIN/COMMIT needed
+-- inside plpgsql, unlike the Fastify version which manages its own transaction).
+-- NOTE: the tutor-selection predicate already guarantees each tutor reaching the
+-- loop has >= 1 session or adjustment (and every APPROVED session yields exactly
+-- one line -- sessions.tutor_student_allocation_id / student_id are NOT NULL, so
+-- the joins never drop it), so Fastify's defensive zero-line `continue` cannot
+-- fire here and is intentionally not replicated as a dead branch.
+create or replace function public.generate_payroll_week(p_week_start date)
+returns setof public.invoices
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_week_end date := p_week_start + 6;
+  v_period public.pay_periods;
+  v_tutor record;
+  v_line record;
+  v_adj record;
+  v_invoice public.invoices;
+  v_invoice_number text;
+  v_total numeric(12, 2);
+  v_amount numeric(12, 2);
+  v_signed numeric(12, 2);
+begin
+  if not public.is_platform_admin() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  if exists (select 1 from public.invoices where period_start = p_week_start) then
+    raise exception 'invoices_already_generated' using errcode = '23505';
+  end if;
+
+  v_period := public.get_or_create_pay_period(p_week_start);
+  if v_period.status = 'locked' then
+    raise exception 'pay_period_locked' using errcode = '42501';
+  end if;
+
+  for v_tutor in
+    select distinct t.id as tutor_id, t.hourly_rate
+    from public.tutors t
+    where exists (
+      select 1 from public.sessions s
+      where s.tutor_id = t.id
+        and s.status = 'approved'
+        and s.date between p_week_start and v_week_end
+    )
+    or exists (
+      select 1 from public.adjustments a
+      where a.tutor_id = t.id
+        and a.pay_period_id = v_period.id
+        and a.status = 'approved'
+        and a.voided_at is null
+    )
+  loop
+    v_total := 0;
+    -- Exact Fastify invoice-number format:
+    -- `INV-${weekStart.replaceAll('-', '')}-${tutorId.slice(0, 8)}`.
+    v_invoice_number := 'INV-' || replace(p_week_start::text, '-', '') || '-' || substr(v_tutor.tutor_id::text, 1, 8);
+
+    insert into public.invoices (tutor_id, period_start, period_end, invoice_number, total_amount, status)
+    values (v_tutor.tutor_id, p_week_start, v_week_end, v_invoice_number, 0, 'issued')
+    returning * into v_invoice;
+
+    for v_line in
+      select s.id as session_id,
+             s.duration_minutes,
+             s.date,
+             s.start_time,
+             s.end_time,
+             coalesce(alloc.rate_override, v_tutor.hourly_rate) as rate,
+             pr.full_name as student_name,
+             subj.name as subject_name
+      from public.sessions s
+      join public.tutor_student_allocations alloc on alloc.id = s.tutor_student_allocation_id
+      join public.students st on st.id = s.student_id
+      join public.profiles pr on pr.id = st.profile_id
+      left join public.subjects subj on subj.id = alloc.subject_id
+      where s.tutor_id = v_tutor.tutor_id
+        and s.status = 'approved'
+        and s.date between p_week_start and v_week_end
+      order by s.date asc, s.start_time asc
+    loop
+      v_amount := (v_line.duration_minutes / 60.0) * v_line.rate;
+      v_total := v_total + v_amount;
+      insert into public.invoice_lines
+        (invoice_id, session_id, adjustment_id, line_type, description, minutes, rate, amount)
+      values (
+        v_invoice.id, v_line.session_id, null, 'session',
+        coalesce(v_line.subject_name, 'Session') || ' - ' || coalesce(v_line.student_name, 'Student')
+          || ' (' || v_line.date::text || ' ' || v_line.start_time::text || '-' || v_line.end_time::text || ')',
+        v_line.duration_minutes, v_line.rate, v_amount
+      );
+    end loop;
+
+    for v_adj in
+      select a.id, a.type, a.amount, a.reason
+      from public.adjustments a
+      where a.tutor_id = v_tutor.tutor_id
+        and a.pay_period_id = v_period.id
+        and a.status = 'approved'
+        and a.voided_at is null
+      order by a.created_at asc
+    loop
+      -- getSignedAmount: PENALTY -> negative, else positive (stored amount is
+      -- always a positive magnitude).
+      v_signed := case when v_adj.type = 'penalty' then -abs(v_adj.amount) else abs(v_adj.amount) end;
+      v_total := v_total + v_signed;
+      insert into public.invoice_lines
+        (invoice_id, session_id, adjustment_id, line_type, description, minutes, rate, amount)
+      values (
+        v_invoice.id, null, v_adj.id, 'adjustment',
+        'Adjustment (' || v_adj.type::text || '): ' || v_adj.reason,
+        0, 0, v_signed
+      );
+    end loop;
+
+    update public.invoices set total_amount = v_total where id = v_invoice.id;
+    v_invoice.total_amount := v_total;
+    return next v_invoice;
+  end loop;
+
+  return;
+end;
+$$;
+
+-- lock_pay_period: port of service.ts lockPayPeriod. Refuses if already locked
+-- ('pay_period_locked'); refuses if any session in the week is still 'submitted'
+-- ('pending_sessions'); generates invoices first if none exist yet for the
+-- period (delegates to generate_payroll_week -- the algorithm is NOT duplicated);
+-- then flips status to 'locked' with locked_at/locked_by.
+create or replace function public.lock_pay_period(p_week_start date)
+returns public.pay_periods
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_period public.pay_periods;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  v_period := public.get_or_create_pay_period(p_week_start);
+
+  if v_period.status = 'locked' then
+    raise exception 'pay_period_locked' using errcode = '42501';
+  end if;
+
+  if exists (
+    select 1 from public.sessions
+    where status = 'submitted'
+      and date between p_week_start and p_week_start + 6
+  ) then
+    raise exception 'pending_sessions' using errcode = '42501';
+  end if;
+
+  if not exists (select 1 from public.invoices where period_start = p_week_start) then
+    perform public.generate_payroll_week(p_week_start);
+  end if;
+
+  update public.pay_periods
+  set status = 'locked', locked_at = now(), locked_by = public.current_profile_id()
+  where period_start_date = p_week_start
+  returning * into v_period;
+
+  return v_period;
+end;
+$$;
+
+-- create_adjustment: port of service.ts createAdjustment. Validates the tutor
+-- exists ('tutor_not_found'); if a related session is given, validates it
+-- belongs to that tutor AND falls within the week ('related_session_invalid');
+-- gets-or-creates the pay period; inserts as 'approved' immediately with
+-- created_by = approved_by = current_profile_id(), approved_at = now(). This
+-- codebase's adjustments are always admin-created-and-approved-in-one-step; the
+-- 'draft' status is never written by any path.
+create or replace function public.create_adjustment(
+  p_tutor_id uuid,
+  p_type public.adjustment_type,
+  p_amount numeric,
+  p_reason text,
+  p_related_session_id uuid,
+  p_week_start date
+)
+returns public.adjustments
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_period public.pay_periods;
+  v_adj public.adjustments;
+  v_profile uuid := public.current_profile_id();
+begin
+  if not public.is_platform_admin() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  if not exists (select 1 from public.tutors where id = p_tutor_id) then
+    raise exception 'tutor_not_found' using errcode = 'P0002';
+  end if;
+
+  if p_related_session_id is not null then
+    if not exists (
+      select 1 from public.sessions
+      where id = p_related_session_id
+        and tutor_id = p_tutor_id
+        and date between p_week_start and p_week_start + 6
+    ) then
+      raise exception 'related_session_invalid' using errcode = '23514';
+    end if;
+  end if;
+
+  v_period := public.get_or_create_pay_period(p_week_start);
+
+  insert into public.adjustments
+    (tutor_id, pay_period_id, type, amount, reason, status, created_by, approved_by, approved_at, related_session_id)
+  values
+    (p_tutor_id, v_period.id, p_type, p_amount, p_reason, 'approved', v_profile, v_profile, now(), p_related_session_id)
+  returning * into v_adj;
+
+  return v_adj;
+end;
+$$;
+
+-- void_adjustment: port of service.ts deleteAdjustment (it is a SOFT-void, not a
+-- hard delete -- hence the name). Raises 'adjustment_not_found' if missing;
+-- 'pay_period_locked' if the linked pay period is locked (Fastify checks
+-- p.status from the adjustments-join-pay_periods query -- this IS the pay
+-- period's lock status, correct despite the confusingly-named destructured
+-- field in the source); 'adjustment_already_voided' if voided_at is already set.
+-- Otherwise stamps voided_at/voided_by/void_reason (defaulting the reason to
+-- 'deleted_by_admin', matching Fastify).
+create or replace function public.void_adjustment(p_adjustment_id uuid, p_reason text)
+returns public.adjustments
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_adj public.adjustments;
+  v_period_status public.pay_period_status;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  select * into v_adj from public.adjustments where id = p_adjustment_id;
+  if not found then
+    raise exception 'adjustment_not_found' using errcode = 'P0002';
+  end if;
+
+  select status into v_period_status from public.pay_periods where id = v_adj.pay_period_id;
+  if v_period_status = 'locked' then
+    raise exception 'pay_period_locked' using errcode = '42501';
+  end if;
+
+  if v_adj.voided_at is not null then
+    raise exception 'adjustment_already_voided' using errcode = '42501';
+  end if;
+
+  update public.adjustments
+  set voided_at = now(),
+      voided_by = public.current_profile_id(),
+      void_reason = coalesce(p_reason, 'deleted_by_admin')
+  where id = p_adjustment_id
+  returning * into v_adj;
+
+  return v_adj;
+end;
+$$;
+
+-- --- Grants: the payroll RPCs are callable by authenticated; each self-gates on
+-- is_platform_admin() internally (Fastify's routes are all admin-only). Direct
+-- table writes remain closed to everyone (RLS above), so these RPCs are the only
+-- payroll write path. session_date_pay_period_locked needs no grant (it is
+-- called internally by the session RPCs, never directly by a client).
+grant execute on function public.get_or_create_pay_period(date) to authenticated;
+grant execute on function public.generate_payroll_week(date) to authenticated;
+grant execute on function public.lock_pay_period(date) to authenticated;
+grant execute on function public.create_adjustment(uuid, public.adjustment_type, numeric, text, uuid, date) to authenticated;
+grant execute on function public.void_adjustment(uuid, text) to authenticated;
