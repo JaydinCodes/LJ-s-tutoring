@@ -3,11 +3,28 @@
 
 create extension if not exists "pgcrypto";
 
-create type public.user_role as enum ('student', 'tutor', 'admin', 'parent', 'ngo_partner');
-create type public.record_status as enum ('active', 'inactive', 'pending', 'approved', 'suspended');
-create type public.assignment_status as enum ('draft', 'published', 'closed', 'archived');
-create type public.submission_status as enum ('not_submitted', 'submitted', 'marked', 'returned');
-create type public.payment_status as enum ('pending', 'paid', 'overdue', 'voided');
+-- Postgres has no `create type ... if not exists`; guarded via pg_type check
+-- (matches this file's established guarded-enum convention) so this file can
+-- be safely re-applied against an already-migrated database, not just a fresh one.
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'user_role') then
+    create type public.user_role as enum ('student', 'tutor', 'admin', 'parent', 'ngo_partner');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'record_status') then
+    create type public.record_status as enum ('active', 'inactive', 'pending', 'approved', 'suspended');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'assignment_status') then
+    create type public.assignment_status as enum ('draft', 'published', 'closed', 'archived');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'submission_status') then
+    create type public.submission_status as enum ('not_submitted', 'submitted', 'marked', 'returned');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'payment_status') then
+    create type public.payment_status as enum ('pending', 'paid', 'overdue', 'voided');
+  end if;
+end
+$$;
 
 create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
@@ -148,9 +165,17 @@ create table if not exists public.audit_log (
   created_at timestamptz not null default now()
 );
 
-alter table public.assignment_submissions
-  add constraint assignment_submissions_marks_range
-  check (marks_awarded is null or (marks_awarded >= 0 and marks_awarded <= 100));
+-- Guarded ALTER (idempotent, matching the privacy_request_type enum guard
+-- pattern): alter table ... add constraint has no native IF NOT EXISTS.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'assignment_submissions_marks_range') then
+    alter table public.assignment_submissions
+      add constraint assignment_submissions_marks_range
+      check (marks_awarded is null or (marks_awarded >= 0 and marks_awarded <= 100));
+  end if;
+end
+$$;
 
 alter table public.assignments add column if not exists rubric_json jsonb not null default '[]'::jsonb;
 alter table public.assignment_submissions add column if not exists rubric_scores_json jsonb not null default '{}'::jsonb;
@@ -158,13 +183,20 @@ alter table public.assignment_submissions add column if not exists marks_release
 alter table public.assignment_submissions add column if not exists feedback_released boolean not null default false;
 alter table public.assignment_submissions add column if not exists released_at timestamptz;
 
-alter table public.assignments
-  add constraint assignments_rubric_json_array
-  check (jsonb_typeof(rubric_json) = 'array');
-
-alter table public.assignment_submissions
-  add constraint assignment_submissions_rubric_scores_object
-  check (jsonb_typeof(rubric_scores_json) = 'object');
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'assignments_rubric_json_array') then
+    alter table public.assignments
+      add constraint assignments_rubric_json_array
+      check (jsonb_typeof(rubric_json) = 'array');
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'assignment_submissions_rubric_scores_object') then
+    alter table public.assignment_submissions
+      add constraint assignment_submissions_rubric_scores_object
+      check (jsonb_typeof(rubric_scores_json) = 'object');
+  end if;
+end
+$$;
 
 create table if not exists public.student_progress (
   id uuid primary key default gen_random_uuid(),
@@ -892,10 +924,12 @@ revoke execute on function public.log_audit_event(text, text, text, jsonb) from 
 revoke execute on function public.log_audit_event(text, text, text, jsonb) from authenticated;
 grant execute on function public.record_audit_event(text, text, text, jsonb) to authenticated;
 
+drop policy if exists "profiles_select_self_or_admin" on public.profiles;
 create policy "profiles_select_self_or_admin"
 on public.profiles for select
 using (auth_user_id = auth.uid() or public.current_profile_role() = 'admin');
 
+drop policy if exists "profiles_select_allocated_learning_relationship" on public.profiles;
 create policy "profiles_select_allocated_learning_relationship"
 on public.profiles for select
 using (
@@ -915,6 +949,7 @@ using (
   )
 );
 
+drop policy if exists "profiles_insert_self_student_or_tutor" on public.profiles;
 create policy "profiles_insert_self_student_or_tutor"
 on public.profiles for insert
 with check (
@@ -922,28 +957,34 @@ with check (
   and role in ('student', 'tutor', 'parent')
 );
 
+drop policy if exists "admin_full_access_profiles" on public.profiles;
 create policy "admin_full_access_profiles"
 on public.profiles for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
+drop policy if exists "admin_select_audit_log" on public.audit_log;
 create policy "admin_select_audit_log"
 on public.audit_log for select
 using (public.current_profile_role() = 'admin');
 
+drop policy if exists "no_direct_audit_log_insert" on public.audit_log;
 create policy "no_direct_audit_log_insert"
 on public.audit_log for insert
 with check (false);
 
+drop policy if exists "no_direct_audit_log_update" on public.audit_log;
 create policy "no_direct_audit_log_update"
 on public.audit_log for update
 using (false)
 with check (false);
 
+drop policy if exists "no_direct_audit_log_delete" on public.audit_log;
 create policy "no_direct_audit_log_delete"
 on public.audit_log for delete
 using (false);
 
+drop policy if exists "students_select_self_or_admin" on public.students;
 create policy "students_select_self_or_admin"
 on public.students for select
 using (
@@ -960,6 +1001,7 @@ using (
 -- Raw subqueries on public.profiles here would recurse (see the "Identity
 -- lookup shadow table" comment near current_profile_role()); current_profile_id()/
 -- current_profile_role() now resolve via public.profile_identities instead.
+drop policy if exists "students_insert_self" on public.students;
 create policy "students_insert_self"
 on public.students for insert
 with check (
@@ -967,11 +1009,13 @@ with check (
   and public.current_profile_role() = 'student'
 );
 
+drop policy if exists "admin_full_access_students" on public.students;
 create policy "admin_full_access_students"
 on public.students for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
+drop policy if exists "guardians_select_scoped" on public.guardians;
 create policy "guardians_select_scoped"
 on public.guardians for select
 using (
@@ -979,11 +1023,13 @@ using (
   or profile_id = public.current_profile_id()
 );
 
+drop policy if exists "admin_manage_guardians" on public.guardians;
 create policy "admin_manage_guardians"
 on public.guardians for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
+drop policy if exists "student_guardians_select_scoped" on public.student_guardians;
 create policy "student_guardians_select_scoped"
 on public.student_guardians for select
 using (
@@ -995,6 +1041,7 @@ using (
   )
 );
 
+drop policy if exists "admin_manage_student_guardians" on public.student_guardians;
 create policy "admin_manage_student_guardians"
 on public.student_guardians for all
 using (public.current_profile_role() = 'admin')
@@ -1003,12 +1050,14 @@ with check (public.current_profile_role() = 'admin');
 -- Raw joins into public.profiles here would recurse (see the "Identity
 -- lookup shadow table" comment near current_profile_role()); current_student_id()
 -- now resolves via public.profile_identities instead of public.profiles directly.
+drop policy if exists "students_select_own_career_profile" on public.student_career_profiles;
 create policy "students_select_own_career_profile"
 on public.student_career_profiles for select
 using (
   student_id = public.current_student_id()
 );
 
+drop policy if exists "students_upsert_own_career_profile" on public.student_career_profiles;
 create policy "students_upsert_own_career_profile"
 on public.student_career_profiles for all
 using (
@@ -1018,6 +1067,7 @@ with check (
   student_id = public.current_student_id()
 );
 
+drop policy if exists "tutors_select_self_or_admin" on public.tutors;
 create policy "tutors_select_self_or_admin"
 on public.tutors for select
 using (
@@ -1034,6 +1084,7 @@ using (
 -- Raw subqueries on public.profiles here would recurse (see the "Identity
 -- lookup shadow table" comment near current_profile_role()); current_profile_id()/
 -- current_profile_role() now resolve via public.profile_identities instead.
+drop policy if exists "tutors_insert_self_pending" on public.tutors;
 create policy "tutors_insert_self_pending"
 on public.tutors for insert
 with check (
@@ -1042,20 +1093,24 @@ with check (
   and public.current_profile_role() = 'tutor'
 );
 
+drop policy if exists "admin_full_access_tutors" on public.tutors;
 create policy "admin_full_access_tutors"
 on public.tutors for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
+drop policy if exists "subjects_read_authenticated" on public.subjects;
 create policy "subjects_read_authenticated"
 on public.subjects for select
 using (auth.uid() is not null);
 
+drop policy if exists "admin_manage_subjects" on public.subjects;
 create policy "admin_manage_subjects"
 on public.subjects for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
+drop policy if exists "tutors_insert_subjects" on public.subjects;
 create policy "tutors_insert_subjects"
 on public.subjects for insert
 with check (public.current_profile_role() = 'tutor');
@@ -1068,11 +1123,13 @@ with check (public.current_profile_role() = 'tutor');
 -- "assignments_student_read_published_own_org", scopes student reads to
 -- published assignments in their own org. See §7.4 at the end of this file.
 
+drop policy if exists "admin_manage_assignments" on public.assignments;
 create policy "admin_manage_assignments"
 on public.assignments for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
+drop policy if exists "tutors_manage_own_assignments" on public.assignments;
 create policy "tutors_manage_own_assignments"
 on public.assignments for all
 using (
@@ -1084,6 +1141,7 @@ with check (
   and created_by = public.current_profile_id()
 );
 
+drop policy if exists "submissions_student_self_or_admin" on public.assignment_submissions;
 create policy "submissions_student_self_or_admin"
 on public.assignment_submissions for select
 using (
@@ -1100,12 +1158,14 @@ drop policy if exists "tutor_insert_progress" on public.student_progress;
 -- down where this policy's create statement was removed.
 drop policy if exists "submissions_student_rpc_insert_shape" on public.assignment_submissions;
 
+drop policy if exists "submissions_student_insert_via_rpc_guard" on public.assignment_submissions;
 create policy "submissions_student_insert_via_rpc_guard"
 on public.assignment_submissions for insert
 with check (
   false
 );
 
+drop policy if exists "submissions_no_direct_student_update" on public.assignment_submissions;
 create policy "submissions_no_direct_student_update"
 on public.assignment_submissions for update
 using (
@@ -1115,6 +1175,7 @@ with check (
   false
 );
 
+drop policy if exists "submissions_tutor_mark_via_rpc_only" on public.assignment_submissions;
 create policy "submissions_tutor_mark_via_rpc_only"
 on public.assignment_submissions for update
 using (
@@ -1137,6 +1198,7 @@ with check (
 -- design and is the single audited, validated write path. The frontend already
 -- calls only this RPC (src/features/assignments/assignmentMutations.ts).
 
+drop policy if exists "admin_manage_submissions" on public.assignment_submissions;
 create policy "admin_manage_submissions"
 on public.assignment_submissions for all
 using (public.current_profile_role() = 'admin')
@@ -1147,6 +1209,7 @@ with check (public.current_profile_role() = 'admin');
 -- current_profile_id()/current_profile_role() (public.profile_identities)
 -- instead. Same semantics: only a tutor viewing submissions for assignments
 -- they themselves created.
+drop policy if exists "tutors_select_own_assignment_submissions" on public.assignment_submissions;
 create policy "tutors_select_own_assignment_submissions"
 on public.assignment_submissions for select
 using (
@@ -1160,6 +1223,7 @@ using (
 -- Raw join into public.profiles here would recurse (see the "Identity lookup
 -- shadow table" comment near current_profile_role()); current_student_id()
 -- now resolves via public.profile_identities instead of public.profiles directly.
+drop policy if exists "student_progress_self_or_admin" on public.student_progress;
 create policy "student_progress_self_or_admin"
 on public.student_progress for select
 using (
@@ -1167,20 +1231,24 @@ using (
   or student_id = public.current_student_id()
 );
 
+drop policy if exists "admin_manage_progress" on public.student_progress;
 create policy "admin_manage_progress"
 on public.student_progress for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
+drop policy if exists "progress_insert_via_marking_rpc_only" on public.student_progress;
 create policy "progress_insert_via_marking_rpc_only"
 on public.student_progress for insert
 with check (false);
 
+drop policy if exists "admin_finance_access" on public.payments;
 create policy "admin_finance_access"
 on public.payments for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
+drop policy if exists "admin_tutor_payment_access" on public.tutor_payments;
 create policy "admin_tutor_payment_access"
 on public.tutor_payments for all
 using (public.current_profile_role() = 'admin')
@@ -1188,6 +1256,7 @@ with check (public.current_profile_role() = 'admin');
 
 drop policy if exists "classes_read_authenticated" on public.classes;
 
+drop policy if exists "classes_select_scoped" on public.classes;
 create policy "classes_select_scoped"
 on public.classes for select
 using (
@@ -1201,6 +1270,7 @@ using (
   )
 );
 
+drop policy if exists "admin_manage_classes" on public.classes;
 create policy "admin_manage_classes"
 on public.classes for all
 using (public.current_profile_role() = 'admin')
@@ -1208,6 +1278,7 @@ with check (public.current_profile_role() = 'admin');
 
 drop policy if exists "class_enrollments_read_authenticated" on public.class_enrollments;
 
+drop policy if exists "class_enrollments_select_scoped" on public.class_enrollments;
 create policy "class_enrollments_select_scoped"
 on public.class_enrollments for select
 using (
@@ -1220,11 +1291,13 @@ using (
   )
 );
 
+drop policy if exists "admin_manage_class_enrollments" on public.class_enrollments;
 create policy "admin_manage_class_enrollments"
 on public.class_enrollments for all
 using (public.current_profile_role() = 'admin')
 with check (public.current_profile_role() = 'admin');
 
+drop policy if exists "tutor_student_allocations_select_scoped" on public.tutor_student_allocations;
 create policy "tutor_student_allocations_select_scoped"
 on public.tutor_student_allocations for select
 using (
@@ -1238,6 +1311,7 @@ using (
   )
 );
 
+drop policy if exists "admin_manage_tutor_student_allocations" on public.tutor_student_allocations;
 create policy "admin_manage_tutor_student_allocations"
 on public.tutor_student_allocations for all
 using (public.current_profile_role() = 'admin')
@@ -1249,6 +1323,7 @@ values
   ('assignment-submissions', 'assignment-submissions', false)
 on conflict (id) do nothing;
 
+drop policy if exists "admin_tutor_upload_assignment_files" on storage.objects;
 create policy "admin_tutor_upload_assignment_files"
 on storage.objects for insert
 with check (
@@ -1256,6 +1331,7 @@ with check (
   and public.current_profile_role() in ('admin', 'tutor')
 );
 
+drop policy if exists "authenticated_read_assignment_files" on storage.objects;
 create policy "authenticated_read_assignment_files"
 on storage.objects for select
 using (
@@ -1267,6 +1343,7 @@ using (
 -- (see the "Identity lookup shadow table" comment near current_profile_role());
 -- rewritten to use current_student_id()/current_profile_id() (public.profile_identities)
 -- instead of public.profiles directly.
+drop policy if exists "students_upload_own_submission_files" on storage.objects;
 create policy "students_upload_own_submission_files"
 on storage.objects for insert
 with check (
@@ -1280,6 +1357,7 @@ with check (
   )
 );
 
+drop policy if exists "students_update_own_submission_files" on storage.objects;
 create policy "students_update_own_submission_files"
 on storage.objects for update
 using (
@@ -1295,6 +1373,7 @@ with check (
   and (storage.foldername(name))[1] = public.current_student_id()::text
 );
 
+drop policy if exists "students_read_own_submission_files_or_admin" on storage.objects;
 create policy "students_read_own_submission_files_or_admin"
 on storage.objects for select
 using (
@@ -1886,6 +1965,7 @@ create index if not exists idx_organization_members_profile_org_status
 alter table public.organizations enable row level security;
 alter table public.organization_members enable row level security;
 
+drop policy if exists "organizations_select_member_or_admin" on public.organizations;
 create policy "organizations_select_member_or_admin"
 on public.organizations for select
 using (
@@ -1893,11 +1973,13 @@ using (
   or id in (select public.current_org_ids())
 );
 
+drop policy if exists "admin_manage_organizations" on public.organizations;
 create policy "admin_manage_organizations"
 on public.organizations for all
 using (public.is_platform_admin())
 with check (public.is_platform_admin());
 
+drop policy if exists "organization_members_select_scoped" on public.organization_members;
 create policy "organization_members_select_scoped"
 on public.organization_members for select
 using (
@@ -1912,6 +1994,7 @@ using (
 -- cannot create, edit, or remove another coordinator (or self-escalate) via
 -- this policy. Both using() and with check() carry the guard so it applies
 -- to select/update/delete visibility as well as insert/update values.
+drop policy if exists "organization_members_coordinator_manage" on public.organization_members;
 create policy "organization_members_coordinator_manage"
 on public.organization_members for all
 using (
@@ -1929,6 +2012,7 @@ with check (
   )
 );
 
+drop policy if exists "admin_manage_organization_members" on public.organization_members;
 create policy "admin_manage_organization_members"
 on public.organization_members for all
 using (public.is_platform_admin())
@@ -1940,6 +2024,7 @@ with check (public.is_platform_admin());
 -- to this learner) new read access to raw student rows, which §5.3/§11.4
 -- forbid. Only the org's coordinator gets new (additive) access, matching
 -- the role table in §4 ("Coordinator: manage that org's ... learners").
+drop policy if exists "students_coordinator_org_manage" on public.students;
 create policy "students_coordinator_org_manage"
 on public.students for all
 using (
@@ -1954,6 +2039,7 @@ with check (
 -- Classes carry no learner PII by themselves (name/tutor/subject/schedule),
 -- so — matching the plan's §5.2 example verbatim — any active org member may
 -- read them; only the org's coordinator can manage them.
+drop policy if exists "classes_org_scoped_read" on public.classes;
 create policy "classes_org_scoped_read"
 on public.classes for select
 using (
@@ -1961,6 +2047,7 @@ using (
   or organization_id in (select public.current_org_ids())
 );
 
+drop policy if exists "classes_coordinator_manage" on public.classes;
 create policy "classes_coordinator_manage"
 on public.classes for all
 using (
@@ -1982,6 +2069,7 @@ with check (
 -- folds `status = 'published'` scoping into a replacement org-scoped read
 -- policy and removes "assignments_read_authenticated" in the same migration
 -- that sets organization_id NOT NULL. Do not remove it here.
+drop policy if exists "assignments_org_scoped_read" on public.assignments;
 create policy "assignments_org_scoped_read"
 on public.assignments for select
 using (
@@ -1989,6 +2077,7 @@ using (
   or organization_id in (select public.current_org_ids())
 );
 
+drop policy if exists "assignments_coordinator_manage" on public.assignments;
 create policy "assignments_coordinator_manage"
 on public.assignments for all
 using (
@@ -2228,6 +2317,7 @@ alter table public.assignments alter column organization_id set not null;
 -- closing the bug on both axes (no drafts, no cross-org) at once. Parent access
 -- is unaffected: parentReportsRepository uses get_parent_progress_reports(),
 -- which is SECURITY DEFINER and bypasses RLS.
+drop policy if exists "assignments_student_read_published_own_org" on public.assignments;
 create policy "assignments_student_read_published_own_org"
 on public.assignments for select
 using (
@@ -2274,7 +2364,13 @@ drop policy if exists "assignments_read_authenticated" on public.assignments;
 
 -- Lowercase to match this schema's enum convention (record_status,
 -- assignment_status, ...), even though Prisma's SessionStatus was uppercase.
-create type public.session_status as enum ('draft', 'submitted', 'approved', 'rejected');
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'session_status') then
+    create type public.session_status as enum ('draft', 'submitted', 'approved', 'rejected');
+  end if;
+end
+$$;
 
 -- Org-scoped from birth (ADR-0002). organization_id is derived from the
 -- session's STUDENT by the dedicated fill_session_organization_id() trigger
@@ -3085,41 +3181,50 @@ $$;
 -- tutor own, full columns), and INSERT/UPDATE/DELETE are with check (false) /
 -- using (false) so the SECURITY DEFINER RPCs are the only write path. Students
 -- get NO direct policy at all; their only read path is get_student_sessions().
+drop policy if exists "admin_select_all_sessions" on public.sessions;
 create policy "admin_select_all_sessions"
 on public.sessions for select
 using (public.is_platform_admin());
 
+drop policy if exists "tutors_select_own_sessions" on public.sessions;
 create policy "tutors_select_own_sessions"
 on public.sessions for select
 using (tutor_id = public.current_tutor_id());
 
+drop policy if exists "sessions_no_direct_insert" on public.sessions;
 create policy "sessions_no_direct_insert"
 on public.sessions for insert
 with check (false);
 
+drop policy if exists "sessions_no_direct_update" on public.sessions;
 create policy "sessions_no_direct_update"
 on public.sessions for update
 using (false)
 with check (false);
 
+drop policy if exists "sessions_no_direct_delete" on public.sessions;
 create policy "sessions_no_direct_delete"
 on public.sessions for delete
 using (false);
 
 -- --- session_history RLS: append-only, mirroring audit_log exactly -----------
+drop policy if exists "admin_select_session_history" on public.session_history;
 create policy "admin_select_session_history"
 on public.session_history for select
 using (public.is_platform_admin());
 
+drop policy if exists "no_direct_session_history_insert" on public.session_history;
 create policy "no_direct_session_history_insert"
 on public.session_history for insert
 with check (false);
 
+drop policy if exists "no_direct_session_history_update" on public.session_history;
 create policy "no_direct_session_history_update"
 on public.session_history for update
 using (false)
 with check (false);
 
+drop policy if exists "no_direct_session_history_delete" on public.session_history;
 create policy "no_direct_session_history_delete"
 on public.session_history for delete
 using (false);
@@ -3178,11 +3283,25 @@ revoke execute on function public.insert_session_history(uuid, text, jsonb, json
 
 -- Lowercase to match this schema's enum convention (record_status,
 -- session_status, ...), even though Prisma's were uppercase.
-create type public.pay_period_status as enum ('open', 'locked');
-create type public.invoice_status as enum ('draft', 'issued', 'paid');
-create type public.adjustment_type as enum ('bonus', 'correction', 'penalty');
-create type public.adjustment_status as enum ('draft', 'approved');
-create type public.invoice_line_type as enum ('session', 'adjustment');
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'pay_period_status') then
+    create type public.pay_period_status as enum ('open', 'locked');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'invoice_status') then
+    create type public.invoice_status as enum ('draft', 'issued', 'paid');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'adjustment_type') then
+    create type public.adjustment_type as enum ('bonus', 'correction', 'penalty');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'adjustment_status') then
+    create type public.adjustment_status as enum ('draft', 'approved');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'invoice_line_type') then
+    create type public.invoice_line_type as enum ('session', 'adjustment');
+  end if;
+end
+$$;
 
 -- pay_periods: one row per Monday-start payroll week. period_start_date is UNIQUE
 -- (mirrors Prisma @@unique([periodStartDate])) and is the get-or-create key.
@@ -3282,73 +3401,89 @@ alter table public.invoice_lines enable row level security;
 -- admin-only end to end.
 
 -- pay_periods: admin-only SELECT; no direct writes by anyone.
+drop policy if exists "admin_select_pay_periods" on public.pay_periods;
 create policy "admin_select_pay_periods"
 on public.pay_periods for select
 using (public.is_platform_admin());
 
+drop policy if exists "pay_periods_no_direct_insert" on public.pay_periods;
 create policy "pay_periods_no_direct_insert"
 on public.pay_periods for insert
 with check (false);
 
+drop policy if exists "pay_periods_no_direct_update" on public.pay_periods;
 create policy "pay_periods_no_direct_update"
 on public.pay_periods for update
 using (false)
 with check (false);
 
+drop policy if exists "pay_periods_no_direct_delete" on public.pay_periods;
 create policy "pay_periods_no_direct_delete"
 on public.pay_periods for delete
 using (false);
 
 -- adjustments: admin SELECT all; tutor SELECT own; no direct writes by anyone.
+drop policy if exists "admin_select_all_adjustments" on public.adjustments;
 create policy "admin_select_all_adjustments"
 on public.adjustments for select
 using (public.is_platform_admin());
 
+drop policy if exists "tutors_select_own_adjustments" on public.adjustments;
 create policy "tutors_select_own_adjustments"
 on public.adjustments for select
 using (tutor_id = public.current_tutor_id());
 
+drop policy if exists "adjustments_no_direct_insert" on public.adjustments;
 create policy "adjustments_no_direct_insert"
 on public.adjustments for insert
 with check (false);
 
+drop policy if exists "adjustments_no_direct_update" on public.adjustments;
 create policy "adjustments_no_direct_update"
 on public.adjustments for update
 using (false)
 with check (false);
 
+drop policy if exists "adjustments_no_direct_delete" on public.adjustments;
 create policy "adjustments_no_direct_delete"
 on public.adjustments for delete
 using (false);
 
 -- invoices: admin SELECT all; tutor SELECT own; no direct writes by anyone.
+drop policy if exists "admin_select_all_invoices" on public.invoices;
 create policy "admin_select_all_invoices"
 on public.invoices for select
 using (public.is_platform_admin());
 
+drop policy if exists "tutors_select_own_invoices" on public.invoices;
 create policy "tutors_select_own_invoices"
 on public.invoices for select
 using (tutor_id = public.current_tutor_id());
 
+drop policy if exists "invoices_no_direct_insert" on public.invoices;
 create policy "invoices_no_direct_insert"
 on public.invoices for insert
 with check (false);
 
+drop policy if exists "invoices_no_direct_update" on public.invoices;
 create policy "invoices_no_direct_update"
 on public.invoices for update
 using (false)
 with check (false);
 
+drop policy if exists "invoices_no_direct_delete" on public.invoices;
 create policy "invoices_no_direct_delete"
 on public.invoices for delete
 using (false);
 
 -- invoice_lines: admin SELECT all; tutor SELECT own via the parent invoice's
 -- tutor_id; no direct writes by anyone.
+drop policy if exists "admin_select_all_invoice_lines" on public.invoice_lines;
 create policy "admin_select_all_invoice_lines"
 on public.invoice_lines for select
 using (public.is_platform_admin());
 
+drop policy if exists "tutors_select_own_invoice_lines" on public.invoice_lines;
 create policy "tutors_select_own_invoice_lines"
 on public.invoice_lines for select
 using (exists (
@@ -3357,15 +3492,18 @@ using (exists (
     and i.tutor_id = public.current_tutor_id()
 ));
 
+drop policy if exists "invoice_lines_no_direct_insert" on public.invoice_lines;
 create policy "invoice_lines_no_direct_insert"
 on public.invoice_lines for insert
 with check (false);
 
+drop policy if exists "invoice_lines_no_direct_update" on public.invoice_lines;
 create policy "invoice_lines_no_direct_update"
 on public.invoice_lines for update
 using (false)
 with check (false);
 
+drop policy if exists "invoice_lines_no_direct_delete" on public.invoice_lines;
 create policy "invoice_lines_no_direct_delete"
 on public.invoice_lines for delete
 using (false);
@@ -3802,14 +3940,17 @@ alter table public.student_notifications enable row level security;
 -- logic and runs only through generate_weekly_report(), following the
 -- sessions/finance no-direct-writes precedent. (The plan's "tutor/admin manage"
 -- is realised as manage-via-RPC, not a direct-write policy.)
+drop policy if exists "admin_select_all_weekly_reports" on public.weekly_reports;
 create policy "admin_select_all_weekly_reports"
 on public.weekly_reports for select
 using (public.is_platform_admin());
 
+drop policy if exists "student_select_own_weekly_reports" on public.weekly_reports;
 create policy "student_select_own_weekly_reports"
 on public.weekly_reports for select
 using (student_id = public.current_student_id());
 
+drop policy if exists "tutor_select_allocated_weekly_reports" on public.weekly_reports;
 create policy "tutor_select_allocated_weekly_reports"
 on public.weekly_reports for select
 using (exists (
@@ -3822,6 +3963,7 @@ using (exists (
 -- Guardian read: reuses get_parent_progress_reports()'s exact gating shape
 -- (parent role + active guardian link with can_receive_reports). Forward-design
 -- implementation of the plan §4 "student/guardian read released" target.
+drop policy if exists "guardian_select_reportable_weekly_reports" on public.weekly_reports;
 create policy "guardian_select_reportable_weekly_reports"
 on public.weekly_reports for select
 using (
@@ -3838,15 +3980,18 @@ using (
   )
 );
 
+drop policy if exists "weekly_reports_no_direct_insert" on public.weekly_reports;
 create policy "weekly_reports_no_direct_insert"
 on public.weekly_reports for insert
 with check (false);
 
+drop policy if exists "weekly_reports_no_direct_update" on public.weekly_reports;
 create policy "weekly_reports_no_direct_update"
 on public.weekly_reports for update
 using (false)
 with check (false);
 
+drop policy if exists "weekly_reports_no_direct_delete" on public.weekly_reports;
 create policy "weekly_reports_no_direct_delete"
 on public.weekly_reports for delete
 using (false);
@@ -3859,19 +4004,23 @@ using (false);
 -- DEFINER helper; mark-read / mark-all-read go through their RPCs (this schema
 -- routes every state-changing write through an RPC -- even a simple owner-scoped
 -- mark-read -- for convention consistency with sessions/finance).
+drop policy if exists "student_select_own_notifications" on public.student_notifications;
 create policy "student_select_own_notifications"
 on public.student_notifications for select
 using (student_id = public.current_student_id());
 
+drop policy if exists "student_notifications_no_direct_insert" on public.student_notifications;
 create policy "student_notifications_no_direct_insert"
 on public.student_notifications for insert
 with check (false);
 
+drop policy if exists "student_notifications_no_direct_update" on public.student_notifications;
 create policy "student_notifications_no_direct_update"
 on public.student_notifications for update
 using (false)
 with check (false);
 
+drop policy if exists "student_notifications_no_direct_delete" on public.student_notifications;
 create policy "student_notifications_no_direct_delete"
 on public.student_notifications for delete
 using (false);
@@ -4300,23 +4449,28 @@ alter table public.tutor_availability_slots enable row level security;
 -- the admin decision cascade), so every write goes through a SECURITY DEFINER
 -- RPC, not a direct-write policy -- following the sessions/finance/notifications
 -- precedent (with check (false) / using (false)).
+drop policy if exists "admin_select_all_tutor_applications" on public.tutor_applications;
 create policy "admin_select_all_tutor_applications"
 on public.tutor_applications for select
 using (public.is_platform_admin());
 
+drop policy if exists "tutors_select_own_application" on public.tutor_applications;
 create policy "tutors_select_own_application"
 on public.tutor_applications for select
 using (tutor_id = public.current_tutor_id());
 
+drop policy if exists "tutor_applications_no_direct_insert" on public.tutor_applications;
 create policy "tutor_applications_no_direct_insert"
 on public.tutor_applications for insert
 with check (false);
 
+drop policy if exists "tutor_applications_no_direct_update" on public.tutor_applications;
 create policy "tutor_applications_no_direct_update"
 on public.tutor_applications for update
 using (false)
 with check (false);
 
+drop policy if exists "tutor_applications_no_direct_delete" on public.tutor_applications;
 create policy "tutor_applications_no_direct_delete"
 on public.tutor_applications for delete
 using (false);
@@ -4324,23 +4478,28 @@ using (false);
 -- --- RLS: tutor_documents (tutor-own + admin SELECT; writes via RPC only) ----
 -- Insert via record_tutor_document(), verification via verify_tutor_document();
 -- no direct writes for anyone. Highly sensitive (identity/qualification files).
+drop policy if exists "admin_select_all_tutor_documents" on public.tutor_documents;
 create policy "admin_select_all_tutor_documents"
 on public.tutor_documents for select
 using (public.is_platform_admin());
 
+drop policy if exists "tutors_select_own_documents" on public.tutor_documents;
 create policy "tutors_select_own_documents"
 on public.tutor_documents for select
 using (tutor_id = public.current_tutor_id());
 
+drop policy if exists "tutor_documents_no_direct_insert" on public.tutor_documents;
 create policy "tutor_documents_no_direct_insert"
 on public.tutor_documents for insert
 with check (false);
 
+drop policy if exists "tutor_documents_no_direct_update" on public.tutor_documents;
 create policy "tutor_documents_no_direct_update"
 on public.tutor_documents for update
 using (false)
 with check (false);
 
+drop policy if exists "tutor_documents_no_direct_delete" on public.tutor_documents;
 create policy "tutor_documents_no_direct_delete"
 on public.tutor_documents for delete
 using (false);
@@ -4349,23 +4508,28 @@ using (false);
 -- Replace via replace_tutor_availability() (delete-all-then-insert). No broader
 -- read invented: the Fastify routes only expose self (/tutor/availability) and
 -- the admin detail-view join, so this stays tutor-own + admin, not coordinator-wide.
+drop policy if exists "admin_select_all_tutor_availability_slots" on public.tutor_availability_slots;
 create policy "admin_select_all_tutor_availability_slots"
 on public.tutor_availability_slots for select
 using (public.is_platform_admin());
 
+drop policy if exists "tutors_select_own_availability_slots" on public.tutor_availability_slots;
 create policy "tutors_select_own_availability_slots"
 on public.tutor_availability_slots for select
 using (tutor_id = public.current_tutor_id());
 
+drop policy if exists "tutor_availability_slots_no_direct_insert" on public.tutor_availability_slots;
 create policy "tutor_availability_slots_no_direct_insert"
 on public.tutor_availability_slots for insert
 with check (false);
 
+drop policy if exists "tutor_availability_slots_no_direct_update" on public.tutor_availability_slots;
 create policy "tutor_availability_slots_no_direct_update"
 on public.tutor_availability_slots for update
 using (false)
 with check (false);
 
+drop policy if exists "tutor_availability_slots_no_direct_delete" on public.tutor_availability_slots;
 create policy "tutor_availability_slots_no_direct_delete"
 on public.tutor_availability_slots for delete
 using (false);
@@ -4379,6 +4543,7 @@ insert into storage.buckets (id, name, public)
 values ('tutor-documents', 'tutor-documents', false)
 on conflict (id) do nothing;
 
+drop policy if exists "tutors_upload_own_tutor_documents" on storage.objects;
 create policy "tutors_upload_own_tutor_documents"
 on storage.objects for insert
 with check (
@@ -4388,6 +4553,7 @@ with check (
   and (storage.foldername(name))[1] = public.current_tutor_id()::text
 );
 
+drop policy if exists "tutors_read_own_tutor_documents_or_admin" on storage.objects;
 create policy "tutors_read_own_tutor_documents_or_admin"
 on storage.objects for select
 using (
@@ -4879,6 +5045,7 @@ create trigger trg_fill_career_progress_snapshot_org
 -- GET /tutor/scores and GET /tutor/students/:studentId/career routes. No
 -- direct writes for anyone -- every row is written by the recompute RPCs
 -- below (sessions/finance/notifications/tutor-onboarding precedent).
+drop policy if exists "student_score_snapshots_select" on public.student_score_snapshots;
 create policy student_score_snapshots_select on public.student_score_snapshots
 for select
 using (
@@ -4892,19 +5059,23 @@ using (
   )
 );
 
+drop policy if exists "student_score_snapshots_no_direct_insert" on public.student_score_snapshots;
 create policy student_score_snapshots_no_direct_insert on public.student_score_snapshots
 for insert
 with check (false);
 
+drop policy if exists "student_score_snapshots_no_direct_update" on public.student_score_snapshots;
 create policy student_score_snapshots_no_direct_update on public.student_score_snapshots
 for update
 using (false)
 with check (false);
 
+drop policy if exists "student_score_snapshots_no_direct_delete" on public.student_score_snapshots;
 create policy student_score_snapshots_no_direct_delete on public.student_score_snapshots
 for delete
 using (false);
 
+drop policy if exists "career_progress_snapshots_select" on public.career_progress_snapshots;
 create policy career_progress_snapshots_select on public.career_progress_snapshots
 for select
 using (
@@ -4918,15 +5089,18 @@ using (
   )
 );
 
+drop policy if exists "career_progress_snapshots_no_direct_insert" on public.career_progress_snapshots;
 create policy career_progress_snapshots_no_direct_insert on public.career_progress_snapshots
 for insert
 with check (false);
 
+drop policy if exists "career_progress_snapshots_no_direct_update" on public.career_progress_snapshots;
 create policy career_progress_snapshots_no_direct_update on public.career_progress_snapshots
 for update
 using (false)
 with check (false);
 
+drop policy if exists "career_progress_snapshots_no_direct_delete" on public.career_progress_snapshots;
 create policy career_progress_snapshots_no_direct_delete on public.career_progress_snapshots
 for delete
 using (false);
@@ -5465,11 +5639,25 @@ grant execute on function public.recompute_career_progress_snapshot(uuid, text, 
 -- all), and Fastify-route retirement (§6 step 7).
 -- ============================================================================
 
-create type public.baseline_source_type as enum ('manual', 'uploaded', 'generated', 'diagnostic');
-create type public.learning_goal_category as enum ('academic', 'attendance', 'assignment', 'career', 'intervention');
-create type public.learning_goal_status as enum ('active', 'completed', 'paused', 'cancelled');
-create type public.volunteer_event_status as enum ('planned', 'cancelled', 'completed');
-create type public.volunteer_log_status as enum ('signed_up', 'submitted', 'verified', 'rejected');
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'baseline_source_type') then
+    create type public.baseline_source_type as enum ('manual', 'uploaded', 'generated', 'diagnostic');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'learning_goal_category') then
+    create type public.learning_goal_category as enum ('academic', 'attendance', 'assignment', 'career', 'intervention');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'learning_goal_status') then
+    create type public.learning_goal_status as enum ('active', 'completed', 'paused', 'cancelled');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'volunteer_event_status') then
+    create type public.volunteer_event_status as enum ('planned', 'cancelled', 'completed');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'volunteer_log_status') then
+    create type public.volunteer_log_status as enum ('signed_up', 'submitted', 'verified', 'rejected');
+  end if;
+end
+$$;
 
 create table if not exists public.baseline_assessments (
   id uuid primary key default gen_random_uuid(),
@@ -5600,6 +5788,7 @@ create trigger trg_fill_student_exam_event_org
 -- /tutor/students/:id/summary's baseline/goal reads and /dashboard's
 -- exam-calendar read). No direct writes for anyone -- RPC-only, following
 -- every prior domain's precedent.
+drop policy if exists "baseline_assessments_select" on public.baseline_assessments;
 create policy baseline_assessments_select on public.baseline_assessments
 for select
 using (
@@ -5613,15 +5802,18 @@ using (
   )
 );
 
+drop policy if exists "baseline_assessments_no_direct_insert" on public.baseline_assessments;
 create policy baseline_assessments_no_direct_insert on public.baseline_assessments
 for insert
 with check (false);
 
+drop policy if exists "baseline_assessments_no_direct_update" on public.baseline_assessments;
 create policy baseline_assessments_no_direct_update on public.baseline_assessments
 for update
 using (false)
 with check (false);
 
+drop policy if exists "baseline_assessments_no_direct_delete" on public.baseline_assessments;
 create policy baseline_assessments_no_direct_delete on public.baseline_assessments
 for delete
 using (false);
@@ -5632,6 +5824,7 @@ using (false);
 -- dashboard queries, made into a hard RLS boundary rather than a
 -- query-time convenience. Admin sees every goal regardless of the flags
 -- (matching GET /admin/learning-goals, which has no visibility filter).
+drop policy if exists "learning_goals_select" on public.learning_goals;
 create policy learning_goals_select on public.learning_goals
 for select
 using (
@@ -5648,19 +5841,23 @@ using (
   )
 );
 
+drop policy if exists "learning_goals_no_direct_insert" on public.learning_goals;
 create policy learning_goals_no_direct_insert on public.learning_goals
 for insert
 with check (false);
 
+drop policy if exists "learning_goals_no_direct_update" on public.learning_goals;
 create policy learning_goals_no_direct_update on public.learning_goals
 for update
 using (false)
 with check (false);
 
+drop policy if exists "learning_goals_no_direct_delete" on public.learning_goals;
 create policy learning_goals_no_direct_delete on public.learning_goals
 for delete
 using (false);
 
+drop policy if exists "student_exam_events_select" on public.student_exam_events;
 create policy student_exam_events_select on public.student_exam_events
 for select
 using (
@@ -5674,15 +5871,18 @@ using (
   )
 );
 
+drop policy if exists "student_exam_events_no_direct_insert" on public.student_exam_events;
 create policy student_exam_events_no_direct_insert on public.student_exam_events
 for insert
 with check (false);
 
+drop policy if exists "student_exam_events_no_direct_update" on public.student_exam_events;
 create policy student_exam_events_no_direct_update on public.student_exam_events
 for update
 using (false)
 with check (false);
 
+drop policy if exists "student_exam_events_no_direct_delete" on public.student_exam_events;
 create policy student_exam_events_no_direct_delete on public.student_exam_events
 for delete
 using (false);
@@ -5691,6 +5891,7 @@ using (false);
 -- matching GET /tutor/volunteer/events -- not scoped to that tutor's own
 -- allocations, since these are events any tutor can sign up for). No
 -- student/parent access anywhere in this domain (Fastify has no such route).
+drop policy if exists "volunteer_events_select" on public.volunteer_events;
 create policy volunteer_events_select on public.volunteer_events
 for select
 using (
@@ -5698,15 +5899,18 @@ using (
   or public.current_tutor_id() is not null
 );
 
+drop policy if exists "volunteer_events_no_direct_insert" on public.volunteer_events;
 create policy volunteer_events_no_direct_insert on public.volunteer_events
 for insert
 with check (false);
 
+drop policy if exists "volunteer_events_no_direct_update" on public.volunteer_events;
 create policy volunteer_events_no_direct_update on public.volunteer_events
 for update
 using (false)
 with check (false);
 
+drop policy if exists "volunteer_events_no_direct_delete" on public.volunteer_events;
 create policy volunteer_events_no_direct_delete on public.volunteer_events
 for delete
 using (false);
@@ -5714,6 +5918,7 @@ using (false);
 -- volunteer_logs: admin all; tutor SELECT own only (matching GET
 -- /tutor/volunteer/logs' `where vl.tutor_id = $1` -- no cross-tutor
 -- visibility).
+drop policy if exists "volunteer_logs_select" on public.volunteer_logs;
 create policy volunteer_logs_select on public.volunteer_logs
 for select
 using (
@@ -5721,15 +5926,18 @@ using (
   or tutor_id = public.current_tutor_id()
 );
 
+drop policy if exists "volunteer_logs_no_direct_insert" on public.volunteer_logs;
 create policy volunteer_logs_no_direct_insert on public.volunteer_logs
 for insert
 with check (false);
 
+drop policy if exists "volunteer_logs_no_direct_update" on public.volunteer_logs;
 create policy volunteer_logs_no_direct_update on public.volunteer_logs
 for update
 using (false)
 with check (false);
 
+drop policy if exists "volunteer_logs_no_direct_delete" on public.volunteer_logs;
 create policy volunteer_logs_no_direct_delete on public.volunteer_logs
 for delete
 using (false);
