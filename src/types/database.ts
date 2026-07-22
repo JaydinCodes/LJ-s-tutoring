@@ -12,6 +12,7 @@ import type {
   ParentProgressReportRow,
   Payment,
   PayPeriodRecord,
+  PrivacyRequestRecord,
   Profile,
   SessionHistoryRecord,
   SessionRecord,
@@ -64,6 +65,7 @@ export interface Database {
       adjustments: Table<AdjustmentRecord, never, never>;
       invoices: Table<InvoiceRecord, never, never>;
       invoice_lines: Table<InvoiceLineRecord, never, never>;
+      privacy_requests: Table<PrivacyRequestRecord, Omit<PrivacyRequestRecord, 'id' | 'status' | 'result' | 'created_at' | 'updated_at'>, never>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -167,6 +169,14 @@ export interface Database {
       };
       get_pay_period_integrity: {
         Args: { p_week_start: string };
+        Returns: unknown;
+      };
+      process_privacy_request: {
+        Args: { p_request_id: string };
+        Returns: Record<string, unknown>;
+      };
+      run_retention_cleanup: {
+        Args: { p_apply?: boolean };
         Returns: unknown;
       };
     };

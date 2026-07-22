@@ -3,11 +3,12 @@ import { useMemo, useState } from 'react';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
-import { FormField, TextArea, TextInput } from '../../components/ui/FormField';
+import { FormField, TextInput } from '../../components/ui/FormField';
 import { InlineFeedback, InlineLoadingState, RetryButton } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatDate } from '../../lib/utils/format';
+import type { PrivacyRequestType } from '../../types/lms';
 import {
   approveSession,
   closePrivacyRequest,
@@ -275,8 +276,7 @@ export function AdminOpsRunbookRoute() {
 }
 
 function CreatePrivacyRequestForm({ onSaved }: { onSaved: () => Promise<void> }) {
-  const [requestType, setRequestType] = useState('EXPORT');
-  const [subjectType, setSubjectType] = useState('STUDENT');
+  const [requestType, setRequestType] = useState<PrivacyRequestType>('access');
   const [subjectId, setSubjectId] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -285,7 +285,7 @@ function CreatePrivacyRequestForm({ onSaved }: { onSaved: () => Promise<void> })
     event.preventDefault();
     setError(null);
     try {
-      await createPrivacyRequest({ requestType, subjectType, subjectId, reason: reason || undefined });
+      await createPrivacyRequest({ requestType, subjectId, reason: reason || undefined });
       setSubjectId('');
       setReason('');
       await onSaved();
@@ -297,21 +297,16 @@ function CreatePrivacyRequestForm({ onSaved }: { onSaved: () => Promise<void> })
   return (
     <Card>
       <h2 className="text-xl font-semibold text-slate-950">Create privacy request</h2>
+      <p className="mt-1 text-sm text-slate-600">Student subjects only -- there is no tutor-subject request path.</p>
       <form className="mt-4 grid gap-4 lg:grid-cols-2" onSubmit={(event) => void submit(event)}>
         <FormField label="Request type">
-          <select className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={requestType} onChange={(event) => setRequestType(event.target.value)}>
-            <option value="EXPORT">Export</option>
-            <option value="CORRECTION">Correction</option>
-            <option value="DELETE">Delete</option>
+          <select className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={requestType} onChange={(event) => setRequestType(event.target.value as PrivacyRequestType)}>
+            <option value="access">Export (access)</option>
+            <option value="correction">Correction</option>
+            <option value="deletion">Deletion</option>
           </select>
         </FormField>
-        <FormField label="Subject type">
-          <select className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={subjectType} onChange={(event) => setSubjectType(event.target.value)}>
-            <option value="STUDENT">Student</option>
-            <option value="TUTOR">Tutor</option>
-          </select>
-        </FormField>
-        <FormField label="Subject ID"><TextInput required value={subjectId} onChange={(event) => setSubjectId(event.target.value)} /></FormField>
+        <FormField label="Student ID"><TextInput required value={subjectId} onChange={(event) => setSubjectId(event.target.value)} /></FormField>
         <FormField label="Reason"><TextInput value={reason} onChange={(event) => setReason(event.target.value)} /></FormField>
         <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
           <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" type="submit">Create request</button>
@@ -323,17 +318,19 @@ function CreatePrivacyRequestForm({ onSaved }: { onSaved: () => Promise<void> })
 }
 
 function PrivacyRequestCard({ request, onClosed }: { request: PrivacyRequest; onClosed: () => Promise<void> }) {
-  const [outcome, setOutcome] = useState(request.outcome || '');
-  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function close() {
+  async function process() {
+    setBusy(true);
     setError(null);
     try {
-      await closePrivacyRequest(request.id, { outcome: outcome || undefined, note: note || undefined });
+      await closePrivacyRequest(request.id);
       await onClosed();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not close privacy request.');
+      setError(err instanceof Error ? err.message : 'Could not process privacy request.');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -341,20 +338,23 @@ function PrivacyRequestCard({ request, onClosed }: { request: PrivacyRequest; on
     <article className="rounded-lg border border-slate-200 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="font-semibold text-slate-950">{request.request_type} | {request.subject_type}</h3>
-          <p className="mt-1 break-all text-sm text-slate-600">{request.subject_id}</p>
+          <h3 className="font-semibold text-slate-950">{request.request_type}</h3>
+          <p className="mt-1 break-all text-sm text-slate-600">{request.subject_student_name || request.subject_student_id}</p>
         </div>
         <StatusBadge value={request.status} />
       </div>
       <p className="mt-3 text-sm text-slate-600">Created {formatDate(request.created_at)}. {request.reason || 'No reason supplied.'}</p>
-      {request.status !== 'CLOSED' ? (
+      {request.status !== 'approved' ? (
         <div className="mt-4 grid gap-3">
-          <FormField label="Outcome"><TextInput value={outcome} onChange={(event) => setOutcome(event.target.value)} /></FormField>
-          <FormField label="Close note"><TextArea value={note} onChange={(event) => setNote(event.target.value)} /></FormField>
-          <button className="w-fit rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" type="button" onClick={() => void close()}>Close request</button>
+          <p className="text-sm text-slate-600">Processing runs the real export/correction/deletion action immediately -- there is no separate "close without action" step.</p>
+          <button disabled={busy} className="w-fit rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" type="button" onClick={() => void process()}>
+            {busy ? 'Processing...' : 'Process request'}
+          </button>
           {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
         </div>
-      ) : null}
+      ) : (
+        <JsonPanel title="Result" data={request.result} />
+      )}
     </article>
   );
 }

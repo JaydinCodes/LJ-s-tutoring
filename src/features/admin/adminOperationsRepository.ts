@@ -1,7 +1,7 @@
-import { apiGet, apiPost } from '../../lib/api/client';
+import { apiGet } from '../../lib/api/client';
 import { isSupabaseConfigured, requireSupabase, supabase } from '../../lib/supabase/client';
 import { callRpc } from '../../lib/supabase/rpc';
-import type { AuditLogEntry, Profile, SessionRecord, Student, Tutor } from '../../types/lms';
+import type { AuditLogEntry, PrivacyRequestRecord, PrivacyRequestType, Profile, SessionRecord, Student, Tutor } from '../../types/lms';
 
 export interface AdminSession {
   id: string;
@@ -46,16 +46,20 @@ export interface AdminSessionList {
   };
 }
 
+// Student subjects only -- the Supabase schema has no tutor-subject path (see
+// process_privacy_request() in docs/supabase/schema.sql, which raises if
+// subject_student_id is null). "Closing" a request always runs the real
+// export/anonymize action; there is no separate manual-close-with-a-note path.
 export interface PrivacyRequest {
   id: string;
-  request_type: string;
-  subject_type: string;
-  subject_id: string;
+  request_type: PrivacyRequestType;
+  subject_student_id: string;
+  subject_student_name?: string;
   reason?: string | null;
   status: string;
-  outcome?: string | null;
+  result: Record<string, unknown>;
   created_at: string;
-  closed_at?: string | null;
+  updated_at: string;
 }
 
 export interface AuditEntry {
@@ -70,7 +74,6 @@ export interface AuditEntry {
 }
 
 export interface RetentionSummary {
-  config: Record<string, unknown>;
   cutoffs: Record<string, string>;
   eligible: Record<string, number>;
   latestEvent?: {
@@ -168,20 +171,99 @@ export async function rejectSession(sessionId: string, reason?: string): Promise
   return { session: mapAdminSessionRow(session) };
 }
 
-export function loadPrivacyRequests(status = '') {
-  const params = new URLSearchParams();
-  if (status) {
-    params.set('status', status);
+// UI keeps Fastify's OPEN/CLOSED filter labels; Supabase's record_status
+// distinguishes 'pending' (open, not yet processed) from 'approved' (a
+// request that has run its export/correction/deletion and closed).
+const PRIVACY_STATUS_FILTER: Record<string, string> = { OPEN: 'pending', CLOSED: 'approved' };
+
+function mapPrivacyRequest(row: PrivacyRequestRecord, studentName?: string): PrivacyRequest {
+  return {
+    id: row.id,
+    request_type: row.request_type,
+    subject_student_id: row.subject_student_id,
+    subject_student_name: studentName,
+    reason: row.notes,
+    status: row.status,
+    result: row.result,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+export async function loadPrivacyRequests(status = ''): Promise<{ requests: PrivacyRequest[]; total: number }> {
+  const client = requireSupabase();
+  let query = client.from('privacy_requests').select('*', { count: 'exact' }).order('created_at', { ascending: false });
+  const mappedStatus = PRIVACY_STATUS_FILTER[status];
+  if (mappedStatus) {
+    query = query.eq('status', mappedStatus);
   }
-  return apiGet<{ requests: PrivacyRequest[]; total: number }>(`/admin/privacy-requests?${params.toString()}`);
+
+  const result = await query;
+  if (result.error) {
+    throw result.error;
+  }
+  const rows = (result.data || []) as PrivacyRequestRecord[];
+
+  const studentIds = Array.from(new Set(rows.map((row) => row.subject_student_id).filter(Boolean)));
+  const studentsResult = studentIds.length
+    ? await client.from('students').select('*').in('id', studentIds)
+    : { data: [], error: null };
+  if (studentsResult.error) {
+    throw studentsResult.error;
+  }
+  const students = (studentsResult.data || []) as Student[];
+  const profileIds = Array.from(new Set(students.map((student) => student.profile_id).filter(Boolean)));
+  const profilesResult = profileIds.length
+    ? await client.from('profiles').select('*').in('id', profileIds)
+    : { data: [], error: null };
+  if (profilesResult.error) {
+    throw profilesResult.error;
+  }
+  const profileById = new Map(((profilesResult.data || []) as Profile[]).map((profile) => [profile.id, profile]));
+  const studentNameById = new Map(students.map((student) => [student.id, profileById.get(student.profile_id)?.full_name || student.id]));
+
+  return {
+    requests: rows.map((row) => mapPrivacyRequest(row, studentNameById.get(row.subject_student_id))),
+    total: result.count ?? rows.length,
+  };
 }
 
-export function createPrivacyRequest(input: { requestType: string; subjectType: string; subjectId: string; reason?: string }) {
-  return apiPost<{ request: PrivacyRequest }>('/admin/privacy-requests', input);
+export async function createPrivacyRequest(input: { requestType: PrivacyRequestType; subjectId: string; reason?: string }): Promise<{ request: PrivacyRequest }> {
+  const client = requireSupabase();
+
+  const { data: auth } = await client.auth.getUser();
+  const authUserId = auth.user?.id;
+  const requestingProfile = authUserId
+    ? ((await client.from('profiles').select('*').eq('auth_user_id', authUserId).single()).data as Profile | null)
+    : null;
+
+  const result = await (client.from('privacy_requests') as unknown as {
+    insert: (payload: {
+      subject_student_id: string;
+      request_type: PrivacyRequestType;
+      notes: string | null;
+      requested_by: string | null;
+    }) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
+  }).insert({
+    subject_student_id: input.subjectId,
+    request_type: input.requestType,
+    notes: input.reason ?? null,
+    requested_by: requestingProfile?.id ?? null,
+  }).select('*').single();
+  if (result.error) {
+    throw result.error;
+  }
+  return { request: mapPrivacyRequest(result.data as PrivacyRequestRecord) };
 }
 
-export function closePrivacyRequest(requestId: string, input: { outcome?: string; note?: string }) {
-  return apiPost<{ request: PrivacyRequest }>(`/admin/privacy-requests/${requestId}/close`, input);
+export async function closePrivacyRequest(requestId: string): Promise<{ request: PrivacyRequest }> {
+  const client = requireSupabase();
+  await callRpc(client, 'process_privacy_request', { p_request_id: requestId });
+  const result = await client.from('privacy_requests').select('*').eq('id', requestId).single();
+  if (result.error) {
+    throw result.error;
+  }
+  return { request: mapPrivacyRequest(result.data as PrivacyRequestRecord) };
 }
 
 export async function loadAuditEntries(params: URLSearchParams) {
@@ -192,8 +274,39 @@ export async function loadAuditEntries(params: URLSearchParams) {
   return apiGet<AuditList>(`/admin/audit?${params.toString()}`);
 }
 
-export function loadRetentionSummary() {
-  return apiGet<RetentionSummary>('/admin/retention/summary');
+export async function loadRetentionSummary(): Promise<RetentionSummary> {
+  const client = requireSupabase();
+  const raw = await callRpc(client, 'run_retention_cleanup', { p_apply: false }) as unknown as {
+    as_of: string;
+    windows_years: Record<string, number>;
+    eligible: Record<string, number>;
+  };
+
+  // run_retention_cleanup() returns window LENGTHS (years), not cutoff dates --
+  // derive the same cutoffs it computes internally from as_of, so the UI can
+  // show actual dates without a second RPC.
+  const asOf = new Date(raw.as_of);
+  const cutoffs: Record<string, string> = {};
+  for (const [key, years] of Object.entries(raw.windows_years)) {
+    const cutoff = new Date(asOf);
+    cutoff.setFullYear(cutoff.getFullYear() - years);
+    cutoffs[key] = cutoff.toISOString();
+  }
+
+  const latestEventResult = await client
+    .from('audit_log')
+    .select('*')
+    .eq('action', 'retention.cleanup_applied')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const latestRow = latestEventResult.data as AuditLogEntry | null;
+
+  return {
+    cutoffs,
+    eligible: raw.eligible,
+    latestEvent: latestRow ? { id: latestRow.id, ranAt: latestRow.created_at, summary: latestRow.metadata } : null,
+  };
 }
 
 async function loadSupabaseAuditEntries(params: URLSearchParams): Promise<AuditList | null> {
