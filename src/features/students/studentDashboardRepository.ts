@@ -101,8 +101,14 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
   const submissions = (submissionsResult.data || []) as AssignmentSubmission[];
   const allocations = (allocationsResult.data || []) as TutorStudentAllocation[];
   const tutorIds = allocations.map((allocation) => allocation.tutor_id);
+  // Explicit column list (NOT select('*')): tutors now carries approval/qualification
+  // vetting fields (approval_status, approval_note, qualification_band, ...) that must
+  // never reach a student's own dashboard response -- approval_note in particular can
+  // carry a reviewer's internal commentary about the tutor. See the EXPOSURE NOTE in
+  // docs/supabase/schema.sql. This is exactly the original (pre-vetting-migration)
+  // column set.
   const tutorsResult = tutorIds.length
-    ? await supabase.from('tutors').select('*').in('id', tutorIds)
+    ? await supabase.from('tutors').select('id, profile_id, subjects, grades, hourly_rate, status, created_at').in('id', tutorIds)
     : { data: [], error: null };
   const tutors = (tutorsResult.data || []) as Tutor[];
   const tutorProfileIds = Array.from(new Set(tutors.map((tutor) => tutor.profile_id).filter(Boolean)));
