@@ -309,6 +309,29 @@ export interface StudentSessionRow {
   status: SessionStatus;
 }
 
+// Supabase generate_weekly_report() payload_json shape (see docs/supabase/schema.sql).
+// Deliberately has no `summary`/`topics`/`assignmentHighlights`/`nextBestStep` fields --
+// those were read by the pre-migration UI but never actually existed in either the
+// old Fastify payload or this one; see WeeklyReportDetail/ReportDetail for the fix.
+export interface WeeklyReportPayload {
+  student: { id: string; name: string; grade?: string | null };
+  week: { start: string; end: string };
+  metrics: { sessionsAttended: number; timeStudiedMinutes: number };
+  topicProgress: Array<{ subject: string; topic: string; completion: number }>;
+  tutorNotesSummary: string[];
+  goalsNextWeek: string[];
+}
+
+export interface WeeklyReportRecord {
+  id: string;
+  student_id: string;
+  week_start: string;
+  week_end: string;
+  payload_json: WeeklyReportPayload;
+  created_by?: string | null;
+  created_at: string;
+}
+
 export interface DashboardMetric {
   label: string;
   value: string;

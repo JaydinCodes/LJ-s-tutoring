@@ -270,15 +270,41 @@ function SessionReportPanel({ session, onSaved }: { session: TutorSession | null
 }
 
 function ReportDetail({ report }: { report: TutorWeeklyReport }) {
-  const payload = report.payload || {};
+  const payload = report.payload;
   return (
-    <dl className="mt-4 grid gap-3 text-sm">
-      <DetailLine label="Week" value={`${formatDate(report.weekStart || report.week_start)} - ${formatDate(report.weekEnd || report.week_end)}`} />
-      <DetailLine label="Generated" value={formatDate(report.createdAt || report.created_at)} />
-      <DetailLine label="Sessions" value={String(payload.sessionsAttended ?? 0)} />
-      <DetailLine label="Minutes" value={String(payload.minutesStudied ?? 0)} />
-      {payload.summary ? <p className="rounded-lg bg-slate-50 p-4 leading-6 text-slate-700">{payload.summary}</p> : null}
-    </dl>
+    <div className="mt-4 space-y-4">
+      <dl className="grid gap-3 text-sm">
+        <DetailLine label="Week" value={`${formatDate(report.weekStart || report.week_start)} - ${formatDate(report.weekEnd || report.week_end)}`} />
+        <DetailLine label="Generated" value={formatDate(report.createdAt || report.created_at)} />
+        <DetailLine label="Sessions" value={String(payload?.metrics.sessionsAttended ?? 0)} />
+        <DetailLine label="Minutes" value={String(payload?.metrics.timeStudiedMinutes ?? 0)} />
+      </dl>
+      {(payload?.topicProgress || []).map((item, index) => (
+        <p key={`${item.subject}-${item.topic}-${index}`} className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+          {item.subject} — {item.topic}: {item.completion}%
+        </p>
+      ))}
+      {(payload?.tutorNotesSummary || []).length ? (
+        <div>
+          <p className="text-sm font-semibold text-slate-950">Tutor notes this week</p>
+          <ul className="mt-2 space-y-2 text-sm text-slate-600">
+            {(payload?.tutorNotesSummary || []).map((note, index) => (
+              <li key={index} className="rounded-lg bg-slate-50 p-3">{note}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {(payload?.goalsNextWeek || []).length ? (
+        <div>
+          <p className="text-sm font-semibold text-slate-950">Goals for next week</p>
+          <ul className="mt-2 space-y-2 text-sm text-slate-600">
+            {(payload?.goalsNextWeek || []).map((goal, index) => (
+              <li key={index} className="rounded-lg bg-slate-50 p-3">{goal}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

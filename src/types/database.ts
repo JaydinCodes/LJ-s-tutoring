@@ -20,6 +20,7 @@ import type {
   TutorPayment,
   TutorStudentAllocation,
   AuditLogEntry,
+  WeeklyReportRecord,
 } from './lms';
 
 type Table<Row, Insert, Update> = {
@@ -51,6 +52,7 @@ export interface Database {
       tutor_student_allocations: Table<TutorStudentAllocation, Omit<TutorStudentAllocation, 'id' | 'created_at' | 'updated_at'>, Partial<TutorStudentAllocation>>;
       sessions: Table<SessionRecord, never, never>;
       session_history: Table<SessionHistoryRecord, never, never>;
+      weekly_reports: Table<WeeklyReportRecord, never, never>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -124,6 +126,10 @@ export interface Database {
       get_student_sessions: {
         Args: Record<string, never>;
         Returns: StudentSessionRow[];
+      };
+      generate_weekly_report: {
+        Args: { p_student_id: string; p_week_start: string };
+        Returns: WeeklyReportRecord;
       };
     };
     Enums: Record<string, never>;
