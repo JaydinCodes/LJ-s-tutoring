@@ -165,6 +165,11 @@ create table if not exists public.audit_log (
   created_at timestamptz not null default now()
 );
 
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file).
+alter table public.audit_log add column if not exists metadata jsonb not null default '{}'::jsonb;
+
 -- Guarded ALTER (idempotent, matching the privacy_request_type enum guard
 -- pattern): alter table ... add constraint has no native IF NOT EXISTS.
 do $$
@@ -1538,6 +1543,16 @@ create table if not exists public.privacy_requests (
   updated_at timestamptz not null default now()
 );
 
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file).
+alter table public.privacy_requests add column if not exists subject_student_id uuid references public.students(id) on delete set null;
+alter table public.privacy_requests add column if not exists subject_profile_id uuid references public.profiles(id) on delete set null;
+alter table public.privacy_requests add column if not exists requested_by uuid references public.profiles(id);
+alter table public.privacy_requests add column if not exists notes text;
+alter table public.privacy_requests add column if not exists result jsonb not null default '{}'::jsonb;
+alter table public.privacy_requests add column if not exists updated_at timestamptz not null default now();
+
 create index if not exists idx_privacy_requests_subject_student
   on public.privacy_requests(subject_student_id);
 create index if not exists idx_privacy_requests_status
@@ -2540,6 +2555,15 @@ create table if not exists public.sessions (
   constraint sessions_report_review_note_len check (report_review_note is null or char_length(report_review_note) <= 3000)
 );
 
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file). Safe as NOT NULL
+-- with no default: if these columns didn't exist, no insert into sessions
+-- (via create_session, which requires organization_id/tutor_student_allocation_id)
+-- could ever have succeeded, so there are no real rows to violate the constraint.
+alter table public.sessions add column if not exists organization_id uuid not null references public.organizations(id);
+alter table public.sessions add column if not exists tutor_student_allocation_id uuid not null references public.tutor_student_allocations(id);
+
 -- Append-only audit trail, mirroring the audit_log immutability pattern:
 -- admin-only SELECT, no direct writes for anyone, rows created ONLY via the
 -- SECURITY DEFINER insert_session_history() helper (execute revoked below).
@@ -2553,6 +2577,11 @@ create table if not exists public.session_history (
   created_at timestamptz not null default now(),
   constraint session_history_change_type_check check (change_type in ('create', 'edit', 'report_update', 'submit', 'approve', 'reject'))
 );
+
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file).
+alter table public.session_history add column if not exists changed_by_profile_id uuid references public.profiles(id);
 
 create index if not exists idx_sessions_tutor_date on public.sessions(tutor_id, date);
 create index if not exists idx_sessions_student_date on public.sessions(student_id, date desc, start_time desc);
@@ -3438,6 +3467,12 @@ create table if not exists public.pay_periods (
   created_at timestamptz not null default now()
 );
 
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file).
+alter table public.pay_periods add column if not exists locked_by uuid references public.profiles(id);
+alter table public.pay_periods add column if not exists created_at timestamptz not null default now();
+
 -- adjustments: admin-created-and-approved-in-one-step signed corrections to a
 -- tutor's pay for a period. `amount` is always a positive magnitude (check
 -- amount > 0, mirroring Fastify's Zod .positive()); the sign is applied at
@@ -3462,6 +3497,15 @@ create table if not exists public.adjustments (
   void_reason text,
   related_session_id uuid references public.sessions(id)
 );
+
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file). created_by is
+-- safe as NOT NULL with no default because this table has no frontend yet
+-- and no real rows.
+alter table public.adjustments add column if not exists approved_by uuid references public.profiles(id);
+alter table public.adjustments add column if not exists voided_by uuid references public.profiles(id);
+alter table public.adjustments add column if not exists created_by uuid not null references public.profiles(id);
 
 -- invoices: one per tutor per generated payroll week. invoice_number is UNIQUE
 -- and follows the exact Fastify format 'INV-' || weekStart-no-dashes || '-' ||
@@ -4022,6 +4066,22 @@ create table if not exists public.weekly_reports (
   unique (student_id, week_start, week_end)
 );
 
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file). Safe as NOT NULL
+-- with no default because this table has no frontend yet and no real rows.
+-- The unique constraint is also re-added here since it was only ever defined
+-- inline in CREATE TABLE, which is a no-op against a pre-existing table.
+alter table public.weekly_reports add column if not exists created_by uuid references public.profiles(id);
+alter table public.weekly_reports add column if not exists student_id uuid not null references public.students(id) on delete cascade;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'weekly_reports_student_id_week_start_week_end_key') then
+    alter table public.weekly_reports add constraint weekly_reports_student_id_week_start_week_end_key unique (student_id, week_start, week_end);
+  end if;
+end
+$$;
+
 create index if not exists idx_weekly_reports_student_created on public.weekly_reports(student_id, created_at desc);
 
 -- student_notifications: faithful port of the raw Prisma migration
@@ -4046,6 +4106,11 @@ create table if not exists public.student_notifications (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file).
+alter table public.student_notifications add column if not exists created_by uuid references public.profiles(id);
 
 create index if not exists idx_student_notifications_student_created on public.student_notifications(student_id, created_at desc);
 create index if not exists idx_student_notifications_student_read on public.student_notifications(student_id, is_read, created_at desc);
@@ -5101,6 +5166,22 @@ create table if not exists public.student_score_snapshots (
   unique (student_id, score_date)
 );
 
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file). Safe as NOT NULL
+-- with no default because this table has no frontend yet and no real rows.
+-- The unique constraint is also re-added here since it was only ever defined
+-- inline in CREATE TABLE, which is a no-op against a pre-existing table.
+alter table public.student_score_snapshots add column if not exists organization_id uuid not null references public.organizations(id);
+alter table public.student_score_snapshots add column if not exists student_id uuid not null references public.students(id) on delete cascade;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'student_score_snapshots_student_id_score_date_key') then
+    alter table public.student_score_snapshots add constraint student_score_snapshots_student_id_score_date_key unique (student_id, score_date);
+  end if;
+end
+$$;
+
 create index if not exists idx_student_score_snapshots_student_date on public.student_score_snapshots(student_id, score_date desc);
 create index if not exists idx_student_score_snapshots_organization on public.student_score_snapshots(organization_id);
 
@@ -5118,6 +5199,13 @@ create table if not exists public.career_progress_snapshots (
   constraint career_progress_snapshots_reasons_array check (jsonb_typeof(reasons_json) = 'array'),
   constraint career_progress_snapshots_metrics_object check (jsonb_typeof(metrics_json) = 'object')
 );
+
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file). Safe as NOT NULL
+-- with no default because this table has no frontend yet and no real rows.
+alter table public.career_progress_snapshots add column if not exists organization_id uuid not null references public.organizations(id);
+alter table public.career_progress_snapshots add column if not exists student_id uuid not null references public.students(id) on delete cascade;
 
 create index if not exists idx_career_progress_snapshots_student_goal on public.career_progress_snapshots(student_id, goal_id, created_at desc);
 create index if not exists idx_career_progress_snapshots_organization on public.career_progress_snapshots(organization_id);
@@ -5815,6 +5903,13 @@ create table if not exists public.baseline_assessments (
   constraint baseline_assessments_steps_array check (jsonb_typeof(recommended_next_steps_json) = 'array')
 );
 
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file). Safe as NOT NULL
+-- with no default because this table has no frontend yet and no real rows.
+alter table public.baseline_assessments add column if not exists created_by uuid references public.profiles(id);
+alter table public.baseline_assessments add column if not exists organization_id uuid not null references public.organizations(id);
+
 create index if not exists idx_baseline_assessments_student_completed on public.baseline_assessments(student_id, completed_at desc);
 create index if not exists idx_baseline_assessments_subject_grade on public.baseline_assessments(subject, grade, completed_at desc);
 create index if not exists idx_baseline_assessments_organization on public.baseline_assessments(organization_id);
@@ -5838,6 +5933,13 @@ create table if not exists public.learning_goals (
   updated_at timestamptz not null default now()
 );
 
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file). Safe as NOT NULL
+-- with no default because this table has no frontend yet and no real rows.
+alter table public.learning_goals add column if not exists created_by uuid references public.profiles(id);
+alter table public.learning_goals add column if not exists organization_id uuid not null references public.organizations(id);
+
 create index if not exists idx_learning_goals_student_status_due on public.learning_goals(student_id, status, due_date);
 create index if not exists idx_learning_goals_category_status on public.learning_goals(category, status);
 create index if not exists idx_learning_goals_organization on public.learning_goals(organization_id);
@@ -5853,6 +5955,13 @@ create table if not exists public.student_exam_events (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file). Safe as NOT NULL
+-- with no default because this table has no frontend yet and no real rows.
+alter table public.student_exam_events add column if not exists created_by uuid references public.profiles(id);
+alter table public.student_exam_events add column if not exists organization_id uuid not null references public.organizations(id);
 
 create index if not exists idx_student_exam_events_student_date on public.student_exam_events(student_id, exam_date);
 create index if not exists idx_student_exam_events_organization on public.student_exam_events(organization_id);
@@ -5874,6 +5983,11 @@ create table if not exists public.volunteer_events (
   updated_at timestamptz not null default now(),
   constraint volunteer_events_mode_len check (char_length(mode) between 1 and 40)
 );
+
+-- Backfill for a database where this table was partially created by an
+-- earlier, interrupted migration attempt (same reasoning as the
+-- assignment_submissions backfill elsewhere in this file).
+alter table public.volunteer_events add column if not exists created_by uuid references public.profiles(id);
 
 create index if not exists idx_volunteer_events_date on public.volunteer_events(event_date desc nulls last, created_at desc);
 
