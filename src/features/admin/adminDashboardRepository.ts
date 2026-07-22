@@ -2,6 +2,7 @@ import { formatCurrency } from '../../lib/utils/format';
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2EAdminDashboard } from '../../lib/e2e/mockRoleData';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+import { resolveSignedUrls } from '../../lib/supabase/storage';
 import type { AdminDashboardView, Assignment, AssignmentSubmission, Guardian, NgoPartner, Payment, Profile, Student, StudentGuardian, Tutor, TutorPayment } from '../../types/lms';
 
 // Single-stack migration: the legacy /admin/dashboard API is retired. When
@@ -66,6 +67,10 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
     : { data: [], error: null };
   const profiles = (profilesResult.data || []) as Profile[];
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+  // assignment-submissions is a private bucket -- resolve the stored path to a
+  // short-lived signed URL so admins can actually open the file (see
+  // src/lib/supabase/storage.ts).
+  const submissionUrlByPath = await resolveSignedUrls(supabase, 'assignment-submissions', submissions.map((submission) => submission.file_url));
   const outstanding = payments.filter((item) => item.status !== 'paid').reduce((total, item) => total + Number(item.amount || 0), 0);
   const assignmentTitleById = new Map(assignments.map((assignment) => [assignment.id, assignment.title]));
   const studentNameById = new Map(students.map((student) => [student.id, [student.grade, student.school].filter(Boolean).join(' | ') || student.id]));
@@ -107,6 +112,7 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
       ...submission,
       assignment_title: assignmentTitleById.get(submission.assignment_id),
       student_name: studentNameById.get(submission.student_id),
+      file_url: (submission.file_url && submissionUrlByPath.get(submission.file_url)) || submission.file_url,
     })),
     payments: payments.map((payment) => ({
       ...payment,
