@@ -364,7 +364,13 @@ services:
     github:
       repo: JaydinCodes/LJ-s-tutoring
       branch: main
-      deploy_on_push: true
+      # Deliberately false, not synced from this file automatically (the live
+      # app spec is managed via the DO API/dashboard) -- lms-api is being
+      # retired domain-by-domain in favor of Supabase, and a legacy service
+      # that no longer needs routine changes must not gate frontend deploys
+      # of an unrelated static site sharing this same App. Trigger a deploy
+      # for lms-api manually (or via the API) when it genuinely needs one.
+      deploy_on_push: false
     source_dir: lms-api
     dockerfile_path: lms-api/Dockerfile
     http_port: 3001
