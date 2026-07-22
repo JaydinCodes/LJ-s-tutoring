@@ -37,3 +37,10 @@ enable_signup = true
 [auth.email]
 enable_signup = true
 enable_confirmations = false
+
+# Disabled: the local analytics (Logflare) sidecar container fails its health
+# check on Windows without a TCP-exposed Docker daemon (a documented Supabase
+# CLI limitation, not specific to this project) and isn't needed for local
+# dev/RLS testing.
+[analytics]
+enabled = false

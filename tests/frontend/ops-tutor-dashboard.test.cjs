@@ -15,7 +15,7 @@ test('OPS-04 tutor dashboard is an allocation-scoped operations cockpit', () => 
   const types = read('src/types/lms.ts');
 
   assert.match(repository, /from\('tutor_student_allocations'\)\.select\('\*'\)\.eq\('tutor_id', tutor\.id\)\.eq\('status', 'active'\)/);
-  assert.match(repository, /loadTutorSessions\(\)\.catch\(\(\) => \(\{ sessions: \[\] as TutorSession\[\] \}\)\)/);
+  assert.match(repository, /loadTutorSessions\(\),/);
   assert.match(repository, /markingQueue = enrichedSubmissions\.filter/);
   assert.match(repository, /learnerProgress: allocations\.map/);
   assert.match(repository, /pending_submissions:/);
@@ -41,5 +41,5 @@ test('OPS-04 tutor dashboard preserves deeper tutor workflows', () => {
   assert.match(route, /href="\/dashboard\/tutor\/classes"/);
   assert.match(route, /href="\/dashboard\/tutor\/reports"/);
   assert.match(route, /TutorSubmissionReviewCard/);
-  assert.match(route, /Session records are loaded from the transitional tutor operations API/);
+  assert.match(route, /Session records are loaded directly from Supabase/);
 });
