@@ -1,12 +1,17 @@
 import type {
+  AdjustmentRecord,
+  AdjustmentType,
   Assignment,
   AssignmentSubmission,
   ClassEnrollment,
   ClassRecord,
   Guardian,
+  InvoiceLineRecord,
+  InvoiceRecord,
   NgoPartner,
   ParentProgressReportRow,
   Payment,
+  PayPeriodRecord,
   Profile,
   SessionHistoryRecord,
   SessionRecord,
@@ -55,6 +60,10 @@ export interface Database {
       session_history: Table<SessionHistoryRecord, never, never>;
       weekly_reports: Table<WeeklyReportRecord, never, never>;
       student_score_snapshots: Table<StudentScoreSnapshotRecord, never, never>;
+      pay_periods: Table<PayPeriodRecord, never, never>;
+      adjustments: Table<AdjustmentRecord, never, never>;
+      invoices: Table<InvoiceRecord, never, never>;
+      invoice_lines: Table<InvoiceLineRecord, never, never>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -132,6 +141,33 @@ export interface Database {
       generate_weekly_report: {
         Args: { p_student_id: string; p_week_start: string };
         Returns: WeeklyReportRecord;
+      };
+      generate_payroll_week: {
+        Args: { p_week_start: string };
+        Returns: InvoiceRecord[];
+      };
+      lock_pay_period: {
+        Args: { p_week_start: string };
+        Returns: PayPeriodRecord;
+      };
+      create_adjustment: {
+        Args: {
+          p_tutor_id: string;
+          p_type: AdjustmentType;
+          p_amount: number;
+          p_reason: string;
+          p_related_session_id: string | null;
+          p_week_start: string;
+        };
+        Returns: AdjustmentRecord;
+      };
+      void_adjustment: {
+        Args: { p_adjustment_id: string; p_reason: string | null };
+        Returns: AdjustmentRecord;
+      };
+      get_pay_period_integrity: {
+        Args: { p_week_start: string };
+        Returns: unknown;
       };
     };
     Enums: Record<string, never>;
