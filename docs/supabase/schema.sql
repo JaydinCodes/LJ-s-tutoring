@@ -2754,7 +2754,19 @@ begin
   where id = p_session_id and tutor_id = v_tutor_id
   returning * into v_updated;
 
-  -- Notification dispatch deferred to the notifications migration (gap 2).
+  -- Notification dispatch (wired up by the weekly-reports/notifications
+  -- migration -- closes the gap-2 loop the sessions migration left open). Mirrors
+  -- Fastify's createStudentNotification on PATCH /tutor/sessions/:id/report.
+  perform public.create_student_notification(
+    v_current.student_id,
+    'session_report_updated',
+    'Session summary updated',
+    'Your tutor added notes and learning feedback for the latest session.',
+    '/dashboard/',
+    'session',
+    p_session_id,
+    '{}'::jsonb
+  );
   perform public.insert_session_history(p_session_id, 'report_update', to_jsonb(v_current), to_jsonb(v_updated));
   return v_updated;
 end;
@@ -2803,7 +2815,19 @@ begin
   where id = p_session_id
   returning * into v_updated;
 
-  -- Notification dispatch deferred to the notifications migration (gap 2).
+  -- Notification dispatch (wired up by the weekly-reports/notifications
+  -- migration -- closes the gap-2 loop the sessions migration left open). Mirrors
+  -- Fastify's createStudentNotification on POST /tutor/sessions/:id/submit.
+  perform public.create_student_notification(
+    v_current.student_id,
+    'session_report_submitted',
+    'Session notes submitted',
+    'Your tutor submitted the latest session summary for review.',
+    '/dashboard/',
+    'session',
+    p_session_id,
+    '{}'::jsonb
+  );
   perform public.insert_session_history(p_session_id, 'submit', to_jsonb(v_current), to_jsonb(v_updated));
   return v_updated;
 end;
@@ -2822,6 +2846,7 @@ as $$
 declare
   v_current public.sessions%rowtype;
   v_updated public.sessions%rowtype;
+  v_subject text;
 begin
   if not public.is_platform_admin() then
     raise exception 'forbidden' using errcode = '42501';
@@ -2858,7 +2883,26 @@ begin
   where id = p_session_id
   returning * into v_updated;
 
-  -- Notification dispatch deferred to the notifications migration (gap 2).
+  -- Notification dispatch (wired up by the weekly-reports/notifications
+  -- migration -- closes the gap-2 loop the sessions migration left open). Mirrors
+  -- Fastify's createStudentNotification on POST /admin/sessions/:id/approve.
+  -- Fastify read the subject from the old assignments join; in Supabase it is
+  -- resolved via the session's allocation -> subject_id -> subjects.name, falling
+  -- back to 'Your session' (the exact `row.subject || 'Your session'` behaviour).
+  select subj.name into v_subject
+  from public.tutor_student_allocations alloc
+  left join public.subjects subj on subj.id = alloc.subject_id
+  where alloc.id = v_current.tutor_student_allocation_id;
+  perform public.create_student_notification(
+    v_current.student_id,
+    'session_approved',
+    'Session approved',
+    coalesce(v_subject, 'Your session') || ' on ' || v_current.date::text || ' was approved.',
+    '/dashboard/',
+    'session',
+    p_session_id,
+    '{}'::jsonb
+  );
   perform public.insert_session_history(p_session_id, 'approve', to_jsonb(v_current), to_jsonb(v_updated));
   return v_updated;
 end;
@@ -2878,6 +2922,7 @@ declare
   v_current public.sessions%rowtype;
   v_updated public.sessions%rowtype;
   v_reason text := nullif(btrim(coalesce(p_reason, '')), '');
+  v_subject text;
 begin
   if not public.is_platform_admin() then
     raise exception 'forbidden' using errcode = '42501';
@@ -2907,7 +2952,25 @@ begin
   where id = p_session_id
   returning * into v_updated;
 
-  -- Notification dispatch deferred to the notifications migration (gap 2).
+  -- Notification dispatch (wired up by the weekly-reports/notifications
+  -- migration -- closes the gap-2 loop the sessions migration left open). Mirrors
+  -- Fastify's createStudentNotification on POST /admin/sessions/:id/reject, with
+  -- the same allocation -> subject_id -> subjects.name subject resolution and
+  -- 'Your session' fallback as approve_session.
+  select subj.name into v_subject
+  from public.tutor_student_allocations alloc
+  left join public.subjects subj on subj.id = alloc.subject_id
+  where alloc.id = v_current.tutor_student_allocation_id;
+  perform public.create_student_notification(
+    v_current.student_id,
+    'session_rejected',
+    'Session rejected',
+    coalesce(v_subject, 'Your session') || ' on ' || v_current.date::text || ' was rejected.',
+    '/dashboard/',
+    'session',
+    p_session_id,
+    '{}'::jsonb
+  );
   perform public.insert_session_history(
     p_session_id, 'reject', to_jsonb(v_current),
     to_jsonb(v_updated) || jsonb_build_object('reject_reason', v_reason)
@@ -3569,3 +3632,452 @@ grant execute on function public.generate_payroll_week(date) to authenticated;
 grant execute on function public.lock_pay_period(date) to authenticated;
 grant execute on function public.create_adjustment(uuid, public.adjustment_type, numeric, text, uuid, date) to authenticated;
 grant execute on function public.void_adjustment(uuid, text) to authenticated;
+
+-- ============================================================================
+-- Weekly reports + student notifications migration
+-- (PRISMA_TO_SUPABASE_MIGRATION_PLAN.md §4/§6 step 4).
+--
+-- Ports the Prisma `WeeklyReport` model and the raw-migration
+-- `student_notifications` table into a Supabase-native schema + RLS + SECURITY
+-- DEFINER RPC layer, and CLOSES THE NOTIFICATION-DISPATCH LOOP the sessions
+-- migration deliberately left open: submit_session_report / submit_session /
+-- approve_session / reject_session now fire their student notifications (the
+-- gap-2 `-- Notification dispatch deferred` comments above are replaced with real
+-- create_student_notification calls). Sequenced after sessions + finance because
+-- the report payload derives from APPROVED sessions and the notifications wire
+-- into the already-landed session RPCs.
+--
+-- Source of truth ported from lms-api: prisma/schema.prisma (WeeklyReport ~L465),
+-- prisma/migrations/20260524_student_notifications/migration.sql (the ONLY shape
+-- source for student_notifications -- it was never in schema.prisma),
+-- src/lib/notifications.ts (create/list/count/mark-read/mark-all helpers),
+-- src/routes/academic.ts (getWeekRange, buildWeeklyReportPayload,
+-- userCanAccessStudent, POST /reports/generate, GET /reports, the student
+-- /student/notifications read + mark-read routes), src/routes/tutor.ts &
+-- src/routes/admin.ts (the four session-notification call-sites now wired in).
+--
+-- This lands FULLY BUILT BUT UNUSED, same pattern as the sessions/finance
+-- migrations. Explicitly deferred to later phases:
+--   * Real data backfill from the Prisma weekly_reports/student_notifications
+--     tables (schema-only; no rows moved).
+--   * Frontend repoint (student dashboard / reports UI and the tutor/admin report
+--     triggers still call the Fastify lms-api routes; this task does not touch
+--     src/ or lms-api/).
+--   * Retirement of the Fastify report/notification routes (Fastify-stack removal
+--     step, §6 step 7).
+--
+-- DELIBERATE OMISSION -- streak/xp gamification: Fastify's buildWeeklyReportPayload
+-- pulls a streakSummary (current/longest streak, xp) from a `study_streaks` table.
+-- Gamification (StudyActivityEvent / StudyStreak) was CUT from this migration's
+-- scope by the owner-locked plan (§3C's draft "Gamification" migrate-bullet was
+-- replaced with "Growth monitoring / risk ... KEEP"; §3D cuts the rest). So the
+-- Supabase payload OMITS metrics.streak/longestStreak/xp entirely and NO
+-- study_streaks table exists or should be created. This is intentional, not a gap.
+--
+-- FORWARD-DESIGN ADDITION -- guardian read: the plan §4 calls for weekly_reports
+-- "student/guardian read released", but the current Fastify /reports routes have
+-- no guardian branch. The guardian SELECT policy below implements that forward
+-- target by reusing get_parent_progress_reports()'s exact gating shape -- it is a
+-- deliberate forward-design addition, not a literal Fastify port.
+--
+-- NOTE on org-scoping: NO organization_id on either table, matching the task's
+-- explicit schema design and the finance-table precedent (org derives from the
+-- student; direct org-scoping of these tables is not required now). Follows the
+-- same conscious deferral the finance section documents.
+-- ============================================================================
+
+-- weekly_reports: one report per student per Monday-Sunday week. student_id
+-- replaces Prisma's polymorphic user_id (a weekly report only ever belongs to a
+-- student; Supabase has no User table). created_by is the optional generator,
+-- renamed from Prisma's created_by_user_id per this schema's actor-column
+-- convention (created_by/approved_by/voided_by, no _user_id suffix). payload_json
+-- is the computed report body (see generate_weekly_report). All writes go through
+-- that RPC -- there is no direct-write path.
+create table if not exists public.weekly_reports (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null references public.students(id) on delete cascade,
+  week_start date not null,
+  week_end date not null,
+  payload_json jsonb not null,
+  created_by uuid references public.profiles(id),
+  created_at timestamptz not null default now(),
+  unique (student_id, week_start, week_end)
+);
+
+create index if not exists idx_weekly_reports_student_created on public.weekly_reports(student_id, created_at desc);
+
+-- student_notifications: faithful port of the raw Prisma migration
+-- 20260524_student_notifications (never in schema.prisma). Only adaptation:
+-- created_by_user_id -> created_by uuid references profiles(id) (actor-column
+-- convention; the retired users table has no Supabase home). metadata_json keeps
+-- its jsonb default '{}'. Same two indexes as the source migration. All writes go
+-- through the RPCs below.
+create table if not exists public.student_notifications (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null references public.students(id) on delete cascade,
+  type text not null,
+  title text not null,
+  body text not null,
+  link text,
+  entity_type text,
+  entity_id uuid,
+  metadata_json jsonb not null default '{}'::jsonb,
+  is_read boolean not null default false,
+  read_at timestamptz,
+  created_by uuid references public.profiles(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_student_notifications_student_created on public.student_notifications(student_id, created_at desc);
+create index if not exists idx_student_notifications_student_read on public.student_notifications(student_id, is_read, created_at desc);
+
+alter table public.weekly_reports enable row level security;
+alter table public.student_notifications enable row level security;
+
+-- --- weekly_reports RLS -------------------------------------------------------
+-- SELECT for: admin (all), the owning student, an ACTIVE-allocation tutor, and a
+-- report-enabled guardian. NO direct INSERT/UPDATE/DELETE for anyone -- generation
+-- (permission check + payload compute + upsert + notification) is real business
+-- logic and runs only through generate_weekly_report(), following the
+-- sessions/finance no-direct-writes precedent. (The plan's "tutor/admin manage"
+-- is realised as manage-via-RPC, not a direct-write policy.)
+create policy "admin_select_all_weekly_reports"
+on public.weekly_reports for select
+using (public.is_platform_admin());
+
+create policy "student_select_own_weekly_reports"
+on public.weekly_reports for select
+using (student_id = public.current_student_id());
+
+create policy "tutor_select_allocated_weekly_reports"
+on public.weekly_reports for select
+using (exists (
+  select 1 from public.tutor_student_allocations tsa
+  where tsa.student_id = weekly_reports.student_id
+    and tsa.tutor_id = public.current_tutor_id()
+    and tsa.status = 'active'
+));
+
+-- Guardian read: reuses get_parent_progress_reports()'s exact gating shape
+-- (parent role + active guardian link with can_receive_reports). Forward-design
+-- implementation of the plan §4 "student/guardian read released" target.
+create policy "guardian_select_reportable_weekly_reports"
+on public.weekly_reports for select
+using (
+  public.current_profile_role() = 'parent'
+  and exists (
+    select 1
+    from public.guardians g
+    join public.student_guardians sg on sg.guardian_id = g.id
+    where sg.student_id = weekly_reports.student_id
+      and g.profile_id = public.current_profile_id()
+      and g.status = 'active'
+      and sg.status = 'active'
+      and sg.can_receive_reports = true
+  )
+);
+
+create policy "weekly_reports_no_direct_insert"
+on public.weekly_reports for insert
+with check (false);
+
+create policy "weekly_reports_no_direct_update"
+on public.weekly_reports for update
+using (false)
+with check (false);
+
+create policy "weekly_reports_no_direct_delete"
+on public.weekly_reports for delete
+using (false);
+
+-- --- student_notifications RLS ------------------------------------------------
+-- A student SELECTs only their own. NO admin/tutor/guardian read policy: Fastify
+-- exposes notifications solely via the student /student/notifications routes
+-- (there is no admin notifications-viewing route), so broader visibility is
+-- deliberately NOT invented. NO direct writes: create is an internal SECURITY
+-- DEFINER helper; mark-read / mark-all-read go through their RPCs (this schema
+-- routes every state-changing write through an RPC -- even a simple owner-scoped
+-- mark-read -- for convention consistency with sessions/finance).
+create policy "student_select_own_notifications"
+on public.student_notifications for select
+using (student_id = public.current_student_id());
+
+create policy "student_notifications_no_direct_insert"
+on public.student_notifications for insert
+with check (false);
+
+create policy "student_notifications_no_direct_update"
+on public.student_notifications for update
+using (false)
+with check (false);
+
+create policy "student_notifications_no_direct_delete"
+on public.student_notifications for delete
+using (false);
+
+-- --- Reports/notifications business-logic RPCs (all SECURITY DEFINER) ---------
+
+-- create_student_notification: internal helper mirroring insert_session_history's
+-- lockdown (execute revoked from public/anon/authenticated below -- only other
+-- SECURITY DEFINER functions call it: generate_weekly_report and the four session
+-- RPCs). created_by is always the acting profile (current_profile_id()), never a
+-- client-supplied id.
+create or replace function public.create_student_notification(
+  p_student_id uuid,
+  p_type text,
+  p_title text,
+  p_body text,
+  p_link text,
+  p_entity_type text,
+  p_entity_id uuid,
+  p_metadata jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+begin
+  insert into public.student_notifications (
+    student_id, type, title, body, link, entity_type, entity_id, metadata_json, created_by
+  )
+  values (
+    p_student_id, p_type, p_title, p_body, p_link, p_entity_type, p_entity_id,
+    coalesce(p_metadata, '{}'::jsonb), public.current_profile_id()
+  )
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+-- generate_weekly_report: port of buildWeeklyReportPayload + POST /reports/generate.
+-- Permission-gates via the ported userCanAccessStudent logic (admin always; the
+-- student themself; a tutor iff an ACTIVE tutor_student_allocations link);
+-- normalises p_week_start to its Monday (date_trunc('week', ...) -- exactly
+-- getWeekRange's ISO-Monday math, the established pattern shared with
+-- session_date_pay_period_locked) and week_end = Monday + 6; builds the payload
+-- as jsonb; upserts on (student_id, week_start, week_end); fires the
+-- weekly_report_ready notification; returns the row. Raises 'forbidden' if the
+-- permission check fails, 'student_not_found' if the student is missing.
+create or replace function public.generate_weekly_report(p_student_id uuid, p_week_start date)
+returns public.weekly_reports
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_week_start date := date_trunc('week', p_week_start::timestamp)::date;
+  v_week_end date := date_trunc('week', p_week_start::timestamp)::date + 6;
+  v_student_name text;
+  v_student_grade text;
+  v_attended int;
+  v_minutes int;
+  v_notes_summary jsonb;
+  v_topic_progress jsonb;
+  v_weak_topic text;
+  v_weak_completion int;
+  v_goals jsonb;
+  v_payload jsonb;
+  v_report public.weekly_reports;
+begin
+  -- Permission gate (ported userCanAccessStudent). Non-tutors get null from
+  -- current_tutor_id(), so the tutor branch never matches for them; likewise
+  -- current_student_id() is null for non-students.
+  if not (
+    public.is_platform_admin()
+    or public.current_student_id() = p_student_id
+    or exists (
+      select 1 from public.tutor_student_allocations tsa
+      where tsa.tutor_id = public.current_tutor_id()
+        and tsa.student_id = p_student_id
+        and tsa.status = 'active'
+    )
+  ) then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  -- Student name lives on profiles (students has no name column); grade on students.
+  select pr.full_name, st.grade
+    into v_student_name, v_student_grade
+  from public.students st
+  join public.profiles pr on pr.id = st.profile_id
+  where st.id = p_student_id;
+  if not found then
+    raise exception 'student_not_found' using errcode = 'P0002';
+  end if;
+
+  -- metrics.sessionsAttended / timeStudiedMinutes: APPROVED sessions in the week.
+  select
+    coalesce(count(*) filter (where status = 'approved'), 0)::int,
+    coalesce(sum(duration_minutes) filter (where status = 'approved'), 0)::int
+    into v_attended, v_minutes
+  from public.sessions
+  where student_id = p_student_id
+    and date between v_week_start and v_week_end;
+
+  -- tutorNotesSummary: up to 3 most-recent session notes in the week, each
+  -- truncated to 120 chars (Fastify left(notes,120), newest-first, first 3).
+  select coalesce(jsonb_agg(sub.line order by sub.rn), '[]'::jsonb)
+    into v_notes_summary
+  from (
+    select left(btrim(s.notes), 120) as line,
+           row_number() over (order by s.date desc) as rn
+    from public.sessions s
+    where s.student_id = p_student_id
+      and s.date between v_week_start and v_week_end
+      and nullif(btrim(coalesce(s.notes, '')), '') is not null
+  ) sub
+  where sub.rn <= 3;
+
+  -- topicProgress: rebuilt against student_progress (plan §4 directive: "Rebuild
+  -- buildWeeklyReportPayload against Supabase sessions/student_progress/..."),
+  -- grouped by subject/topic with a completion-percent heuristic (avg score,
+  -- already a 0-100 percent, clamped). Streak/xp are DELIBERATELY absent from the
+  -- payload -- see the section header: the streak/xp gamification tables were cut
+  -- from scope by the locked plan and must NOT be reintroduced here.
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object('subject', t.subject, 'topic', t.topic, 'completion', t.completion)
+      order by t.completion asc, t.topic asc
+    ),
+    '[]'::jsonb
+  )
+    into v_topic_progress
+  from (
+    select coalesce(subj.name, 'General') as subject,
+           sp.topic,
+           greatest(0, least(100, round(avg(sp.score))))::int as completion
+    from public.student_progress sp
+    left join public.subjects subj on subj.id = sp.subject_id
+    where sp.student_id = p_student_id
+    group by coalesce(subj.name, 'General'), sp.topic
+  ) t;
+
+  -- goalsNextWeek: derived from the weakest topic (lowest completion), matching
+  -- Fastify's weakest-topic goal string; generic fallback when no progress rows.
+  select t.topic, t.completion
+    into v_weak_topic, v_weak_completion
+  from (
+    select sp.topic,
+           greatest(0, least(100, round(avg(sp.score))))::int as completion
+    from public.student_progress sp
+    left join public.subjects subj on subj.id = sp.subject_id
+    where sp.student_id = p_student_id
+    group by coalesce(subj.name, 'General'), sp.topic
+  ) t
+  order by t.completion asc, t.topic asc
+  limit 1;
+
+  if v_weak_topic is not null then
+    v_goals := jsonb_build_array(
+      'Lift ' || v_weak_topic || ' to at least ' || least(100, v_weak_completion + 15)::text || '% mastery.'
+    );
+  else
+    v_goals := jsonb_build_array('Complete at least one focused practice session.');
+  end if;
+
+  -- Assemble the payload. metrics INTENTIONALLY has only sessionsAttended +
+  -- timeStudiedMinutes -- streak/longestStreak/xp are omitted (cut per the locked
+  -- plan, see section header). Do not "restore" them.
+  v_payload := jsonb_build_object(
+    'student', jsonb_build_object('id', p_student_id, 'name', v_student_name, 'grade', v_student_grade),
+    'week', jsonb_build_object('start', v_week_start::text, 'end', v_week_end::text),
+    'metrics', jsonb_build_object('sessionsAttended', v_attended, 'timeStudiedMinutes', v_minutes),
+    'topicProgress', v_topic_progress,
+    'tutorNotesSummary', v_notes_summary,
+    'goalsNextWeek', v_goals
+  );
+
+  insert into public.weekly_reports (student_id, week_start, week_end, payload_json, created_by)
+  values (p_student_id, v_week_start, v_week_end, v_payload, public.current_profile_id())
+  on conflict (student_id, week_start, week_end)
+  do update set payload_json = excluded.payload_json,
+                created_by = excluded.created_by,
+                created_at = now()
+  returning * into v_report;
+
+  -- weekly_report_ready notification (Fastify POST /reports/generate side effect).
+  perform public.create_student_notification(
+    p_student_id,
+    'weekly_report_ready',
+    'Weekly report ready',
+    'Your report for ' || v_week_start::text || ' to ' || v_week_end::text || ' is now available.',
+    '/reports/',
+    'weekly_report',
+    v_report.id,
+    '{}'::jsonb
+  );
+
+  return v_report;
+end;
+$$;
+
+-- mark_notification_read: port of markStudentNotificationRead + the
+-- /student/notifications/:id/read route. Owner-scoped (student_id =
+-- current_student_id()); sets is_read = true, read_at = coalesce(read_at, now()),
+-- updated_at = now(). Raises 'notification_not_found' when no owned row matches
+-- (Fastify's rowCount === 0 -> 404 notification_not_found).
+create or replace function public.mark_notification_read(p_notification_id uuid)
+returns public.student_notifications
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row public.student_notifications;
+begin
+  update public.student_notifications
+  set is_read = true,
+      read_at = coalesce(read_at, now()),
+      updated_at = now()
+  where id = p_notification_id
+    and student_id = public.current_student_id()
+  returning * into v_row;
+  if not found then
+    raise exception 'notification_not_found' using errcode = 'P0002';
+  end if;
+  return v_row;
+end;
+$$;
+
+-- mark_all_notifications_read: port of markAllStudentNotificationsRead + the
+-- /student/notifications/read-all route. Owner-scoped bulk update over the
+-- caller's unread notifications; returns the count of rows actually changed
+-- (Fastify's rowCount).
+create or replace function public.mark_all_notifications_read()
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count int;
+begin
+  with updated as (
+    update public.student_notifications
+    set is_read = true,
+        read_at = coalesce(read_at, now()),
+        updated_at = now()
+    where student_id = public.current_student_id()
+      and is_read = false
+    returning 1
+  )
+  select count(*)::int into v_count from updated;
+  return v_count;
+end;
+$$;
+
+-- --- Grants: the caller-facing RPCs are callable by authenticated (each
+-- self-gates internally -- generate_weekly_report on the ported permission model,
+-- the mark RPCs on current_student_id() ownership). create_student_notification
+-- is locked down exactly like insert_session_history/log_audit_event: only other
+-- SECURITY DEFINER functions may call it, never a client.
+grant execute on function public.generate_weekly_report(uuid, date) to authenticated;
+grant execute on function public.mark_notification_read(uuid) to authenticated;
+grant execute on function public.mark_all_notifications_read() to authenticated;
+revoke execute on function public.create_student_notification(uuid, text, text, text, text, text, uuid, jsonb) from public;
+revoke execute on function public.create_student_notification(uuid, text, text, text, text, text, uuid, jsonb) from anon;
+revoke execute on function public.create_student_notification(uuid, text, text, text, text, text, uuid, jsonb) from authenticated;
