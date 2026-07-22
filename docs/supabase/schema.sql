@@ -2495,10 +2495,12 @@ begin
     raise exception 'forbidden' using errcode = '42501';
   end if;
 
-  -- ensureTutorActive equivalent (gap 3): Supabase tutors only has `status`;
-  -- the richer active/approval_status check lands with the tutor-onboarding
-  -- migration. status = 'active' is the best-available equivalent for now.
-  if not exists (select 1 from public.tutors t where t.id = v_tutor_id and t.status = 'active') then
+  -- ensureTutorActive equivalent (gap 3): full Fastify parity is
+  -- tutor.active && status === 'ACTIVE' && approval_status === 'approved'.
+  -- Supabase's status = 'active' already stands in for the first two; the
+  -- tutor-onboarding migration (§6 step 6) added approval_status to public.tutors,
+  -- so the richer approval_status = 'approved' check is now wired up here.
+  if not exists (select 1 from public.tutors t where t.id = v_tutor_id and t.status = 'active' and t.approval_status = 'approved') then
     raise exception 'tutor_not_active' using errcode = '42501';
   end if;
 
@@ -2614,7 +2616,7 @@ begin
     raise exception 'forbidden' using errcode = '42501';
   end if;
 
-  if not exists (select 1 from public.tutors t where t.id = v_tutor_id and t.status = 'active') then
+  if not exists (select 1 from public.tutors t where t.id = v_tutor_id and t.status = 'active' and t.approval_status = 'approved') then
     raise exception 'tutor_not_active' using errcode = '42501';
   end if;
 
@@ -2724,7 +2726,7 @@ begin
     raise exception 'forbidden' using errcode = '42501';
   end if;
 
-  if not exists (select 1 from public.tutors t where t.id = v_tutor_id and t.status = 'active') then
+  if not exists (select 1 from public.tutors t where t.id = v_tutor_id and t.status = 'active' and t.approval_status = 'approved') then
     raise exception 'tutor_not_active' using errcode = '42501';
   end if;
 
@@ -2790,7 +2792,7 @@ begin
     raise exception 'forbidden' using errcode = '42501';
   end if;
 
-  if not exists (select 1 from public.tutors t where t.id = v_tutor_id and t.status = 'active') then
+  if not exists (select 1 from public.tutors t where t.id = v_tutor_id and t.status = 'active' and t.approval_status = 'approved') then
     raise exception 'tutor_not_active' using errcode = '42501';
   end if;
 
@@ -2861,10 +2863,11 @@ begin
 
   -- Fastify's approveSession re-checks the tutor is still active before
   -- approving (a tutor may have been deactivated between submission and
-  -- approval) -- mirrored here using the best-available Supabase equivalent
-  -- (status = 'active'; the richer active/approval_status check lands with
-  -- the tutor-onboarding migration, same caveat as create/update/submit).
-  if not exists (select 1 from public.tutors t where t.id = v_current.tutor_id and t.status = 'active') then
+  -- approval) -- mirrored here with full Fastify parity now that the
+  -- tutor-onboarding migration (§6 step 6) added approval_status to
+  -- public.tutors: status = 'active' stands in for active && status==='ACTIVE',
+  -- plus the now-wired approval_status = 'approved' check (same as create/update/submit).
+  if not exists (select 1 from public.tutors t where t.id = v_current.tutor_id and t.status = 'active' and t.approval_status = 'approved') then
     raise exception 'tutor_not_active' using errcode = '42501';
   end if;
 
@@ -4081,3 +4084,591 @@ grant execute on function public.mark_all_notifications_read() to authenticated;
 revoke execute on function public.create_student_notification(uuid, text, text, text, text, text, uuid, jsonb) from public;
 revoke execute on function public.create_student_notification(uuid, text, text, text, text, text, uuid, jsonb) from anon;
 revoke execute on function public.create_student_notification(uuid, text, text, text, text, text, uuid, jsonb) from authenticated;
+
+-- ============================================================================
+-- TUTOR ONBOARDING / VETTING (PRISMA_TO_SUPABASE_MIGRATION_PLAN.md §4 / §6 step 6)
+--
+-- Ports Fastify's tutor onboarding + vetting gate -- TutorApplication /
+-- TutorDocument / TutorAvailabilitySlot -- plus the richer approval/qualification
+-- columns Prisma's TutorProfile carried that Supabase's minimal `tutors` table
+-- lacked (plan §3A/§3C: "migrate the richer approval/qualification fields").
+-- This is the trust/safety gate needed before hiring beyond family/friends.
+--
+-- Identity fields are deliberately NOT duplicated: Prisma TutorProfile.fullName/
+-- .phone already live on public.profiles (full_name/phone). Only the genuinely
+-- new approval/qualification columns are added to public.tutors here. Likewise
+-- Prisma TutorProfile.active (a separate boolean) is NOT re-added: Supabase folds
+-- active + status into the single record_status enum, so status = 'active' stands
+-- in for Fastify's active && status === 'ACTIVE' (the same collapse the sessions
+-- migration's ensureTutorActive stand-in already relies on).
+--
+-- Storage: Fastify wrote document bytes to local disk (uploads/tutor-documents/…);
+-- Supabase has no local disk, so documents move to a PRIVATE Storage bucket
+-- (`tutor-documents`) following the assignment-files/assignment-submissions
+-- precedent. The tutor_documents row carries only METADATA -- the client uploads
+-- bytes to Storage directly, then records the row via record_tutor_document()
+-- (mirroring how assignment submissions split "upload bytes" from "record row").
+--
+-- Also closes the THIRD deferred loop from the sessions migration: the
+-- ensureTutorActive stand-in in create_session / update_session /
+-- submit_session_report / submit_session / approve_session was `status = 'active'`
+-- only; it now also requires approval_status = 'approved' (full Fastify parity),
+-- exactly as the finance step un-stubbed session_date_pay_period_locked and the
+-- notifications step wired the deferred dispatch. See those five amended
+-- functions in the sessions section above.
+--
+-- Deferred (NOT done here, by design): real-data backfill (including the actual
+-- document files into Storage), frontend repoint (the UI still calls the Fastify
+-- tutor/admin routes; a later phase calls supabase.storage.from('tutor-documents')
+-- .upload(...) then record_tutor_document()), and Fastify-route retirement (§6 step 7).
+-- ============================================================================
+
+-- --- New approval/qualification columns on public.tutors --------------------
+-- Additive/nullable (no backfill: no real tutor rows yet). approval_status
+-- defaults to 'approved' to match Prisma (today's family/friends tutors are
+-- pre-approved). No `active` column: see the header note on the active/status
+-- collapse. qualified_subjects_json / teaching_preferences_json / qualification_band
+-- are populated by decide_tutor_application on approval.
+alter table public.tutors
+  add column if not exists qualification_band text,
+  add column if not exists qualified_subjects_json jsonb,
+  add column if not exists approval_status text not null default 'approved',
+  add column if not exists approval_reviewed_by uuid references public.profiles(id),
+  add column if not exists approval_reviewed_at timestamptz,
+  add column if not exists approval_note text,
+  add column if not exists teaching_preferences_json jsonb;
+
+-- The check covers BOTH vocabularies that write approval_status in Fastify: the
+-- profile-level default/registration ('approved'/'pending') and the DECISION
+-- values the admin cascade copies down ('under_review'/'approved'/'rejected'/
+-- 'changes_requested'). The application-only states 'draft'/'submitted' never
+-- reach this column, so they are intentionally excluded. Added via a guarded
+-- ALTER (idempotent, matching the privacy_request_type enum guard pattern above).
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'tutors_approval_status_check'
+  ) then
+    alter table public.tutors
+      add constraint tutors_approval_status_check
+      check (approval_status in ('pending', 'under_review', 'approved', 'rejected', 'changes_requested'));
+  end if;
+end
+$$;
+
+-- SECURITY / EXPOSURE NOTE (flagged AND fixed on review -- per the task's explicit
+-- instruction to verify the tutors SELECT policies rather than assume admin/self-only):
+-- these new columns are governed by the EXISTING tutors row policies.
+-- `tutors_select_self_or_admin` grants SELECT to (a) admins, (b) the tutor
+-- themselves, AND (c) any student with an ACTIVE tutor_student_allocations link to
+-- that tutor. Arm (c) means an allocated student can read their tutor's
+-- approval_status / approval_note / qualification_band. approval_note in particular
+-- can carry a reviewer's internal commentary about the tutor -- an approval-workflow
+-- field that was admin/self-tutor-only in Fastify (ensureTutorActive read it
+-- server-side; no student route ever returned it). Postgres RLS is row-level, not
+-- column-level, so the existing policy cannot exclude just these columns for arm (c)
+-- -- a schema-only fix is not possible here. The actual fix is at the query layer:
+-- `src/features/students/studentDashboardRepository.ts` is the ONLY student-facing
+-- reader of this table, and it now selects an explicit column list (the exact
+-- pre-migration-safe set: id/profile_id/subjects/grades/hourly_rate/status/created_at)
+-- instead of `select('*')`, so none of the seven new columns reach a student response.
+-- See `tests/frontend/tutor-onboarding-migration.test.cjs` for the assertion covering
+-- both halves (the RLS row-level limitation stays documented here for future
+-- readers; the query-level exclusion is verified against the actual frontend file).
+-- If a *second* student-facing reader of `tutors` is ever added, it must carry the
+-- same explicit column list -- this is a per-query discipline, not a table-wide
+-- guarantee, precisely because RLS can't enforce it structurally.
+
+-- --- Tables -----------------------------------------------------------------
+-- tutor_id -> tutors(id) on delete cascade, matching every other tutor_id FK in
+-- this schema (sessions/allocations/etc.); reviewer/verifier actor columns ->
+-- profiles(id) with no delete action, matching the created_by/locked_by convention.
+create table if not exists public.tutor_applications (
+  id uuid primary key default gen_random_uuid(),
+  tutor_id uuid not null unique references public.tutors(id) on delete cascade,
+  status text not null default 'draft' check (status in ('draft', 'submitted', 'under_review', 'approved', 'rejected', 'changes_requested')),
+  personal_details_json jsonb not null default '{}'::jsonb,
+  subjects_json jsonb not null default '[]'::jsonb,
+  grades_json jsonb not null default '[]'::jsonb,
+  teaching_preferences_json jsonb not null default '[]'::jsonb,
+  experience text,
+  availability_notes text,
+  submitted_at timestamptz,
+  reviewed_by uuid references public.profiles(id),
+  reviewed_at timestamptz,
+  review_note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.tutor_documents (
+  id uuid primary key default gen_random_uuid(),
+  tutor_id uuid not null references public.tutors(id) on delete cascade,
+  document_type text not null check (document_type in ('identity', 'cv', 'qualification', 'additional')),
+  storage_key text not null,
+  original_filename text not null,
+  mime_type text not null check (mime_type in ('application/pdf', 'image/jpeg', 'image/png')),
+  file_size_bytes int not null,
+  uploaded_at timestamptz not null default now(),
+  verification_status text not null default 'pending' check (verification_status in ('pending', 'accepted', 'rejected')),
+  verified_by uuid references public.profiles(id),
+  verified_at timestamptz,
+  notes text
+);
+
+create index if not exists idx_tutor_documents_tutor_uploaded on public.tutor_documents(tutor_id, uploaded_at desc);
+
+create table if not exists public.tutor_availability_slots (
+  id uuid primary key default gen_random_uuid(),
+  tutor_id uuid not null references public.tutors(id) on delete cascade,
+  day_of_week int not null check (day_of_week between 0 and 6),
+  start_time time not null,
+  end_time time not null check (end_time > start_time),
+  mode text not null default 'online',
+  notes text,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_tutor_availability_tutor_day_start on public.tutor_availability_slots(tutor_id, day_of_week, start_time);
+
+alter table public.tutor_applications enable row level security;
+alter table public.tutor_documents enable row level security;
+alter table public.tutor_availability_slots enable row level security;
+
+-- --- RLS: tutor_applications (tutor-own + admin SELECT; writes via RPC only) -
+-- No student/parent access. Writes carry real business rules (the approved ->
+-- changes_requested revert on edit; the submit-only-from-certain-statuses gate;
+-- the admin decision cascade), so every write goes through a SECURITY DEFINER
+-- RPC, not a direct-write policy -- following the sessions/finance/notifications
+-- precedent (with check (false) / using (false)).
+create policy "admin_select_all_tutor_applications"
+on public.tutor_applications for select
+using (public.is_platform_admin());
+
+create policy "tutors_select_own_application"
+on public.tutor_applications for select
+using (tutor_id = public.current_tutor_id());
+
+create policy "tutor_applications_no_direct_insert"
+on public.tutor_applications for insert
+with check (false);
+
+create policy "tutor_applications_no_direct_update"
+on public.tutor_applications for update
+using (false)
+with check (false);
+
+create policy "tutor_applications_no_direct_delete"
+on public.tutor_applications for delete
+using (false);
+
+-- --- RLS: tutor_documents (tutor-own + admin SELECT; writes via RPC only) ----
+-- Insert via record_tutor_document(), verification via verify_tutor_document();
+-- no direct writes for anyone. Highly sensitive (identity/qualification files).
+create policy "admin_select_all_tutor_documents"
+on public.tutor_documents for select
+using (public.is_platform_admin());
+
+create policy "tutors_select_own_documents"
+on public.tutor_documents for select
+using (tutor_id = public.current_tutor_id());
+
+create policy "tutor_documents_no_direct_insert"
+on public.tutor_documents for insert
+with check (false);
+
+create policy "tutor_documents_no_direct_update"
+on public.tutor_documents for update
+using (false)
+with check (false);
+
+create policy "tutor_documents_no_direct_delete"
+on public.tutor_documents for delete
+using (false);
+
+-- --- RLS: tutor_availability_slots (tutor-own + admin SELECT; writes via RPC) -
+-- Replace via replace_tutor_availability() (delete-all-then-insert). No broader
+-- read invented: the Fastify routes only expose self (/tutor/availability) and
+-- the admin detail-view join, so this stays tutor-own + admin, not coordinator-wide.
+create policy "admin_select_all_tutor_availability_slots"
+on public.tutor_availability_slots for select
+using (public.is_platform_admin());
+
+create policy "tutors_select_own_availability_slots"
+on public.tutor_availability_slots for select
+using (tutor_id = public.current_tutor_id());
+
+create policy "tutor_availability_slots_no_direct_insert"
+on public.tutor_availability_slots for insert
+with check (false);
+
+create policy "tutor_availability_slots_no_direct_update"
+on public.tutor_availability_slots for update
+using (false)
+with check (false);
+
+create policy "tutor_availability_slots_no_direct_delete"
+on public.tutor_availability_slots for delete
+using (false);
+
+-- --- Storage: private tutor-documents bucket + policies ----------------------
+-- Follows the assignment-submissions template. Path convention {tutor_id}/{id}.{ext}
+-- (two segments -> foldername(name) has length 1). A tutor may INSERT/SELECT only
+-- under their own folder; an admin may SELECT any path (verification review). No
+-- UPDATE/DELETE policy -- documents are never edited, only re-uploaded as new rows.
+insert into storage.buckets (id, name, public)
+values ('tutor-documents', 'tutor-documents', false)
+on conflict (id) do nothing;
+
+create policy "tutors_upload_own_tutor_documents"
+on storage.objects for insert
+with check (
+  bucket_id = 'tutor-documents'
+  and public.current_profile_role() = 'tutor'
+  and array_length(storage.foldername(name), 1) = 1
+  and (storage.foldername(name))[1] = public.current_tutor_id()::text
+);
+
+create policy "tutors_read_own_tutor_documents_or_admin"
+on storage.objects for select
+using (
+  bucket_id = 'tutor-documents'
+  and (
+    public.current_profile_role() = 'admin'
+    or (storage.foldername(name))[1] = public.current_tutor_id()::text
+  )
+);
+
+-- --- RPCs (all SECURITY DEFINER, search_path pinned) ------------------------
+-- Audit-log side effects (Fastify's logAuditSafe on the decision/verify routes)
+-- are intentionally omitted here, matching the sessions/finance/notifications
+-- RPC layer, which likewise did not emit audit events internally.
+
+-- upsert_tutor_application: port of PATCH /tutor/application. Tutor-scoped via
+-- current_tutor_id(). Upsert on the tutor's single application; crucially, if the
+-- current status is 'approved' and the tutor edits again, status auto-reverts to
+-- 'changes_requested' (an approved tutor editing forces re-review) -- exact parity
+-- with the Fastify `case when ... = 'approved' then 'changes_requested' ...` rule.
+create or replace function public.upsert_tutor_application(
+  p_personal_details jsonb,
+  p_subjects jsonb,
+  p_grades jsonb,
+  p_teaching_preferences jsonb,
+  p_experience text,
+  p_availability_notes text
+)
+returns public.tutor_applications
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_tutor_id uuid := public.current_tutor_id();
+  v_row public.tutor_applications;
+begin
+  if v_tutor_id is null then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  insert into public.tutor_applications
+    (tutor_id, personal_details_json, subjects_json, grades_json, teaching_preferences_json, experience, availability_notes)
+  values
+    (v_tutor_id,
+     coalesce(p_personal_details, '{}'::jsonb),
+     coalesce(p_subjects, '[]'::jsonb),
+     coalesce(p_grades, '[]'::jsonb),
+     coalesce(p_teaching_preferences, '[]'::jsonb),
+     p_experience,
+     p_availability_notes)
+  on conflict (tutor_id) do update set
+    personal_details_json = excluded.personal_details_json,
+    subjects_json = excluded.subjects_json,
+    grades_json = excluded.grades_json,
+    teaching_preferences_json = excluded.teaching_preferences_json,
+    experience = excluded.experience,
+    availability_notes = excluded.availability_notes,
+    status = case when tutor_applications.status = 'approved' then 'changes_requested' else tutor_applications.status end,
+    updated_at = now()
+  returning * into v_row;
+
+  return v_row;
+end;
+$$;
+
+-- submit_tutor_application: port of POST /tutor/application/submit. Tutor-scoped.
+-- Sets status = 'submitted', submitted_at = coalesce(submitted_at, now()); only
+-- from status in ('draft','changes_requested','rejected','submitted') -- note
+-- 'submitted' is in the allowed-from set, making re-submission idempotent; any
+-- other current status (or no application) yields application_not_found.
+create or replace function public.submit_tutor_application()
+returns public.tutor_applications
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_tutor_id uuid := public.current_tutor_id();
+  v_row public.tutor_applications;
+begin
+  if v_tutor_id is null then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  update public.tutor_applications
+  set status = 'submitted',
+      submitted_at = coalesce(submitted_at, now()),
+      updated_at = now()
+  where tutor_id = v_tutor_id
+    and status in ('draft', 'changes_requested', 'rejected', 'submitted')
+  returning * into v_row;
+
+  if not found then
+    raise exception 'application_not_found' using errcode = 'P0002';
+  end if;
+
+  return v_row;
+end;
+$$;
+
+-- decide_tutor_application: port of POST /admin/tutor-applications/:id/decision.
+-- Admin-only. Always updates the application (status/reviewed_by/reviewed_at/
+-- review_note). If status = 'approved', ALSO cascades to public.tutors: flips the
+-- pending tutor operational (status = 'active' -- the record_status collapse of
+-- Fastify's status='ACTIVE' + active=true), stamps approval_* fields, copies the
+-- application's subjects_json/teaching_preferences_json onto the tutor's
+-- qualified_subjects_json/teaching_preferences_json, and fills qualification_band
+-- via coalesce(qualification_band, 'BOTH') so an existing band is NEVER overwritten.
+-- Any non-approval decision updates ONLY approval_status/approval_reviewed_*/
+-- approval_note (qualification/status untouched). p_status validated against the
+-- TutorApplicationDecisionSchema enum.
+create or replace function public.decide_tutor_application(
+  p_application_id uuid,
+  p_status text,
+  p_note text
+)
+returns public.tutor_applications
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_admin uuid := public.current_profile_id();
+  v_row public.tutor_applications;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  if p_status not in ('under_review', 'approved', 'rejected', 'changes_requested') then
+    raise exception 'invalid_request' using errcode = '23514';
+  end if;
+
+  update public.tutor_applications
+  set status = p_status,
+      reviewed_by = v_admin,
+      reviewed_at = now(),
+      review_note = p_note,
+      updated_at = now()
+  where id = p_application_id
+  returning * into v_row;
+
+  if not found then
+    raise exception 'application_not_found' using errcode = 'P0002';
+  end if;
+
+  if p_status = 'approved' then
+    update public.tutors
+    set approval_status = 'approved',
+        approval_reviewed_by = v_admin,
+        approval_reviewed_at = now(),
+        approval_note = p_note,
+        qualification_band = coalesce(qualification_band, 'BOTH'),
+        qualified_subjects_json = v_row.subjects_json,
+        teaching_preferences_json = v_row.teaching_preferences_json,
+        status = 'active'
+    where id = v_row.tutor_id;
+  else
+    update public.tutors
+    set approval_status = p_status,
+        approval_reviewed_by = v_admin,
+        approval_reviewed_at = now(),
+        approval_note = p_note
+    where id = v_row.tutor_id;
+  end if;
+
+  return v_row;
+end;
+$$;
+
+-- record_tutor_document: records a tutor_documents METADATA row after the client
+-- has uploaded the bytes to the tutor-documents Storage bucket. Tutor-scoped.
+-- Validates document_type/mime_type against the TutorDocumentUploadSchema enums,
+-- and (defense in depth) that p_storage_key starts with current_tutor_id()::text
+-- || '/' so a tutor cannot register a row pointing at another tutor's storage
+-- path even if the Storage policy were somehow bypassed. Owned by current_tutor_id().
+create or replace function public.record_tutor_document(
+  p_document_type text,
+  p_storage_key text,
+  p_original_filename text,
+  p_mime_type text,
+  p_file_size_bytes int
+)
+returns public.tutor_documents
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_tutor_id uuid := public.current_tutor_id();
+  v_row public.tutor_documents;
+begin
+  if v_tutor_id is null then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  if p_document_type not in ('identity', 'cv', 'qualification', 'additional') then
+    raise exception 'invalid_request' using errcode = '23514';
+  end if;
+
+  if p_mime_type not in ('application/pdf', 'image/jpeg', 'image/png') then
+    raise exception 'invalid_request' using errcode = '23514';
+  end if;
+
+  if not starts_with(coalesce(p_storage_key, ''), v_tutor_id::text || '/') then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  insert into public.tutor_documents
+    (tutor_id, document_type, storage_key, original_filename, mime_type, file_size_bytes)
+  values
+    (v_tutor_id, p_document_type, p_storage_key, p_original_filename, p_mime_type, p_file_size_bytes)
+  returning * into v_row;
+
+  return v_row;
+end;
+$$;
+
+-- verify_tutor_document: port of PATCH /admin/tutor-documents/:id. Admin-only.
+-- Sets verification_status/notes/verified_by/verified_at; p_status in
+-- ('accepted','rejected') per TutorDocumentVerifySchema; document_not_found on miss.
+create or replace function public.verify_tutor_document(
+  p_document_id uuid,
+  p_status text,
+  p_notes text
+)
+returns public.tutor_documents
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row public.tutor_documents;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  if p_status not in ('accepted', 'rejected') then
+    raise exception 'invalid_request' using errcode = '23514';
+  end if;
+
+  update public.tutor_documents
+  set verification_status = p_status,
+      notes = p_notes,
+      verified_by = public.current_profile_id(),
+      verified_at = now()
+  where id = p_document_id
+  returning * into v_row;
+
+  if not found then
+    raise exception 'document_not_found' using errcode = 'P0002';
+  end if;
+
+  return v_row;
+end;
+$$;
+
+-- replace_tutor_availability: port of PATCH /tutor/availability. Tutor-scoped
+-- full replace -- delete all the caller's slots, then bulk-insert the new set,
+-- atomically (the whole RPC is one transaction, mirroring Fastify's begin/delete/
+-- insert/commit). Validates each slot against TutorAvailabilitySchema's bounds:
+-- array <= 42, day_of_week 0-6, mode length 1..40 (default 'online'), notes <= 500,
+-- plus end_time > start_time (the table's check, validated up front for a clean error).
+create or replace function public.replace_tutor_availability(p_slots jsonb)
+returns setof public.tutor_availability_slots
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_tutor_id uuid := public.current_tutor_id();
+  v_slot jsonb;
+  v_day int;
+  v_start time;
+  v_end time;
+  v_mode text;
+  v_notes text;
+begin
+  if v_tutor_id is null then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  if p_slots is null or jsonb_typeof(p_slots) <> 'array' then
+    raise exception 'invalid_request' using errcode = '23514';
+  end if;
+
+  if jsonb_array_length(p_slots) > 42 then
+    raise exception 'invalid_request' using errcode = '23514';
+  end if;
+
+  delete from public.tutor_availability_slots where tutor_id = v_tutor_id;
+
+  for v_slot in select * from jsonb_array_elements(p_slots)
+  loop
+    v_day := (v_slot->>'dayOfWeek')::int;
+    v_start := (v_slot->>'startTime')::time;
+    v_end := (v_slot->>'endTime')::time;
+    v_mode := btrim(coalesce(v_slot->>'mode', 'online'));
+    if v_mode = '' then
+      v_mode := 'online';
+    end if;
+    v_notes := nullif(btrim(coalesce(v_slot->>'notes', '')), '');
+
+    if v_day < 0 or v_day > 6 then
+      raise exception 'invalid_request' using errcode = '23514';
+    end if;
+    if v_end <= v_start then
+      raise exception 'invalid_request' using errcode = '23514';
+    end if;
+    if char_length(v_mode) < 1 or char_length(v_mode) > 40 then
+      raise exception 'invalid_request' using errcode = '23514';
+    end if;
+    if v_notes is not null and char_length(v_notes) > 500 then
+      raise exception 'invalid_request' using errcode = '23514';
+    end if;
+
+    insert into public.tutor_availability_slots
+      (tutor_id, day_of_week, start_time, end_time, mode, notes)
+    values
+      (v_tutor_id, v_day, v_start, v_end, v_mode, v_notes);
+  end loop;
+
+  return query
+    select *
+    from public.tutor_availability_slots
+    where tutor_id = v_tutor_id
+    order by day_of_week asc, start_time asc;
+end;
+$$;
+
+-- --- Grants: all six are callable by authenticated; each self-gates internally
+-- (tutor RPCs on current_tutor_id() null-check + ownership; the two admin RPCs on
+-- is_platform_admin()). No client ever writes these tables directly (RLS denies).
+grant execute on function public.upsert_tutor_application(jsonb, jsonb, jsonb, jsonb, text, text) to authenticated;
+grant execute on function public.submit_tutor_application() to authenticated;
+grant execute on function public.decide_tutor_application(uuid, text, text) to authenticated;
+grant execute on function public.record_tutor_document(text, text, text, text, int) to authenticated;
+grant execute on function public.verify_tutor_document(uuid, text, text) to authenticated;
+grant execute on function public.replace_tutor_availability(jsonb) to authenticated;

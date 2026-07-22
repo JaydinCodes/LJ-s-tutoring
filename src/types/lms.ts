@@ -35,6 +35,16 @@ export interface Tutor {
   hourly_rate?: number | null;
   status: RecordStatus;
   created_at: string;
+  // Tutor-onboarding/vetting fields (admin + self-tutor views only -- deliberately
+  // excluded from the student-facing tutors query in studentDashboardRepository.ts,
+  // see the EXPOSURE NOTE in docs/supabase/schema.sql).
+  qualification_band?: string | null;
+  qualified_subjects_json?: unknown | null;
+  approval_status?: string | null;
+  approval_reviewed_by?: string | null;
+  approval_reviewed_at?: string | null;
+  approval_note?: string | null;
+  teaching_preferences_json?: unknown | null;
 }
 
 export interface NgoPartner {
