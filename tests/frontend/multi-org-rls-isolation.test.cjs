@@ -162,7 +162,13 @@ test('Phase 2 step 2 cutover: fill_organization_id() trigger function exists and
   // Fallback precedence: explicit value, then ngo_partner_id (students/classes),
   // then creator org via active membership, then the seeded direct org.
   assert.match(fn, /if new\.organization_id is not null then/);
-  assert.match(fn, /tg_table_name in \('students', 'classes'\) and new\.ngo_partner_id is not null/);
+  // Nested IF (not a single `A and B` expression) -- Postgres does not
+  // guarantee AND/OR short-circuit evaluation, so new.ngo_partner_id must
+  // only be reached once tg_table_name is already confirmed to be
+  // 'students'/'classes', or it errors on tables (e.g. assignments) that
+  // have no such column at all.
+  assert.match(fn, /if tg_table_name in \('students', 'classes'\) then/);
+  assert.match(fn, /if new\.ngo_partner_id is not null then/);
   assert.match(fn, /new\.organization_id := new\.ngo_partner_id/);
   assert.match(fn, /from public\.organization_members om[\s\S]*?om\.status = 'active'/);
   assert.match(fn, /where type = 'direct'/);
