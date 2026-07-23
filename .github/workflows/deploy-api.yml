@@ -288,13 +288,23 @@ jobs:
           max_checks=20
           sleep_seconds=10
           last_http_code="000"
-          check_url="${HEALTHCHECK_URL%/}"
+          # Secrets/variables pasted via the GitHub UI can carry a stray
+          # trailing CR/LF or whitespace, which curl rejects outright as a
+          # malformed URL before it even attempts a connection. Sanitize
+          # before building the check URL.
+          clean_healthcheck_url="$(printf '%s' "$HEALTHCHECK_URL" | tr -d '\r\n' | xargs)"
+          echo "Resolved HEALTHCHECK_URL: $clean_healthcheck_url"
+          check_url="${clean_healthcheck_url%/}"
           if echo "$check_url" | grep -Eq '/api$'; then
             check_url="${check_url}/ready"
           fi
           for attempt in $(seq 1 "$max_checks"); do
             response_file="$(mktemp)"
-            last_http_code="$(curl -sS -o "$response_file" -w "%{http_code}" "$check_url" || echo 000)"
+            if last_http_code="$(curl -sS -o "$response_file" -w "%{http_code}" "$check_url")"; then
+              :
+            else
+              last_http_code="000"
+            fi
             if [ "$last_http_code" = "200" ]; then
               echo "Health check passed on attempt $attempt/$max_checks"
               rm -f "$response_file"
