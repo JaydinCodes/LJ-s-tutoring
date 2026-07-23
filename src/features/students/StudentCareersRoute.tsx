@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bookmark, Compass, GraduationCap, MapPinned, MessageCircle, Send, Sparkles, Target, X } from 'lucide-react';
 import { EmptyState, ErrorState, PageShell, SkeletonCard } from '../../components/dashboard/DashboardDesignSystem';
 import { FormField, TextArea, TextInput, inputClassName } from '../../components/ui/FormField';
-import { apiStreamText } from '../../lib/api/client';
+import { streamSupabaseFunctionText } from '../../lib/supabase/edgeFunctions';
 import { saveCareerProfile, type CareerSummary, type StudentCareerProfile } from './studentCareersRepository';
 import { useStudentCareersQuery } from './studentQueries';
 
@@ -59,7 +59,7 @@ async function streamCareersAssistant(
   onChunk: (chunk: string) => void,
   signal: AbortSignal,
 ) {
-  return apiStreamText('/assistant/careers-chat/stream', {
+  return streamSupabaseFunctionText('odie-careers-chat-stream', {
     message: [
       'The learner is using the Project Odysseus Careers cockpit.',
       `Saved interests: ${profile.interests.join(', ') || 'none yet'}.`,

@@ -25,14 +25,14 @@ test('careers page is a discovery cockpit with the required student sections', (
 
 test('Odie career chat streams with stop support and bounded memory', () => {
   const source = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
-  const client = read('src', 'lib', 'api', 'client.ts');
+  const client = read('src', 'lib', 'supabase', 'edgeFunctions.ts');
 
-  assert.ok(source.includes("apiStreamText('/assistant/careers-chat/stream'"), 'careers page must use streaming Odie endpoint');
+  assert.ok(source.includes("streamSupabaseFunctionText('odie-careers-chat-stream'"), 'careers page must use the streaming Odie Edge Function');
   assert.ok(source.includes('AbortController'), 'student must be able to stop generation');
   assert.ok(source.includes('Stop generation'), 'stop control must be rendered');
   assert.ok(source.includes('MAX_CHAT_MESSAGES = 12'), 'chat state must have a max message limit');
   assert.ok(source.includes('slice(-MAX_CHAT_MESSAGES)'), 'chat history must be trimmed');
-  assert.ok(client.includes('response.body.getReader()'), 'API client must read streamed chunks');
+  assert.ok(client.includes('response.body.getReader()'), 'Edge Function stream client must read streamed chunks');
   assert.ok(client.includes("contentType.includes('text/html')"), 'stream client must reject SPA fallback HTML');
   assert.ok(client.includes('api_html_response'), 'stream client must guard against HTML chunks being rendered as chat');
 });
