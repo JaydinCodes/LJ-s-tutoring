@@ -60,6 +60,27 @@ create table if not exists public.students (
   created_at timestamptz not null default now()
 );
 
+-- Production's students table (created before this file's current definition
+-- existed) carries several extra columns not modeled here at all --
+-- full_name, guardian_name/phone/relationship/email/address, notes,
+-- subjects_json, partner_affiliation -- leftovers from an earlier schema
+-- iteration, since profiles.full_name is this schema's actual source of
+-- truth for a person's name. Only full_name was NOT NULL with no default,
+-- which silently blocked every insert into students (nothing had actually
+-- attempted a new students row anywhere in this migration until
+-- admin-invite-user's functional verification surfaced it -- the table had
+-- zero rows in production, so this is a pure constraint fix, not a backfill).
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'students' and column_name = 'full_name' and is_nullable = 'NO'
+  ) then
+    alter table public.students alter column full_name drop not null;
+  end if;
+end
+$$;
+
 create table if not exists public.student_career_profiles (
   id uuid primary key default gen_random_uuid(),
   student_id uuid not null unique references public.students(id) on delete cascade,

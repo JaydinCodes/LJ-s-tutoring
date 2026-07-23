@@ -10,8 +10,10 @@
 // profile that has passed MFA (AAL2). Unlike the legacy Fastify route this has NO
 // dev MFA bypass — an Edge Function only runs deployed, so AAL2 is always required.
 //
-// Deploy + secrets: see ./README.md. Do NOT repoint the frontend to this function
-// until it is deployed and verified; the Fastify route stays live until then.
+// Status: deployed, verified (student and tutor create paths, duplicate-email
+// rejection, both confirmed live), and the frontend (AdminUsersRoute.tsx) is
+// repointed to it. See ./README.md for deploy/verify details. The Fastify
+// route stays registered until the broader lms-api retirement.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';

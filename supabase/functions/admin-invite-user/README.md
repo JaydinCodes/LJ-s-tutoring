@@ -7,13 +7,26 @@ Invites/creates a Supabase Auth user and provisions their `profiles` row plus a
 `students`/`tutors` record, using the service-role key that must never reach the
 browser. Caller must be an **ADMIN** profile that has passed **MFA (AAL2)**.
 
-## Status: written, NOT yet wired in
+## Status: deployed, verified, frontend repointed
 
-Follow the strangler-fig order — **do not repoint the frontend or delete the
-Fastify route until this function is deployed and verified.** The Fastify route
-stays live until cutover.
+Verified live with a real AAL2 admin token: both the student and tutor create
+paths succeed (correct `profiles` + `students`/`tutors` rows), duplicate email
+is correctly rejected (`409`), and a non-admin/non-AAL2 caller is correctly
+rejected (`403`). `src/features/admin/AdminUsersRoute.tsx` now calls this
+function via `supabase.functions.invoke`. The Fastify route stays registered
+until the broader `lms-api` retirement.
 
-## 1. Deploy
+One real bug surfaced during verification and is now fixed: production's
+`students` table carried a leftover `full_name` column (`NOT NULL`, no
+default) from an earlier schema iteration, not modeled in
+`docs/supabase/schema.sql` at all (`profiles.full_name` is the actual source
+of truth). This silently blocked every insert into `students` -- nothing had
+attempted a new row there until this function's own verification. Fixed by
+relaxing the constraint (table had zero rows, so a pure constraint fix, not a
+backfill); see the guarded `alter table students alter column full_name drop
+not null` block near the `students` table definition in `schema.sql`.
+
+## Deploy
 
 ```bash
 supabase functions deploy admin-invite-user --project-ref <your-project-ref>
@@ -30,7 +43,7 @@ supabase secrets set SUPABASE_INVITE_REDIRECT_URL="https://<app>/dashboard/login
 > always required, because an Edge Function only runs deployed. Keep using the
 > Fastify route for local dev until the full cutover.
 
-## 2. Verify (before repointing)
+## Verify
 
 Get an admin session's access token that has completed MFA (AAL2), then:
 
@@ -46,19 +59,8 @@ Expect `{"ok":true,...}`. Confirm the `profiles` + `tutors` rows exist. Also che
 the guard rails: a non-admin token → `403 admin_required`; a non-AAL2 admin token
 → `403 admin_mfa_required`; a duplicate email → `409 duplicate_email`.
 
-## 3. Repoint the frontend (after verify)
-
-In `src/features/admin/AdminUsersRoute.tsx`, replace the Fastify call
-`apiPost('/supabase/admin/users/invite', payload)` with the Supabase client
-invoke (it attaches the session bearer + anon apikey automatically):
-
-```ts
-const { data, error } = await supabase.functions.invoke('admin-invite-user', { body: payload });
-if (error) throw error;
-```
-
-## 4. Retire the Fastify route (after the frontend is on the function)
+## Retire the Fastify route (not yet done)
 
 Delete `supabaseAdminRoutes` / `lms-api/src/routes/supabase-admin.ts` and its
-registration. This removes the last browser dependency on the Fastify service for
-admin user provisioning.
+registration once nothing else calls it. This removes the last browser
+dependency on the Fastify service for admin user provisioning.
