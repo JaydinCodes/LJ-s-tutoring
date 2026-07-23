@@ -4,6 +4,11 @@ import type { Database } from '../../types/database';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
+// Exported for direct fetch() calls that can't go through the supabase-js
+// client -- e.g. streaming Edge Function responses, where .functions.invoke()
+// buffers the whole body instead of exposing it chunk by chunk.
+export { supabaseUrl, supabaseAnonKey };
+
 function isUsableEnvValue(value: string | undefined) {
   return Boolean(value && value.trim() && !value.includes('${') && !value.includes('}'));
 }
