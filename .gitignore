@@ -18,6 +18,10 @@ web/.next/
 # Environment variables
 .env
 .env.local
+
+# Local MCP config -- may contain bearer tokens (e.g. DigitalOcean's remote
+# MCP servers authenticate via a static header, not OAuth), never commit.
+.mcp.json
 .env.example
 !.env.example
 
