@@ -7,7 +7,7 @@ import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { recordAuditEvent } from '../../lib/audit/auditLog';
-import { apiPost } from '../../lib/api/client';
+import { requireSupabase } from '../../lib/supabase/client';
 import type { NgoPartner, RecordStatus, UserRole } from '../../types/lms';
 import { loadAdminDashboard } from './adminDashboardRepository';
 
@@ -88,28 +88,35 @@ function AdminInviteUserForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartn
     setError(null);
 
     try {
-      const response = await apiPost<AdminUserCreateResponse>('/supabase/admin/users/invite', {
-        mode,
-        role,
-        fullName: required(fullName, 'Full name'),
-        email: required(email, 'Email'),
-        phone: phone.trim() || undefined,
-        password: mode === 'create' ? required(password, 'Temporary password') : undefined,
-        student: role === 'student' ? {
-          grade: grade.trim() || undefined,
-          school: school.trim() || undefined,
-          parentName: parentName.trim() || undefined,
-          parentContact: parentContact.trim() || undefined,
-          ngoPartnerId: ngoPartnerId || undefined,
-          status,
-        } : undefined,
-        tutor: role === 'tutor' ? {
-          subjects: parsedSubjects,
-          grades: parsedGrades,
-          hourlyRate: hourlyRate.trim() ? Number(hourlyRate) : undefined,
-          status,
-        } : undefined,
+      const client = requireSupabase();
+      const invokeResult = await client.functions.invoke<AdminUserCreateResponse>('admin-invite-user', {
+        body: {
+          mode,
+          role,
+          fullName: required(fullName, 'Full name'),
+          email: required(email, 'Email'),
+          phone: phone.trim() || undefined,
+          password: mode === 'create' ? required(password, 'Temporary password') : undefined,
+          student: role === 'student' ? {
+            grade: grade.trim() || undefined,
+            school: school.trim() || undefined,
+            parentName: parentName.trim() || undefined,
+            parentContact: parentContact.trim() || undefined,
+            ngoPartnerId: ngoPartnerId || undefined,
+            status,
+          } : undefined,
+          tutor: role === 'tutor' ? {
+            subjects: parsedSubjects,
+            grades: parsedGrades,
+            hourlyRate: hourlyRate.trim() ? Number(hourlyRate) : undefined,
+            status,
+          } : undefined,
+        },
       });
+      if (invokeResult.error) {
+        throw new Error(await readEdgeFunctionErrorCode(invokeResult.error));
+      }
+      const response = invokeResult.data as AdminUserCreateResponse;
       await recordAuditEvent({
         action: response.mode === 'invite' ? 'user.invited' : 'user.created',
         entityType: 'profile',
@@ -243,6 +250,27 @@ function SummaryTile({ label, value }: { label: string; value: number }) {
 
 function csvList(value: string) {
   return value.split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+// supabase-js's functions.invoke() wraps a non-2xx response in a generic
+// FunctionsHttpError -- the actual {error: "..."} body the Edge Function sent
+// (duplicate_email, admin_mfa_required, forbidden, ...) is only reachable via
+// error.context, the raw Response. readableError() below matches against
+// those specific codes, so unwrap it here rather than falling back to the
+// generic wrapper message.
+async function readEdgeFunctionErrorCode(error: unknown): Promise<string> {
+  const context = (error as { context?: Response })?.context;
+  if (context && typeof context.json === 'function') {
+    try {
+      const body = await context.clone().json();
+      if (body && typeof body.error === 'string') {
+        return body.error;
+      }
+    } catch {
+      // fall through to the generic message below
+    }
+  }
+  return error instanceof Error ? error.message : 'admin_user_invite_failed';
 }
 
 function required(value: string, label: string) {
