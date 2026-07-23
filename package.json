@@ -78,8 +78,6 @@
     "test:e2e:api": "npm run test:e2e --prefix lms-api",
     "test:e2e": "playwright test --config playwright.react.config.ts",
     "test:e2e:ui": "playwright test --config playwright.react.config.ts --ui",
-    "test:e2e:web": "playwright test",
-    "test:e2e:web:headed": "playwright test --headed",
     "test:unit": "npm run test:frontend:unit",
     "test:all": "npm-run-all test:unit test:api test:e2e:api",
     "test": "npm run test:all",
@@ -88,7 +86,7 @@
     "perf:budget": "node scripts/check-frontend-performance-budget.cjs",
     "validate:monitoring": "node scripts/validate-monitoring-assets.js",
     "lint:js": "eslint \"assets/**/*.js\" \"scripts/**/*.js\" --max-warnings=0",
-    "lint:html": "html-validate \"*.html\" \"legacy/static/**/*.html\"",
+    "lint:html": "html-validate \"*.html\"",
     "lint": "npm-run-all --parallel lint:js lint:html",
     "prepare": "husky || echo husky-not-installed"
   }

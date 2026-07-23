@@ -1,4 +1,3 @@
-import { apiGet } from '../../lib/api/client';
 import { isSupabaseConfigured, requireSupabase, supabase } from '../../lib/supabase/client';
 import { callRpc } from '../../lib/supabase/rpc';
 import type { AuditLogEntry, PrivacyRequestRecord, PrivacyRequestType, Profile, SessionRecord, Student, Tutor } from '../../types/lms';
@@ -266,12 +265,12 @@ export async function closePrivacyRequest(requestId: string): Promise<{ request:
   return { request: mapPrivacyRequest(result.data as PrivacyRequestRecord) };
 }
 
-export async function loadAuditEntries(params: URLSearchParams) {
+export async function loadAuditEntries(params: URLSearchParams): Promise<AuditList> {
   const supabaseList = await loadSupabaseAuditEntries(params);
-  if (supabaseList) {
-    return supabaseList;
+  if (!supabaseList) {
+    throw new Error('supabase_not_configured');
   }
-  return apiGet<AuditList>(`/admin/audit?${params.toString()}`);
+  return supabaseList;
 }
 
 export async function loadRetentionSummary(): Promise<RetentionSummary> {

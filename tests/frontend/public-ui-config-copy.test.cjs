@@ -23,7 +23,6 @@ test('login and onboarding surfaces do not expose environment variable names', (
     'src/features/auth/ProtectedRoute.tsx',
     'src/features/auth/AuthProvider.tsx',
     'src/features/onboarding/OnboardingRoute.tsx',
-    'legacy/static/admin/retention.html',
   ];
 
   for (const relativePath of renderedSurfaces) {
