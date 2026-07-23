@@ -233,7 +233,7 @@ function reactShell(route) {
   const canonical = meta
     ? `    <link rel="canonical" href="https://projectodysseus.live/${canonicalPath}">\n`
     : '';
-  const configScript = `    <script defer src="/assets/portal-config.js"></script>`;
+  const configScript = '    <script defer src="/assets/portal-config.js"></script>';
   const publicScripts = isProtected
     ? `${configScript}
 `
