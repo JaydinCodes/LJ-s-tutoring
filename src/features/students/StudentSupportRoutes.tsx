@@ -125,7 +125,7 @@ export function StudentCommunityRoute() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold text-slate-950">{room.subject || 'Study room'}</p>
-                      <p className="mt-1 text-sm text-slate-600">{room.grade || 'Mixed grade'} | {room.member_count ?? room.memberCount ?? 0} learners</p>
+                      <p className="mt-1 text-sm text-slate-600">{room.grade || 'Mixed grade'} | {room.member_count ?? 0} learners</p>
                     </div>
                     <StatusBadge value={room.is_member ? 'joined' : 'open'} />
                   </div>
@@ -160,7 +160,7 @@ export function StudentCommunityRoute() {
                 columns={[
                   { key: 'title', label: 'Challenge', render: (row) => <span className="font-semibold text-slate-950">{row.title}</span> },
                   { key: 'subject', label: 'Subject', render: (row) => row.subject || 'Subject pending' },
-                  { key: 'week', label: 'Week', render: (row) => `${formatDate(row.week_start || row.weekStart)} - ${formatDate(row.week_end || row.weekEnd)}` },
+                  { key: 'week', label: 'Week', render: (row) => `${formatDate(row.week_start)} - ${formatDate(row.week_end)}` },
                   { key: 'status', label: 'Status', render: (row) => <StatusBadge value={row.has_submitted ? 'submitted' : 'open'} /> },
                 ]}
               />
@@ -175,9 +175,9 @@ export function StudentCommunityRoute() {
             <div className="mt-5 max-h-[28rem] space-y-3 overflow-auto rounded-lg bg-slate-50 p-4">
               {messages.map((item) => (
                 <article key={item.id} className="rounded-lg bg-white p-3">
-                  <p className="font-semibold text-slate-950">{item.nickname || item.student_name || item.authorName || 'Member'}</p>
+                  <p className="font-semibold text-slate-950">{item.student_name || 'Member'}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{item.content}</p>
-                  <p className="mt-2 text-xs text-slate-500">{formatDate(item.created_at || item.createdAt)}</p>
+                  <p className="mt-2 text-xs text-slate-500">{formatDate(item.created_at)}</p>
                 </article>
               ))}
               {activeRoom && !messages.length ? <p className="text-sm text-slate-600">No messages yet. Start with a clear question or worked step.</p> : null}

@@ -8,6 +8,10 @@ import type {
   Guardian,
   InvoiceLineRecord,
   InvoiceRecord,
+  CommunityChallengeRow,
+  CommunityQuestionRow,
+  CommunityRoomMessageRow,
+  CommunityRoomRow,
   NgoPartner,
   ParentProgressReportRow,
   Payment,
@@ -178,6 +182,34 @@ export interface Database {
       run_retention_cleanup: {
         Args: { p_apply?: boolean };
         Returns: unknown;
+      };
+      create_study_room: {
+        Args: { p_subject: string; p_grade?: string | null };
+        Returns: CommunityRoomRow;
+      };
+      join_study_room: {
+        Args: { p_room_id: string };
+        Returns: void;
+      };
+      post_room_message: {
+        Args: { p_room_id: string; p_content: string };
+        Returns: CommunityRoomMessageRow;
+      };
+      get_community_rooms: {
+        Args: Record<string, never>;
+        Returns: CommunityRoomRow[];
+      };
+      get_room_messages: {
+        Args: { p_room_id: string };
+        Returns: CommunityRoomMessageRow[];
+      };
+      get_community_challenges: {
+        Args: Record<string, never>;
+        Returns: CommunityChallengeRow[];
+      };
+      get_community_questions: {
+        Args: Record<string, never>;
+        Returns: CommunityQuestionRow[];
       };
     };
     Enums: Record<string, never>;

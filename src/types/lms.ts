@@ -454,6 +454,61 @@ export interface PrivacyRequestRecord {
   updated_at: string;
 }
 
+// Supabase community_* rows/RPC return shapes (see docs/supabase/schema.sql).
+// Only the slice the frontend actually uses -- rooms, messages, and read-only
+// challenge/question listings. Submissions/answers/moderation have no
+// frontend anywhere in this codebase.
+export type CommunityModerationState = 'visible' | 'flagged';
+export type CommunityQuestionStatus = 'open' | 'resolved' | 'closed';
+
+export interface CommunityRoomRow {
+  id: string;
+  subject: string;
+  grade?: string | null;
+  created_by?: string | null;
+  created_at: string;
+  member_count: number;
+  is_member: boolean;
+}
+
+export interface CommunityRoomMessageRow {
+  id: string;
+  room_id: string;
+  profile_id: string;
+  content: string;
+  moderation_state: CommunityModerationState;
+  created_at: string;
+  sender_name?: string | null;
+}
+
+export interface CommunityChallengeRow {
+  id: string;
+  title: string;
+  subject: string;
+  grade?: string | null;
+  week_start: string;
+  week_end: string;
+  xp_reward: number;
+  created_by?: string | null;
+  created_at: string;
+  has_submitted: boolean;
+}
+
+export interface CommunityQuestionRow {
+  id: string;
+  profile_id: string;
+  subject: string;
+  topic: string;
+  title: string;
+  body: string;
+  status: CommunityQuestionStatus;
+  moderation_state: CommunityModerationState;
+  created_at: string;
+  asker_name?: string | null;
+  answer_count: number;
+  verified_answer_id?: string | null;
+}
+
 export interface DashboardMetric {
   label: string;
   value: string;
