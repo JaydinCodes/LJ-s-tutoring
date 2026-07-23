@@ -14,13 +14,19 @@
 //
 // Security: caller must be an authenticated Supabase user whose profile has
 // role='student' and a linked students row (mirrors Fastify's
-// authenticateCareersStudent). The OPENROUTER_API_KEY never reaches the
-// browser -- it's read from an Edge Function secret.
+// authenticateCareersStudent). The GROQ_API_KEY never reaches the browser --
+// it's read from an Edge Function secret.
 //
-// Deploy: this function proxies to openrouter.ai using OPENROUTER_API_KEY and
-// OPENROUTER_MODEL, which must be set as Edge Function secrets (Project
-// Settings -> Edge Functions -> Secrets, or `supabase secrets set`) -- same
-// values already used by lms-api, just not auto-injected the way
+// Provider: Groq (api.groq.com), not OpenRouter -- switched after OpenRouter's
+// free-tier model proved persistently rate-limited (429) during verification.
+// Groq's chat completions API is OpenAI-compatible (same streaming/SSE delta
+// shape), so only the endpoint, model, and API key changed; the
+// request/response handling below is otherwise identical.
+//
+// Deploy: this function proxies to Groq using GROQ_API_KEY and GROQ_MODEL,
+// which must be set as Edge Function secrets (Project Settings -> Edge
+// Functions -> Secrets, or `supabase secrets set`) -- same values already
+// used by lms-api, just not auto-injected the way
 // SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY are.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -96,13 +102,13 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  const openRouterApiKey = Deno.env.get('OPENROUTER_API_KEY');
-  const openRouterModel = Deno.env.get('OPENROUTER_MODEL') || 'google/gemma-4-31b-it:free';
+  const groqApiKey = Deno.env.get('GROQ_API_KEY');
+  const groqModel = Deno.env.get('GROQ_MODEL') || 'llama-3.1-8b-instant';
   if (!supabaseUrl || !serviceRoleKey) {
     return json({ error: 'supabase_admin_not_configured' }, 501);
   }
-  if (!openRouterApiKey) {
-    return json({ error: 'openrouter_not_configured' }, 503);
+  if (!groqApiKey) {
+    return json({ error: 'groq_not_configured' }, 503);
   }
 
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
@@ -140,24 +146,22 @@ Deno.serve(async (req) => {
   }
   const { message, history } = parsed.data;
 
-  // 3) Stream the OpenRouter response back as plain text chunks, exactly like
-  // the Fastify version (only the delta content is proxied, never the raw
-  // SSE frames or the API key).
+  // 3) Stream the Groq response back as plain text chunks, exactly like the
+  // Fastify/OpenRouter version (only the delta content is proxied, never the
+  // raw SSE frames or the API key).
   const controller = new AbortController();
   req.signal.addEventListener('abort', () => controller.abort());
 
-  const upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     signal: controller.signal,
     headers: {
-      Authorization: `Bearer ${openRouterApiKey}`,
+      Authorization: `Bearer ${groqApiKey}`,
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
-      'HTTP-Referer': Deno.env.get('PUBLIC_BASE_URL') || 'https://projectodysseus.live',
-      'X-Title': 'Odie',
     },
     body: JSON.stringify({
-      model: openRouterModel,
+      model: groqModel,
       messages: [
         { role: 'system', content: CAREERS_ODIE_SYSTEM_PROMPT },
         ...history.slice(-8),
@@ -170,7 +174,7 @@ Deno.serve(async (req) => {
   });
 
   if (!upstream.ok || !upstream.body) {
-    const message = upstream.body ? await readAssistantError(upstream) : 'openrouter_stream_unavailable';
+    const message = upstream.body ? await readAssistantError(upstream) : 'groq_stream_unavailable';
     return json({ error: message }, upstream.status || 502);
   }
 
