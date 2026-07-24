@@ -11,25 +11,27 @@ Project Odysseus is Supabase-first:
 - Supabase Storage owns private learner, tutor, and assignment files.
 - Secure Supabase RPC functions own privileged mutations.
 
-The Fastify API remains available for backend-only services such as jobs, AI, email, exports, integrations, and operational automation. It must not become a second browser authentication source.
+Backend-only / trusted-execution work (the Odie AI proxy, admin user invites) runs
+on **Supabase Edge Functions** (`supabase/functions/`), not a separate backend
+service — the Fastify+Prisma stack this repo used to run alongside Supabase
+(`lms-api/`) was fully retired 2026-07-24 (see
+[ADR-0003](docs/architecture/ADR-0003-single-stack-supabase.md)).
 
 Start with `docs/architecture/ARCHITECTURE.md` for the current implementation map. See `docs/architecture/ADR-0001-supabase-first.md` for the accepted architecture decision.
 
 ## What this repo now contains
 
 - A unified Vite + React + TypeScript LMS migration app in `src/`.
-- Legacy HTML/CSS/JS source files may remain for audit/reference, but the production build no longer copies old portal route trees.
-- `lms-api/` for backend-only Fastify services that require trusted server execution.
+- `supabase/` for the Postgres schema/RLS/RPC source of truth (`docs/supabase/schema.sql`) and Edge Functions requiring trusted server execution.
 - Build scripts that compile the unified React bundle, generate React route shells, serve the React public root from `dist/index.html`, and inject the public API base.
 
 ## Quick start
 
 ```bash
 npm install
-npm install --prefix lms-api
 cp .env.example .env
+npm run supabase:start
 npm run build
-npm run build:api
 npm run start
 ```
 
@@ -39,16 +41,15 @@ You can also use `.env.local` for machine-specific secrets; it is ignored by git
 
 ```text
 src/                 Unified React + TypeScript LMS frontend
-lms-api/             Fastify API, Prisma schema, migrations, API tests
+supabase/            Edge Functions and local Supabase CLI config
 docs/                Architecture, setup, deployment, compliance, release, and ops docs
 .do/                 DigitalOcean App Platform spec
 assets/              Public support assets copied into the React static build
 images/              Public images used by React routes and SEO metadata
 scripts/             Build, verification, release, and operational helper scripts
 tests/               Frontend unit tests and browser E2E tests
-ops/                 Gateway and monitoring assets
+ops/                 Monitoring assets
 releases/            Release evidence and rollback templates
-legacy/static/       Retired static portal source kept for reference/fallback work
 ```
 
 Root-level config files are intentionally kept at the top level because the related tools expect them there. Deeper project notes live in `docs/README.md`.
@@ -190,17 +191,6 @@ VITE_PO_FORMSPREE_ENDPOINT=
 `VITE_PO_FORMSPREE_ENDPOINT` is optional; when omitted, the React public enquiry form opens a pre-filled email fallback.
 `SUPABASE_SERVICE_ROLE_KEY` is intentionally omitted from public client config. It is backend-only for API operations such as admin user invitations.
 
-### API config
-
-The API bootstrap loads environment variables from repository and package files in this order:
-
-- `../.env.local`
-- `../.env`
-- `./.env.local`
-- `./.env`
-
-For local `npm start`, make sure `DATABASE_URL`, `COOKIE_SECRET`, `JWT_SECRET`, and `GROQ_API_KEY` are set before starting the API.
-
 See `.env.example` for the canonical variable list (placeholders only).
 
 ### Supabase dashboard role verification
@@ -219,48 +209,17 @@ npm run verify:supabase:roles
 
 The script signs in with the public Supabase anon client, reads each user's own `profiles` row through RLS, confirms the expected role, then signs out.
 
-### Google OAuth
-
-Tutor and student Google sign-in is enabled when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set.
-
-Configure these authorized redirect URIs in Google Cloud Console:
-
-- Tutor: `http://localhost:3001/auth/google/callback`
-- Student: `http://localhost:3001/auth/google/student/callback`
-
-For production, use the deployed API host in `GOOGLE_CALLBACK_URL` and `GOOGLE_STUDENT_CALLBACK_URL`. Set `GOOGLE_ALLOWED_DOMAIN` when only one Google Workspace or email domain should be accepted. OAuth is sign-in only: tutor and student accounts must already exist in `users`.
-
-### Seed Users
-
-Local dev seed users are created by `npm run seed:dev --prefix lms-api`:
-
-- `admin@dev.local` / `DevPass123!`
-- `tutor@dev.local` / `DevPass123!`
-- `student@dev.local` / `DevPass123!`
-
-Test seed users from `npm run seed:test --prefix lms-api` use `TestPass123!`.
-
-### Assistant API
-
-The student dashboard now uses the assistant layer at:
-
-- `POST /assistant/chat`
-- `POST /assistant/document`
-
-Both endpoints expect an authenticated session and a CSRF token when called from the browser.
-
 ## Scripts
 
 ```bash
 npm run build        # Build the React bundle, generate route shells, inject config, verify assets
 npm run build:react  # Build the unified React LMS bundle
-npm run build:api    # Install + build lms-api from repo root
 npm run build:static # Generate React route shells and copy required public assets to dist/
 npm run supabase:start # Start local Supabase through the CLI
 npm run supabase:reset # Generate and apply the local Supabase schema/RLS/RPC migration
 npm run inject:config
 npm run serve        # Serve dist/ on port 8080
-npm run dev          # Serve static site + run API dev server
+npm run dev          # Serve the static site (build:static + serve)
 npm run start        # Serve static site + run API prod server (after build:api)
 npm run lint         # Lint JS and validate HTML
 npm run test:unit    # Run frontend helper and React migration unit tests

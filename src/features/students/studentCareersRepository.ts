@@ -1,7 +1,7 @@
 import { parseStudentCareersApiResponse } from '../../types/studentApiContracts';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
-import careersDataset from '../../../lms-api/data/odie-careers/careers.v1.json';
-import coursesDataset from '../../../lms-api/data/odie-careers/courses.v1.json';
+import careersDataset from '../../data/odie-careers/careers.v1.json';
+import coursesDataset from '../../data/odie-careers/courses.v1.json';
 
 export interface CareerSummary {
   id: string;

@@ -51,6 +51,6 @@ test('careers chat error state is graceful', () => {
   const careers = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
 
   assert.ok(careers.includes('I cannot connect to Odie right now'), 'careers chat must show a friendly connection error');
-  assert.ok(careers.includes('openrouter_not_configured'), 'OpenRouter configuration errors must be translated for the student');
+  assert.ok(careers.includes('groq_not_configured'), 'Groq configuration errors must be translated for the student');
   assert.ok(careers.includes('abortRef.current?.abort()'), 'students must be able to stop a long response');
 });

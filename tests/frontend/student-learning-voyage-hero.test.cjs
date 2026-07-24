@@ -13,7 +13,6 @@ test('Learning Voyage hero renders concrete learner state and Oracle Insight', (
   const source = read('src', 'features', 'students', 'StudentDashboardComponents.tsx');
   const dataType = read('src', 'types', 'lms.ts');
   const repository = read('src', 'features', 'students', 'studentDashboardRepository.ts');
-  const api = read('lms-api', 'src', 'routes', 'academic.ts');
 
   for (const label of ['Learner', 'Grade', 'School', 'Next task', 'Next exam', 'Academic status']) {
     assert.ok(source.includes(`label="${label}"`), `hero must show ${label}`);
@@ -26,7 +25,6 @@ test('Learning Voyage hero renders concrete learner state and Oracle Insight', (
   assert.ok(dataType.includes('supportStatus?:'), 'dashboard view must carry academic support status');
   assert.ok(repository.includes('averageScore:'), 'repository must project the learner average into the Oracle Insight daily context (exam-calendar was legacy-API-only; not in the Supabase path)');
   assert.ok(repository.includes('currentAcademicStatus:'), 'repository must preserve current academic status');
-  assert.ok(api.includes('currentAcademicStatus: supportStatus.label'), 'API must project academic status into dashboard context');
 });
 
 test('Learning Voyage hero uses brand styling, responsive collapse, and subtle motion shine', () => {

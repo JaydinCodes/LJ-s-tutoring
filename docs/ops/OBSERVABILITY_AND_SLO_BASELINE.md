@@ -1,5 +1,13 @@
 # Observability And SLO Baseline
 
+> **Stale (2026-07-24):** the `GET /metrics` endpoint and `/ready` checks
+> described below belonged to the retired `lms-api` Fastify service, which is
+> fully deleted. The live app is now a static site + Supabase (Postgres,
+> Auth, Edge Functions) — observability should come from Supabase's own
+> dashboard/logs and DigitalOcean's static-site metrics, not a
+> self-hosted `/metrics` endpoint. No replacement baseline has been written
+> yet.
+
 ## Metrics Endpoint
 
 - API exposes Prometheus text metrics at `GET /metrics`.

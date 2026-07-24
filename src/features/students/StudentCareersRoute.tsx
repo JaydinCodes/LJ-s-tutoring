@@ -184,7 +184,7 @@ export function StudentCareersRoute() {
         const details = err instanceof Error ? err.message : '';
         setChat((current) => current.map((item, index) => (
           index === current.length - 1
-            ? { ...item, text: `I cannot connect to Odie right now. ${details.includes('assistant_not_configured') || details.includes('openrouter_not_configured') ? 'OpenRouter is not configured on the API server yet.' : 'Please check that the LMS API is running and try again shortly.'}` }
+            ? { ...item, text: `I cannot connect to Odie right now. ${details.includes('groq_not_configured') ? 'Odie is not configured yet.' : 'Please try again shortly.'}` }
             : item
         )));
       }

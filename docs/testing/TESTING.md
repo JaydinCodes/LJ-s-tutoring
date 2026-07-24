@@ -72,20 +72,13 @@ Use this only after the release gates in `../release/RELEASE_GOVERNANCE.md` have
 
 ### Ensure Production Test Users
 
-Run this only against the production database after choosing real email addresses you control. The student email must be the exact Google account used with the production Google sign-in button. The admin email must be able to receive the OTP email.
-
-PowerShell example:
-
-```powershell
-$env:CONFIRM_PROD_TEST_USERS = "yes"
-$env:DATABASE_URL = "<production database url>"
-$env:PROD_TEST_ADMIN_EMAIL = "admin-test@example.com"
-$env:PROD_TEST_ADMIN_PASSWORD = "<strong temporary password>"
-$env:PROD_TEST_STUDENT_EMAIL = "student-test@gmail.com"
-$env:PROD_TEST_TUTOR_EMAIL = "tutor-test@example.com"
-$env:PROD_TEST_TUTOR_PASSWORD = "<strong temporary password>"
-npm run seed:prod-test-users --prefix lms-api
-```
+> **Stale (2026-07-24):** this used `lms-api/scripts/ensure-prod-test-users.ts`
+> (Google sign-in + OTP, the old Fastify auth flow), which no longer exists —
+> `lms-api` is fully retired. Production test users now go through Supabase
+> Auth; use the `admin-invite-user` Edge Function (see
+> `supabase/functions/admin-invite-user/README.md`) to invite a real test
+> admin/tutor/student, then complete Supabase MFA (AAL2) for the admin
+> account. This section needs a proper rewrite for that flow.
 
 Expected login paths:
 

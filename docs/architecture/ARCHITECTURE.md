@@ -7,10 +7,10 @@ This document is the practical onboarding guide for new developers. If older doc
 ## Current Verdict
 
 - Active app: `src/` is the unified React, TypeScript, and Vite application for the public site, login, onboarding, student dashboard, tutor dashboard, and admin dashboard.
-- Primary platform: Supabase Auth, `profiles`, RLS, Storage, and RPC are the browser trust boundary.
-- Transitional backend: `lms-api/` still exists for Fastify services that need trusted server execution, but browser LMS access must not depend on Fastify cookie auth.
+- Primary platform: Supabase Auth, `profiles`, RLS, Storage, and RPC are the browser trust boundary — the **only** stack. `lms-api/` (Fastify + Prisma) was fully retired 2026-07-24; see [ADR-0003](ADR-0003-single-stack-supabase.md).
+- Backend-only / trusted-execution work (Odie AI proxy, admin user invites) runs on Supabase Edge Functions (`supabase/functions/`), not a separate service.
 - Canonical Supabase schema source: `docs/supabase/schema.sql`. Local Supabase migrations are generated from that file.
-- Legacy folders: `student-app/` and `legacy/static/` are inactive reference material unless a task explicitly says otherwise.
+- Legacy folders: `student-app/` is inactive reference material unless a task explicitly says otherwise (`legacy/static/` was deleted alongside `lms-api/` — it was never reachable in production).
 
 ## Repository Map
 
@@ -23,16 +23,13 @@ This document is the practical onboarding guide for new developers. If older doc
 | `src/features/students/` | Active | Student dashboard, assignments, results, careers, reports, and support routes. |
 | `src/features/admin/` | Active | Admin dashboards and operational workflows. |
 | `src/features/tutors/` | Active | Tutor dashboards, classes, sessions, submissions, reports, and risk views. |
-| `src/lib/supabase/` | Active | Public Supabase browser client setup. |
-| `src/lib/api/` | Transitional | API helper for backend-only services; forwards Supabase bearer auth where needed. |
+| `src/lib/supabase/` | Active | Public Supabase browser client setup, plus `edgeFunctions.ts` for streaming Edge Function calls. |
 | `docs/supabase/schema.sql` | Active source | Canonical Supabase tables, helper functions, RLS policies, Storage policies, and RPC functions. |
 | `supabase/config.toml` | Active local setup | Supabase CLI local project configuration. |
+| `supabase/functions/` | Active | Edge Functions for backend-only/trusted-execution work (Odie AI proxy, admin user invites). |
 | `supabase/migrations/` | Generated local target | Local migration output generated from `docs/supabase/schema.sql`; generated SQL is ignored by git. |
-| `lms-api/` | Transitional/backend-specific | Fastify API for jobs, AI services, email, exports, legacy auth routes, and operational backend work. |
-| `lms-api/prisma/migrations/` | Transitional legacy | Older/API migration path. Do not treat it as the source of truth for new Supabase-first browser data. |
 | `scripts/build-static.js` | Active | Generates static HTML shells for React routes and copies public assets into `dist/`. |
 | `assets/` | Active support assets | Static assets and runtime config files copied into the production static build. |
-| `legacy/static/` | Legacy | Retired static portal source kept for audit/reference. |
 | `student-app/` | Legacy | Older student app source; not the active student portal. |
 
 ## Active Frontend App
@@ -239,36 +236,27 @@ Storage policies in `docs/supabase/schema.sql` keep buckets private and scope ac
 - Tutors can read submission files only for assignments they created.
 - Admins can read submission files.
 
-## Fastify API Status
+## Backend-Only / Trusted-Execution Work
 
-`lms-api/` is transitional and feature-specific, not the browser auth authority.
+There is no second backend service. Work that genuinely can't run in the browser (holding a secret key, service-role operations) runs on **Supabase Edge Functions** (`supabase/functions/`):
 
-Current Fastify responsibilities include:
-
-- health, readiness, metrics, request logging, CORS, CSRF, and operational middleware,
-- legacy Google OAuth and cookie auth routes,
-- backend-only Supabase Admin Auth operations such as admin user invites, where a service-role key is required and must never reach browser code,
-- admin/tutor/academic routes from the older API model,
-- assistant and Odie careers services,
-- email, jobs, reports, exports, and integrations where trusted backend execution is needed.
+- `admin-invite-user` — invites/creates a Supabase Auth user + provisions their `profiles`/`students`/`tutors` row, using the service-role key.
+- `odie-careers-chat-stream` — the Odie careers-chat AI proxy, holding the Groq API key server-side.
 
 Rules for future backend work:
 
-- Do not introduce a second browser session authority.
-- Browser-protected routes should use Supabase session/profile state.
-- Backend endpoints called by the browser should accept Supabase bearer identity or use service-role authority for backend-only tasks.
-- Keep legacy cookie auth isolated until it can be removed or migrated.
+- Do not introduce a second browser session authority — Supabase Auth is the only one.
+- Browser-protected routes use Supabase session/profile state.
+- Anything needing a secret key or service-role authority is an Edge Function, not client code.
 
 ## Migration Strategy
 
-Supabase is now the direction for primary product data, auth, authorization, Storage, and privileged mutations.
+Supabase is the direction for primary product data, auth, authorization, Storage, and privileged mutations — and, as of 2026-07-24, the *only* stack (`lms-api`/Prisma fully retired, see [ADR-0003](ADR-0003-single-stack-supabase.md)).
 
 - Edit `docs/supabase/schema.sql` for Supabase schema, RLS, Storage policies, and RPC.
 - Run `npm run supabase:migration:sync` to generate the local Supabase CLI migration.
 - Run `npm run supabase:reset` to apply the generated migration to local Supabase.
 - Use `npm run test:rls` for source-level RLS/RPC contract coverage.
-
-`lms-api/prisma/migrations/` remains for legacy/transitional API database work. Do not add new browser-domain LMS schema there unless the feature explicitly remains Fastify-owned.
 
 ## Local Development
 
@@ -276,7 +264,6 @@ Install dependencies:
 
 ```bash
 npm install
-npm install --prefix lms-api
 ```
 
 Create local environment:

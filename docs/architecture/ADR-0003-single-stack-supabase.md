@@ -2,7 +2,7 @@
 
 ## Status
 
-**Accepted 2026-07-08.** Extends [ADR-0001](ADR-0001-supabase-first.md). Execution is a phased migration (Roadmap Phase A).
+**Accepted 2026-07-08. Execution complete 2026-07-24.** Extends [ADR-0001](ADR-0001-supabase-first.md). `lms-api/` (Fastify + Prisma) is fully deleted from the repo, removed from the live DigitalOcean app spec, and its CI/CD is retired. See [PRISMA_TO_SUPABASE_MIGRATION_PLAN.md §6](PRISMA_TO_SUPABASE_MIGRATION_PLAN.md) for the accurate current per-domain status — the sections below describe the plan as it stood when this ADR was accepted and are kept for historical context.
 
 ## Context
 
@@ -40,41 +40,32 @@ For a 5-person team moving fast, maintaining two stacks is the wrong use of effo
 - Reduces hosting cost, maintenance, and — most importantly — **collapses the two-auth-authority and split-audit-trail bug classes**.
 - Fits the multi-org model (ADR-0002): org isolation lives entirely in RLS, with no second stack to re-implement it in.
 
-## What lms-api still does today (accurate inventory)
+## What lms-api did, and where each piece actually ended up (2026-07-24)
 
-The React dashboards are **already Supabase-first for their core data** — `adminDashboardRepository` / `studentDashboardRepository` etc. read students, assignments, submissions, marks, progress, classes, allocations, payments directly via `supabase.from(...)` / `supabase.rpc(...)`. lms-api is **not** where the dashboards live. But it still carries real work, in two tiers:
+`lms-api/` is now fully deleted. This table replaces the original "still does today" inventory with what actually happened to each Tier-2 hard dependency:
 
-**Tier 1 — optional/legacy enrichment (degrades gracefully today).** Called via `optionalApiGet(path, fallback)` which returns an empty fallback on 404/unreachable, so the dashboard renders without it: `/admin/dashboard`, `/student/assignments`, `/student/results`. → Drop once the equivalent Supabase read exists (some already duplicate it).
-
-**Tier 2 — hard dependencies (would break if lms-api vanished today), with their destination:**
-
-| Route (still called from `src/`) | What it does | Where it goes |
+| Route (was called from `src/`) | What it did | What actually happened |
 |---|---|---|
-| `/supabase/admin/users/invite` | Admin user invite — **holds the service-role key** | **Edge Function** (must stay server-side) |
-| `/reports/generate` | PDF report generation | **Edge Function** |
-| `/odie-careers/overview`, `/odie-careers/profile` | Odie AI (holds OpenRouter key) | **Edge Function** |
-| `/admin/payroll/generate-week` | Payroll computation | RPC or Edge Function |
-| `/admin/privacy-requests`, `/admin/retention/summary` | POPIA ops | RPC + scheduled Edge Function |
-| `/admin/tutors`, `/community/rooms` | Admin/community reads | Direct Supabase read + RLS |
+| `/supabase/admin/users/invite` | Admin user invite — held the service-role key | **Done.** Edge Function `admin-invite-user`, deployed and live; `AdminUsersRoute.tsx` calls it via `supabase.functions.invoke`. |
+| `/reports/generate` | PDF report generation | **Not rebuilt.** No PDF-download UI exists anywhere in `src/` — flagged as an open question (deliberate cut vs. unnoticed regression), not resolved either way. |
+| `/odie-careers/overview`, `/odie-careers/profile` | Odie AI (held OpenRouter key) | **Redesigned, simpler than planned.** Overview/profile turned out not to need a server proxy at all — static bundled JSON (`src/data/odie-careers/`) + direct `student_career_profiles` reads. Only the actual chat (`/assistant/careers-chat/stream`) needed an Edge Function: `odie-careers-chat-stream`, deployed and live, Groq-backed (switched from OpenRouter after persistent free-tier rate limiting) rather than OpenRouter as originally planned. |
+| `/admin/payroll/generate-week` | Payroll computation | **Done as an RPC** — `generate_payroll_week` in `schema.sql`, called from `adminPayrollRepository.ts`. |
+| `/admin/privacy-requests`, `/admin/retention/summary` | POPIA ops | **Partially done.** Reads/RPC calls repointed (`loadPrivacyRequests`, `run_retention_cleanup(p_apply: false)`). The "scheduled Edge Function" half was never built — see the retention/DR gap noted in the migration plan §6 step 7. |
+| `/admin/tutors`, `/community/rooms` | Admin/community reads | **Done** — direct Supabase reads + RLS, including the community suite (study rooms/challenges/Q&A), which was originally cut from scope and later un-cut and shipped natively. |
 
-The point: retiring Fastify means **relocating this work, not deleting it** — mostly to Edge Functions (secret-holding / compute) plus a few RLS/RPC moves. The dashboards keep working throughout because (a) their core data is already on Supabase and (b) each route is rebuilt and repointed before its Fastify handler is removed.
+## Migration approach (historical — all steps below are now complete or explicitly closed)
 
-## Migration approach (high level; detailed plan is a Phase-A task)
-
-1. **Freeze** new feature work on the Fastify stack; new work is Supabase-first.
-2. **Inventory** every Fastify route → classify: (a) already duplicated in Supabase (delete), (b) browser data/authz (move to RLS/RPC), (c) trusted backend (move to Edge Function).
-3. **Migrate the AI proxy + email + jobs** to Edge Functions first (self-contained, high value, removes secret-key handling from a second service).
-4. **Retire legacy auth routes** — the `/auth/admin/login` MFA-bypass Critical is closed by removing the second auth authority.
-5. **Reconcile duplicated tables** — pick the Supabase version, migrate any needed data, drop the Prisma duplicates.
-6. **Payroll/invoicing** last.
-7. Decommission `lms-api/` when empty; update `ARCHITECTURE.md` and ADR-0001's "transitional Fastify" language.
+1. ~~**Freeze** new feature work on the Fastify stack~~ — moot; the stack is deleted.
+2. ~~**Inventory** every Fastify route~~ — superseded by the table above.
+3. **Migrate the AI proxy + email + jobs to Edge Functions** — AI proxy: done (see table above). Email: never migrated (no email-sending Edge Function exists; not confirmed whether anything still needs it). Scheduled jobs (retention, score recompute): not done — no `pg_cron` schedule exists for `run_retention_cleanup()` or the risk-score recompute RPCs.
+4. **Retire legacy auth routes** — done as a side effect of deleting `lms-api/` entirely; the `/auth/admin/login` MFA-bypass route no longer exists anywhere.
+5. **Reconcile duplicated tables** — done per the migration plan's own table-by-table triage.
+6. **Payroll/invoicing** — done for the core RPCs (see table above); invoice PDF rendering was never built.
+7. **Decommission `lms-api/`** — ✅ done 2026-07-24. `ARCHITECTURE.md` still needs its "transitional Fastify" language updated to match (tracked separately).
 
 ## Deployment & hosting consequences
 
-**DigitalOcean:** `.do/app.yaml` deploys two components — the `lms-api` Fastify service (Docker, `basic-xxs`) and the `website` static React site — with ingress routing `/api/*` → Fastify and everything else → the static site. Retiring Fastify:
-- The **static site stays on DigitalOcean unchanged** — nothing breaks there.
-- The `lms-api` **service component is removed**, and the `/api/*` ingress rules are repointed: most browser calls go direct to Supabase; the trusted ones (AI proxy, email, jobs) go to **Supabase Edge Function** URLs (`https://<project>.supabase.co/functions/v1/...`), which live on Supabase, not DO.
-- Sequence to avoid downtime: **Edge Functions live → frontend repointed → then remove the Fastify service + its `/api` ingress rules.** DO's role shrinks to static hosting (could later move to Cloudflare Pages/Netlify if desired, but not required).
+**DigitalOcean:** ✅ Done. `.do/app.yaml` now has only the `website` static site component — the `lms-api` service and its `/api/*` ingress rules are removed, applied to the live app, and browser-verified clean across all 4 domains (no failed requests, no console errors). Trusted work (AI proxy, admin invite) runs on **Supabase Edge Functions** (`https://<project>.supabase.co/functions/v1/...`), not DO.
 
 **Supabase tier:** the Edge Functions migration works on the **free** tier (500K invocations/month — ample at current scale). **Stay on free while building.** Move to **Pro ($25/mo) before onboarding any real external cohort with real learner data**, because the free tier has **no database backups** and **pauses projects after 7 days of inactivity** — both unacceptable for a production system holding minors' PII under POPIA. Pro adds daily backups (7-day retention), no pausing, and larger DB/storage. This upgrade is a **POPIA/reliability gate, tied to Roadmap Phase A→B**, not a scaling nicety.
 

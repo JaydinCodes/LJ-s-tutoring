@@ -26,18 +26,6 @@ test('frontend auth uses Supabase session, profile, and centralized role normali
   assert.doesNotMatch(protectedRoute, /auth\/session/);
 });
 
-test('transitional API client forwards Supabase bearer auth and documents legacy cookies', () => {
-  const apiClient = read('src/lib/api/client.ts');
-  const fastifyPlugin = read('lms-api/src/plugins/auth.ts');
-  const fastifyRoutes = read('lms-api/src/routes/auth.ts');
-
-  assert.match(apiClient, /supabase\.auth\.getSession\(\)/);
-  assert.match(apiClient, /authorization: `Bearer \$\{accessToken\}`/);
-  assert.match(apiClient, /Transitional Fastify endpoints/);
-  assert.match(fastifyPlugin, /Transitional: browser LMS access is Supabase-first/);
-  assert.match(fastifyRoutes, /Transitional: Supabase Auth is the browser source of truth/);
-});
-
 test('protected routes cover Supabase-first access states for every dashboard role', () => {
   const app = read('src/app/App.tsx');
   const protectedRoute = read('src/features/auth/ProtectedRoute.tsx');
