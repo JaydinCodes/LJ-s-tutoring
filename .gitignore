@@ -38,7 +38,6 @@ Thumbs.db
 
 # Test artifacts
 .server.pid
-lms-api/test-results/
 playwright-report/
 test-results/
 

@@ -2,12 +2,21 @@
 
 Frequency: Monthly
 
-## 1) Database Restore Verification
+> **Stale (2026-07-24):** step 1 below (`npm run migrate --prefix lms-api`,
+> `/ready`, `npm run restore:verify --prefix lms-api`) referenced the retired
+> `lms-api` service and its DR script, which checked stale/wrong tables and
+> was deleted rather than fixed forward. This repo's database is a single
+> Supabase-managed Postgres project — restore verification should use
+> Supabase's own backup/restore tooling. No replacement drill procedure
+> exists yet; see `docs/architecture/PRISMA_TO_SUPABASE_MIGRATION_PLAN.md` §6
+> step 7 for context.
+
+## 1) Database Restore Verification (stale, see note above)
 1) Provision a clean Postgres instance.
 2) Restore the latest production backup.
-3) Run migrations: npm run migrate --prefix lms-api
-4) Verify /ready returns ok.
-5) Run restore verification script: npm run restore:verify --prefix lms-api
+3) ~~Run migrations: npm run migrate --prefix lms-api~~ (script deleted)
+4) ~~Verify /ready returns ok.~~ (endpoint deleted)
+5) ~~Run restore verification script: npm run restore:verify --prefix lms-api~~ (script deleted)
 6) Attach output as drill evidence.
 
 ## 2) Session Integrity Verification

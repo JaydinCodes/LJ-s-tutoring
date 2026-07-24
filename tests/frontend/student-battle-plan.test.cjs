@@ -43,7 +43,6 @@ test('Battle Plan cards show time estimates and move completed actions down', ()
 test('dashboard repository projects quiz, recommendation, and career payloads into student state', () => {
   const repository = read('src', 'features', 'students', 'studentDashboardRepository.ts');
   const types = read('src', 'types', 'lms.ts');
-  const api = read('lms-api', 'src', 'routes', 'academic.ts');
 
   assert.ok(types.includes('recommendedQuiz?:'), 'dashboard view must type optional recommended quiz data');
   assert.ok(types.includes('recommendedNext?:'), 'dashboard view must type recommended study action data');
@@ -51,5 +50,4 @@ test('dashboard repository projects quiz, recommendation, and career payloads in
   assert.ok(repository.includes('recommendedQuiz:'), 'repository must retain recommended quiz data');
   assert.ok(repository.includes('recommendedNext:'), 'repository must retain recommended study action data');
   assert.ok(repository.includes('careerGoals:'), 'repository must retain career action data');
-  assert.ok(api.includes('recommendedQuiz'), 'API must expose recommended quiz context');
 });

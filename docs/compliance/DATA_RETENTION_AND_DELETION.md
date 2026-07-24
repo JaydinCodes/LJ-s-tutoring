@@ -1,5 +1,19 @@
 # Data Retention and Deletion
 
+> **Stale (2026-07-24):** this describes the retired `lms-api` retention job
+> (Fastify + Prisma, `RETENTION_*` env vars on "the API service",
+> `retention-cleanup.yml`). `lms-api` is fully deleted. There is a
+> Supabase-native `run_retention_cleanup()` RPC (`docs/supabase/schema.sql`),
+> but it covers a narrower, different set of tables
+> (`assignment_submissions`/`student_progress`/`payments`/`tutor_payments`/`audit_log`)
+> and has no scheduled trigger (no `pg_cron` job calls it) — `sessions`,
+> `invoices`, `invoice_lines`, `pay_periods`, and `adjustments` have **no**
+> retention coverage at all right now. Not urgent (every one of those tables
+> is at 0 rows as of this note), but a real compliance gap once real usage
+> starts. See `docs/architecture/PRISMA_TO_SUPABASE_MIGRATION_PLAN.md` §6 step
+> 7 for the full context. This document needs a rewrite once that gap is
+> properly closed.
+
 This document describes how the platform handles data retention and privacy requests. It reflects the current production behavior and the scheduled cleanup job.
 
 ## Retention Policy (Configurable)

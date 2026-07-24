@@ -10,25 +10,12 @@ function read(relativePath) {
 }
 
 test('admin user invite workflow is routed through a backend-only Supabase admin endpoint', () => {
-  // The Fastify route is unchanged and still registered -- it stays live
-  // until the broader lms-api retirement -- but the frontend now calls the
-  // Supabase Edge Function that replaced it (supabase/functions/
-  // admin-invite-user), which carries the same security properties.
-  const route = read('lms-api/src/routes/supabase-admin.ts');
-  const app = read('lms-api/src/app.ts');
+  // The Fastify route this replaced is retired along with the rest of
+  // lms-api; the frontend now calls the Supabase Edge Function
+  // (supabase/functions/admin-invite-user), which carries the same
+  // security properties the old route did.
   const edgeFunction = read('supabase/functions/admin-invite-user/index.ts');
   const adminUsersRoute = read('src/features/admin/AdminUsersRoute.tsx');
-
-  assert.match(route, /SUPABASE_SERVICE_ROLE_KEY/);
-  assert.match(route, /supabaseFetchWithUserToken/);
-  assert.match(route, /profile\[0\]\?\.role !== 'admin'/);
-  assert.match(route, /aal !== 'aal2'/);
-  assert.match(route, /\/auth\/v1\/invite/);
-  assert.match(route, /\/auth\/v1\/admin\/users/);
-  assert.match(route, /\/rest\/v1\/profiles\?select=id/);
-  assert.match(route, /\/rest\/v1\/students/);
-  assert.match(route, /\/rest\/v1\/tutors/);
-  assert.match(app, /supabaseAdminRoutes/);
 
   assert.match(edgeFunction, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(edgeFunction, /role !== 'admin'/);
@@ -51,7 +38,6 @@ test('admin user invite route is visible in the React admin app without exposing
   const envExample = read('.env.example');
   const frontendSources = [
     read('src/features/admin/AdminUsersRoute.tsx'),
-    read('src/lib/api/client.ts'),
     read('src/lib/supabase/client.ts'),
   ].join('\n');
 

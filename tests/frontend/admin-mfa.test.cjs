@@ -38,13 +38,9 @@ test('admin MFA is enforced with Supabase MFA APIs and a production-safe bypass'
 test('admin MFA setup is documented and disabled by default in example env', () => {
   const envExample = read('.env.example');
   const authDocs = read('docs/setup/AUTH_SETUP.md');
-  const fastifyAuth = read('lms-api/src/routes/auth.ts');
 
   assert.match(envExample, /VITE_PO_DEV_ADMIN_MFA_BYPASS=false/);
   assert.match(authDocs, /Production admin access requires Supabase Auth MFA/);
   assert.match(authDocs, /getAuthenticatorAssuranceLevel\(\)/);
   assert.match(authDocs, /Do not set it in staging or production/);
-  // Legacy Fastify admin login was retired (AUDIT.md Critical): it minted an admin
-  // session with no server-side MFA. It now returns admin_login_via_supabase.
-  assert.match(fastifyAuth, /admin_login_via_supabase/);
 });
