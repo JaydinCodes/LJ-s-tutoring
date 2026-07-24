@@ -142,6 +142,22 @@ Deno.serve(async (req) => {
       return json({ error: 'admin_mfa_required' }, 403);
     }
 
+    // 1b) Rate limit (security fix, 2026-07-24): even a legitimately
+    // admin+AAL2-authenticated session had no throttling on mass account
+    // creation. 10 invites / 10 minutes covers real bulk onboarding while
+    // blocking a tight loop from a compromised admin session.
+    const rateLimitWindowStart = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { count: recentInviteCount } = await admin
+      .from('edge_function_rate_limit_events')
+      .select('*', { count: 'exact', head: true })
+      .eq('function_name', 'admin-invite-user')
+      .eq('subject_id', userData.user.id)
+      .gte('created_at', rateLimitWindowStart);
+    if ((recentInviteCount ?? 0) >= 10) {
+      return json({ error: 'rate_limited' }, 429);
+    }
+    await admin.from('edge_function_rate_limit_events').insert({ subject_id: userData.user.id, function_name: 'admin-invite-user' });
+
     // 2) Validate the payload.
     const parsed = AdminUserInviteSchema.safeParse(await req.json());
     if (!parsed.success) {

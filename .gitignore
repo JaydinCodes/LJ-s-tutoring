@@ -22,6 +22,11 @@ web/.next/
 # Local MCP config -- may contain bearer tokens (e.g. DigitalOcean's remote
 # MCP servers authenticate via a static header, not OAuth), never commit.
 .mcp.json
+
+# Claude Code local settings -- the Bash permission allowlist can end up
+# storing literal secret values from commands that were run (e.g. curl with
+# an embedded token/password), never commit.
+.claude/settings.json
 .env.example
 !.env.example
 

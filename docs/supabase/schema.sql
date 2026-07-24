@@ -511,6 +511,33 @@ as $$
   select role from public.profile_identities where auth_user_id = auth.uid()
 $$;
 
+-- Security fix (2026-07-24): admin RLS/RPC checks used to stop at
+-- current_profile_role() = 'admin', matching AUDIT.md's original Critical
+-- ("admin session with no server-side MFA") in a new form -- someone who
+-- phished an admin's password but not their TOTP device could bypass
+-- AdminMfaGate (a React component, not a security boundary) by calling
+-- supabase-js/PostgREST directly with an aal1 session. AdminMfaGate remains
+-- for UX, but the real enforcement now lives here, in the single function
+-- every admin-gated policy/RPC in this file calls. auth.jwt()->>'aal' is
+-- absent for the trusted service-role/pg_cron contexts that some RPCs
+-- explicitly OR against (e.g. "is_platform_admin() or auth.uid() is null"),
+-- so this correctly returns false there rather than raising -- those
+-- call sites' own "auth.uid() is null" branch is what grants access.
+-- Defined immediately after current_profile_role() (not near its other
+-- multi-org helper siblings further down) so every earlier policy/RPC in
+-- this file that calls it has a function that actually exists yet --
+-- Postgres executes this file's statements in order.
+create or replace function public.is_platform_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.current_profile_role() = 'admin'
+    and coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2'
+$$;
+
 create or replace function public.current_profile_id()
 returns uuid
 language sql
@@ -555,7 +582,7 @@ security definer
 set search_path = public
 as $$
   select coalesce(
-    public.current_profile_role() = 'admin'
+    public.is_platform_admin()
     or exists (
       select 1
       from public.assignment_submissions sub
@@ -635,7 +662,17 @@ begin
     return public.log_audit_event(p_action, p_entity_type, p_entity_id, p_metadata);
   end if;
 
-  if v_role = 'tutor' and p_action in ('assignment.created', 'assignment.updated', 'assignment.attachment_replaced') then
+  -- Security fix (2026-07-24): this used to trust p_entity_id as-is, letting
+  -- any tutor forge an assignment.* audit entry for an assignment they don't
+  -- own (arbitrary free-text id, never checked against the actual row).
+  if v_role = 'tutor'
+     and p_action in ('assignment.created', 'assignment.updated', 'assignment.attachment_replaced')
+     and exists (
+       select 1 from public.assignments a
+       where a.id::text = p_entity_id
+         and a.created_by = public.current_profile_id()
+     )
+  then
     return public.log_audit_event(p_action, p_entity_type, p_entity_id, p_metadata);
   end if;
 
@@ -677,6 +714,10 @@ begin
     raise exception 'assignment_not_found' using errcode = 'P0002';
   end if;
 
+  -- Interim check (org check added by a create-or-replace in section 7.5
+  -- below, once organization_id/current_student_org_id() exist -- this
+  -- function is defined this early in the file so its grant and the
+  -- policies that assume it exists work in order).
   if v_assignment.status <> 'published' then
     raise exception 'assignment_not_open_for_submission' using errcode = '42501';
   end if;
@@ -1044,7 +1085,7 @@ grant execute on function public.record_audit_event(text, text, text, jsonb) to 
 drop policy if exists "profiles_select_self_or_admin" on public.profiles;
 create policy "profiles_select_self_or_admin"
 on public.profiles for select
-using (auth_user_id = auth.uid() or public.current_profile_role() = 'admin');
+using (auth_user_id = auth.uid() or public.is_platform_admin());
 
 drop policy if exists "profiles_select_allocated_learning_relationship" on public.profiles;
 create policy "profiles_select_allocated_learning_relationship"
@@ -1077,13 +1118,13 @@ with check (
 drop policy if exists "admin_full_access_profiles" on public.profiles;
 create policy "admin_full_access_profiles"
 on public.profiles for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 drop policy if exists "admin_select_audit_log" on public.audit_log;
 create policy "admin_select_audit_log"
 on public.audit_log for select
-using (public.current_profile_role() = 'admin');
+using (public.is_platform_admin());
 
 drop policy if exists "no_direct_audit_log_insert" on public.audit_log;
 create policy "no_direct_audit_log_insert"
@@ -1105,7 +1146,7 @@ drop policy if exists "students_select_self_or_admin" on public.students;
 create policy "students_select_self_or_admin"
 on public.students for select
 using (
-  public.current_profile_role() = 'admin'
+  public.is_platform_admin()
   or profile_id = public.current_profile_id()
   or id in (
     select tsa.student_id
@@ -1129,28 +1170,28 @@ with check (
 drop policy if exists "admin_full_access_students" on public.students;
 create policy "admin_full_access_students"
 on public.students for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 drop policy if exists "guardians_select_scoped" on public.guardians;
 create policy "guardians_select_scoped"
 on public.guardians for select
 using (
-  public.current_profile_role() = 'admin'
+  public.is_platform_admin()
   or profile_id = public.current_profile_id()
 );
 
 drop policy if exists "admin_manage_guardians" on public.guardians;
 create policy "admin_manage_guardians"
 on public.guardians for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 drop policy if exists "student_guardians_select_scoped" on public.student_guardians;
 create policy "student_guardians_select_scoped"
 on public.student_guardians for select
 using (
-  public.current_profile_role() = 'admin'
+  public.is_platform_admin()
   or guardian_id in (
     select g.id
     from public.guardians g
@@ -1161,8 +1202,8 @@ using (
 drop policy if exists "admin_manage_student_guardians" on public.student_guardians;
 create policy "admin_manage_student_guardians"
 on public.student_guardians for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 -- Raw joins into public.profiles here would recurse (see the "Identity
 -- lookup shadow table" comment near current_profile_role()); current_student_id()
@@ -1188,7 +1229,7 @@ drop policy if exists "tutors_select_self_or_admin" on public.tutors;
 create policy "tutors_select_self_or_admin"
 on public.tutors for select
 using (
-  public.current_profile_role() = 'admin'
+  public.is_platform_admin()
   or profile_id = public.current_profile_id()
   or id in (
     select tsa.tutor_id
@@ -1213,8 +1254,8 @@ with check (
 drop policy if exists "admin_full_access_tutors" on public.tutors;
 create policy "admin_full_access_tutors"
 on public.tutors for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 drop policy if exists "subjects_read_authenticated" on public.subjects;
 create policy "subjects_read_authenticated"
@@ -1224,8 +1265,8 @@ using (auth.uid() is not null);
 drop policy if exists "admin_manage_subjects" on public.subjects;
 create policy "admin_manage_subjects"
 on public.subjects for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 drop policy if exists "tutors_insert_subjects" on public.subjects;
 create policy "tutors_insert_subjects"
@@ -1243,8 +1284,8 @@ with check (public.current_profile_role() = 'tutor');
 drop policy if exists "admin_manage_assignments" on public.assignments;
 create policy "admin_manage_assignments"
 on public.assignments for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 drop policy if exists "tutors_manage_own_assignments" on public.assignments;
 create policy "tutors_manage_own_assignments"
@@ -1262,7 +1303,7 @@ drop policy if exists "submissions_student_self_or_admin" on public.assignment_s
 create policy "submissions_student_self_or_admin"
 on public.assignment_submissions for select
 using (
-  public.current_profile_role() = 'admin'
+  public.is_platform_admin()
 );
 
 drop policy if exists "submissions_student_insert_self" on public.assignment_submissions;
@@ -1318,8 +1359,8 @@ with check (
 drop policy if exists "admin_manage_submissions" on public.assignment_submissions;
 create policy "admin_manage_submissions"
 on public.assignment_submissions for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 -- Raw join into public.profiles here would recurse (see the "Identity lookup
 -- shadow table" comment near current_profile_role()); rewritten to use
@@ -1344,15 +1385,15 @@ drop policy if exists "student_progress_self_or_admin" on public.student_progres
 create policy "student_progress_self_or_admin"
 on public.student_progress for select
 using (
-  public.current_profile_role() = 'admin'
+  public.is_platform_admin()
   or student_id = public.current_student_id()
 );
 
 drop policy if exists "admin_manage_progress" on public.student_progress;
 create policy "admin_manage_progress"
 on public.student_progress for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 drop policy if exists "progress_insert_via_marking_rpc_only" on public.student_progress;
 create policy "progress_insert_via_marking_rpc_only"
@@ -1362,14 +1403,14 @@ with check (false);
 drop policy if exists "admin_finance_access" on public.payments;
 create policy "admin_finance_access"
 on public.payments for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 drop policy if exists "admin_tutor_payment_access" on public.tutor_payments;
 create policy "admin_tutor_payment_access"
 on public.tutor_payments for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 drop policy if exists "classes_read_authenticated" on public.classes;
 
@@ -1377,7 +1418,7 @@ drop policy if exists "classes_select_scoped" on public.classes;
 create policy "classes_select_scoped"
 on public.classes for select
 using (
-  public.current_profile_role() = 'admin'
+  public.is_platform_admin()
   or tutor_id = public.current_tutor_id()
   or id in (
     select ce.class_id
@@ -1390,8 +1431,8 @@ using (
 drop policy if exists "admin_manage_classes" on public.classes;
 create policy "admin_manage_classes"
 on public.classes for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 drop policy if exists "class_enrollments_read_authenticated" on public.class_enrollments;
 
@@ -1399,7 +1440,7 @@ drop policy if exists "class_enrollments_select_scoped" on public.class_enrollme
 create policy "class_enrollments_select_scoped"
 on public.class_enrollments for select
 using (
-  public.current_profile_role() = 'admin'
+  public.is_platform_admin()
   or student_id = public.current_student_id()
   or class_id in (
     select c.id
@@ -1411,14 +1452,14 @@ using (
 drop policy if exists "admin_manage_class_enrollments" on public.class_enrollments;
 create policy "admin_manage_class_enrollments"
 on public.class_enrollments for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 drop policy if exists "tutor_student_allocations_select_scoped" on public.tutor_student_allocations;
 create policy "tutor_student_allocations_select_scoped"
 on public.tutor_student_allocations for select
 using (
-  public.current_profile_role() = 'admin'
+  public.is_platform_admin()
   or (
     status = 'active'
     and (
@@ -1431,8 +1472,8 @@ using (
 drop policy if exists "admin_manage_tutor_student_allocations" on public.tutor_student_allocations;
 create policy "admin_manage_tutor_student_allocations"
 on public.tutor_student_allocations for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 insert into storage.buckets (id, name, public)
 values
@@ -1440,26 +1481,70 @@ values
   ('assignment-submissions', 'assignment-submissions', false)
 on conflict (id) do nothing;
 
+-- Security fix (2026-07-24): both policies below used to grant blanket
+-- access -- upload allowed any admin/tutor to write to any path (no check
+-- the uploader owns the target assignment), and read allowed ANY
+-- authenticated user, any role/org, to list and download every file ever
+-- uploaded (draft-assignment attachments included). Path convention is
+-- `${assignment.id}/${filename}` (src/features/assignments/assignmentMutations.ts),
+-- so folder[1] is the assignment id -- scope both to that, matching the
+-- ownership/org rules already enforced on the assignments table itself.
 drop policy if exists "admin_tutor_upload_assignment_files" on storage.objects;
 create policy "admin_tutor_upload_assignment_files"
 on storage.objects for insert
 with check (
   bucket_id = 'assignment-files'
-  and public.current_profile_role() in ('admin', 'tutor')
+  and (
+    public.is_platform_admin()
+    or (
+      public.current_profile_role() = 'tutor'
+      and exists (
+        select 1 from public.assignments a
+        where a.id::text = (storage.foldername(name))[1]
+          and a.created_by = public.current_profile_id()
+      )
+    )
+  )
 );
 
+-- Interim version: organization_id doesn't exist on public.assignments yet
+-- at this point in the script (added later, multi-org section) and this
+-- file's statements run in order, so the student branch can't org-scope
+-- here. Dropped and replaced with the org-aware version once organization_id
+-- exists -- see "authenticated_read_assignment_files" further down, same
+-- pattern as assignments_read_authenticated -> assignments_student_read_published_own_org.
 drop policy if exists "authenticated_read_assignment_files" on storage.objects;
 create policy "authenticated_read_assignment_files"
 on storage.objects for select
 using (
   bucket_id = 'assignment-files'
-  and auth.uid() is not null
+  and (
+    public.is_platform_admin()
+    or (
+      public.current_profile_role() = 'tutor'
+      and exists (
+        select 1 from public.assignments a
+        where a.id::text = (storage.foldername(name))[1]
+          and a.created_by = public.current_profile_id()
+      )
+    )
+    or (
+      public.current_profile_role() = 'student'
+      and exists (
+        select 1 from public.assignments a
+        where a.id::text = (storage.foldername(name))[1]
+          and a.status = 'published'
+      )
+    )
+  )
 );
 
 -- Raw joins into public.profiles in these four storage policies would recurse
 -- (see the "Identity lookup shadow table" comment near current_profile_role());
 -- rewritten to use current_student_id()/current_profile_id() (public.profile_identities)
 -- instead of public.profiles directly.
+-- Interim version (org check added in section 7.5 below, once
+-- organization_id exists on public.assignments -- see the note there).
 drop policy if exists "students_upload_own_submission_files" on storage.objects;
 create policy "students_upload_own_submission_files"
 on storage.objects for insert
@@ -1482,6 +1567,8 @@ with check (
 -- (or to a non-existent/unpublished assignment id) without this check, because
 -- assignment ownership was never re-validated. Both using and with check now
 -- mirror the INSERT policy's assignment validation exactly.
+-- Interim version (org check added in section 7.5 below, same reason as the
+-- insert policy above).
 drop policy if exists "students_update_own_submission_files" on storage.objects;
 create policy "students_update_own_submission_files"
 on storage.objects for update
@@ -1512,7 +1599,7 @@ on storage.objects for select
 using (
   bucket_id = 'assignment-submissions'
   and (
-    public.current_profile_role() = 'admin'
+    public.is_platform_admin()
     or (
       public.current_profile_role() = 'tutor'
       and (storage.foldername(name))[2] in (
@@ -1584,8 +1671,8 @@ alter table public.privacy_requests enable row level security;
 drop policy if exists "privacy_requests_admin_all" on public.privacy_requests;
 create policy "privacy_requests_admin_all"
 on public.privacy_requests for all
-using (public.current_profile_role() = 'admin')
-with check (public.current_profile_role() = 'admin');
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 -- ACCESS: export everything the platform holds about a learner as one JSON object.
 create or replace function public.export_student_data(p_student_id uuid)
@@ -1598,7 +1685,7 @@ declare
   v_profile_id uuid;
   v_result jsonb;
 begin
-  if public.current_profile_role() <> 'admin' then
+  if not public.is_platform_admin() then
     raise exception 'not_authorized' using errcode = '42501';
   end if;
 
@@ -1651,7 +1738,7 @@ declare
   v_submissions_removed integer := 0;
   v_files_removed integer := 0;
 begin
-  if public.current_profile_role() <> 'admin' then
+  if not public.is_platform_admin() then
     raise exception 'not_authorized' using errcode = '42501';
   end if;
 
@@ -1684,6 +1771,40 @@ begin
   delete from public.assignment_submissions where student_id = p_student_id;
   get diagnostics v_submissions_removed = row_count;
   delete from public.student_progress where student_id = p_student_id;
+
+  -- Security/POPIA fix (2026-07-24): this function was written before these
+  -- tables existed and was never extended as the schema grew, so an erasure
+  -- request left real PII behind. weekly_reports in particular bakes the
+  -- student's name and grade into a stored JSON payload as literal text at
+  -- generation time (generate_weekly_report()) -- that copy survives the
+  -- full_name redaction below untouched unless the row itself is removed.
+  -- The rest are identifiable academic/notification/analytics records in the
+  -- same category as assignment_submissions/student_progress above.
+  delete from public.weekly_reports where student_id = p_student_id;
+  delete from public.student_notifications where student_id = p_student_id;
+  delete from public.baseline_assessments where student_id = p_student_id;
+  delete from public.learning_goals where student_id = p_student_id;
+  delete from public.student_exam_events where student_id = p_student_id;
+  delete from public.student_score_snapshots where student_id = p_student_id;
+  delete from public.career_progress_snapshots where student_id = p_student_id;
+
+  -- sessions rows are kept (not deleted) -- they're needed for payroll
+  -- reconciliation via invoice_lines.session_id, same statutory-hold
+  -- reasoning as payments below -- but the free-text fields are exactly the
+  -- kind of identifiable "tutor case notes about the learner" an erasure
+  -- request should remove. session_history is left untouched: it's an
+  -- append-only audit trail (admin-only, mirrors audit_log's immutability),
+  -- which is legitimately exempt from anonymization the same way audit_log
+  -- itself is, below.
+  update public.sessions
+     set notes = null,
+         topics_covered = null,
+         learner_struggles = null,
+         homework_assigned = null,
+         tutor_private_notes = null,
+         student_summary = null,
+         report_review_note = null
+   where student_id = p_student_id;
 
   -- Detach guardians; delete guardian rows no longer linked to anyone and not
   -- themselves platform users.
@@ -1735,7 +1856,7 @@ declare
   v_result jsonb;
   v_status public.record_status;
 begin
-  if public.current_profile_role() <> 'admin' then
+  if not public.is_platform_admin() then
     raise exception 'not_authorized' using errcode = '42501';
   end if;
 
@@ -1814,7 +1935,7 @@ begin
   -- Allow admins (manual runs) and trusted server contexts with no browser JWT
   -- (pg_cron / service_role / scheduled Edge Function), where auth.uid() is null.
   -- Regular signed-in non-admins are blocked; anon has no EXECUTE grant at all.
-  if not (public.current_profile_role() = 'admin' or auth.uid() is null) then
+  if not (public.is_platform_admin() or auth.uid() is null) then
     raise exception 'not_authorized' using errcode = '42501';
   end if;
 
@@ -2083,16 +2204,6 @@ as $$
   limit 1
 $$;
 
-create or replace function public.is_platform_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select public.current_profile_role() = 'admin'
-$$;
-
 -- --- 8. Indexes --------------------------------------------------------
 -- organization_members(profile_id, status), organization_members(organization_id, org_role),
 -- students/classes/assignments(organization_id) already exist from Phase 1
@@ -2169,9 +2280,35 @@ with check (public.is_platform_admin());
 -- to this learner) new read access to raw student rows, which §5.3/§11.4
 -- forbid. Only the org's coordinator gets new (additive) access, matching
 -- the role table in §4 ("Coordinator: manage that org's ... learners").
+-- Security fix (2026-07-24): this was a single "for all" policy, which in
+-- Postgres RLS covers DELETE too. Nearly every child table cascades on
+-- students.id (assignment_submissions, student_progress, payments,
+-- class_enrollments, tutor_student_allocations, weekly_reports, and more) --
+-- a coordinator (an org-scoped, lower-trust "separate party" under POPIA per
+-- MULTI_ORG_MODEL_PLAN.md §4, not platform staff) could permanently destroy
+-- a learner's full academic and financial history with one DELETE, bypassing
+-- anonymize_student()/process_privacy_request() entirely and leaving no
+-- audit_log entry. Split into select/insert/update only -- coordinators can
+-- no longer delete a student row directly; removal goes through the
+-- privacy-request pipeline, same as everyone else. Admins keep DELETE via
+-- the separate "admin_full_access_students" policy (defined earlier, above).
 drop policy if exists "students_coordinator_org_manage" on public.students;
-create policy "students_coordinator_org_manage"
-on public.students for all
+create policy "students_coordinator_org_select"
+on public.students for select
+using (
+  public.is_platform_admin()
+  or public.current_org_role(organization_id) = 'coordinator'
+);
+
+create policy "students_coordinator_org_insert"
+on public.students for insert
+with check (
+  public.is_platform_admin()
+  or public.current_org_role(organization_id) = 'coordinator'
+);
+
+create policy "students_coordinator_org_update"
+on public.students for update
 using (
   public.is_platform_admin()
   or public.current_org_role(organization_id) = 'coordinator'
@@ -2492,6 +2629,220 @@ using (
 -- in place. assignments_read_authenticated is the only genuinely-superseded
 -- policy, so it is the only removal.
 drop policy if exists "assignments_read_authenticated" on public.assignments;
+
+-- --- 7.5 Org-scope the assignment-files student read (security fix, 2026-07-24) ---
+-- The interim "authenticated_read_assignment_files" policy defined earlier
+-- (before organization_id existed on public.assignments) scoped students to
+-- published assignments only, same gap as assignments_read_authenticated
+-- above. Now that organization_id + current_student_org_id() exist, replace
+-- it with the fully org-scoped version, matching
+-- assignments_student_read_published_own_org exactly.
+drop policy if exists "authenticated_read_assignment_files" on storage.objects;
+create policy "authenticated_read_assignment_files"
+on storage.objects for select
+using (
+  bucket_id = 'assignment-files'
+  and (
+    public.is_platform_admin()
+    or (
+      public.current_profile_role() = 'tutor'
+      and exists (
+        select 1 from public.assignments a
+        where a.id::text = (storage.foldername(name))[1]
+          and a.created_by = public.current_profile_id()
+      )
+    )
+    or (
+      public.current_profile_role() = 'student'
+      and exists (
+        select 1 from public.assignments a
+        where a.id::text = (storage.foldername(name))[1]
+          and a.status = 'published'
+          and a.organization_id = public.current_student_org_id()
+      )
+    )
+  )
+);
+
+-- Same org-scoping fix as above, for the assignment-submissions storage
+-- policies defined earlier in the file (also before organization_id existed).
+drop policy if exists "students_upload_own_submission_files" on storage.objects;
+create policy "students_upload_own_submission_files"
+on storage.objects for insert
+with check (
+  bucket_id = 'assignment-submissions'
+  and public.current_profile_role() = 'student'
+  and array_length(storage.foldername(name), 1) = 4
+  and (storage.foldername(name))[1] = public.current_student_id()::text
+  and (storage.foldername(name))[2] in (
+    select a.id::text from public.assignments a
+    where a.status = 'published'
+      and a.organization_id = public.current_student_org_id()
+  )
+);
+
+drop policy if exists "students_update_own_submission_files" on storage.objects;
+create policy "students_update_own_submission_files"
+on storage.objects for update
+using (
+  bucket_id = 'assignment-submissions'
+  and public.current_profile_role() = 'student'
+  and array_length(storage.foldername(name), 1) = 4
+  and (storage.foldername(name))[1] = public.current_student_id()::text
+  and (storage.foldername(name))[2] in (
+    select a.id::text from public.assignments a
+    where a.status = 'published'
+      and a.organization_id = public.current_student_org_id()
+  )
+)
+with check (
+  bucket_id = 'assignment-submissions'
+  and public.current_profile_role() = 'student'
+  and array_length(storage.foldername(name), 1) = 4
+  and (storage.foldername(name))[1] = public.current_student_id()::text
+  and (storage.foldername(name))[2] in (
+    select a.id::text from public.assignments a
+    where a.status = 'published'
+      and a.organization_id = public.current_student_org_id()
+  )
+);
+
+-- Same org-scoping fix, for submit_assignment_submission() itself (defined
+-- much earlier in the file, before organization_id existed). create or
+-- replace swaps the body in place; the grant issued against the earlier
+-- definition still applies since the function's identity (name + argument
+-- types) is unchanged.
+create or replace function public.submit_assignment_submission(
+  p_assignment_id uuid,
+  p_submission_id uuid,
+  p_storage_key text,
+  p_file_url text,
+  p_original_filename text,
+  p_mime_type text,
+  p_size_bytes bigint,
+  p_text_answer text
+)
+returns table (submission_id uuid)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_student_id uuid := public.current_student_id();
+  v_assignment public.assignments%rowtype;
+  v_submission_id uuid := coalesce(p_submission_id, gen_random_uuid());
+  v_next_version integer;
+  v_text_answer text := nullif(btrim(coalesce(p_text_answer, '')), '');
+begin
+  if public.current_profile_role() <> 'student' or v_student_id is null then
+    raise exception 'only_students_can_submit' using errcode = '42501';
+  end if;
+
+  select * into v_assignment
+  from public.assignments
+  where id = p_assignment_id;
+
+  if not found then
+    raise exception 'assignment_not_found' using errcode = 'P0002';
+  end if;
+
+  -- Security fix (2026-07-24): the read-side policy
+  -- "assignments_student_read_published_own_org" requires published + own
+  -- org (section 7.4 above), but this write path never got the same org
+  -- check when that fix landed -- any student could submit to any other
+  -- organization's assignment by guessing/knowing its id. Same error as the
+  -- unpublished case so cross-org existence isn't disclosed via a distinct
+  -- message.
+  if v_assignment.status <> 'published' or v_assignment.organization_id <> public.current_student_org_id() then
+    raise exception 'assignment_not_open_for_submission' using errcode = '42501';
+  end if;
+
+  if v_text_answer is null and nullif(p_storage_key, '') is null then
+    raise exception 'submission_content_required' using errcode = '23514';
+  end if;
+
+  if nullif(p_storage_key, '') is not null and p_storage_key !~ ('^' || v_student_id::text || '/' || p_assignment_id::text || '/' || v_submission_id::text || '/submission\.[A-Za-z0-9]+$') then
+    raise exception 'invalid_submission_storage_path' using errcode = '42501';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext(p_assignment_id::text || ':' || v_student_id::text));
+
+  select coalesce(max(version_number), 0) + 1
+  into v_next_version
+  from public.assignment_submissions
+  where assignment_id = p_assignment_id
+    and student_id = v_student_id;
+
+  update public.assignment_submissions
+  set is_latest = false
+  where assignment_id = p_assignment_id
+    and student_id = v_student_id
+    and is_latest = true;
+
+  insert into public.assignment_submissions (
+    id,
+    assignment_id,
+    student_id,
+    storage_key,
+    file_url,
+    original_filename,
+    mime_type,
+    size_bytes,
+    text_answer,
+    submitted_at,
+    status,
+    version_number,
+    is_latest,
+    marks_awarded,
+    feedback
+  )
+  values (
+    v_submission_id,
+    p_assignment_id,
+    v_student_id,
+    nullif(p_storage_key, ''),
+    nullif(p_file_url, ''),
+    nullif(p_original_filename, ''),
+    nullif(p_mime_type, ''),
+    p_size_bytes,
+    v_text_answer,
+    now(),
+    'submitted',
+    v_next_version,
+    true,
+    null,
+    null
+  );
+
+  perform public.log_audit_event(
+    'assignment_submission.created',
+    'assignment_submission',
+    v_submission_id::text,
+    jsonb_build_object(
+      'assignment_id', p_assignment_id,
+      'student_id', v_student_id,
+      'version_number', v_next_version,
+      'file_uploaded', nullif(p_storage_key, '') is not null,
+      'text_answer_provided', v_text_answer is not null
+    )
+  );
+
+  if v_next_version > 1 and nullif(p_storage_key, '') is not null then
+    perform public.log_audit_event(
+      'assignment_submission.file_replaced',
+      'assignment_submission',
+      v_submission_id::text,
+      jsonb_build_object(
+        'assignment_id', p_assignment_id,
+        'student_id', v_student_id,
+        'version_number', v_next_version
+      )
+    );
+  end if;
+
+  return query select v_submission_id;
+end;
+$$;
 
 -- ============================================================================
 -- Sessions linchpin migration (PRISMA_TO_SUPABASE_MIGRATION_PLAN.md §2).
@@ -4885,7 +5236,7 @@ on storage.objects for select
 using (
   bucket_id = 'tutor-documents'
   and (
-    public.current_profile_role() = 'admin'
+    public.is_platform_admin()
     or (storage.foldername(name))[1] = public.current_tutor_id()::text
   )
 );
@@ -7225,6 +7576,30 @@ grant execute on function public.get_community_rooms() to authenticated;
 grant execute on function public.get_room_messages(uuid) to authenticated;
 grant execute on function public.get_community_challenges() to authenticated;
 grant execute on function public.get_community_questions() to authenticated;
+
+-- ============================================================================
+-- Edge Function rate limiting (security fix, 2026-07-24). Neither Edge
+-- Function that proxies to a paid/quota-limited upstream
+-- (odie-careers-chat-stream -> Groq) or performs a privileged write
+-- (admin-invite-user) had any per-caller throttling -- a single compromised
+-- student credential could loop requests to burn through Groq quota/cost or
+-- deny the model to other students; a compromised admin session could mass-
+-- create accounts. Both functions now check/increment this table (via their
+-- service-role client, which bypasses RLS) before doing real work.
+-- RLS is enabled with NO policies, matching the ngo_partners pattern
+-- elsewhere in this file: this is a genuine default-deny, not a leak --
+-- anon/authenticated get zero rows even though the broad end-of-file GRANT
+-- below covers this table too, and the only real access path is
+-- service_role (which bypasses RLS entirely), i.e. Edge Functions only.
+create table if not exists public.edge_function_rate_limit_events (
+  id uuid primary key default gen_random_uuid(),
+  subject_id uuid not null,
+  function_name text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_edge_function_rate_limit_events_lookup
+  on public.edge_function_rate_limit_events(function_name, subject_id, created_at desc);
+alter table public.edge_function_rate_limit_events enable row level security;
 
 -- ============================================================================
 -- Base table privileges for anon/authenticated/service_role -- fixes a real

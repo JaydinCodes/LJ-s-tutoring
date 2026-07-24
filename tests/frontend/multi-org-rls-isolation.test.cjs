@@ -111,10 +111,30 @@ test('classes and assignments get an org-scoped read policy plus a coordinator-m
 });
 
 test('students get an additive coordinator-scoped policy, but NOT a blanket any-org-member read (PII, unlike classes/assignments)', () => {
-  const block = statements.find((chunk) => chunk.includes('create policy "students_coordinator_org_manage"'));
-  assert.ok(block, 'students_coordinator_org_manage must exist');
-  assert.match(block, /current_org_role\(organization_id\) = 'coordinator'/);
-  assert.match(block, /public\.is_platform_admin\(\)/);
+  // Security fix (2026-07-24): this used to be a single "for all" policy
+  // (students_coordinator_org_manage), which in Postgres RLS covers DELETE
+  // too -- a coordinator (an org-scoped, lower-trust "separate party" under
+  // POPIA, not platform staff) could permanently cascade-delete a learner's
+  // full academic/financial history with no audit trail, bypassing
+  // anonymize_student()/process_privacy_request() entirely. Split into
+  // select/insert/update only; admins keep DELETE via the separate
+  // "admin_full_access_students" policy.
+  assert.doesNotMatch(schema, /create policy "students_coordinator_org_manage"/);
+  for (const name of ['students_coordinator_org_select', 'students_coordinator_org_insert', 'students_coordinator_org_update']) {
+    const block = statements.find((chunk) => chunk.includes(`create policy "${name}"`));
+    assert.ok(block, `${name} must exist`);
+    assert.match(block, /current_org_role\(organization_id\) = 'coordinator'/);
+    assert.match(block, /public\.is_platform_admin\(\)/);
+  }
+
+  // No coordinator-facing policy on students may grant DELETE (or "for all",
+  // which implicitly includes it).
+  const coordinatorPolicies = policyStatementsForTable('students')
+    .filter((block) => block.includes("current_org_role(organization_id) = 'coordinator'"));
+  assert.ok(coordinatorPolicies.length >= 3, 'expected the 3 split coordinator policies');
+  for (const block of coordinatorPolicies) {
+    assert.doesNotMatch(block, /for (all|delete)\b/, 'coordinators must never receive DELETE on students');
+  }
 
   // No new policy on students may grant access via bare org membership
   // (current_org_ids()) — that would hand any org member (including a
@@ -249,7 +269,9 @@ test('platform admin retains cross-org access on every new Phase 2 policy', () =
     'organization_members_select_scoped',
     'organization_members_coordinator_manage',
     'admin_manage_organization_members',
-    'students_coordinator_org_manage',
+    'students_coordinator_org_select',
+    'students_coordinator_org_insert',
+    'students_coordinator_org_update',
     'classes_org_scoped_read',
     'classes_coordinator_manage',
     'assignments_org_scoped_read',

@@ -139,6 +139,24 @@ Deno.serve(async (req) => {
     return json({ error: 'student_record_missing' }, 403);
   }
 
+  // 1b) Rate limit (security fix, 2026-07-24): nothing previously stopped a
+  // single compromised/malicious student account from looping requests to
+  // burn through the (paid, quota-limited) Groq API, or denying the model to
+  // other students. 20 requests / 10 minutes is generous for genuine back-
+  // and-forth chat while blocking a tight loop.
+  const subjectId = (profileRow as { id: string }).id;
+  const rateLimitWindowStart = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { count: recentRequestCount } = await admin
+    .from('edge_function_rate_limit_events')
+    .select('*', { count: 'exact', head: true })
+    .eq('function_name', 'odie-careers-chat-stream')
+    .eq('subject_id', subjectId)
+    .gte('created_at', rateLimitWindowStart);
+  if ((recentRequestCount ?? 0) >= 20) {
+    return json({ error: 'rate_limited' }, 429);
+  }
+  await admin.from('edge_function_rate_limit_events').insert({ subject_id: subjectId, function_name: 'odie-careers-chat-stream' });
+
   // 2) Validate the payload.
   const parsed = ChatRequestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
