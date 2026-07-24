@@ -259,7 +259,7 @@ test('tutor-documents Storage policies: tutor INSERT/SELECT own folder, admin SE
   assert.match(insert, /\(storage\.foldername\(name\)\)\[1\] = public\.current_tutor_id\(\)::text/);
 
   // SELECT: admin any, OR own folder.
-  assert.match(select, /public\.current_profile_role\(\) = 'admin'/);
+  assert.match(select, /public\.is_platform_admin\(\)/);
   assert.match(select, /\(storage\.foldername\(name\)\)\[1\] = public\.current_tutor_id\(\)::text/);
 
   // Documents are never edited -> no UPDATE/DELETE policy for this bucket.

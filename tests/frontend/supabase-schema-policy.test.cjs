@@ -76,7 +76,7 @@ test('students read assignment submissions through release-redacted RPC', () => 
   assert.match(schema, /grant execute on function public\.get_student_assignment_submissions\(\) to authenticated/);
   assert.match(
     schema,
-    /create policy "submissions_student_self_or_admin"[\s\S]*on public\.assignment_submissions for select[\s\S]*using \(\s*public\.current_profile_role\(\) = 'admin'\s*\);/,
+    /create policy "submissions_student_self_or_admin"[\s\S]*on public\.assignment_submissions for select[\s\S]*using \(\s*public\.is_platform_admin\(\)\s*\);/,
     'raw submission table select must stay admin-only for this policy',
   );
   assert.match(studentRepo, /rpc\('get_student_assignment_submissions'\)/);
