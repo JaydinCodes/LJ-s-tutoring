@@ -259,6 +259,16 @@ function reactShell(route) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title} | Project Odysseus LMS</title>
 ${description}${robots}${canonical}${openGraph}    <meta name="theme-color" content="#0f172a">
+    <!--
+      Partial CSP via meta: App Platform's static_sites component has no app
+      spec mechanism to send this (or X-Frame-Options / X-Content-Type-Options /
+      Strict-Transport-Security) as a real HTTP response header -- see the note
+      in .do/app.yaml above the ingress rules. CSP via meta also silently
+      ignores frame-ancestors/sandbox/report-uri, so this is not clickjacking
+      protection.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="/react-app-dist/react-app.css?v=${safeBuildVersion}">
 ${publicScripts}

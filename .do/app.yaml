@@ -15,48 +15,9 @@ envs:
   - key: PUBLIC_PO_API_BASE
     scope: RUN_AND_BUILD_TIME
     value: /api
-  - key: PUBLIC_BASE_URL
-    scope: RUN_AND_BUILD_TIME
-    value: https://projectodysseus.live
   - key: NODE_ENV
     scope: RUN_AND_BUILD_TIME
     value: production
-  - key: ADMIN_PORTAL_URL
-    scope: RUN_AND_BUILD_TIME
-    value: https://admin.projectodysseus.live
-  - key: TUTOR_PORTAL_URL
-    scope: RUN_AND_BUILD_TIME
-    value: https://tutor.projectodysseus.live
-  - key: STUDENT_PORTAL_URL
-    scope: RUN_AND_BUILD_TIME
-    value: https://student.projectodysseus.live
-  - key: TRUST_PROXY
-    scope: RUN_AND_BUILD_TIME
-    value: "1"
-  - key: PORT
-    scope: RUN_AND_BUILD_TIME
-    value: "3001"
-  - key: CORS_ORIGIN
-    scope: RUN_AND_BUILD_TIME
-    value: https://projectodysseus.live,https://www.projectodysseus.live,https://admin.projectodysseus.live,https://tutor.projectodysseus.live,https://student.projectodysseus.live
-  - key: COOKIE_DOMAIN
-    scope: RUN_AND_BUILD_TIME
-    value: .projectodysseus.live
-  - key: GOOGLE_CALLBACK_URL
-    scope: RUN_AND_BUILD_TIME
-    value: https://projectodysseus.live/api/auth/google/callback
-  - key: GOOGLE_STUDENT_CALLBACK_URL
-    scope: RUN_AND_BUILD_TIME
-    value: https://student.projectodysseus.live/api/auth/google/student/callback
-  - key: GOOGLE_ADMIN_CALLBACK_URL
-    scope: RUN_AND_BUILD_TIME
-    value: https://admin.projectodysseus.live/api/auth/google/admin/callback
-  - key: JWT_EXPIRES_IN
-    scope: RUN_AND_BUILD_TIME
-    value: 15m
-  - key: ODIE_CAREERS_DEV_BYPASS
-    scope: RUN_AND_BUILD_TIME
-    value: "false"
   - key: ASSISTANT_ENABLED
     scope: RUN_AND_BUILD_TIME
     value: "true"
@@ -72,84 +33,35 @@ envs:
   - key: VITE_SUPABASE_ANON_KEY
     scope: RUN_AND_BUILD_TIME
     value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzY3JncHd5bmlwaGFnaXRsaXV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MjAwMDgsImV4cCI6MjA5NTM5NjAwOH0.W--APZ5jnNK7tzUtlwl91YJnt8ZL6_Op5AYQ8GysPsM
-  - key: ODIE_ALLOW_ACCESS_KEY_FALLBACK
-    scope: RUN_AND_BUILD_TIME
-    value: "false"
-  # OPENROUTER_MODEL is the active Odie model variable. DEFAULT_MODEL was being
-  # IGNORED here because OPENROUTER_MODEL has a non-empty code default, so setting
-  # the model via DEFAULT_MODEL had no effect. For learner PII, prefer an OpenRouter
-  # provider with a zero-data-retention policy over a :free model — see
-  # docs/compliance/POPIA_DATA_MAP.md.
-  - key: OPENROUTER_MODEL
-    scope: RUN_AND_BUILD_TIME
-    value: google/gemma-4-26b-a4b-it:free
-  - key: MAX_TOKENS
-    scope: RUN_AND_BUILD_TIME
-    value: "1024"
-  - key: TEMPERATURE
-    scope: RUN_AND_BUILD_TIME
-    value: "0.4"
-  - key: GROQ_MODEL
-    scope: RUN_AND_BUILD_TIME
-    value: llama-3.1-8b-instant
-  - key: SUBMISSION_MAX_FILE_BYTES
-    scope: RUN_AND_BUILD_TIME
-    value: "10485760"
-  - key: EMAIL_FROM
-    scope: RUN_AND_BUILD_TIME
-    value: projectodysseus.maths@gmail.com
-  - key: DATABASE_URL
-    scope: RUN_AND_BUILD_TIME
-    type: SECRET
-    value: ${DATABASE_URL}
-  - key: POSTGRES_PASSWORD
-    scope: RUN_AND_BUILD_TIME
-    type: SECRET
-    value: ${POSTGRES_PASSWORD}
-  - key: COOKIE_SECRET
-    scope: RUN_AND_BUILD_TIME
-    type: SECRET
-    value: ${COOKIE_SECRET}
-  - key: JWT_SECRET
-    scope: RUN_AND_BUILD_TIME
-    type: SECRET
-    value: ${JWT_SECRET}
-  - key: ADMIN_BOOTSTRAP_TOKEN
-    scope: RUN_AND_BUILD_TIME
-    type: SECRET
-    value: ${ADMIN_BOOTSTRAP_TOKEN}
-  - key: GOOGLE_CLIENT_ID
-    scope: RUN_AND_BUILD_TIME
-    type: SECRET
-    value: ${GOOGLE_CLIENT_ID}
-  - key: GOOGLE_CLIENT_SECRET
-    scope: RUN_AND_BUILD_TIME
-    type: SECRET
-    value: ${GOOGLE_CLIENT_SECRET}
-  - key: OPENROUTER_API_KEY
-    scope: RUN_AND_BUILD_TIME
-    type: SECRET
-    value: ${OPENROUTER_API_KEY}
-  - key: GROQ_API_KEY
-    scope: RUN_AND_BUILD_TIME
-    type: SECRET
-    value: ${GROQ_API_KEY}
-  - key: EMAIL_PROVIDER_KEY
-    scope: RUN_AND_BUILD_TIME
-    type: SECRET
-    value: ${EMAIL_PROVIDER_KEY}
-  - key: API_DEPLOY_COMMAND
-    scope: RUN_AND_BUILD_TIME
-    value: production
-  - key: ODIE_ACCESS_KEYS
-    scope: RUN_AND_BUILD_TIME
-    type: SECRET
-    value: ${ODIE_ACCESS_KEYS}
-  - key: GATEWAY_SHARED_KEY
-    scope: RUN_AND_BUILD_TIME
-    type: SECRET
-    value: ${GATEWAY_SHARED_KEY}
 
+# SECURITY HEADERS: intentionally NOT configured here via `secure_header`.
+# `ingress.rules[].secure_header` (key/value/remove_header) is a real App Spec
+# field, but per DigitalOcean's own reference docs its `key`/`value` gate
+# *incoming* requests -- "Block all incoming HTTP requests that do not include
+# the required header" -- it is not a mechanism for setting outbound response
+# headers like Content-Security-Policy, X-Frame-Options, X-Content-Type-Options,
+# Referrer-Policy, or Strict-Transport-Security. (Verified directly against
+# digitalocean/openapi's app_ingress_spec_rule.yml, which only defines `match`,
+# `cors`, `component`, `redirect` for a rule -- no header-injection field -- and
+# against docs.digitalocean.com/products/app-platform/reference/app-spec/,
+# 2026-07.) As of this writing, App Platform's `static_sites` component type has
+# no supported app-spec mechanism to set arbitrary response headers at all; this
+# is an open DigitalOcean feature request (see "Add Response Headers to Static
+# Site" / "Static site headers and routing" on ideas.digitalocean.com). The only
+# documented workaround is to move the header-needing route to a `services`
+# (backend) component, which is out of scope here since lms-api is retired and
+# this app is static-sites-only.
+#
+# Partial, file-only mitigation applied instead (see index.html and
+# scripts/build-static.js): a <meta http-equiv="Content-Security-Policy"> tag
+# and a <meta name="referrer"> tag are baked into every generated HTML shell.
+# Both work via <meta> per the CSP and Referrer-Policy specs. This does NOT
+# cover X-Frame-Options, X-Content-Type-Options, or Strict-Transport-Security --
+# none of those have a <meta> equivalent, and CSP's frame-ancestors directive is
+# explicitly ignored when delivered via <meta> (browsers only honor it on the
+# real HTTP header), so clickjacking protection remains an open gap until this
+# app either gets a proxy/service layer in front of it or DO ships static-site
+# response headers.
 ingress:
   rules:
     - match:
