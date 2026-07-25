@@ -1638,6 +1638,25 @@ begin
 end
 $$;
 
+-- Production-drift incident (found + fixed 2026-07-25): `create table if not
+-- exists` means this block never touches a pre-existing table, and
+-- production's privacy_requests predated this design -- its `status` column
+-- was still the old, unrelated `privacy_request_status` enum (OPEN/CLOSED),
+-- not `public.record_status` as declared below, and process_privacy_request()
+-- (which assigns a record_status value to it) would fail at runtime with a
+-- type-mismatch error. Production also still had NOT NULL legacy Prisma
+-- columns `subject_id uuid` / `subject_type <old enum>` that nothing here
+-- ever sets, blocking every insert (same orphaned-NOT-NULL-column bug as
+-- adjustments.created_by_user_id / weekly_reports.user_id / sessions.assignment_id
+-- / student_score_snapshots.user_id / career_progress_snapshots.user_id,
+-- also fixed 2026-07-25 -- none of those five columns are declared anywhere
+-- in this file either). Reconciled directly against production: status
+-- column type changed to record_status, subject_id/subject_type made
+-- nullable, the five sibling columns above had NOT NULL dropped. The dead
+-- `privacy_request_status` and unused Prisma `role` enum types were also
+-- dropped from production. See the session_status note above for the
+-- general lesson: this file being correct does not guarantee production
+-- matches it for any table/type that existed before a redesign landed here.
 create table if not exists public.privacy_requests (
   id uuid primary key default gen_random_uuid(),
   subject_student_id uuid references public.students(id) on delete set null,
@@ -2871,6 +2890,21 @@ $$;
 
 -- Lowercase to match this schema's enum convention (record_status,
 -- assignment_status, ...), even though Prisma's SessionStatus was uppercase.
+--
+-- Production-drift incident (found + fixed 2026-07-25): the `if not exists`
+-- guard below makes this block idempotent for a *fresh* database, but it
+-- silently no-ops against an environment where `session_status` already
+-- existed -- which production did, as the old uppercase Prisma type, created
+-- before this file's lowercase convention was adopted. Every RPC here
+-- compares against lowercase literals, so production's session-status writes
+-- were failing with "invalid input value for enum" until manually
+-- reconciled via `alter type public.session_status rename value 'DRAFT' to
+-- 'draft';` (etc.) applied directly to production. If you ever see this
+-- error class again, suspect the SAME pattern on any other `if not exists
+-- (select 1 from pg_type ...)`-guarded enum in this file, not just this one
+-- -- check `select enumlabel from pg_enum join pg_type using (oid = enumtypid)
+-- where typname = '<name>'` against production directly; schema.sql being
+-- correct here does not guarantee production matches it.
 do $$
 begin
   if not exists (select 1 from pg_type where typname = 'session_status') then
@@ -3804,6 +3838,14 @@ revoke execute on function public.insert_session_history(uuid, text, jsonb, json
 
 -- Lowercase to match this schema's enum convention (record_status,
 -- session_status, ...), even though Prisma's were uppercase.
+--
+-- Same production-drift incident as session_status above (found + fixed
+-- 2026-07-25): pay_period_status, invoice_status, adjustment_type,
+-- adjustment_status, and invoice_line_type all had this exact problem in
+-- production (silently kept their old uppercase Prisma labels since the
+-- `if not exists` guard below no-ops when the type already exists) --
+-- reconciled via `alter type ... rename value` for each, applied directly to
+-- production. See the longer note at session_status for the general lesson.
 do $$
 begin
   if not exists (select 1 from pg_type where typname = 'pay_period_status') then
