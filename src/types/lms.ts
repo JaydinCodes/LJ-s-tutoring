@@ -590,6 +590,9 @@ export interface AdminDashboardView {
   team: Array<{ name: string; role: string; focus: string }>;
 }
 
+
+
+
 export interface TutorDashboardView {
   profile: {
     name: string;
@@ -623,4 +626,26 @@ export interface TutorDashboardView {
     average_mark?: number | null;
     latest_submission_at?: string | null;
   }>;
+}
+
+export type NotificationType = 
+    | 'ASSIGNMENT_DUE'
+    | 'GRADE_RELEASED'
+    | 'ASSIGNMENT_RELEASED'
+    | 'ASSIGNMENT_UPDATED'
+    | 'ANNOUNCEMENT'
+    | 'SYSTEM_ALERT' 
+
+export interface StudentNotification{
+  id: string
+  student_id: string
+
+  title: string
+  message: string
+  type: NotificationType
+
+  isread: boolean
+
+  created_at: Date | string
+  updated_at: Date | string
 }

@@ -50,3 +50,9 @@ test-results/
 supabase/.branches/
 supabase/.temp/
 supabase/migrations/20260606000000_project_odysseus_schema.sql
+
+# Agent skill content installed via `npx skills add` -- regenerate with
+# `npx skills install` from the committed skills-lock.json. Don't commit
+# the vendored copies (same relationship as node_modules/package-lock.json).
+.agents/skills/
+.claude/skills/
