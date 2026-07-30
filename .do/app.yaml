@@ -246,7 +246,11 @@ ingress:
 
 static_sites:
   - name: website
-    build_command: npm ci && npm run build
+    # --include=dev overrides NODE_ENV=production (set above, RUN_AND_BUILD_TIME
+    # scope) which otherwise makes `npm ci` skip devDependency-only packages --
+    # autoprefixer is the only build-toolchain package with no transitive path
+    # from a regular dependency, so it's the one that silently goes missing.
+    build_command: npm ci --include=dev && npm run build
     output_dir: dist
     github:
       repo: JaydinCodes/LJ-s-tutoring
