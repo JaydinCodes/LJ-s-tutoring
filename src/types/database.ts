@@ -83,14 +83,14 @@ export interface Database {
         Args: Record<string, never>;
         Returns: ParentProgressReportRow[];
       };
-      get_student_notifications:{
-        Args: Record<string, never>
-        Returns: StudentNotification[];
-      };
       mark_notification_read: {
         Args: {p_notification_id: string}
         Returns: StudentNotification;
-      }
+      };
+      mark_all_notifications_read: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
       record_audit_event: {
         Args: {
           p_action: string;

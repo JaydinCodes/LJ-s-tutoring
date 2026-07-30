@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bookmark, Compass, GraduationCap, MapPinned, MessageCircle, Send, Sparkles, Target, X } from 'lucide-react';
+import { Bookmark, Compass, GraduationCap, MapPinned, MessageCircle, Send, Sparkles, Target, X ,Bell, Check} from 'lucide-react';
 import { EmptyState, ErrorState, PageShell, SkeletonCard } from '../../components/dashboard/DashboardDesignSystem';
 import { FormField, TextArea, TextInput, inputClassName } from '../../components/ui/FormField';
 import { streamSupabaseFunctionText } from '../../lib/supabase/edgeFunctions';
@@ -567,3 +567,5 @@ function OdieCareerPanel({ chat, message, busy, onClose, onMessageChange, onSubm
     </div>
   );
 }
+
+

@@ -13,7 +13,7 @@ export const studentQueryKeys = {
   careers: (studentScope: string) => [...studentQueryKeys.all, studentScope, 'careers'] as const,
 };
 
-function useStudentScope() {
+export function useStudentScope() {
   const auth = useAuth();
   return auth.profile?.id || auth.session?.user.id || 'anonymous';
 }

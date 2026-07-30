@@ -23,6 +23,8 @@ import {
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { signOut } from '../../features/auth/authService';
+import { useStudentNotifications } from '../../features/students/useStudentNotifications';
+import { NotificationSheet, NotificationDrawer } from '../../features/students/StudentNotificationsPanel';
 
 type DashboardNavItem = {
   to: string;
@@ -120,6 +122,9 @@ export function AppShell({ title, subtitle, children }: ShellProps) {
   const auth = useAuth();
   const location = useLocation();
   const onCareersPage = location.pathname.startsWith('/dashboard/student/careers');
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const { data: notifications } = useStudentNotifications();
+  const unreadCount = (notifications ?? []).filter((n) => !n.is_read).length;
 
   async function handleSignOut() {
     await signOut();
@@ -138,11 +143,15 @@ export function AppShell({ title, subtitle, children }: ShellProps) {
             subtitle={subtitle}
             title={title}
             onSignOut={() => void handleSignOut()}
+            unreadCount={unreadCount}
+            onOpenNotifications={() => setNotificationsOpen(true)}
           />
           <div className="mx-auto mt-4 w-full max-w-4xl space-y-4">{children}</div>
         </main>
       </div>
       <MobileBottomNav navItems={nav.student.slice(0, 4).concat(nav.student[5])} />
+      <NotificationSheet open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
+      <NotificationDrawer open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
       {onCareersPage ? (
         <a
           aria-label="Open Odie career assistant"
@@ -162,12 +171,16 @@ export function TopStudentHeader({
   subtitle,
   title,
   onSignOut,
+  unreadCount,
+  onOpenNotifications,
 }: {
   name?: string;
   role?: string;
   subtitle: string;
   title: string;
   onSignOut: () => void;
+  unreadCount: number;
+  onOpenNotifications: () => void;
 }) {
   return (
     <header className="mx-auto w-full max-w-4xl">
@@ -203,6 +216,19 @@ export function TopStudentHeader({
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
             Sign out
+          </button>
+          <button
+            aria-label={unreadCount > 0 ? `Open notifications, ${unreadCount} unread`: 'Open notifications'}
+            className="relative grid h-11 w-11 place-items-center rounded-ios border border-slate-952/10 bg-white/64 text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09]"
+            type="button"
+            onClick={onOpenNotifications}
+          >
+            <Bell className="h-4 w-4" aria-hidden="true" />
+            {unreadCount > 0 ? (
+              <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-academy-gold px-1 text-[10px] font-bold text-academy-ink">
+                {unreadCount > 9 ? '9+' : unreadCount}
+                 </span>
+            ) : null}
           </button>
           <div className="grid h-11 w-11 place-items-center rounded-ios bg-academy-navy text-sm font-bold text-white shadow-academy-soft dark:bg-white dark:text-slate-950">
             {getInitials(name)}

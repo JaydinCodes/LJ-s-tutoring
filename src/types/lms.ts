@@ -636,16 +636,19 @@ export type NotificationType =
     | 'ANNOUNCEMENT'
     | 'SYSTEM_ALERT' 
 
-export interface StudentNotification{
-  id: string
-  student_id: string
-
-  title: string
-  message: string
-  type: NotificationType
-
-  isread: boolean
-
-  created_at: Date | string
-  updated_at: Date | string
+export interface StudentNotification {
+  id: string;
+  student_id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  link: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  metadata_json: Record<string, unknown>;
+  is_read: boolean;
+  read_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
