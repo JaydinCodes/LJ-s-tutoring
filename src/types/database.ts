@@ -32,6 +32,7 @@ import type {
   TutorStudentAllocation,
   AuditLogEntry,
   WeeklyReportRecord,
+  StudentNotification
 } from './lms';
 
 type Table<Row, Insert, Update> = {
@@ -70,6 +71,7 @@ export interface Database {
       invoices: Table<InvoiceRecord, never, never>;
       invoice_lines: Table<InvoiceLineRecord, never, never>;
       privacy_requests: Table<PrivacyRequestRecord, Omit<PrivacyRequestRecord, 'id' | 'status' | 'result' | 'created_at' | 'updated_at'>, never>;
+      student_notifications: Table<StudentNotification, Omit<StudentNotification, 'id' | 'created_at' | 'updated_at'>, Partial<StudentNotification>>
     };
     Views: Record<string, never>;
     Functions: {
@@ -81,6 +83,14 @@ export interface Database {
         Args: Record<string, never>;
         Returns: ParentProgressReportRow[];
       };
+      get_student_notifications:{
+        Args: Record<string, never>
+        Returns: StudentNotification[];
+      };
+      mark_notification_read: {
+        Args: {p_notification_id: string}
+        Returns: StudentNotification;
+      }
       record_audit_event: {
         Args: {
           p_action: string;
