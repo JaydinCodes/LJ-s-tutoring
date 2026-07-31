@@ -18,6 +18,7 @@ import {
   TrendingUp,
   Trophy,
   UserPlus,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -41,6 +42,7 @@ const nav = {
     { to: '/dashboard/student/progress', label: 'Progress', icon: TrendingUp },
     { to: '/dashboard/student/reports', label: 'Resources', icon: BookOpen },
     { to: '/dashboard/student/careers', label: 'Careers', icon: Compass },
+    { to: '/dashboard/student/community', label: 'Community', icon: UsersRound },
     { to: '/dashboard/student/settings', label: 'Settings', icon: Settings },
   ],
   admin: [
@@ -149,7 +151,7 @@ export function AppShell({ title, subtitle, children }: ShellProps) {
           <div className="mx-auto mt-4 w-full max-w-4xl space-y-4">{children}</div>
         </main>
       </div>
-      <MobileBottomNav navItems={nav.student.slice(0, 4).concat(nav.student[5])} />
+      <MobileBottomNav navItems={nav.student} onSignOut={() => void handleSignOut()} />
       <NotificationSheet open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
       <NotificationDrawer open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
       {onCareersPage ? (
@@ -282,31 +284,99 @@ export function DesktopRail({ navItems }: { navItems: DashboardNavItem[] }) {
   );
 }
 
-export function MobileBottomNav({ navItems }: { navItems: DashboardNavItem[] }) {
+export function MobileBottomNav({ navItems, onSignOut }: { navItems: DashboardNavItem[]; onSignOut: () => void }) {
   const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const primaryItems = navItems.length <= 5 ? navItems : navItems.slice(0, 4);
+  const overflowItems = navItems.length <= 5 ? [] : navItems.slice(4);
+  const visibleCount = primaryItems.length + (overflowItems.length ? 1 : 0);
 
   return (
-    <nav aria-label="Student portal" className="academy-bottom-nav lg:hidden">
-      <div className="grid grid-cols-5 gap-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = isCurrentPath(location.pathname, item);
-          return (
-            <NavLink
-              key={item.to}
-              aria-label={item.label}
-              className="academy-nav-item"
-              data-active={active}
-              end={item.to === '/dashboard/student'}
-              to={item.to}
-            >
-              <Icon className="mx-auto mb-1 h-4 w-4 text-current" aria-hidden="true" strokeWidth={2} />
-              <span className="block truncate">{item.shortLabel ?? item.label}</span>
-            </NavLink>
-          );
-        })}
-      </div>
-    </nav>
+    <>
+      {open ? (
+        <div
+          aria-hidden={!open}
+          className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-sm lg:hidden"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            aria-label="More navigation"
+            aria-modal="true"
+            className="fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-50 max-h-[min(28rem,calc(100vh-8rem))] overflow-auto rounded-sheet border border-white/70 bg-white/[0.94] p-3 shadow-[0_24px_80px_rgba(15,23,42,0.22)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/[0.94]"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="mb-2 flex items-center justify-between gap-3 px-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">More</p>
+              <button
+                aria-label="Close menu"
+                className="grid min-h-9 min-w-9 place-items-center rounded-ios border border-slate-950/10 bg-white text-sm font-semibold text-academy-ink dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment"
+                onClick={() => setOpen(false)}
+                type="button"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+            <nav aria-label="More student navigation" className="grid grid-cols-2 gap-2">
+              {overflowItems.map((item) => {
+                const Icon = item.icon;
+                const active = isCurrentPath(location.pathname, item);
+                return (
+                  <NavLink
+                    key={item.to}
+                    aria-label={item.label}
+                    className="flex min-h-12 items-center gap-3 rounded-ios px-3 text-sm font-semibold text-academy-ink transition duration-fluid ease-ios hover:bg-white/70 data-[active=true]:bg-academy-navy data-[active=true]:text-white dark:text-academy-parchment dark:hover:bg-white/[0.08] dark:data-[active=true]:bg-academy-aegean"
+                    data-active={active}
+                    onClick={() => setOpen(false)}
+                    to={item.to}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </nav>
+            <div className="mt-3 border-t border-slate-950/10 pt-3 dark:border-white/10">
+              <button
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-ios border border-slate-950/10 bg-white px-4 text-sm font-semibold text-academy-ink dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment"
+                onClick={onSignOut}
+                type="button"
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <nav aria-label="Student portal" className="academy-bottom-nav lg:hidden">
+        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${visibleCount}, minmax(0, 1fr))` }}>
+          {primaryItems.map((item) => {
+            const Icon = item.icon;
+            const active = isCurrentPath(location.pathname, item);
+            return (
+              <NavLink
+                key={item.to}
+                aria-label={item.label}
+                className="academy-nav-item"
+                data-active={active}
+                end={item.to === '/dashboard/student'}
+                to={item.to}
+              >
+                <Icon className="mx-auto mb-1 h-4 w-4 text-current" aria-hidden="true" strokeWidth={2} />
+                <span className="block truncate">{item.shortLabel ?? item.label}</span>
+              </NavLink>
+            );
+          })}
+          {overflowItems.length ? (
+            <button aria-expanded={open} className="academy-nav-item" onClick={() => setOpen(true)} type="button">
+              <Ellipsis className="mx-auto mb-1 h-4 w-4 text-current" aria-hidden="true" strokeWidth={2} />
+              <span className="block truncate">More</span>
+            </button>
+          ) : null}
+        </div>
+      </nav>
+    </>
   );
 }
 
