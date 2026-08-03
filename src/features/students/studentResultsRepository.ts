@@ -57,6 +57,12 @@ export interface StudentResultsAnalyticsView {
     totalMarksObtained: number | null;
     totalMarksAvailable: number | null;
     averageAcrossAssessments: number | null;
+    // Count of actually marked/released assignment submissions -- distinct from
+    // items.length, which also folds in progress-record signals so the Results
+    // page can show topic/cognitive-level breakdowns even before any submission
+    // is marked. Use this for any "released marks" style stat so it stays
+    // consistent with Resources' "marked submissions" count.
+    releasedMarksCount: number;
     currentAcademicStatus: string;
     classAverage: number | null;
     differenceFromClassAverage: number | null;
@@ -197,6 +203,7 @@ function buildFallbackFromDashboard(data: StudentDashboardView): StudentResultsA
       totalMarksObtained: items.reduce((total, item) => total + item.score, 0),
       totalMarksAvailable: items.reduce((total, item) => total + item.total, 0),
       averageAcrossAssessments: overallPercentage,
+      releasedMarksCount: submissionItems.length,
       currentAcademicStatus: academicStatus(overallPercentage),
       classAverage: null,
       differenceFromClassAverage: null,

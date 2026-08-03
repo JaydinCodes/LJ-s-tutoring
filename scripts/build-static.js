@@ -72,6 +72,7 @@ const reactDashboardRoutes = [
   'dashboard/student/careers',
   'dashboard/student/reports',
   'dashboard/student/community',
+  'dashboard/student/settings',
   'dashboard/parent',
   'dashboard/parent/reports',
   'dashboard/ngo',

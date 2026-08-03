@@ -11,9 +11,10 @@ const allSubjects = 'All';
 export function StudentProgressRoute() {
   const { data, loading, error, refetching, reload } = useStudentDashboardQuery();
   const [activeSubject, setActiveSubject] = useState(allSubjects);
-  const subjects = useMemo(() => getProgressSubjects(data?.progress || []), [data?.progress]);
-  const rows = useMemo(() => filterProgressBySubject(data?.progress || [], activeSubject), [data?.progress, activeSubject]);
-  const summary = useMemo(() => getProgressSummary(data?.progress || []), [data?.progress]);
+  const aggregatedProgress = useMemo(() => aggregateProgressBySubjectTopic(data?.progress || []), [data?.progress]);
+  const subjects = useMemo(() => getProgressSubjects(aggregatedProgress), [aggregatedProgress]);
+  const rows = useMemo(() => filterProgressBySubject(aggregatedProgress, activeSubject), [aggregatedProgress, activeSubject]);
+  const summary = useMemo(() => getProgressSummary(aggregatedProgress), [aggregatedProgress]);
 
   return (
     <PageShell
@@ -85,6 +86,7 @@ export function SubjectFilterChips({
             key={subject}
             className="academy-chip shrink-0"
             data-active={active}
+            aria-pressed={active}
             type="button"
             onClick={() => onChange(subject)}
           >
@@ -119,7 +121,7 @@ export function TopicProgressList({ progress }: { progress: StudentProgress[] })
 }
 
 export function TopicProgressRow({ progress }: { progress: StudentProgress }) {
-  const subject = progress.subject || progress.subject_id || 'General study';
+  const subject = progress.subject || 'General study';
   const score = Number(progress.score || 0);
   const color = score >= 75 ? '#1F6F8B' : score >= 55 ? '#f4c518' : '#d97706';
 
@@ -162,15 +164,30 @@ export function TopicProgressRow({ progress }: { progress: StudentProgress }) {
   );
 }
 
+// Multiple rows can accumulate for the same subject/topic over time (repeat
+// quizzes, tutor re-marks). Collapse those into the most recently recorded
+// row so topic counts and the list reflect unique topics, not raw DB rows.
+function aggregateProgressBySubjectTopic(progress: StudentProgress[]): StudentProgress[] {
+  const latestByKey = new Map<string, StudentProgress>();
+  for (const item of progress) {
+    const key = `${item.subject || item.subject_id || 'General study'}::${item.topic}`;
+    const existing = latestByKey.get(key);
+    if (!existing || new Date(item.recorded_at || 0).getTime() > new Date(existing.recorded_at || 0).getTime()) {
+      latestByKey.set(key, item);
+    }
+  }
+  return [...latestByKey.values()];
+}
+
 function getProgressSubjects(progress: StudentProgress[]) {
-  return [...new Set(progress.map((item) => item.subject || item.subject_id || 'General study'))]
+  return [...new Set(progress.map((item) => item.subject || 'General study'))]
     .sort((left, right) => left.localeCompare(right));
 }
 
 function filterProgressBySubject(progress: StudentProgress[], subject: string) {
   const rows = subject === allSubjects
     ? progress
-    : progress.filter((item) => (item.subject || item.subject_id || 'General study') === subject);
+    : progress.filter((item) => (item.subject || 'General study') === subject);
 
   return [...rows].sort((left, right) => Number(left.score || 0) - Number(right.score || 0) || left.topic.localeCompare(right.topic));
 }

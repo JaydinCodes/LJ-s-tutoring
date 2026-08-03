@@ -43,7 +43,6 @@ const nav = {
     { to: '/dashboard/student/progress', label: 'Progress', icon: TrendingUp },
     { to: '/dashboard/student/reports', label: 'Resources', icon: BookOpen },
     { to: '/dashboard/student/careers', label: 'Careers', icon: Compass },
-    { to: '/dashboard/student/community', label: 'Community', icon: UsersRound },
     { to: '/dashboard/student/settings', label: 'Settings', icon: Settings },
   ],
   admin: [

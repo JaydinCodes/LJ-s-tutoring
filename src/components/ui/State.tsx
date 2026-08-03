@@ -81,7 +81,7 @@ export function ErrorState({
   dashboardHref?: string;
 }) {
   return (
-    <Card className="border-red-200/80 bg-red-50/80">
+    <Card background={false} className="border-red-200/80 bg-red-50/80 dark:border-red-900/60 dark:bg-red-950/30">
       <div className="flex items-start gap-4">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-red-100 text-red-700">
           <AlertTriangle className="h-5 w-5" aria-hidden="true" />

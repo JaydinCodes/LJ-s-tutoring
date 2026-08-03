@@ -71,7 +71,7 @@ export function App() {
         <Route path="/student/results" element={<ProtectedRoute roles={['student']}><StudentResultsRoute /></ProtectedRoute>} />
         <Route path="/student/results/subjects/:subject" element={<ProtectedRoute roles={['student']}><StudentResultsSubjectRoute /></ProtectedRoute>} />
         <Route path="/student/results/:resultId" element={<ProtectedRoute roles={['student']}><StudentResultDetailRoute /></ProtectedRoute>} />
-        <Route path="/student/*" element={<Navigate to="/dashboard/student" replace />} />
+        <Route path="/student" element={<Navigate to="/dashboard/student" replace />} />
         <Route path="/tutor/*" element={<Navigate to="/dashboard/tutor" replace />} />
         <Route path="/reports/*" element={<Navigate to="/dashboard/student/reports" replace />} />
         <Route path="/about" element={<AboutRoute />} />

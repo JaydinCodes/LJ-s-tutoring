@@ -101,7 +101,7 @@ export function StudentResultsRoute() {
             bestSubject={bestSubject}
             latest={latest}
             status={data.summary.currentAcademicStatus}
-            totalResults={items.length}
+            totalResults={data.summary.releasedMarksCount}
           />
           <MarkTrend items={items} />
           <SubjectResultRows items={items} />
@@ -475,7 +475,7 @@ function ResultDetail({ result }: { result: StudentResultItem }) {
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
       <Card>
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-aegean dark:text-brand-gold">Released result</p>
-        <h1 className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{result.title}</h1>
+        <h2 className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{result.title}</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-brand-marble">{result.subject} - {formatDate(result.completedAt || result.markedAt)}</p>
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           <MiniMetric label="Mark" value={`${formatMark(result.score)} / ${formatMark(result.total)}`} />

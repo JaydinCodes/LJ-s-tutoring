@@ -79,6 +79,7 @@ function FilterChip({ active, children, onClick }: { active: boolean; children: 
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={`academy-chip ${active ? 'bg-academy-gold text-academy-ink dark:text-academy-ink' : ''}`}
     >
@@ -400,7 +401,13 @@ export function CareerRow({ career, saved, onToggleSave }: { career: CareerSumma
           <h3 className="mt-1 text-lg font-semibold text-academy-ink dark:text-academy-parchment">{career.title}</h3>
           <p className="mt-2 line-clamp-2 text-sm leading-6 text-academy-muted">{career.description || 'Explore this pathway and compare subject fit before choosing a next step.'}</p>
         </div>
-        <button className={`academy-btn min-h-10 shrink-0 px-4 ${saved ? 'academy-btn-gold' : 'academy-btn-outline'}`} type="button" onClick={onToggleSave}>
+        <button
+          className={`academy-btn min-h-10 shrink-0 px-4 ${saved ? 'academy-btn-gold' : 'academy-btn-outline'}`}
+          type="button"
+          aria-pressed={saved}
+          aria-label={`${saved ? 'Remove' : 'Save'} ${career.title}`}
+          onClick={onToggleSave}
+        >
           <Bookmark className="h-4 w-4" aria-hidden="true" />
           {saved ? 'Saved' : 'Save'}
         </button>

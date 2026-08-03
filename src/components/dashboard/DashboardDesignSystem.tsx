@@ -1,9 +1,10 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useEffect } from 'react';
 import { Sparkles, type LucideIcon } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { DashboardShell, type DashboardSection } from './DashboardShell';
-import { academyProgressFillClass, academyProgressTrackClass, dashboardInsetClass, dashboardSurfaceClass } from './dashboardStyles';
+import { academyProgressFillClass, academyProgressTrackClass, dashboardInsetClass, dashboardSurfaceBaseClass } from './dashboardStyles';
 
 type MetricTone = 'navy' | 'aegean' | 'gold' | 'marble';
 
@@ -93,6 +94,14 @@ export function PageShell({
   section: DashboardSection;
   children: ReactNode;
 }) {
+  // Client-side navigation between dashboard routes never triggers a full page
+  // load, so the browser tab title otherwise stays stuck on whatever title the
+  // entry shell happened to render (often the public homepage title) -- sync
+  // it to the current page here so every dashboard route gets its own title.
+  useEffect(() => {
+    document.title = `${title} | Project Odysseus`;
+  }, [title]);
+
   return (
     <DashboardShell title={title} subtitle={subtitle} section={section}>
       <RouteTransition>{children}</RouteTransition>
@@ -308,7 +317,7 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <section className={`${dashboardSurfaceClass} border-red-200/70 bg-red-50/80 dark:border-red-900/60 dark:bg-red-950/30`}>
+    <section className={`${dashboardSurfaceBaseClass} border-red-200/70 bg-red-50/80 dark:border-red-900/60 dark:bg-red-950/30`}>
       <h2 className="text-lg font-semibold text-red-950 dark:text-red-100">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-red-800 dark:text-red-200">{description}</p>
       {onRetry ? <PremiumButton className="mt-4" onClick={onRetry}>Retry</PremiumButton> : null}
@@ -317,7 +326,7 @@ export function ErrorState({
 }
 
 export function SkeletonCard({ className = '' }: { className?: string }) {
-  return <div className={`${dashboardSurfaceClass} min-h-36 animate-pulse bg-white/[0.55] dark:bg-white/[0.05] ${className}`} aria-hidden="true" />;
+  return <div className={`${dashboardSurfaceBaseClass} min-h-36 animate-pulse bg-white/[0.55] dark:bg-white/[0.05] ${className}`} aria-hidden="true" />;
 }
 
 export function PremiumButton({

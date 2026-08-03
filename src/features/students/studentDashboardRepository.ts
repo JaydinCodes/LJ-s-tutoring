@@ -117,7 +117,10 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
   const assignedTutors = (assignedTutorsResult.data || []) as StudentAssignedTutor[];
   const submittedIds = new Set(submissions.map((item) => item.assignment_id));
   const score = average(progress.map((item) => Number(item.score)).filter(Number.isFinite));
-  const subjectIds = Array.from(new Set(assignments.map((assignment) => assignment.subject_id).filter(Boolean)));
+  const subjectIds = Array.from(new Set([
+    ...assignments.map((assignment) => assignment.subject_id),
+    ...progress.map((item) => item.subject_id),
+  ].filter(Boolean)));
   const subjectsResult = subjectIds.length
     ? await supabase.from('subjects').select('*').in('id', subjectIds)
     : { data: [], error: null };
@@ -144,7 +147,11 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     subject: assignment.subject || (assignment.subject_id ? subjectNameById.get(assignment.subject_id) : undefined),
     attachment_url: (assignment.attachment_url && attachmentUrlByPath.get(assignment.attachment_url)) || assignment.attachment_url,
   }));
-  const weakestProgress = [...progress]
+  const progressWithSubjects = progress.map((item) => ({
+    ...item,
+    subject: item.subject || (item.subject_id ? subjectNameById.get(item.subject_id) : undefined),
+  }));
+  const weakestProgress = [...progressWithSubjects]
     .filter((item) => Number.isFinite(Number(item.score)))
     .sort((left, right) => Number(left.score) - Number(right.score) || left.topic.localeCompare(right.topic))[0];
 
@@ -162,7 +169,7 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
       { label: 'Classes', value: String(classes.length), helper: 'Current classes for this learner.', tone: 'blue' },
     ],
     assignments: assignmentsWithSubjects,
-    progress,
+    progress: progressWithSubjects,
     classes,
     assignedTutors,
     submissions: submissionsWithSignedUrls,

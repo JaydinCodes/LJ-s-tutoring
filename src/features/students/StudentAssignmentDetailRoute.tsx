@@ -76,7 +76,7 @@ function AssignmentDetailWorkspace({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-aegean dark:text-brand-gold">Assignment workspace</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{assignment.title}</h1>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{assignment.title}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">{assignment.subject || assignment.subject_id || 'Topic pending'}</p>
           </div>
           <StatusBadge value={status} />
