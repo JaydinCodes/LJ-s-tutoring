@@ -62,6 +62,13 @@ envs:
 # real HTTP header), so clickjacking protection remains an open gap until this
 # app either gets a proxy/service layer in front of it or DO ships static-site
 # response headers.
+#
+# Decision (2026-08-03): add Cloudflare in front of this app as that proxy
+# layer rather than migrate hosting. This app spec is unaffected -- the fix is
+# a Cloudflare DNS + Transform Rule change, not a code change. See
+# docs/deployment/CLOUDFLARE_SECURITY_HEADERS.md for the exact header values
+# and setup steps; this comment stays accurate (no headers set here) until
+# that's done.
 ingress:
   rules:
     - match:

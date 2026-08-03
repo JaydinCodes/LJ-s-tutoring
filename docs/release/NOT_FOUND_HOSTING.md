@@ -10,3 +10,10 @@ headers such as HSTS to this component. `secure_header` is an inbound request
 matcher, not response-header injection. A true HTTP 404 and required response
 security headers therefore need a platform feature or an edge/service component;
 they cannot be honestly marked complete by React or `.do/app.yaml` alone.
+
+A Cloudflare proxy layer is planned to close the response-header half of this
+gap (see [CLOUDFLARE_SECURITY_HEADERS.md](../deployment/CLOUDFLARE_SECURITY_HEADERS.md)
+for the DNS/Transform Rule setup); that plan is Transform-Rule-only and does not
+address the HTTP 200 catch-all issue. A Cloudflare Worker could additionally
+rewrite the status code to a true 404 for unknown paths, but that is a separate,
+larger change and is out of scope of the header fix.
