@@ -45,7 +45,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'npm'
       
       - name: Install dependencies
@@ -71,13 +71,16 @@ jobs:
       - name: Build site
         run: npm run build
 
+      - name: Enforce static asset budget
+        run: npm run perf:budget
+
       # ========================================================================
       # START SERVER
       # ========================================================================
       - name: Start static server
         run: |
-          npx http-server dist -p 8080 -c-1 --silent > /tmp/lhci-static-server.log 2>&1 &
-          npx wait-on --timeout 60000 http://localhost:8080/ || { cat /tmp/lhci-static-server.log; exit 1; }
+          npm run qa:serve > /tmp/lhci-static-server.log 2>&1 &
+          npm run qa:wait || { cat /tmp/lhci-static-server.log; exit 1; }
           curl -fsS http://localhost:8080/ > /dev/null || { cat /tmp/lhci-static-server.log; exit 1; }
 
       # ========================================================================
@@ -90,7 +93,7 @@ jobs:
           LHCI_CHROME_PATH: ${{ env.CHROME_PATH }}
         run: |
           set +e
-          npx lhci autorun --config=./lighthouserc.js
+          npm run perf:lighthouse
           code=$?
           if [ "$code" -eq 0 ]; then
             echo "status=passed" >> $GITHUB_OUTPUT

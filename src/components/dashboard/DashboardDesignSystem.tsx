@@ -8,10 +8,10 @@ import { academyProgressFillClass, academyProgressTrackClass, dashboardInsetClas
 type MetricTone = 'navy' | 'aegean' | 'gold' | 'marble';
 
 const metricToneClasses: Record<MetricTone, string> = {
-  navy: 'border-white/65 bg-brand-navy text-white shadow-[0_18px_45px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-white/[0.08]',
-  aegean: 'border-white/70 bg-white/76 text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
-  gold: 'border-white/70 bg-white/76 text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
-  marble: 'border-white/70 bg-white/76 text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+  navy: 'border-white/[0.65] bg-brand-navy text-white shadow-[0_18px_45px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-white/[0.08]',
+  aegean: 'border-white/70 bg-white/[0.76] text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+  gold: 'border-white/70 bg-white/[0.76] text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+  marble: 'border-white/70 bg-white/[0.76] text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
 };
 
 const toneAccentClasses: Record<MetricTone, string> = {
@@ -254,7 +254,7 @@ export function TimelineCard({
   return (
     <article className={dashboardInsetClass}>
       <div className="flex gap-3">
-        <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-brand-gold ring-4 ring-brand-gold/15" />
+        <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-brand-gold ring-4 ring-brand-gold/[0.15]" />
         <div className="min-w-0">
           <h3 className="font-semibold text-brand-obsidian dark:text-brand-parchment">{title}</h3>
           {meta ? <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-brand-marble">{meta}</p> : null}
@@ -280,7 +280,7 @@ export function EmptyState({
 }) {
   return (
     <div className="relative overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/70 p-6 text-center shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]">
-      <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-gold/45 to-transparent" aria-hidden="true" />
+      <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-gold/[0.45] to-transparent" aria-hidden="true" />
       <div className="relative mx-auto grid h-11 w-11 place-items-center rounded-[1.1rem] border border-brand-aegean/10 bg-brand-aegean/[0.06] text-brand-aegean dark:border-brand-gold/20 dark:bg-brand-gold/10 dark:text-brand-gold">
         <Icon className="h-5 w-5 text-current" aria-hidden="true" strokeWidth={2} />
       </div>
@@ -317,7 +317,7 @@ export function ErrorState({
 }
 
 export function SkeletonCard({ className = '' }: { className?: string }) {
-  return <div className={`${dashboardSurfaceClass} min-h-36 animate-pulse bg-white/55 dark:bg-white/[0.05] ${className}`} aria-hidden="true" />;
+  return <div className={`${dashboardSurfaceClass} min-h-36 animate-pulse bg-white/[0.55] dark:bg-white/[0.05] ${className}`} aria-hidden="true" />;
 }
 
 export function PremiumButton({

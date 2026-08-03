@@ -8,9 +8,12 @@
   },
   "urls": [
     "http://localhost:8080/",
-    "http://localhost:8080/login.html",
-    "http://localhost:8080/privacy.html",
-    "http://localhost:8080/terms.html",
-    "http://localhost:8080/guides/matric-maths-mistakes-guide.html"
+    "http://localhost:8080/about",
+    "http://localhost:8080/programs",
+    "http://localhost:8080/guides",
+    "http://localhost:8080/guides/matric-maths-mistakes-guide",
+    "http://localhost:8080/privacy",
+    "http://localhost:8080/terms",
+    "http://localhost:8080/dashboard/login"
   ]
 }

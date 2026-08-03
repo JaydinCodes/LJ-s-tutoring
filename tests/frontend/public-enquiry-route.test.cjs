@@ -5,21 +5,22 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..', '..');
 
-test('React public route owns enquiry capture without hard-coded external endpoints', () => {
+test('React public route prepares enquiries for user-controlled email or WhatsApp sending', () => {
   const publicRoutes = fs.readFileSync(path.join(root, 'src', 'app', 'routes', 'PublicRoutes.tsx'), 'utf8');
   const envExample = fs.readFileSync(path.join(root, '.env.example'), 'utf8');
 
-  assert.ok(publicRoutes.includes('VITE_PO_FORMSPREE_ENDPOINT'), 'React enquiry form must use env-configured form endpoint');
   assert.ok(publicRoutes.includes('po_react_enquiry_last_submit'), 'React enquiry form must throttle repeat submissions');
   assert.ok(publicRoutes.includes('name="name"'), 'React enquiry form must collect name');
   assert.ok(publicRoutes.includes('name="email"'), 'React enquiry form must collect email');
   assert.ok(publicRoutes.includes('name="grade"'), 'React enquiry form must collect grade');
   assert.ok(publicRoutes.includes('name="message"'), 'React enquiry form must collect message');
   assert.ok(publicRoutes.includes('name="website"'), 'React enquiry form must keep honeypot protection');
-  assert.ok(publicRoutes.includes('https://wa.me/'), 'React enquiry fallback must include WhatsApp');
-  assert.ok(publicRoutes.includes('mailto:'), 'React enquiry fallback must include email');
-  assert.ok(!publicRoutes.includes('https://formspree.io/f/xreebzqa'), 'React bundle must not hard-code the legacy Formspree endpoint');
-  assert.ok(envExample.includes('VITE_PO_FORMSPREE_ENDPOINT='), '.env.example must document the public form endpoint');
+  assert.ok(publicRoutes.includes('https://wa.me/'), 'React enquiry path must include WhatsApp');
+  assert.ok(publicRoutes.includes('mailto:'), 'React enquiry path must include email');
+  assert.ok(publicRoutes.includes('nothing is sent until you review and send it'), 'the form must explain the user-controlled handoff');
+  assert.ok(!publicRoutes.includes('fetch(form'), 'React enquiry form must not post to an external browser endpoint');
+  assert.ok(!publicRoutes.includes('FORMSPREE'), 'React enquiry form must not retain dead external form configuration');
+  assert.ok(!envExample.includes('FORMSPREE'), '.env.example must not advertise a dead form endpoint');
 });
 
 test('React public route carries remaining public-site parity sections', () => {

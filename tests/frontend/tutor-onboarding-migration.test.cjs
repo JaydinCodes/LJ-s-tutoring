@@ -32,6 +32,14 @@ const studentDashboardRepo = fs.readFileSync(
   path.join(repoRoot, 'src', 'features', 'students', 'studentDashboardRepository.ts'),
   'utf8',
 );
+const tutorDashboardRepo = fs.readFileSync(
+  path.join(repoRoot, 'src', 'features', 'tutors', 'tutorDashboardRepository.ts'),
+  'utf8',
+);
+const tutorOperationsRepo = fs.readFileSync(
+  path.join(repoRoot, 'src', 'features', 'tutors', 'tutorOperationsRepository.ts'),
+  'utf8',
+);
 
 const statements = schema.split(/\n\s*\n/);
 
@@ -101,30 +109,23 @@ test('public.tutors approval_status check covers both vocabularies, excludes dra
   assert.match(schema, /if not exists \(\s*select 1 from pg_constraint where conname = 'tutors_approval_status_check'\s*\)/);
 });
 
-test('the exposure of approval fields to allocated students is FLAGGED and FIXED (query-level, not RLS)', () => {
-  // tutors_select_self_or_admin's third arm (an allocated student) grants row
-  // access to the whole tutors row -- RLS is row-level, it cannot exclude just
-  // the new approval columns for that arm. The schema must still carry the
-  // EXPOSURE NOTE explaining why (reviewer context for anyone re-deriving this),
-  // but the actual fix is that the one student-facing reader of this table
-  // (studentDashboardRepository.ts) selects an explicit, narrowed column list
-  // instead of select('*') -- verified below, not left as a bare TODO.
+test('allocated students receive a narrow tutor RPC and no base-table column access', () => {
   assert.match(schema, /EXPOSURE NOTE/);
   assert.match(schema, /approval_note/);
 
-  // The frontend fix: studentDashboardRepository.ts's tutors read must be an
-  // explicit column list that excludes every new vetting field, restoring
-  // exactly the pre-migration (safe) column set.
-  const tutorsReadBlock = studentDashboardRepo.slice(
-    studentDashboardRepo.indexOf("from('tutors')"),
-  );
-  const firstLine = tutorsReadBlock.slice(0, tutorsReadBlock.indexOf('\n'));
-  assert.doesNotMatch(
-    studentDashboardRepo,
-    /from\('tutors'\)\.select\('\*'\)/,
-    'studentDashboardRepository.ts must not select(\'*\') from tutors',
-  );
+  const tutorSelect = policyStatementsForTable('tutors')
+    .find((policy) => policy.includes('"tutors_select_self_or_admin"'));
+  assert.ok(tutorSelect, 'tutors_select_self_or_admin policy must exist');
+  assert.doesNotMatch(tutorSelect, /current_student_id/, 'students must have no public.tutors SELECT arm');
+
+  const rpc = functionBody('get_student_assigned_tutors');
+  const returnContract = rpc.slice(0, rpc.indexOf('language plpgsql'));
+  assert.match(rpc, /returns table \(\s*id uuid,\s*full_name text,\s*email text\s*\)/);
+  assert.match(rpc, /security definer[\s\S]*set search_path = ''/);
+  assert.match(rpc, /tsa\.student_id = v_student_id[\s\S]*tsa\.status = 'active'/);
   for (const sensitive of [
+    'hourly_rate',
+    'rate_override',
     'qualification_band',
     'qualified_subjects_json',
     'approval_status',
@@ -132,17 +133,32 @@ test('the exposure of approval fields to allocated students is FLAGGED and FIXED
     'approval_reviewed_at',
     'approval_note',
     'teaching_preferences_json',
+    'auth_user_id',
+    'phone',
+    'profile_id',
   ]) {
-    assert.ok(
-      !firstLine.includes(sensitive),
-      `studentDashboardRepository.ts's tutors query must not select ${sensitive}`,
-    );
+    assert.doesNotMatch(returnContract, new RegExp(`\\b${sensitive}\\b`), `safe tutor RPC must not return ${sensitive}`);
   }
+
+  assert.match(studentDashboardRepo, /rpc\('get_student_assigned_tutors'\)/);
+  assert.doesNotMatch(studentDashboardRepo, /from\('(?:tutors|tutor_student_allocations)'\)/);
+
+  const learnerRpc = functionBody('get_tutor_allocated_students');
+  const learnerReturnContract = learnerRpc.slice(0, learnerRpc.indexOf('language plpgsql'));
   assert.match(
-    studentDashboardRepo,
-    /from\('tutors'\)\.select\('id, profile_id, subjects, grades, hourly_rate, status, created_at'\)/,
-    'studentDashboardRepository.ts must select the exact pre-migration-safe column list',
+    learnerReturnContract,
+    /returns table \(\s*student_id uuid,\s*full_name text,\s*email text,\s*grade text,\s*school text,\s*status public\.record_status\s*\)/,
   );
+  for (const sensitive of ['profile_id', 'auth_user_id', 'phone', 'parent_name', 'parent_contact', 'ngo_partner_id']) {
+    assert.doesNotMatch(learnerReturnContract, new RegExp(`\\b${sensitive}\\b`), `safe learner RPC must not return ${sensitive}`);
+  }
+  // tutorDashboardRepository calls the shared loadTutorAllocatedStudents()
+  // helper (also used by sessions/reports/risk loaders) rather than inlining
+  // the RPC call itself; tutorOperationsRepository owns the one rpc() call.
+  assert.match(tutorDashboardRepo, /loadTutorAllocatedStudents\(/);
+  assert.match(tutorOperationsRepo, /rpc\('get_tutor_allocated_students'\)/);
+  assert.doesNotMatch(tutorDashboardRepo, /from\('students'\)/);
+  assert.doesNotMatch(tutorOperationsRepo, /from\('students'\)/);
 });
 
 // --- tutor_applications table ----------------------------------------------

@@ -5,19 +5,30 @@ The launch smoke suite uses Playwright against the active React + Vite app.
 ## Commands
 
 ```powershell
+npm run test:e2e:install
 npm run test:e2e
 npm run test:e2e:ui
-```
-
-The existing legacy/static browser suite remains available as:
-
-```powershell
-npm run test:e2e:web
 ```
 
 ## Test Auth
 
 The React smoke suite does not use production Supabase credentials. `playwright.react.config.ts` starts Vite with `VITE_E2E_AUTH_MOCK=true`, which enables a dev-only auth/data harness. The harness is disabled when `import.meta.env.PROD` is true, so production builds still require real Supabase Auth, profiles, RLS, and RPCs.
+
+The required runtime suite uses a disposable loopback-only Supabase stack,
+creates its own Auth/profile/domain fixtures, and refuses a hosted API or
+database URL:
+
+```powershell
+npm run supabase:start
+npm run supabase:reset
+npm run test:rls:runtime
+npm run supabase:types:check
+npm run test:e2e:supabase
+```
+
+It signs in real learner, tutor, and admin accounts, completes real TOTP AAL2
+for the admin, proves cross-role denial, and fails on page, console, or Supabase
+HTTP errors. The mock suite is supplemental; it is not RLS evidence.
 
 Shared password:
 
@@ -47,4 +58,5 @@ Documented smoke users:
 - NGO aggregate cohort report access.
 - Logout clearing the session and blocking protected routes.
 
-For local Supabase Auth/RLS testing with real users, use `docs/supabase/LOCAL_DEVELOPMENT.md` and `docs/supabase/auth-seed-notes.md`.
+For the complete local Supabase workflow, use
+`docs/supabase/LOCAL_DEVELOPMENT.md`.

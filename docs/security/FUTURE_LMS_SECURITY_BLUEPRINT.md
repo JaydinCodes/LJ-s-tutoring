@@ -1,5 +1,12 @@
 # Future LMS Security Blueprint
 
+> **Historical design record.** This blueprint predates the completed
+> Fastify/Prisma retirement and preserves the security assumptions used during
+> that transition. Statements below describing Fastify sessions, static auth
+> guards, or `/api` RBAC are not current controls. For the implemented boundary,
+> use [ARCHITECTURE.md](../architecture/ARCHITECTURE.md), the Supabase schema and
+> RLS tests, and the maintained compliance documents.
+
 This document defines minimum guardrails for the authenticated `/dashboard/admin`,
 `/dashboard/tutor`, and student LMS experiences. DigitalOcean App Platform is
 the production edge, so route protection must be documented against `.do/app.yaml`

@@ -13,11 +13,16 @@ Generated/copied output includes:
 - `assets/portal-config.js`
 - `assets/sw-register.js`
 - `assets/tailwind-input.css`
+- `assets/lib/sanitize.js`
 - `sw.js`
 - `images/`
 - `favicon.svg`
 - `robots.txt`
 - `sitemap.xml`
+
+The source-side ownership and the one explicitly excluded, non-production
+historical file are documented in
+[STATIC_ASSET_OWNERSHIP.md](../architecture/STATIC_ASSET_OWNERSHIP.md).
 
 ## DigitalOcean App Platform
 
@@ -26,7 +31,11 @@ Generated/copied output includes:
 now has a single `static_sites` component and no API service:
 
 - source_dir: repository root
-- build_command: `npm ci && npm run build`
+- build_command: `npm ci --include=dev && npm run build`
+
+The explicit `--include=dev` is required because DigitalOcean sets
+`NODE_ENV=production` during the build while Vite, Tailwind, PostCSS, and their
+plugins are intentionally build-only `devDependencies`.
 - output_dir: `dist`
 
 Backend-only work (Odie AI proxy, admin user invites) runs on Supabase Edge
@@ -40,12 +49,15 @@ Routing note:
 
 ## Public config injection
 
-`npm run inject:config` rewrites `dist/assets/portal-config.js` so the static site knows which API base URL to call.
+The active React client reads `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_ANON_KEY` at build time and talks directly to Supabase. These are
+public browser values; authorization remains enforced by RLS.
 
-It reads local env files with `.env.local` precedence over `.env`.
+`npm run inject:config` still rewrites the retained
+`dist/assets/portal-config.js` compatibility object after the static build. Its
+`PUBLIC_PO_API_BASE` / `API_BASE_URL` value is inert metadata for the active
+React repositories, not a second API or authorization boundary. Do not put
+access keys or server credentials into it.
 
-Supported env vars, in priority order:
-
-1. `PUBLIC_PO_API_BASE`
-2. `API_BASE_URL`
-3. fallback empty string (`""`) to allow same-origin calls in production; local host fallback is handled by runtime client logic.
+See [PUBLIC_CONFIG.md](../setup/PUBLIC_CONFIG.md) for the complete active and
+server-only variable split.

@@ -1,5 +1,12 @@
 # Prisma → Supabase Data Migration Plan
 
+> **Historical implementation plan.** The migration and Fastify/Prisma
+> retirement are complete. This long-form plan preserves sequencing decisions
+> and contemporaneous status notes, including inline statements that are no
+> longer current. Do not use its commands or per-section "still calls Fastify"
+> notes as an operations guide; use [ARCHITECTURE.md](ARCHITECTURE.md) and
+> [LOCAL_DEVELOPMENT.md](../supabase/LOCAL_DEVELOPMENT.md).
+
 **Status (2026-07-24): migration substantially complete — see §6 for the accurate,
 current per-domain status.** `lms-api` (Fastify + Prisma) is fully retired (§6 step
 7). Every domain below has its Supabase schema/RLS/RPC layer landed and no backfill

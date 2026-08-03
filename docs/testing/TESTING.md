@@ -1,118 +1,130 @@
 # Testing
 
-This repo uses a test pyramid:
-- Unit: Frontend helper and source-contract tests (Node test runner).
-- RLS/RPC contract: Supabase schema source tests.
-- API integration: transitional LMS API tests (Vitest + Postgres).
-- E2E: LMS API E2E tests (Vitest).
+This is the maintained test guide for the unified React + Supabase application.
+The retired Fastify/Prisma integration suites and their `DATABASE_URL_TEST`
+database are not part of the current repository.
+
+## Test layers
+
+- **Frontend and source contracts:** Node's test runner validates UI behavior,
+  build output, Supabase schema/RLS/RPC definitions, and operational config.
+- **Runtime database authorization:** pgTAP tests run against a local Supabase
+  stack rebuilt from committed migrations.
+- **Browser journeys:** Playwright exercises the unified React routes with the
+  explicit in-memory auth/data adapter. This is deterministic UI coverage, not
+  evidence of production Supabase authorization.
+- **Release quality:** generated HTML, links, accessibility, static performance
+  budgets, and Lighthouse run against the built `dist/` site.
 
 ## Prerequisites
-- Node.js 20
-- Postgres (local or Docker)
-- `DATABASE_URL_TEST` set for LMS tests
-- Docker Desktop and Supabase CLI for local Supabase resets
 
-Example Docker-backed local Postgres:
+- Node.js 24 with npm 11.
+- Installed npm dependencies (`npm ci` in CI, `npm install` locally).
+- Chromium for browser tests (`npm run test:e2e:install`).
+- Docker Desktop or another Docker-compatible runtime only for local Supabase
+  reset and pgTAP tests.
+
+No standalone Postgres instance or `DATABASE_URL_TEST` variable is required.
+
+## Fast checks
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run perf:budget
 ```
-docker compose up -d db
-export DATABASE_URL_TEST=postgresql://postgres:postgres@localhost:5433/lms_test
+
+`npm test` is the frontend/source-contract aggregate. Database source-contract
+tests are also available directly with `npm run test:rls`.
+
+## Runtime Supabase authorization
+
+The runtime gate proves policies using the same committed migration sequence CI
+uses:
+
+```bash
+npm run supabase:start
+npm run supabase:reset
+npm run test:rls:runtime
 ```
 
-If you use the default compose setup, create the `lms_test` database before running tests.
+Do not edit an applied migration or regenerate the frozen baseline. Add an
+immutable forward migration, update the desired-state schema, reset locally,
+and rerun both source-contract and runtime tests. See
+[LOCAL_DEVELOPMENT.md](../supabase/LOCAL_DEVELOPMENT.md).
 
-## Run all tests
-```
-npm run test:all
-```
+## React browser tests
 
-## Individual suites
-```
-# Unit (frontend helpers)
-npm run test:unit
-
-# Supabase RLS/RPC source contracts
-npm run test:rls
-
-# API integration (LMS)
-npm run test:api
-
-# LMS API E2E (Vitest)
-npm run test:e2e:api
-
-# React role smoke E2E (Playwright, dev-only mock Supabase auth/data)
-npx playwright install --with-deps chromium
+```bash
+npm run test:e2e:install
 npm run test:e2e
-
-# Legacy/static browser E2E (Playwright)
-npx playwright install --with-deps chromium
-npm run test:e2e:web
 ```
 
-## Notes
-- Supabase-first frontend and RLS tests use `docs/supabase/schema.sql` as the source of truth.
-- Local Supabase setup is documented in `docs/supabase/LOCAL_DEVELOPMENT.md`.
-- LMS API E2E uses the test-only login endpoint enabled when `NODE_ENV=test`.
-- API E2E resets and seeds the test DB before running.
-- React role smoke E2E is documented in `E2E_SMOKE.md` and uses a dev-only `VITE_E2E_AUTH_MOCK=true` harness so it never depends on production Supabase credentials.
-- Legacy/static browser E2E also uses the test-only login endpoint for deterministic role-based portal access.
-- Production browser error monitoring is documented in `../ops/PRODUCTION_MONITORING_CHECKLIST.md`.
+The suite covers role navigation and login behavior plus computed visual
+contrast for login and all role shells at mobile/desktop widths in light/dark
+themes. `VITE_E2E_AUTH_MOCK=true` is set by the Playwright config; never treat a
+passing mock journey as a substitute for the pgTAP authorization gate.
 
-## 20-Minute Production Live-User Test Scope
+## Built-site quality checks
 
-Use this only after the release gates in `../release/RELEASE_GOVERNANCE.md` have passed and the production deployment is already live. The goal is to validate real production auth, routing, and core workflows with a small controlled group while protecting learner data and keeping rollback simple.
+Build first, start the canonical QA server in one terminal, and wait for it:
 
-### Guardrails
+```bash
+npm run build
+npm run qa:serve
+```
 
-- Test with approved internal, pilot, or explicitly consented production users only.
-- Use real email addresses for production test users. `@dev.local` accounts are local-only and will fail browser email validation on production.
-- Do not create synthetic learner data in real student records unless it is clearly marked as test data and can be cleaned up immediately.
-- Do not run destructive admin actions against real users, including deletion, retention cleanup, payroll locking, or broad reassignment.
-- Keep monitoring open for API health, 5xx rate, slow request ratio, and auth failures.
-- Stop the test and start rollback assessment if any P1 alert fires, 5xx ratio stays above 2% for 5 minutes, or more than one pilot user cannot complete login.
+Then run in another terminal:
 
-### Ensure Production Test Users
+```bash
+npm run qa:wait
+npm run qa:html
+npm run qa:links
+npm run qa:a11y
+npm run perf:lighthouse
+```
 
-> **Stale (2026-07-24):** this used `lms-api/scripts/ensure-prod-test-users.ts`
-> (Google sign-in + OTP, the old Fastify auth flow), which no longer exists —
-> `lms-api` is fully retired. Production test users now go through Supabase
-> Auth; use the `admin-invite-user` Edge Function (see
-> `supabase/functions/admin-invite-user/README.md`) to invite a real test
-> admin/tutor/student, then complete Supabase MFA (AAL2) for the admin
-> account. This section needs a proper rewrite for that flow.
+The workflows use these package scripts too, so local and CI commands remain in
+parity. Production monitoring assets can be checked with
+`npm run validate:monitoring`.
 
-Expected login paths:
+## 20-minute production live-user test
 
-- Student: `https://student.projectodysseus.live/dashboard/login/`, then sign in with Google using `PROD_TEST_STUDENT_EMAIL`.
-- Admin: `https://admin.projectodysseus.live/dashboard/login/`, then use `PROD_TEST_ADMIN_EMAIL`, `PROD_TEST_ADMIN_PASSWORD`, and the emailed OTP.
-- Tutor, if seeded: `https://tutor.projectodysseus.live/dashboard/login/`, then use `PROD_TEST_TUTOR_EMAIL` and `PROD_TEST_TUTOR_PASSWORD`.
+Run this only after the required release gates pass and the deployment is live.
+Use approved internal or explicitly consented pilot accounts and do not create
+uncontrolled learner data.
+
+### Before starting
+
+- Record the deployed commit SHA and release-gate artifact.
+- Invite test users through the `admin-invite-user` Edge Function and complete
+  Supabase MFA (AAL2) for the admin account.
+- Confirm the static `/health.json`, Supabase Auth health, and zero-row PostgREST
+  probes are green in the uptime workflow.
+- Keep frontend error monitoring and Supabase service health visible.
 
 ### Scope
 
 | Minute | Owner | Action | Evidence |
 |---|---|---|---|
-| 0-3 | Release lead | Confirm deployed SHA, production URL, and release gates artifact. | SHA + release gate link recorded. |
-| 3-6 | Admin tester | Log in to admin, open dashboard, students, tutors, assignments, approvals, payroll, and audit pages. | Pages load without console/API errors. |
-| 6-10 | Tutor tester | Log in as a live/pilot tutor, open dashboard, assignments, sessions, reports, and risk view. | Tutor can access assigned views only. |
-| 10-14 | Student tester | Log in as a live/pilot student, open dashboard, reports, community, and career views. | Student can access assigned views only. |
-| 14-17 | Release lead | Check `/ready`, `/health`, dashboards, and recent logs for errors or latency spikes. | Health check and monitoring snapshot recorded. |
-| 17-20 | Release lead | Decide promote, hold, or rollback assessment. | Decision, timestamp, owner, and cleanup notes recorded. |
+| 0-3 | Release lead | Confirm SHA, production URLs, and release-gate artifact. | SHA and gate link recorded. |
+| 3-7 | Admin tester | Sign in with MFA and open users, tutors, students, assignments, approvals, payroll, audit, privacy, and retention. | Routes render with no blocking errors or unauthorized data. |
+| 7-11 | Tutor tester | Open assigned classes, sessions, submissions, reports, and risk views. | Only allocated learner data is visible. |
+| 11-15 | Student tester | Open dashboard, assignments, progress, results, careers, and reports. | Only the signed-in learner's data is visible. |
+| 15-18 | Release lead | Recheck uptime probes and recent browser/Supabase errors. | Monitoring snapshot recorded. |
+| 18-20 | Release lead | Promote, hold, or start rollback assessment; name any cleanup owner. | Decision and timestamp recorded. |
 
-### Pass Criteria
+### Pass and stop criteria
 
-- All pilot users can log in through the production auth path.
-- Role-based navigation blocks cross-role access.
-- Core pages render without visible broken assets or blocking JavaScript errors.
-- API health remains green and no alert thresholds are breached.
-- Any test data created during the window has a named cleanup owner.
-
-### Hold Or Rollback Triggers
-
-- Production login fails for more than one pilot user.
-- Admin pages expose unauthorized data or cross-role access.
-- `/ready` fails 3 consecutive checks.
-- 5xx ratio exceeds 2% for 5 minutes.
-- Slow request ratio exceeds 10% for 5 minutes on core API paths.
-- Any payroll, privacy, retention, or audit action behaves unexpectedly.
+Pass only when every pilot can authenticate, cross-role access is blocked, core
+routes render without blocking errors, and all three uptime probes remain
+green. Stop and assess rollback on any unauthorized-data exposure, repeated
+auth failure, failed health probe, or unexpected privacy/payroll/retention
+mutation.
 
 ## Codespaces
-Use the same commands as above. Make sure Postgres is available and `DATABASE_URL_TEST` is set.
+
+Use the same commands. A Docker-capable Codespace is required only for the local
+Supabase runtime gate.

@@ -2,6 +2,18 @@
 
 Date: 2026-05-25
 
+> **Historical migration snapshot.** This document records the repository as it
+> existed on 2026-05-25 and intentionally preserves obsolete paths and Fastify/
+> Prisma migration notes. It is not a current architecture or operations
+> runbook. Use [ARCHITECTURE.md](architecture/ARCHITECTURE.md),
+> [LOCAL_DEVELOPMENT.md](supabase/LOCAL_DEVELOPMENT.md), and the root
+> [README](../README.md) for the maintained state.
+> The `student-app/` tree and `assets/app-critical.js` mentioned below were
+> removed on 2026-08-03 after unified React parity and remain in Git history.
+> The non-Community legacy assets referenced below were removed on the same
+> date. `assets/student/community.js` remains untouched and non-production
+> under the project owner's explicit Community exclusion.
+
 ## Current Structure
 
 The repository is a hybrid application:
@@ -364,7 +376,7 @@ Started reducing the duplicate `student-app` surface by adding unified React rou
   - Supports room creation, room joining, message loading, and message posting.
   - Keeps moderation and RBAC enforcement in the existing API while the frontend moves out of vanilla JS.
 
-The older `student-app` bundle was later retired from the active production build after unified `/dashboard/student/*` route coverage and route-shell tests were in place.
+The older `student-app` bundle was later retired from the active production build after unified `/dashboard/student/*` route coverage and route-shell tests were in place. Its inactive source tree was removed on 2026-08-03 and remains available in Git history.
 
 ## Public Website React Slice
 
@@ -389,9 +401,8 @@ Replaced the first public React placeholders with real routes:
 The React public home route now also owns first-pass enquiry capture:
 
 - Uses a React-controlled quick enquiry form with name, email, grade, message, honeypot spam field, validation, and repeat-submit throttling.
-- Posts to `VITE_PO_FORMSPREE_ENDPOINT` when configured.
-- Falls back to pre-filled email and WhatsApp contact actions when the endpoint is not configured or submission fails.
-- Avoids embedding the legacy hard-coded Formspree endpoint in the React source.
+- Opens a pre-filled email for the visitor to review and send, with a direct WhatsApp contact action as an alternative.
+- Does not transmit enquiry details to a browser form endpoint.
 
 The static build now writes the React shell to `dist/index.html`, so the built root serves the unified React public home. Legacy source HTML remains in the repository for rollback/reference until final cleanup. Public React shells are generated for direct `/about/`, `/programs/`, `/guides/`, `/guides/matric-maths-mistakes-guide/`, `/privacy/`, and `/terms/` checks, now with route-specific descriptions, canonical URLs, Open Graph metadata, indexable robots tags, and the existing fail-safe analytics/SEO scripts. Protected React shells emit `noindex` robots metadata.
 

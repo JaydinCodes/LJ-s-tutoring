@@ -1,56 +1,70 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { AdminAllocationsRoute } from '../features/admin/AdminAllocationsRoute';
-import { AdminAssignmentsRoute } from '../features/admin/AdminAssignmentsRoute';
-import { AdminClassesRoute } from '../features/admin/AdminClassesRoute';
-import { AdminDashboardRoute } from '../features/admin/AdminDashboardRoute';
-import {
-  AdminApprovalsRoute,
-  AdminAuditRoute,
-  AdminOpsRunbookRoute,
-  AdminPrivacyRequestsRoute,
-  AdminReconciliationRoute,
-  AdminRetentionRoute,
-} from '../features/admin/AdminOperationsRoutes';
-import { AdminPaymentsRoute } from '../features/admin/AdminPaymentsRoute';
-import { AdminPayrollRoute } from '../features/admin/AdminPayrollRoute';
-import { AdminReportsRoute } from '../features/admin/AdminReportsRoute';
-import { AdminResultsRoute } from '../features/admin/AdminResultsRoute';
-import { AdminStudentsRoute } from '../features/admin/AdminStudentsRoute';
-import { AdminTutorsRoute } from '../features/admin/AdminTutorsRoute';
-import { AdminUsersRoute } from '../features/admin/AdminUsersRoute';
-import { LoginRoute } from '../features/auth/LoginRoute';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
-import { NgoReportsRoute } from '../features/ngo/NgoReportsRoute';
-import { OnboardingRoute } from '../features/onboarding/OnboardingRoute';
-import { ParentReportsRoute } from '../features/parents/ParentReportsRoute';
-import { StudentAssignmentDetailRoute } from '../features/students/StudentAssignmentDetailRoute';
-import { StudentAssignmentsRoute } from '../features/students/StudentAssignmentsRoute';
-import { StudentCareersRoute } from '../features/students/StudentCareersRoute';
-import { StudentDashboardRoute } from '../features/students/StudentDashboardRoute';
-import { StudentProgressRoute } from '../features/students/StudentProgressRoute';
-import { StudentResultDetailRoute, StudentResultsRoute, StudentResultsSubjectRoute } from '../features/students/StudentResultsRoute';
-import { StudentCommunityRoute, StudentReportsRoute, StudentSettingsRoute } from '../features/students/StudentSupportRoutes';
-import { TutorClassesRoute } from '../features/tutors/TutorClassesRoute';
-import { TutorDashboardRoute } from '../features/tutors/TutorDashboardRoute';
-import { TutorReportsRoute, TutorRiskRoute, TutorSessionsRoute } from '../features/tutors/TutorOperationsRoutes';
-import { TutorSubmissionsRoute } from '../features/tutors/TutorSubmissionsRoute';
-import {
-  AboutRoute,
-  GuidesIndexRoute,
-  MatricMathsMistakesGuideRoute,
-  PrivacyRoute,
-  ProgramsRoute,
-  PublicHomeRoute,
-  TermsRoute,
-} from './routes/PublicRoutes';
+
+const AdminAllocationsRoute = lazy(() => import('../features/admin/AdminAllocationsRoute').then((module) => ({ default: module.AdminAllocationsRoute })));
+const AdminAssignmentsRoute = lazy(() => import('../features/admin/AdminAssignmentsRoute').then((module) => ({ default: module.AdminAssignmentsRoute })));
+const AdminClassesRoute = lazy(() => import('../features/admin/AdminClassesRoute').then((module) => ({ default: module.AdminClassesRoute })));
+const AdminDashboardRoute = lazy(() => import('../features/admin/AdminDashboardRoute').then((module) => ({ default: module.AdminDashboardRoute })));
+const AdminApprovalsRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminApprovalsRoute })));
+const AdminAuditRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminAuditRoute })));
+const AdminOpsRunbookRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminOpsRunbookRoute })));
+const AdminPrivacyRequestsRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminPrivacyRequestsRoute })));
+const AdminReconciliationRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminReconciliationRoute })));
+const AdminRetentionRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminRetentionRoute })));
+const AdminPaymentsRoute = lazy(() => import('../features/admin/AdminPaymentsRoute').then((module) => ({ default: module.AdminPaymentsRoute })));
+const AdminPayrollRoute = lazy(() => import('../features/admin/AdminPayrollRoute').then((module) => ({ default: module.AdminPayrollRoute })));
+const AdminReportsRoute = lazy(() => import('../features/admin/AdminReportsRoute').then((module) => ({ default: module.AdminReportsRoute })));
+const AdminResultsRoute = lazy(() => import('../features/admin/AdminResultsRoute').then((module) => ({ default: module.AdminResultsRoute })));
+const AdminStudentsRoute = lazy(() => import('../features/admin/AdminStudentsRoute').then((module) => ({ default: module.AdminStudentsRoute })));
+const AdminTutorsRoute = lazy(() => import('../features/admin/AdminTutorsRoute').then((module) => ({ default: module.AdminTutorsRoute })));
+const AdminUsersRoute = lazy(() => import('../features/admin/AdminUsersRoute').then((module) => ({ default: module.AdminUsersRoute })));
+const LoginRoute = lazy(() => import('../features/auth/LoginRoute').then((module) => ({ default: module.LoginRoute })));
+const NgoReportsRoute = lazy(() => import('../features/ngo/NgoReportsRoute').then((module) => ({ default: module.NgoReportsRoute })));
+const OnboardingRoute = lazy(() => import('../features/onboarding/OnboardingRoute').then((module) => ({ default: module.OnboardingRoute })));
+const ParentReportsRoute = lazy(() => import('../features/parents/ParentReportsRoute').then((module) => ({ default: module.ParentReportsRoute })));
+const StudentAssignmentDetailRoute = lazy(() => import('../features/students/StudentAssignmentDetailRoute').then((module) => ({ default: module.StudentAssignmentDetailRoute })));
+const StudentAssignmentsRoute = lazy(() => import('../features/students/StudentAssignmentsRoute').then((module) => ({ default: module.StudentAssignmentsRoute })));
+const StudentCareersRoute = lazy(() => import('../features/students/StudentCareersRoute').then((module) => ({ default: module.StudentCareersRoute })));
+const StudentDashboardRoute = lazy(() => import('../features/students/StudentDashboardRoute').then((module) => ({ default: module.StudentDashboardRoute })));
+const StudentProgressRoute = lazy(() => import('../features/students/StudentProgressRoute').then((module) => ({ default: module.StudentProgressRoute })));
+const StudentResultDetailRoute = lazy(() => import('../features/students/StudentResultsRoute').then((module) => ({ default: module.StudentResultDetailRoute })));
+const StudentResultsRoute = lazy(() => import('../features/students/StudentResultsRoute').then((module) => ({ default: module.StudentResultsRoute })));
+const StudentResultsSubjectRoute = lazy(() => import('../features/students/StudentResultsRoute').then((module) => ({ default: module.StudentResultsSubjectRoute })));
+const StudentCommunityRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentCommunityRoute })));
+const StudentReportsRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentReportsRoute })));
+const StudentSettingsRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentSettingsRoute })));
+const TutorClassesRoute = lazy(() => import('../features/tutors/TutorClassesRoute').then((module) => ({ default: module.TutorClassesRoute })));
+const TutorDashboardRoute = lazy(() => import('../features/tutors/TutorDashboardRoute').then((module) => ({ default: module.TutorDashboardRoute })));
+const TutorReportsRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorReportsRoute })));
+const TutorRiskRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorRiskRoute })));
+const TutorSessionsRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorSessionsRoute })));
+const TutorSubmissionsRoute = lazy(() => import('../features/tutors/TutorSubmissionsRoute').then((module) => ({ default: module.TutorSubmissionsRoute })));
+const AboutRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.AboutRoute })));
+const GuidesIndexRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.GuidesIndexRoute })));
+const MatricMathsMistakesGuideRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.MatricMathsMistakesGuideRoute })));
+const PrivacyRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.PrivacyRoute })));
+const ProgramsRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.ProgramsRoute })));
+const PublicHomeRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.PublicHomeRoute })));
+const TermsRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.TermsRoute })));
+const NotFoundRoute = lazy(() => import('./routes/NotFoundRoute').then((module) => ({ default: module.NotFoundRoute })));
+
+function RouteLoadingFallback() {
+  return (
+    <main className="grid min-h-screen place-items-center bg-slate-950 px-4 text-white">
+      <p className="text-sm font-semibold" role="status">Loading page...</p>
+    </main>
+  );
+}
 
 export function App() {
   return (
     <>
       <Toaster position="top-right" richColors />
-      <Routes>
-        <Route path="/" element={<PublicHomeRoute />} />
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Routes>
+          <Route path="/" element={<PublicHomeRoute />} />
         <Route path="/admin/*" element={<Navigate to="/dashboard/admin" replace />} />
         <Route path="/student/assignments" element={<Navigate to="/dashboard/student/assignments" replace />} />
         <Route path="/student/assignments/:assignmentId" element={<ProtectedRoute roles={['student']}><StudentAssignmentDetailRoute /></ProtectedRoute>} />
@@ -111,8 +125,9 @@ export function App() {
         <Route path="/dashboard/tutor/submissions" element={<ProtectedRoute roles={['tutor']}><TutorSubmissionsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/reports" element={<ProtectedRoute roles={['tutor']}><TutorReportsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/risk" element={<ProtectedRoute roles={['tutor']}><TutorRiskRoute /></ProtectedRoute>} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<NotFoundRoute />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }

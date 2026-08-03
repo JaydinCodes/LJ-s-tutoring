@@ -116,9 +116,7 @@ test('no RLS policy anywhere embeds a raw join/subquery into profiles, students,
 test('the four previously-broken table policies (students, tutors, student_career_profiles, student_progress, assignment_submissions, storage) now use the safe helper functions', () => {
   const mustUseHelpers = [
     'students_select_self_or_admin',
-    'students_insert_self',
     'tutors_select_self_or_admin',
-    'tutors_insert_self_pending',
     'students_select_own_career_profile',
     'students_upsert_own_career_profile',
     'tutors_select_own_assignment_submissions',
@@ -132,6 +130,33 @@ test('the four previously-broken table policies (students, tutors, student_caree
     const block = blocks.find((b) => b.includes(`"${name}"`));
     assert.ok(block, `expected to find policy ${name}`);
     assert.match(block, /public\.current_(profile_id|profile_role|student_id|tutor_id)\(\)/, `${name} must use a current_*() helper`);
+  }
+});
+
+test('class and enrollment policies do not query each other through RLS', () => {
+  const blocks = allPolicyBlocks();
+  const classes = blocks.find((block) => block.includes('"classes_select_scoped"'));
+  const enrollments = blocks.find((block) => block.includes('"class_enrollments_select_scoped"'));
+
+  assert.ok(classes, 'expected classes_select_scoped policy');
+  assert.ok(enrollments, 'expected class_enrollments_select_scoped policy');
+  assert.doesNotMatch(classes, /public\.class_enrollments/, 'classes policy must not enter class_enrollments RLS');
+  assert.doesNotMatch(enrollments, /public\.classes/, 'enrollment policy must not re-enter classes RLS');
+  assert.match(classes, /public\.current_student_class_ids\(\)/);
+  assert.match(enrollments, /public\.current_tutor_class_ids\(\)/);
+});
+
+test('student and tutor self-onboarding has no direct table-insert policy', () => {
+  for (const name of [
+    'profiles_insert_self_student_or_tutor',
+    'students_insert_self',
+    'tutors_insert_self_pending',
+  ]) {
+    assert.doesNotMatch(
+      schema,
+      new RegExp(`create policy "${name}"`),
+      `${name} must stay removed so onboarding goes through the atomic RPC`,
+    );
   }
 });
 

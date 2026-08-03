@@ -5,6 +5,10 @@ on:
     - cron: '0 * * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   healthcheck:
     runs-on: ubuntu-latest
@@ -12,14 +16,51 @@ jobs:
       - name: Check health endpoint
         id: health
         env:
-          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL || vars.HEALTHCHECK_URL }}
+          HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
         run: |
-          if [ -z "$HEALTHCHECK_URL" ]; then
-            echo "HEALTHCHECK_URL not set; skipping."
-            exit 0
+          missing=()
+          for name in HEALTHCHECK_URL SUPABASE_URL SUPABASE_ANON_KEY; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -ne 0 ]; then
+            echo "Missing required repository variables: ${missing[*]}" >&2
+            exit 1
           fi
-          curl -fsS --retry 2 --retry-delay 2 --max-time 15 "${HEALTHCHECK_URL%/}/health"
-      - name: Create issue on failure
+
+          headers="$(mktemp)"
+          body="$(mktemp)"
+          trap 'rm -f "$headers" "$body"' EXIT
+
+          curl --fail --show-error --silent --retry 2 --retry-delay 2 --max-time 15 \
+            -H 'Accept: application/json' \
+            --dump-header "$headers" \
+            --output "$body" \
+            "${HEALTHCHECK_URL%/}/health.json"
+          grep --ignore-case --quiet '^content-type:.*application/json' "$headers"
+          jq -e '
+            type == "object" and
+            keys == ["service", "status", "version"] and
+            .status == "ok" and
+            .service == "project-odysseus-web" and
+            .version == "1"
+          ' "$body" > /dev/null
+
+          curl --fail --show-error --silent --retry 2 --retry-delay 2 --max-time 15 \
+            -H 'Accept: application/json' \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            "${SUPABASE_URL%/}/auth/v1/health" > /dev/null
+
+          curl --fail --show-error --silent --retry 2 --retry-delay 2 --max-time 15 \
+            -H 'Accept: application/json' \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "${SUPABASE_URL%/}/rest/v1/profiles?select=id&limit=0" | \
+            jq -e 'type == "array" and length == 0' > /dev/null
+      - name: Create or update issue on failure
         if: failure()
         uses: actions/github-script@v7
         with:
@@ -27,10 +68,28 @@ jobs:
             const title = 'Uptime check failed';
             const body = `The scheduled uptime check failed at ${new Date().toISOString()}.
 
-            Please verify the /health endpoint and hosting status.`;
-            await github.rest.issues.create({
+            Please verify the exact /health.json contract, Supabase Auth health, and the zero-row PostgREST probe.
+
+            Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title,
-              body
+              state: 'open',
+              per_page: 100
             });
+            const existing = issues.find(issue => !issue.pull_request && issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body
+              });
+            }

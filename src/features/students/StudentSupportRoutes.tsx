@@ -290,7 +290,7 @@ export function StudentReportsRoute() {
               {
                 title: 'Schedule',
                 rows: data.classes.length
-                  ? data.classes.map((item) => ({ icon: BookOpen, title: item.subject || 'Class', meta: [item.day_of_week, item.start_time, item.location].filter(Boolean).join(' | ') || 'Schedule pending' }))
+                  ? data.classes.map((item) => ({ icon: BookOpen, title: item.name || item.subject || 'Class', meta: [item.day_of_week, item.start_time, item.location].filter(Boolean).join(' | ') || 'Schedule pending' }))
                   : [{ icon: BookOpen, title: 'No class schedule yet', meta: 'Class details will appear once linked to your learner profile.' }],
               },
             ]}

@@ -18,8 +18,13 @@ export interface CreateAssignmentInput {
 
 export interface SubmitAssignmentInput {
   assignmentId: string;
+  submissionId: string;
   textAnswer?: string;
   file?: File | null;
+}
+
+export interface SubmitAssignmentResult {
+  submissionId: string;
 }
 
 export interface UpdateAssignmentInput {
@@ -49,6 +54,17 @@ type SubmitAssignmentRpcResult = {
   submission_id: string;
 };
 
+type SubmissionAttemptRpcArgs = {
+  p_assignment_id: string;
+  p_submission_id: string;
+  p_storage_key: string | null;
+  p_file_url: string | null;
+  p_original_filename: string | null;
+  p_mime_type: string | null;
+  p_size_bytes: number | null;
+  p_text_answer: string | null;
+};
+
 function mutationError(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) {
     return error;
@@ -62,6 +78,31 @@ function captureAssignmentError(action: string, error: unknown, metadata: Record
     action,
     metadata,
   });
+}
+
+async function confirmSubmissionAttempt(
+  client: ReturnType<typeof requireSupabase>,
+  args: SubmissionAttemptRpcArgs,
+): Promise<boolean> {
+  const confirmed = await (client as unknown as {
+    rpc: (
+      name: 'confirm_assignment_submission_attempt',
+      rpcArgs: SubmissionAttemptRpcArgs,
+    ) => Promise<{ data: SubmitAssignmentRpcResult[] | SubmitAssignmentRpcResult | null; error: Error | null }>;
+  }).rpc('confirm_assignment_submission_attempt', args);
+
+  if (confirmed.error) {
+    throw mutationError(confirmed.error, 'Could not confirm the previous submission attempt.');
+  }
+
+  const row = Array.isArray(confirmed.data) ? confirmed.data[0] : confirmed.data;
+  if (!row) {
+    return false;
+  }
+  if (!row.submission_id || row.submission_id.toLowerCase() !== args.p_submission_id) {
+    throw new Error('Submission confirmation did not match this attempt.');
+  }
+  return true;
 }
 
 async function getCurrentProfile() {
@@ -143,8 +184,23 @@ function safeFileName(file: File) {
   return file.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 120);
 }
 
-function stableUploadId() {
-  return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+export function createSubmissionAttemptId() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  const bytes = new Uint8Array(16);
+  if (globalThis.crypto?.getRandomValues) {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256);
+    }
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 function parseJsonField(value: string | undefined, fallback: unknown, label: string) {
@@ -386,9 +442,14 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
   return assignment;
 }
 
-export async function submitAssignment(input: SubmitAssignmentInput) {
+export async function submitAssignment(input: SubmitAssignmentInput): Promise<SubmitAssignmentResult> {
+  const submissionId = input.submissionId.trim().toLowerCase();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(submissionId)) {
+    throw new Error('A valid submission attempt ID is required.');
+  }
+
   if (isE2EAuthMockEnabled()) {
-    return submitE2EAssignment(input);
+    return submitE2EAssignment({ ...input, submissionId });
   }
 
   const client = requireSupabase();
@@ -405,6 +466,49 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
   }
 
   const student = await getCurrentStudent(profile.id);
+
+  let fileUrl: string | null = null;
+  let storageKey: string | null = null;
+  let originalFilename: string | null = null;
+  let mimeType: string | null = null;
+  let sizeBytes: number | null = null;
+
+  if (input.file) {
+    const ext = input.file.name.split('.').pop()?.toLowerCase() || 'bin';
+    storageKey = `${student.id}/${input.assignmentId}/${submissionId}/submission.${ext}`;
+    fileUrl = storageKey;
+    originalFilename = safeFileName(input.file);
+    mimeType = input.file.type || null;
+    sizeBytes = input.file.size;
+  }
+
+  const rpcArgs: SubmissionAttemptRpcArgs = {
+    p_assignment_id: input.assignmentId,
+    p_submission_id: submissionId,
+    p_storage_key: storageKey,
+    p_file_url: fileUrl,
+    p_original_filename: originalFilename,
+    p_mime_type: mimeType,
+    p_size_bytes: sizeBytes,
+    p_text_answer: textAnswer,
+  };
+
+  // A previous submit may have committed even though its response was lost.
+  // Confirm the stable attempt before any upsert so committed evidence is
+  // never uploaded over. An absent attempt is the only state that proceeds.
+  try {
+    if (await confirmSubmissionAttempt(client, rpcArgs)) {
+      return { submissionId };
+    }
+  } catch (confirmationError) {
+    captureAssignmentError('assignment_submission.confirm_failed', confirmationError, {
+      assignment_id: input.assignmentId,
+      has_file: Boolean(input.file),
+      has_text_answer: Boolean(textAnswer),
+    });
+    throw confirmationError;
+  }
+
   const assignmentResult = await client.from('assignments').select('*').eq('id', input.assignmentId).single();
   if (assignmentResult.error) {
     captureAssignmentError('assignment_submission.assignment_load_failed', assignmentResult.error, {
@@ -420,17 +524,8 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
     throw new Error('This assignment is closed and no longer accepts submissions.');
   }
 
-  const submissionId = stableUploadId();
-  let fileUrl: string | null = null;
-  let storageKey: string | null = null;
-  let originalFilename: string | null = null;
-  let mimeType: string | null = null;
-  let sizeBytes: number | null = null;
-
   if (input.file) {
-    const ext = input.file.name.split('.').pop()?.toLowerCase() || 'bin';
-    const path = `${student.id}/${input.assignmentId}/${submissionId}/submission.${ext}`;
-    const uploaded = await client.storage.from('assignment-submissions').upload(path, input.file, {
+    const uploaded = await client.storage.from('assignment-submissions').upload(storageKey!, input.file, {
       upsert: true,
       contentType: input.file.type || undefined,
     });
@@ -442,11 +537,9 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
       });
       throw uploaded.error;
     }
-    fileUrl = uploaded.data.path;
-    storageKey = uploaded.data.path;
-    originalFilename = safeFileName(input.file);
-    mimeType = input.file.type || null;
-    sizeBytes = input.file.size;
+    if (uploaded.data.path !== storageKey) {
+      throw new Error('Submission upload returned an unexpected storage path.');
+    }
   }
 
   if (!textAnswer && !fileUrl) {
@@ -456,27 +549,9 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
   const submitted = await (client as unknown as {
     rpc: (
       name: 'submit_assignment_submission',
-      args: {
-        p_assignment_id: string;
-        p_submission_id: string;
-        p_storage_key: string | null;
-        p_file_url: string | null;
-        p_original_filename: string | null;
-        p_mime_type: string | null;
-        p_size_bytes: number | null;
-        p_text_answer: string | null;
-      }
+      args: SubmissionAttemptRpcArgs,
     ) => Promise<{ data: SubmitAssignmentRpcResult[] | SubmitAssignmentRpcResult | null; error: Error | null }>;
-  }).rpc('submit_assignment_submission', {
-    p_assignment_id: input.assignmentId,
-    p_submission_id: submissionId,
-    p_storage_key: storageKey,
-    p_file_url: fileUrl,
-    p_original_filename: originalFilename,
-    p_mime_type: mimeType,
-    p_size_bytes: sizeBytes,
-    p_text_answer: textAnswer,
-  });
+  }).rpc('submit_assignment_submission', rpcArgs);
 
   if (submitted.error) {
     captureAssignmentError('assignment_submission.rpc_failed', submitted.error, {
@@ -484,23 +559,28 @@ export async function submitAssignment(input: SubmitAssignmentInput) {
       has_file: Boolean(input.file),
       has_text_answer: Boolean(textAnswer),
     });
+
+    // Recover immediately when only the submit response was lost. If this
+    // confirmation also fails, the UI retains the same UUID for the next
+    // click; no Storage object is removed or overwritten here.
+    try {
+      if (await confirmSubmissionAttempt(client, rpcArgs)) {
+        return { submissionId };
+      }
+    } catch (confirmationError) {
+      captureAssignmentError('assignment_submission.confirm_after_rpc_failed', confirmationError, {
+        assignment_id: input.assignmentId,
+      });
+    }
     throw mutationError(submitted.error, 'Could not submit assignment.');
   }
 
   const row = Array.isArray(submitted.data) ? submitted.data[0] : submitted.data;
-  if (!row?.submission_id) {
-    throw new Error('Submission was saved, but the new record could not be loaded.');
+  if (!row?.submission_id || row.submission_id.toLowerCase() !== submissionId) {
+    throw new Error('Submission confirmation was incomplete. Retry safely with the same work.');
   }
 
-  const saved = await client.from('assignment_submissions').select('*').eq('id', row.submission_id).single();
-  if (saved.error) {
-    captureAssignmentError('assignment_submission.reload_failed', saved.error, {
-      assignment_id: input.assignmentId,
-    });
-    throw saved.error;
-  }
-
-  return saved.data as AssignmentSubmission;
+  return { submissionId };
 }
 
 export async function markSubmission(input: MarkSubmissionInput) {

@@ -58,20 +58,22 @@ function allocationQueryBlock(source) {
   return rest.slice(0, end + ".eq('status', 'active')".length);
 }
 
-test("student dashboard read of tutor_student_allocations does NOT select rate_override", () => {
-  const block = allocationQueryBlock(studentRepo);
-  // The financial leak guard: the student's own dashboard query must not pull
-  // the tutor's pay rate. A plain substring search must not find it.
-  assert.ok(
-    !block.includes('rate_override'),
-    'studentDashboardRepository must not select rate_override for tutor_student_allocations',
+test("student dashboard has no direct tutor_student_allocations read; rate_override stays behind the narrow assigned-tutors RPC", () => {
+  // The financial leak guard tightened: RLS no longer grants students a SELECT
+  // arm on tutor_student_allocations at all (see
+  // phase4_student_safe_tutor_directory), so a student-side column-list read
+  // is no longer possible. studentDashboardRepository now calls the
+  // SECURITY DEFINER get_student_assigned_tutors RPC instead.
+  assert.doesNotMatch(
+    studentRepo,
+    /from\('tutor_student_allocations'\)/,
+    'studentDashboardRepository must not read tutor_student_allocations directly',
   );
-  // And it must be an explicit column list (not select('*')) that still carries
-  // the schedule/subject fields a student is allowed to see.
-  assert.doesNotMatch(block, /\.select\('\*'\)/, 'must not use select(*) here');
-  assert.match(block, /subject_id/);
-  assert.match(block, /allowed_days_json/);
-  assert.match(block, /allowed_time_ranges_json/);
+  assert.match(
+    studentRepo,
+    /rpc\('get_student_assigned_tutors'\)/,
+    'studentDashboardRepository must fetch assigned tutors via the narrow RPC',
+  );
 });
 
 test("tutor dashboard read of tutor_student_allocations is unchanged (tutor sees their own rate override)", () => {

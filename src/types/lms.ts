@@ -516,6 +516,21 @@ export interface DashboardMetric {
   tone: 'teal' | 'violet' | 'amber' | 'blue' | 'slate';
 }
 
+export interface StudentAssignedTutor {
+  id: string;
+  full_name: string;
+  email: string;
+}
+
+export interface TutorAllocatedStudentSummary {
+  student_id: string;
+  full_name: string;
+  email: string;
+  grade: string | null;
+  school: string | null;
+  status: RecordStatus;
+}
+
 export interface StudentDashboardView {
   profile: {
     name: string;
@@ -528,7 +543,7 @@ export interface StudentDashboardView {
   assignments: Assignment[];
   progress: StudentProgress[];
   classes: ClassRecord[];
-  assignedTutors?: Array<Tutor & { full_name?: string; email?: string }>;
+  assignedTutors?: StudentAssignedTutor[];
   submissions: AssignmentSubmission[];
   recommendedNext?: {
     title: string;
@@ -603,7 +618,7 @@ export interface TutorDashboardView {
   };
   metrics: DashboardMetric[];
   classes: ClassRecord[];
-  allocatedStudents: Array<Student & { full_name?: string; email?: string; allocation_status?: RecordStatus; focus_notes?: string | null }>;
+  allocatedStudents: Array<TutorAllocatedStudentSummary & { allocation_status?: RecordStatus; focus_notes?: string | null }>;
   assignments: Assignment[];
   submissions: Array<AssignmentSubmission & { assignment_title?: string; student_label?: string }>;
   markingQueue: Array<AssignmentSubmission & { assignment_title?: string; student_label?: string }>;

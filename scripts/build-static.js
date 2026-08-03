@@ -7,6 +7,7 @@ const buildVersion = process.env.RELEASE_VERSION || process.env.GITHUB_SHA || St
 const safeBuildVersion = `po-v-${buildVersion}`.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80);
 
 const copyTargets = [
+  'health.json',
   'sw.js',
   'favicon.svg',
   'robots.txt',
@@ -103,15 +104,15 @@ const reactDashboardRoutes = [
 const routeMeta = {
   '': {
     title: 'Maths Tutoring Cape Town and South Africa',
-    description: 'Project Odysseus provides Grade 8-12 CAPS Mathematics tutoring for Cape Town and South African learners, with a React LMS for assignments, progress, reporting, and NGO rollout.',
+    description: 'Project Odysseus provides focused Grade 8-12 CAPS Mathematics, Mathematical Literacy, and Physical Sciences tutoring in Cape Town.',
   },
   about: {
     title: 'About Project Odysseus',
-    description: 'Learn about Project Odysseus maths tutoring and the React LMS migration supporting students, tutors, admins, parents, and NGO partners.',
+    description: 'Learn about the Project Odysseus tutoring approach and the people helping Grade 8-12 learners build confidence and stronger study habits.',
   },
   programs: {
     title: 'Grade 8-12 Maths Programs',
-    description: 'CAPS Mathematics tutoring programs for Grade 8-12 learners, matric exam preparation, and NGO learner rollout support.',
+    description: 'CAPS tutoring programmes for Grade 8-12 learners who need stronger foundations, clearer methods, or focused exam preparation.',
   },
   guides: {
     title: 'Learning Guides',
@@ -175,8 +176,8 @@ function publicPrerender(route) {
       </main>`,
     about: `
       <main data-prerendered-page="about">
-        <h1>Maths tutoring with operational discipline behind it</h1>
-        <p>Project Odysseus provides focused tutoring support for learners, with clear progress workflows for tutors and families.</p>
+        <h1>Focused tutoring built around each learner</h1>
+        <p>Project Odysseus helps Grade 8-12 learners strengthen foundations, prepare for assessments, and approach difficult work with a clearer plan.</p>
       </main>`,
     programs: `
       <main data-prerendered-page="programs">
@@ -257,7 +258,7 @@ function reactShell(route) {
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${title} | Project Odysseus LMS</title>
+    <title>${title} | Project Odysseus</title>
 ${description}${robots}${canonical}${openGraph}    <meta name="theme-color" content="#0f172a">
     <!--
       Partial CSP via meta: App Platform's static_sites component has no app
@@ -267,7 +268,7 @@ ${description}${robots}${canonical}${openGraph}    <meta name="theme-color" cont
       ignores frame-ancestors/sandbox/report-uri, so this is not clickjacking
       protection.
     -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="/react-app-dist/react-app.css?v=${safeBuildVersion}">
@@ -275,7 +276,7 @@ ${publicScripts}
   </head>
   <body>
     <div id="root">${prerenderedContent}</div>
-    <script src="/react-app-dist/react-app.js?v=${safeBuildVersion}"></script>
+    <script type="module" src="/react-app-dist/react-app.js?v=${safeBuildVersion}"></script>
   </body>
 </html>
 `;

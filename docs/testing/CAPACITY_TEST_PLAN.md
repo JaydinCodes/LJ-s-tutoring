@@ -1,5 +1,11 @@
 # Arcade Capacity Test Plan
 
+> **Historical (retired Fastify/arcade test plan):** the referenced API and
+> `scripts/capacity-arcade.mjs` no longer exist. Do not use these commands as
+> current capacity or release evidence. A new Supabase/static-web capacity plan
+> requires real traffic assumptions, named data owners, and a disposable test
+> environment before it can be run safely.
+
 ## Goal
 Simulate peak concurrency during exam periods and term starts for arcade gameplay, ad telemetry, and score validation.
 

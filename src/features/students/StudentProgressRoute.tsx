@@ -57,7 +57,7 @@ function ProgressHeader({ summary }: { summary: { average: number | null; topicC
               : 'Progress rows appear when marks, quizzes, or tutor updates create topic records.'}
           </p>
         </div>
-        <div className="rounded-ios-lg border border-white/15 bg-white/10 p-4 shadow-academy-inset backdrop-blur-xl">
+        <div className="rounded-ios-lg border border-white/[0.15] bg-white/10 p-4 shadow-academy-inset backdrop-blur-xl">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-gold">Recorded topics</p>
           <p className="mt-2 text-4xl font-semibold text-white">{summary.topicCount}</p>
           <p className="mt-2 text-sm leading-6 text-academy-parchment">Topic signals currently available</p>

@@ -1,9 +1,44 @@
 import { requireSupabase } from '../../lib/supabase/client';
-import type { Profile, Student, Tutor, UserRole } from '../../types/lms';
+import type { Profile, Student, Tutor } from '../../types/lms';
+
+interface OnboardingRpcArgs {
+  p_role: 'student' | 'tutor';
+  p_full_name: string;
+  p_phone: string | null;
+  p_grade: string | null;
+  p_school: string | null;
+  p_parent_name: string | null;
+  p_parent_contact: string | null;
+  p_subjects: string[] | null;
+  p_grades: string[] | null;
+}
+
+interface OnboardingRpcResult {
+  profile: Profile;
+  student: Student | null;
+  tutor: Tutor | null;
+}
+
+async function callOnboardingRpc(args: OnboardingRpcArgs) {
+  // This repository's Database type is hand-maintained rather than generated;
+  // use the same narrow RPC-client contract employed by other mutations.
+  const client = requireSupabase() as unknown as {
+    rpc: (
+      name: 'onboard_current_user',
+      rpcArgs: OnboardingRpcArgs,
+    ) => Promise<{ data: OnboardingRpcResult | null; error: Error | null }>;
+  };
+  const result = await client.rpc('onboard_current_user', args);
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return result.data;
+}
 
 export interface StudentOnboardingInput {
   fullName: string;
-  email: string;
   phone?: string;
   grade: string;
   school?: string;
@@ -13,103 +48,43 @@ export interface StudentOnboardingInput {
 
 export interface TutorOnboardingInput {
   fullName: string;
-  email: string;
   phone?: string;
   subjects: string;
   grades: string;
-  hourlyRate?: string;
 }
 
-async function getAuthUserId() {
-  const client = requireSupabase();
-  const result = await client.auth.getUser();
-  if (result.error) {
-    throw result.error;
-  }
-  const user = result.data.user;
-  if (!user) {
-    throw new Error('Sign in before completing onboarding.');
-  }
-
-  return user.id;
-}
-
-async function createProfile(input: { fullName: string; email: string; phone?: string; role: UserRole }) {
-  const client = requireSupabase();
-  const authUserId = await getAuthUserId();
-  const payload = {
-    auth_user_id: authUserId,
-    full_name: input.fullName.trim(),
-    email: input.email.trim(),
-    phone: input.phone?.trim() || null,
-    role: input.role,
-  };
-
-  const result = await (client.from('profiles') as unknown as {
-    insert: (row: typeof payload) => {
-      select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> };
-    };
-  }).insert(payload).select('*').single();
-
-  if (result.error) {
-    throw result.error;
-  }
-
-  return result.data as Profile;
+function listFromCsv(value: string) {
+  return value.split(',').map((item) => item.trim()).filter(Boolean);
 }
 
 export async function completeStudentOnboarding(input: StudentOnboardingInput) {
-  const client = requireSupabase();
   if (!input.fullName.trim()) {
     throw new Error('Full name is required.');
-  }
-  if (!input.email.trim()) {
-    throw new Error('Email is required.');
   }
   if (!input.grade.trim()) {
     throw new Error('Grade is required.');
   }
 
-  const profile = await createProfile({
-    fullName: input.fullName,
-    email: input.email,
-    phone: input.phone,
-    role: 'student',
+  return callOnboardingRpc({
+    p_role: 'student',
+    p_full_name: input.fullName.trim(),
+    p_phone: input.phone?.trim() || null,
+    p_grade: input.grade.trim(),
+    p_school: input.school?.trim() || null,
+    p_parent_name: input.parentName?.trim() || null,
+    p_parent_contact: input.parentContact?.trim() || null,
+    p_subjects: null,
+    p_grades: null,
   });
-
-  const payload = {
-    profile_id: profile.id,
-    grade: input.grade.trim(),
-    school: input.school?.trim() || null,
-    parent_name: input.parentName?.trim() || null,
-    parent_contact: input.parentContact?.trim() || null,
-    status: 'active',
-  };
-
-  const result = await (client.from('students') as unknown as {
-    insert: (row: typeof payload) => {
-      select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> };
-    };
-  }).insert(payload).select('*').single();
-
-  if (result.error) {
-    throw result.error;
-  }
-
-  return { profile, student: result.data as Student };
 }
 
 export async function completeTutorOnboarding(input: TutorOnboardingInput) {
-  const client = requireSupabase();
   if (!input.fullName.trim()) {
     throw new Error('Full name is required.');
   }
-  if (!input.email.trim()) {
-    throw new Error('Email is required.');
-  }
 
-  const subjects = input.subjects.split(',').map((item) => item.trim()).filter(Boolean);
-  const grades = input.grades.split(',').map((item) => item.trim()).filter(Boolean);
+  const subjects = listFromCsv(input.subjects);
+  const grades = listFromCsv(input.grades);
   if (!subjects.length) {
     throw new Error('Add at least one subject.');
   }
@@ -117,31 +92,15 @@ export async function completeTutorOnboarding(input: TutorOnboardingInput) {
     throw new Error('Add at least one grade.');
   }
 
-  const profile = await createProfile({
-    fullName: input.fullName,
-    email: input.email,
-    phone: input.phone,
-    role: 'tutor',
+  return callOnboardingRpc({
+    p_role: 'tutor',
+    p_full_name: input.fullName.trim(),
+    p_phone: input.phone?.trim() || null,
+    p_grade: null,
+    p_school: null,
+    p_parent_name: null,
+    p_parent_contact: null,
+    p_subjects: subjects,
+    p_grades: grades,
   });
-
-  const rate = input.hourlyRate ? Number(input.hourlyRate) : null;
-  const payload = {
-    profile_id: profile.id,
-    subjects,
-    grades,
-    hourly_rate: Number.isFinite(rate) ? rate : null,
-    status: 'pending',
-  };
-
-  const result = await (client.from('tutors') as unknown as {
-    insert: (row: typeof payload) => {
-      select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> };
-    };
-  }).insert(payload).select('*').single();
-
-  if (result.error) {
-    throw result.error;
-  }
-
-  return { profile, tutor: result.data as Tutor };
 }

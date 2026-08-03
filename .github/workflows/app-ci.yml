@@ -15,17 +15,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies (lockfile-enforced)
         run: npm ci
 
       - name: Audit production dependencies
-        continue-on-error: true
         run: npm audit --omit=dev --audit-level=high
 
   lint:
@@ -33,10 +32,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -44,6 +43,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
 
       - name: Monitoring assets validation
         run: npm run validate:monitoring
@@ -53,27 +55,93 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run unit tests (web helpers)
-        run: node --test tests/frontend/*.test.cjs
+        run: npm test
+
+  supabase-rls-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start local Supabase
+        run: npm run supabase:start
+
+      - name: Rebuild database from committed migrations
+        run: npm run supabase:reset
+
+      - name: Run runtime RLS allow-and-deny matrix
+        run: npm run test:rls:runtime
+
+      - name: Verify generated Supabase type fingerprint
+        run: npm run supabase:types:check
+
+      - name: Install Playwright Chromium
+        run: npm run test:e2e:install
+
+      - name: Run seeded local-Supabase role journeys
+        run: npm run test:e2e:supabase
+
+  frontend-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npm run test:e2e:install
+
+      # This is the deterministic browser smoke suite backed by the app's
+      # in-memory E2E adapter. Runtime Supabase/RLS and seeded local-Supabase
+      # journeys remain required in the separate database gate above.
+      - name: Run frontend mock smoke journeys
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-smoke-playwright-report
+          path: playwright-report/react/
+          if-no-files-found: ignore
+          retention-days: 14
 
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -81,3 +149,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Enforce static asset budget
+        run: npm run perf:budget

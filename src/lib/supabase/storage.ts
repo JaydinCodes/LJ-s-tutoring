@@ -23,11 +23,27 @@ export async function resolveSignedUrls(
   }
 
   const result = await client.storage.from(bucket).createSignedUrls(uniquePaths, SIGNED_URL_EXPIRY_SECONDS);
+  if (result.error) {
+    throw result.error;
+  }
+
+  const signedUrlFailure = new Error('Could not generate all requested signed URLs.');
+  const expectedPaths = new Set(uniquePaths);
   const map = new Map<string, string>();
   for (const entry of result.data || []) {
-    if (entry.path && entry.signedUrl) {
-      map.set(entry.path, entry.signedUrl);
+    if (
+      entry.error
+      || !entry.path
+      || !entry.signedUrl
+      || !expectedPaths.has(entry.path)
+      || map.has(entry.path)
+    ) {
+      throw signedUrlFailure;
     }
+    map.set(entry.path, entry.signedUrl);
+  }
+  if (map.size !== expectedPaths.size) {
+    throw signedUrlFailure;
   }
   return map;
 }

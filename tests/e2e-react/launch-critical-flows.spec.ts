@@ -81,6 +81,30 @@ test('student can view and upload assignment work', async ({ page }) => {
   await expect(page.getByText(/Submission saved|Submission uploaded/i).first()).toBeVisible();
 });
 
+test('student safely retries one submission after an ambiguous saved response', async ({ page }) => {
+  await loginAs(page, 'student');
+  await page.goto('/dashboard/student/assignments');
+  await page.getByRole('link', { name: /Open Quadratic Functions Launch Smoke/i }).first().click();
+
+  await page.getByLabel('Submission note').fill('Keep this exact payload across the retry.');
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'retry-once.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4 retry once'),
+  });
+  const confirmation = page.getByText('I understand this will update my existing submission.');
+  if (await confirmation.isVisible()) {
+    await confirmation.click();
+  }
+
+  const submit = page.getByRole('button', { name: /Upload submission|Update submission/i });
+  await submit.click();
+  await expect(page.getByText(/Connection interrupted after the submission was saved/i).first()).toBeVisible();
+
+  await submit.click();
+  await expect(page.getByText(/Submission saved|Submission uploaded|Resubmission saved/i).first()).toBeVisible();
+});
+
 test('tutor can review and mark a submitted assignment', async ({ page }) => {
   await loginAs(page, 'tutor');
   await page.goto('/dashboard/tutor/submissions');

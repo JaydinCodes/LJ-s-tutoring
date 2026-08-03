@@ -1,60 +1,52 @@
 # Observability And SLO Baseline
 
-> **Stale (2026-07-24):** the `GET /metrics` endpoint and `/ready` checks
-> described below belonged to the retired `lms-api` Fastify service, which is
-> fully deleted. The live app is now a static site + Supabase (Postgres,
-> Auth, Edge Functions) — observability should come from Supabase's own
-> dashboard/logs and DigitalOcean's static-site metrics, not a
-> self-hosted `/metrics` endpoint. No replacement baseline has been written
-> yet.
+This baseline applies to the current static React + Supabase architecture. The
+retired Fastify Prometheus counters, Grafana dashboard, `/metrics`, and `/ready`
+probe were removed because validating unused telemetry produced misleading
+release evidence.
 
-## Metrics Endpoint
+## Active signals
 
-- API exposes Prometheus text metrics at `GET /metrics`.
-- Initial counters:
-  - `po_requests_total`
-  - `po_requests_slow_total`
-  - `po_requests_error_total`
+- **Web availability:** the hourly `Uptime Check` workflow verifies the exact
+  versioned `/health.json` body and JSON content type.
+- **Supabase availability:** the same workflow verifies Supabase Auth health and
+  an authenticated zero-row PostgREST query with the public anon key.
+- **Browser/workflow errors:** the production React bundle can report sanitized
+  failures to Sentry when its reviewed public DSN and release variables are set.
+- **Provider signals:** Supabase and DigitalOcean service dashboards/logs remain
+  necessary for platform-side diagnosis; this repository does not manufacture
+  equivalent server metrics.
 
-## Suggested Alert Rules
+`npm run validate:monitoring` is a source/configuration contract. It validates
+that the exact health probes, Sentry privacy controls, React not-found event,
+and CI wiring remain present. It is not proof that production variables,
+notifications, provider health, or a Sentry project are configured.
 
-- High error rate: 5xx ratio > 2% over 5m.
-- Latency degradation: slow request ratio > 10% over 5m.
-- Availability: `/ready` failure for 3 consecutive checks.
+## Initial objectives
 
-See `docs/ops/ALERT_RESPONSE_MATRIX.md` for first-response playbooks and escalation policy.
+Until enough real traffic exists to set defensible percentile targets:
 
-## Monitoring As Code Assets
+- All three scheduled health probes succeed on every hourly run.
+- A release introduces no sustained increase in blocking browser errors on
+  login or protected role routes.
+- P1 signals are acknowledged within 5 minutes during an announced release or
+  pilot window and escalated by 30 minutes if unresolved.
+- Every production error event includes an environment and release identifier
+  while excluding learner content and direct contact data.
 
-- Prometheus alert rules: `ops/monitoring/prometheus/alerts.yml`
-- Grafana dashboard: `ops/monitoring/grafana/api-overview.dashboard.json`
-- Validation command: `npm run validate:monitoring`
+Review and replace these objectives with measured service-level indicators once
+production traffic and an owned on-call window exist. Do not claim a monthly
+availability percentage without retained probe history.
 
-The validation command is enforced in CI (`.github/workflows/app-ci.yml`) to prevent alert/dashboard drift.
+## Required setup and evidence
 
-## Suggested SLOs
+1. Configure GitHub repository variables `HEALTHCHECK_URL`, `SUPABASE_URL`, and
+   `SUPABASE_ANON_KEY` and retain a green dispatched uptime run.
+2. Configure and verify the deployment's Sentry browser variables using
+   [PRODUCTION_MONITORING_CHECKLIST.md](PRODUCTION_MONITORING_CHECKLIST.md).
+3. Confirm the GitHub issue notification path reaches a named human; automatic
+   issue creation alone is not acknowledgement.
+4. Record deployment SHA/release, provider incident links, relevant request
+   identifiers, probe snapshots, and remediation or rollback decisions.
 
-- API availability: 99.9% monthly.
-- Request success rate: >= 99.5% monthly.
-- P95 request latency: <= 500ms for core API paths.
-
-## Dashboards
-
-- Service health: request volume, 5xx, readiness state.
-- Performance: slow request trend and latency percentiles.
-- Security posture: logout-all events, origin_not_allowed errors.
-
-## CI/CD Hooks
-
-- Security gates: `.github/workflows/security-stack.yml`.
-- Release gates: `.github/workflows/release-gates.yml`.
-- Deploy preflight: `.github/workflows/deploy-api.yml`.
-- DR checks: `.github/workflows/dr-restore-verify.yml`.
-- DB health checks: `.github/workflows/db-maintenance.yml`.
-
-## DB Maintenance Policy
-
-- Command: `npm run db:maintenance:check --prefix lms-api`
-- Strict mode command: `npm run db:maintenance:check:strict --prefix lms-api`
-- Thresholds are configurable through `DB_MAINTENANCE_*` environment variables.
-- In local Docker, `pg_stat_statements` is preloaded via `docker-compose.yml`.
+Use [ALERT_RESPONSE_MATRIX.md](ALERT_RESPONSE_MATRIX.md) for first response.

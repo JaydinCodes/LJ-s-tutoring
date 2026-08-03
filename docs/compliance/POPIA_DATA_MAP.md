@@ -1,111 +1,121 @@
-# POPIA Data Map — Supabase (current source of truth)
+# POPIA Data Map — Current Supabase Platform
 
-**Status:** Living document. This is the **accurate** data map for the live **Supabase** schema (`docs/supabase/schema.sql`).
-**⚠️ Supersedes for the Supabase model:** [POPIA_DATA_CLASSIFICATION.md](POPIA_DATA_CLASSIFICATION.md) and [DATA_RETENTION_AND_DELETION.md](DATA_RETENTION_AND_DELETION.md) describe the **legacy Prisma/Fastify** schema (`students.full_name`, `students.guardian_name`, `sessions`, `invoices`) — those columns/tables are **not** the current browser source of truth. Those docs remain valid *only* for the Prisma retention job that still runs, and will be reconciled when the stack consolidates ([ADR-0003](../architecture/ADR-0003-single-stack-supabase.md)).
-**⚠️ Legal review required** before relying on this for compliance.
-**Closes:** AUDIT.md Critical — "no POPIA erasure/retention path for Supabase data."
+**Status:** maintained implementation map, verified against
+`docs/supabase/schema.sql` and the active React/Edge Function code on 2026-08-03.
+The retired Fastify/Prisma stack holds no current platform data. This map still
+requires review by a South African privacy professional before production
+onboarding; it is technical evidence, not legal advice.
 
----
+## Scope and purpose
 
-## 1. Why this exists
+The platform processes minors' identity, academic work, progress, guardian
+relationships, and tutor information. This document records where that data is
+held, who processes it, and which automated retention/erasure controls actually
+exist. Historical Prisma-era compliance runbooks are not current controls.
 
-We process the personal information of **minors**. POPIA requires us to know exactly what personal data we hold, where, who can see it, where it flows (including outside South Africa), how long we keep it, and how we delete it on request. The previous compliance docs mapped the wrong (legacy) schema, so this is the corrected map for the system that actually holds the data today.
+## Supabase data inventory
 
----
+Sensitivity: **High** means minor/guardian identity, academic records, private
+communications, vetting documents, or financial records. **Medium** is
+person-linked operational data. **Low** is reference/content data.
 
-## 2. Data inventory (Supabase tables)
-
-Sensitivity: **High** = minors' PII / academic records / financial; **Medium** = operational records tied to a person; **Low** = reference data.
-
-| Table | Personal data it holds | Sensitivity | Who can access (via RLS) |
+| Domain | Main tables or Storage | Data | Sensitivity and boundary |
 |---|---|---|---|
-| `profiles` | Full name, email, phone, role — **for every user incl. minors** | High | Self; platform admin |
-| `students` | Grade, school, `parent_name`, `parent_contact`, org link | High | Self (student); assigned tutor; admin |
-| `guardians` | Guardian full name, email, phone, notes | High | Scoped guardian/admin policies |
-| `student_guardians` | Student↔guardian relationships, report permissions | High | Scoped |
-| `tutors` | Tutor operational profile | Medium | Self; admin |
-| `student_career_profiles` | Interests, target careers, APS goals | Medium | Owning student; admin |
-| `assignments` | Titles, instructions, rubric | Low–Medium | Org-scoped (per ADR-0002) |
-| `assignment_submissions` | **Uploaded learner work, marks, feedback** | High | Owning student; assignment's tutor; admin |
-| `student_progress` | Per-concept scores/history | High | Owning student; tutor; admin |
-| `payments` | Student billing records | High | Admin (student-scoped read) |
-| `tutor_payments` | Tutor payouts | High | Admin |
-| `classes`, `class_enrollments` | Enrolment | Medium | Org-scoped |
-| `tutor_student_allocations` | Tutor↔student assignment | Medium | Scoped |
-| `audit_log` | Actor id/role, action, metadata | High | **Admin only** |
-| **Storage** `assignment-submissions` | **Learner uploaded files** | High | Owning student; assignment's tutor; admin |
-| **Storage** `assignment-files` | Tutor/admin assignment resources | Medium | Authenticated (to be scoped — AUDIT.md) |
+| Identity and roles | Supabase Auth, `profiles`, `profile_identities` | Email, name, phone, role, auth identity | High; self/scoped admin, with Auth owned by Supabase |
+| Learners and guardians | `students`, `guardians`, `student_guardians` | Grade, school, guardian contact and permissions | High; learner/guardian/allocation/admin and org-scoped policies |
+| Organisations | `organizations`, `organization_members`, `ngo_partners` | Membership, role, partner identity | Medium–High; organisation-scoped RLS |
+| Teaching operations | `tutors`, `classes`, `class_enrollments`, `tutor_student_allocations`, `sessions`, `session_history` | Tutor profile, enrolment, attendance, notes, allocations | High; role/allocation/org-scoped RLS and secured RPCs |
+| Assignments | `assignments`, `assignment_submissions`, `student_progress`; private `assignment-files` and `assignment-submissions` buckets | Instructions, learner work, marks, feedback, files | High for learner records; ownership/marker/admin policies and RPC-controlled mutations |
+| Reports and outcomes | `weekly_reports`, `student_notifications`, score/career snapshots, assessments, goals, exam events | Progress payloads, notices, risk and career signals | High; owning learner, permitted guardian/tutor/admin policies as applicable |
+| Careers | `student_career_profiles` | Interests, target careers, APS context | High; owning learner/admin boundary |
+| Tutor onboarding | `tutor_applications`, `tutor_documents`, `tutor_availability_slots`; private `tutor-documents` bucket | Qualifications, application details, evidence files, availability | High; self/admin and private Storage policies |
+| Finance | `payments`, `tutor_payments`, `pay_periods`, `adjustments`, `invoices`, `invoice_lines` | Billing and payout records | High; tightly scoped role/RPC access |
+| Privacy and audit | `privacy_requests`, `audit_log` | Request details, actor/action metadata | High; platform-admin controls |
+| Volunteering | `volunteer_events`, `volunteer_logs` | Event participation, hours, evidence reference | Medium–High; tutor-own/admin access |
+| Rate limiting | `edge_function_rate_limit_events` | Hashed caller key, function name, time bucket/count | Medium; service-maintained operational security data |
+| Community | `community_*` tables | Rooms, messages, questions, answers and submissions | High if enabled for minors; **not release-approved and explicitly deferred** |
 
-**Also (legacy Fastify side, to migrate):** `odie_conversations` / `odie_messages` hold learner chat history containing academic PII. These are currently in **neither** the retention job nor any erasure path (AUDIT.md finding) — must be covered (§5–6).
+The careers-chat Edge Function is stateless from the application's perspective:
+there is no active Odie conversation/message table. The browser sends the
+learner's current question, up to eight preceding chat messages, and the
+careers-profile fields displayed in Odie: interests, preferred subjects, saved
+careers, and APS target. The Edge Function forwards that payload to Groq.
 
----
+## Operators and cross-border processing
 
-## 3. Third-party processors & cross-border transfers
-
-POPIA requires documented safeguards for operators (processors) and for personal information leaving South Africa.
-
-| Processor | Data it receives | Location | Notes |
-|---|---|---|---|
-| **Supabase** (Auth, DB, Storage) | All platform data | Region `fra` (EU/Frankfurt per `.do/app.yaml`) | Primary sub-processor. Cross-border (outside SA) → needs a documented transfer basis. |
-| **OpenRouter** (Odie AI) | **Learner grade, subjects, assignment content, recent assessment results** (per `academic.ts` Odie chat) | US-based aggregator | **The most sensitive external flow.** Currently undocumented (AUDIT.md). Free-tier model retention is uncertain — pin a zero-retention model for PII (see AUDIT.md). |
-| **DigitalOcean** | Static site hosting (no DB PII) | Region `fra` | Hosts frontend + (currently) the Fastify service. |
-| **Email provider** | Recipient email addresses | — | Magic links / notifications. |
-| **Sentry** (optional) | Error diagnostics — **configured to exclude PII** | — | `sendDefaultPii: false`; breadcrumb scrubbing gap noted in AUDIT.md. |
-| **Formspree** (public site) | Enquiry: name, email, grade, message | — | Public enquiry form; not learner-account data. |
-
-**Action:** each row above needs a documented processing basis and, for cross-border ones (OpenRouter, Supabase, etc.), a POPIA transfer safeguard. OpenRouter is the priority.
-
----
-
-## 4. Minors' data
-
-- Most learners are minors → processing requires **parental/guardian consent** (POPIA competent-person rule). This links to the [Safeguarding policy](SAFEGUARDING_AND_CHILD_PROTECTION.md) §8 (consent before contact).
-- **Data minimisation:** collect only what tutoring needs. Flagged issue (AUDIT.md): `students.parent_name`/`parent_contact` **duplicate** guardian PII already in `guardians` — remove the duplication.
-- Minors' academic PII (marks, feedback, uploaded work) must never cross learner/tutor/org boundaries — enforced by RLS (ADR-0002) and aggregate-only NGO reporting.
-
----
-
-## 5. Retention (Supabase) — IMPLEMENTED
-
-Implemented as **`run_retention_cleanup(p_apply boolean default false)`** in `docs/supabase/schema.sql` (verified: full schema loads clean against Postgres 16). It **defaults to a dry run** (counts only, deletes nothing); pass `true` to purge. Admin-gated, and also callable by a trusted no-JWT scheduler. Windows:
-
-| Data | Window | Applied |
+| Operator | Data received | Current use and action |
 |---|---|---|
-| `assignment_submissions` + storage files | 3 years (by `submitted_at`) | Delete rows + files |
-| `student_progress` | 3 years (by `recorded_at`) | Delete |
-| `audit_log` | 5 years (by `created_at`) | Delete |
-| `payments` / `tutor_payments` | 7 years (by `paid_at`; **settled only**) | Delete |
+| Supabase | Auth identities, database rows, private files, Edge Function requests | Primary platform. Confirm the actual project region and contractual transfer safeguards in the Supabase dashboard/contract; do not infer it from DigitalOcean's region. |
+| Groq | Current careers-chat question, up to eight preceding messages, and Odie careers-profile context (interests, preferred subjects, saved careers, APS target) | Edge Function AI processor. Public notice names Groq and the actual fields sent; legal/vendor review must confirm retention, sub-processors, location, and POPIA section 72 transfer basis. Avoid including names/contact details in prompts. |
+| DigitalOcean | Static site assets and public browser configuration | Static frontend only; no Fastify/API service and no platform database. Region is configured as `fra` in `.do/app.yaml`. |
+| Sentry (optional) | Browser error events and deliberately limited pseudonymous context | Disabled without explicit public config; `sendDefaultPii: false` and application context scrubbing are implemented. Validate production sampling and captured breadcrumbs before enabling for learners. |
+| Auth email/SMTP provider | Recipient address and authentication/invitation email content | Confirm the configured Supabase Auth SMTP provider and contract before launch. Public enquiries are composed in the visitor's own email or WhatsApp app. |
 
-**Schedule the real run** via pg_cron or a scheduled Edge Function: `select public.run_retention_cleanup(true);`
+Maintain processor agreements, security measures, retention terms, breach
+contacts, and cross-border transfer bases outside this technical map.
 
-**Not yet covered (follow-ups):** account-level anonymisation of inactive `profiles`/`students`/`guardians` after a grace period (currently handled on-request via `anonymize_student`); and `odie_conversations`/`odie_messages`, which live in the legacy Prisma DB and are purged by the Fastify retention job.
+## Minors and data minimisation
 
----
+- Record competent-person/guardian authority before processing a minor's data or
+  granting a guardian report link.
+- `students.parent_name` and `parent_contact` duplicate structured guardian data;
+  stop populating and remove these compatibility fields through a reviewed
+  migration when all callers are repointed.
+- NGO-partner output must remain aggregate-only with small-cohort suppression.
+- Never expose one learner's work, marks, session notes, contact details, or
+  guardian data through another learner/tutor/organisation context.
+- Community remains an onboarding blocker while its safety/isolation work is
+  deferred; hiding navigation alone is not an authorization control.
 
-## 6. Erasure / data-subject requests (Supabase) — IMPLEMENTED *(closes audit Critical)*
+## Retention controls implemented today
 
-Implemented in `docs/supabase/schema.sql` (verified: full schema loads clean against Postgres 16). All functions are `SECURITY DEFINER` and **admin-gated internally**:
+`run_retention_cleanup(p_apply boolean default false)` is admin/trusted-context
+gated and defaults to a dry run. With `p_apply => true` it currently covers:
 
-- **`export_student_data(p_student_id)`** — ACCESS: returns all of a learner's data (profile, student row, guardians, career profile, submissions, progress, enrolments, allocations, payments) as one JSON object.
-- **`anonymize_student(p_student_id)`** — DELETION: removes identifiable academic content (career profile, submissions, progress, submission files) and strips identity on `students`/`profiles`; **anonymises rather than hard-deletes when a financial-retention hold applies** (rows in `payments`). Returns a summary.
-- **`process_privacy_request(p_request_id)`** — workflow wrapper that dispatches a tracked request by type, stores the result, and closes it.
-- **`privacy_requests`** table (admin-only RLS) tracks each request; every action writes to `audit_log`.
+| Data | Window | Behavior |
+|---|---|---|
+| Assignment submissions and corresponding private files | 3 years | Delete eligible rows; Storage privilege failure is reported for service-role follow-up |
+| Student progress | 3 years | Delete eligible rows |
+| Audit log | 5 years | Delete eligible rows |
+| Settled student/tutor payments | 7 years | Delete rows with old non-null `paid_at`; pending records are retained |
 
-Request types (POPIA): **ACCESS** (export), **CORRECTION** (applied via normal admin RLS UPDATEs — no function needed), **DELETION** (anonymise/delete under retention holds). Guardian authority required for a minor.
+The repository does **not** yet contain evidence of a production scheduler for
+this RPC. Sessions/history, weekly reports, notifications, onboarding documents,
+volunteer records, rate-limit events, and other tables require explicit reviewed
+retention decisions or separate cleanup mechanisms. Do not claim the dry-run RPC
+alone is a complete retention programme.
 
-**Two follow-ups needed for *complete* erasure (must run via the service-role, not this SQL):**
-1. **Storage files** — the function deletes `storage.objects` rows for the learner's folder, but if the definer role lacks storage privilege it returns `files_removed = -1` as a signal to purge the files via the service-role storage client.
-2. **Auth identity** — the function anonymises `profiles.email`, but the login identity in **`auth.users`** (a separate schema) must be deleted/disabled via the Supabase Admin Auth API (service-role). Until then the account credential still exists.
+## Access, correction, and erasure controls
 
-*(Odie chat history lives in the legacy Prisma DB, not Supabase — handled by the Fastify retention/privacy pipeline, out of scope here.)*
+Admin-gated RPCs implement the current workflow:
 
----
+- `export_student_data(student_id)` returns the core learner/profile/guardian,
+  careers, submission, progress, enrolment, allocation, and payment records.
+- `anonymize_student(student_id)` removes major academic/career/reporting rows,
+  clears session free text, detaches guardian links, removes/anonymizes identity,
+  and preserves financial/audit history where required.
+- `process_privacy_request(request_id)` records and dispatches access/deletion
+  requests; corrections use reviewed admin updates.
 
-## 7. Open items
+Important completion work remains:
 
-1. **§5 retention + §6 erasure/export — DONE** (functions in schema.sql). Remaining: **wire a scheduler** to `run_retention_cleanup(true)` (pg_cron/Edge Function), account-level anonymisation of inactive accounts, and the two service-role follow-ups in §6 (storage-file purge, `auth.users` deletion).
-2. **OpenRouter** — ✅ now disclosed in the public privacy notice (Third-Party Services) and data map §3. Remaining: a documented cross-border transfer **basis** (POPIA §72) and pinning a **zero-data-retention** provider/model for PII-bearing calls (prod currently runs a `:free` model — see `.do/app.yaml` `OPENROUTER_MODEL`).
-3. **Remove `students.parent_name`/`parent_contact` duplication** (data minimisation).
-4. **Reconcile/retire** the two legacy compliance docs once the Prisma stack is gone (ADR-0003).
-5. **Legal review** of this map, the transfer bases, and the minors'-consent artefacts.
-6. **Written parental-consent record** (currently informal — see safeguarding §12).
+1. Extend and regression-test the access export whenever the schema gains a new
+   learner-linked table; the current export does not automatically discover new
+   domains.
+2. If SQL cannot remove Storage objects, complete the reported follow-up with a
+   service-role Storage client.
+3. Delete/disable the corresponding `auth.users` identity with the Supabase Admin
+   Auth API after the approved retention/identity decision.
+4. Define handling for financial/session/audit records that are retained after
+   anonymisation and document the lawful basis.
+5. Keep evidence of requester/guardian authority, approval, execution, and any
+   exception or legal hold.
+
+## Release blockers and owners to assign
+
+- Legal review of minors' consent, processor terms, and cross-border bases.
+- Production scheduler plus dry-run/apply evidence for approved retention jobs.
+- Named privacy request owner and service-role completion procedure.
+- Removal of duplicate inline guardian fields.
+- Explicit enable/disable enforcement and safety review for Community before any
+  real-user access.

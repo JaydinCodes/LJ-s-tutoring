@@ -1073,6 +1073,8 @@ as $$
   order by p.full_name, sub.released_at desc nulls last;
 $$;
 
+revoke execute on function public.submit_assignment_submission(uuid, uuid, text, text, text, text, bigint, text) from public;
+revoke execute on function public.submit_assignment_submission(uuid, uuid, text, text, text, text, bigint, text) from anon;
 grant execute on function public.submit_assignment_submission(uuid, uuid, text, text, text, text, bigint, text) to authenticated;
 grant execute on function public.mark_assignment_submission(uuid, numeric, text, public.submission_status, jsonb, boolean, boolean) to authenticated;
 grant execute on function public.get_student_assignment_submissions() to authenticated;
@@ -1088,32 +1090,14 @@ on public.profiles for select
 using (auth_user_id = auth.uid() or public.is_platform_admin());
 
 drop policy if exists "profiles_select_allocated_learning_relationship" on public.profiles;
-create policy "profiles_select_allocated_learning_relationship"
-on public.profiles for select
-using (
-  id in (
-    select s.profile_id
-    from public.students s
-    join public.tutor_student_allocations tsa on tsa.student_id = s.id
-    where tsa.tutor_id = public.current_tutor_id()
-      and tsa.status = 'active'
-  )
-  or id in (
-    select t.profile_id
-    from public.tutors t
-    join public.tutor_student_allocations tsa on tsa.tutor_id = t.id
-    where tsa.student_id = public.current_student_id()
-      and tsa.status = 'active'
-  )
-);
+-- Cross-role profile reads use narrow directory RPCs below. Keeping only the
+-- separate self/admin policy prevents allocated users from selecting full
+-- profile rows (auth_user_id, phone, and future internal columns).
 
 drop policy if exists "profiles_insert_self_student_or_tutor" on public.profiles;
-create policy "profiles_insert_self_student_or_tutor"
-on public.profiles for insert
-with check (
-  auth_user_id = auth.uid()
-  and role in ('student', 'tutor', 'parent')
-);
+-- Student/tutor self-onboarding is RPC-only. The former policy let a browser
+-- choose its own profile email and made the profile/role-row writes
+-- non-atomic. Parent profile provisioning remains an administrator workflow.
 
 drop policy if exists "admin_full_access_profiles" on public.profiles;
 create policy "admin_full_access_profiles"
@@ -1148,24 +1132,14 @@ on public.students for select
 using (
   public.is_platform_admin()
   or profile_id = public.current_profile_id()
-  or id in (
-    select tsa.student_id
-    from public.tutor_student_allocations tsa
-    where tsa.tutor_id = public.current_tutor_id()
-      and tsa.status = 'active'
-  )
 );
 
 -- Raw subqueries on public.profiles here would recurse (see the "Identity
 -- lookup shadow table" comment near current_profile_role()); current_profile_id()/
 -- current_profile_role() now resolve via public.profile_identities instead.
 drop policy if exists "students_insert_self" on public.students;
-create policy "students_insert_self"
-on public.students for insert
-with check (
-  profile_id = public.current_profile_id()
-  and public.current_profile_role() = 'student'
-);
+-- Direct self-insert is deliberately absent: onboard_current_user() is the
+-- only authenticated student-onboarding write path.
 
 drop policy if exists "admin_full_access_students" on public.students;
 create policy "admin_full_access_students"
@@ -1231,25 +1205,14 @@ on public.tutors for select
 using (
   public.is_platform_admin()
   or profile_id = public.current_profile_id()
-  or id in (
-    select tsa.tutor_id
-    from public.tutor_student_allocations tsa
-    where tsa.student_id = public.current_student_id()
-      and tsa.status = 'active'
-  )
 );
 
 -- Raw subqueries on public.profiles here would recurse (see the "Identity
 -- lookup shadow table" comment near current_profile_role()); current_profile_id()/
 -- current_profile_role() now resolve via public.profile_identities instead.
 drop policy if exists "tutors_insert_self_pending" on public.tutors;
-create policy "tutors_insert_self_pending"
-on public.tutors for insert
-with check (
-  status = 'pending'
-  and profile_id = public.current_profile_id()
-  and public.current_profile_role() = 'tutor'
-);
+-- Direct self-insert is deliberately absent: onboard_current_user() prevents
+-- applicants from supplying hourly_rate and creates both rows atomically.
 
 drop policy if exists "admin_full_access_tutors" on public.tutors;
 create policy "admin_full_access_tutors"
@@ -1414,18 +1377,51 @@ with check (public.is_platform_admin());
 
 drop policy if exists "classes_read_authenticated" on public.classes;
 
+-- RLS recursion guard: classes_select_scoped used to query
+-- class_enrollments directly while class_enrollments_select_scoped queried
+-- classes directly. PostgreSQL may evaluate every permissive-policy branch,
+-- so even a tutor's obvious tutor_id match recursed classes -> enrollments ->
+-- classes. These caller-scoped SECURITY DEFINER helpers bypass the nested
+-- table policy while returning only the current student's/tutor's class IDs.
+create or replace function public.current_student_class_ids()
+returns setof uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select ce.class_id
+  from public.class_enrollments ce
+  where ce.student_id = public.current_student_id()
+    and ce.status = 'active'
+$$;
+
+create or replace function public.current_tutor_class_ids()
+returns setof uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select c.id
+  from public.classes c
+  where c.tutor_id = public.current_tutor_id()
+$$;
+
+revoke execute on function public.current_student_class_ids() from public;
+revoke execute on function public.current_student_class_ids() from anon;
+grant execute on function public.current_student_class_ids() to authenticated;
+revoke execute on function public.current_tutor_class_ids() from public;
+revoke execute on function public.current_tutor_class_ids() from anon;
+grant execute on function public.current_tutor_class_ids() to authenticated;
+
 drop policy if exists "classes_select_scoped" on public.classes;
 create policy "classes_select_scoped"
 on public.classes for select
 using (
   public.is_platform_admin()
   or tutor_id = public.current_tutor_id()
-  or id in (
-    select ce.class_id
-    from public.class_enrollments ce
-    where ce.student_id = public.current_student_id()
-      and ce.status = 'active'
-  )
+  or id in (select public.current_student_class_ids())
 );
 
 drop policy if exists "admin_manage_classes" on public.classes;
@@ -1442,11 +1438,7 @@ on public.class_enrollments for select
 using (
   public.is_platform_admin()
   or student_id = public.current_student_id()
-  or class_id in (
-    select c.id
-    from public.classes c
-    where c.tutor_id = public.current_tutor_id()
-  )
+  or class_id in (select public.current_tutor_class_ids())
 );
 
 drop policy if exists "admin_manage_class_enrollments" on public.class_enrollments;
@@ -1462,12 +1454,85 @@ using (
   public.is_platform_admin()
   or (
     status = 'active'
-    and (
-      tutor_id = public.current_tutor_id()
-      or student_id = public.current_student_id()
-    )
+    and tutor_id = public.current_tutor_id()
   )
 );
+
+-- Students must not read these base tables directly: tutors contains pay and
+-- internal approval fields, allocations contains rate_override, and profiles
+-- contains auth_user_id/phone. Return only the assigned tutor identity fields
+-- the dashboard actually displays.
+create or replace function public.get_student_assigned_tutors()
+returns table (
+  id uuid,
+  full_name text,
+  email text
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_student_id uuid := public.current_student_id();
+begin
+  if public.current_profile_role() <> 'student' or v_student_id is null then
+    raise exception 'only_students_can_view_assigned_tutors' using errcode = '42501';
+  end if;
+
+  return query
+  select t.id, p.full_name, p.email
+  from public.tutor_student_allocations tsa
+  join public.tutors t on t.id = tsa.tutor_id
+  join public.profiles p on p.id = t.profile_id
+  where tsa.student_id = v_student_id
+    and tsa.status = 'active'
+  order by p.full_name, t.id;
+end;
+$$;
+
+revoke execute on function public.get_student_assigned_tutors() from public;
+revoke execute on function public.get_student_assigned_tutors() from anon;
+grant execute on function public.get_student_assigned_tutors() to authenticated;
+
+-- Reciprocal directory boundary: allocated tutors need learner identity and
+-- academic placement, but not guardian contacts, parent fields, profile phone,
+-- or legacy/internal student columns.
+create or replace function public.get_tutor_allocated_students()
+returns table (
+  student_id uuid,
+  full_name text,
+  email text,
+  grade text,
+  school text,
+  status public.record_status
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_tutor_id uuid := public.current_tutor_id();
+begin
+  if public.current_profile_role() <> 'tutor' or v_tutor_id is null then
+    raise exception 'only_tutors_can_view_allocated_students' using errcode = '42501';
+  end if;
+
+  return query
+  select s.id, p.full_name, p.email, s.grade, s.school, s.status
+  from public.tutor_student_allocations tsa
+  join public.students s on s.id = tsa.student_id
+  join public.profiles p on p.id = s.profile_id
+  where tsa.tutor_id = v_tutor_id
+    and tsa.status = 'active'
+  order by p.full_name, s.id;
+end;
+$$;
+
+revoke execute on function public.get_tutor_allocated_students() from public;
+revoke execute on function public.get_tutor_allocated_students() from anon;
+grant execute on function public.get_tutor_allocated_students() to authenticated;
 
 drop policy if exists "admin_manage_tutor_student_allocations" on public.tutor_student_allocations;
 create policy "admin_manage_tutor_student_allocations"
@@ -1545,13 +1610,15 @@ using (
 -- instead of public.profiles directly.
 -- Interim version (org check added in section 7.5 below, once
 -- organization_id exists on public.assignments -- see the note there).
+-- storage.foldername() excludes the filename, so the four-segment object key
+-- <student>/<assignment>/<submission>/submission.ext has exactly 3 folders.
 drop policy if exists "students_upload_own_submission_files" on storage.objects;
 create policy "students_upload_own_submission_files"
 on storage.objects for insert
 with check (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
-  and array_length(storage.foldername(name), 1) = 4
+  and array_length(storage.foldername(name), 1) = 3
   and (storage.foldername(name))[1] = public.current_student_id()::text
   and (storage.foldername(name))[2] in (
     select a.id::text from public.assignments a
@@ -1575,7 +1642,7 @@ on storage.objects for update
 using (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
-  and array_length(storage.foldername(name), 1) = 4
+  and array_length(storage.foldername(name), 1) = 3
   and (storage.foldername(name))[1] = public.current_student_id()::text
   and (storage.foldername(name))[2] in (
     select a.id::text from public.assignments a
@@ -1585,7 +1652,7 @@ using (
 with check (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
-  and array_length(storage.foldername(name), 1) = 4
+  and array_length(storage.foldername(name), 1) = 3
   and (storage.foldername(name))[1] = public.current_student_id()::text
   and (storage.foldername(name))[2] in (
     select a.id::text from public.assignments a
@@ -2685,19 +2752,78 @@ using (
 
 -- Same org-scoping fix as above, for the assignment-submissions storage
 -- policies defined earlier in the file (also before organization_id existed).
+-- Keep the 3-folder check aligned with the frontend's four-segment object key;
+-- storage.foldername() deliberately excludes the final filename segment.
+-- Once submit_assignment_submission() commits a row for a key, that object is
+-- evidence and must not be overwritten in place. The SECURITY DEFINER helper
+-- sees the committed row without exposing raw submissions through SELECT RLS.
+create index if not exists idx_assignment_submissions_storage_key
+  on public.assignment_submissions(storage_key)
+  where storage_key is not null;
+
+create or replace function public.can_write_uncommitted_assignment_submission_storage(p_storage_key text)
+returns boolean
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  v_student_id uuid := public.current_student_id();
+  v_path_parts text[] := string_to_array(p_storage_key, '/');
+  v_submission_id uuid;
+begin
+  if public.current_profile_role() <> 'student' or v_student_id is null then
+    return false;
+  end if;
+  if array_length(v_path_parts, 1) <> 4
+     or v_path_parts[1] <> v_student_id::text
+     or v_path_parts[4] !~ '^submission\.[A-Za-z0-9]+$'
+  then
+    return false;
+  end if;
+
+  begin
+    v_submission_id := v_path_parts[3]::uuid;
+  exception
+    when invalid_text_representation then
+      return false;
+  end;
+
+  -- This is intentionally the exact lock namespace used by both submission
+  -- RPCs. A Storage write that starts first completes before submit can commit;
+  -- a submit that starts first commits before this function checks the row.
+  perform pg_advisory_xact_lock(
+    hashtextextended('assignment-submission-id:' || v_submission_id::text, 0)
+  );
+
+  return not exists (
+    select 1
+    from public.assignment_submissions s
+    where s.id = v_submission_id
+      and s.student_id = v_student_id
+  );
+end;
+$$;
+
+revoke execute on function public.can_write_uncommitted_assignment_submission_storage(text) from public;
+revoke execute on function public.can_write_uncommitted_assignment_submission_storage(text) from anon;
+grant execute on function public.can_write_uncommitted_assignment_submission_storage(text) to authenticated;
+
 drop policy if exists "students_upload_own_submission_files" on storage.objects;
 create policy "students_upload_own_submission_files"
 on storage.objects for insert
 with check (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
-  and array_length(storage.foldername(name), 1) = 4
+  and array_length(storage.foldername(name), 1) = 3
   and (storage.foldername(name))[1] = public.current_student_id()::text
   and (storage.foldername(name))[2] in (
     select a.id::text from public.assignments a
     where a.status = 'published'
       and a.organization_id = public.current_student_org_id()
   )
+  and public.can_write_uncommitted_assignment_submission_storage(name)
 );
 
 drop policy if exists "students_update_own_submission_files" on storage.objects;
@@ -2706,31 +2832,32 @@ on storage.objects for update
 using (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
-  and array_length(storage.foldername(name), 1) = 4
+  and array_length(storage.foldername(name), 1) = 3
   and (storage.foldername(name))[1] = public.current_student_id()::text
   and (storage.foldername(name))[2] in (
     select a.id::text from public.assignments a
     where a.status = 'published'
       and a.organization_id = public.current_student_org_id()
   )
+  and public.can_write_uncommitted_assignment_submission_storage(name)
 )
 with check (
   bucket_id = 'assignment-submissions'
   and public.current_profile_role() = 'student'
-  and array_length(storage.foldername(name), 1) = 4
+  and array_length(storage.foldername(name), 1) = 3
   and (storage.foldername(name))[1] = public.current_student_id()::text
   and (storage.foldername(name))[2] in (
     select a.id::text from public.assignments a
     where a.status = 'published'
       and a.organization_id = public.current_student_org_id()
   )
+  and public.can_write_uncommitted_assignment_submission_storage(name)
 );
 
--- Same org-scoping fix, for submit_assignment_submission() itself (defined
--- much earlier in the file, before organization_id existed). create or
--- replace swaps the body in place; the grant issued against the earlier
--- definition still applies since the function's identity (name + argument
--- types) is unchanged.
+-- Final assignment-submission implementation. In addition to own-org scope,
+-- a caller-provided UUID binds one immutable upload/RPC attempt. Exact replay
+-- returns the original row after an ambiguous response; changed replay data is
+-- rejected so edited work can never be mistaken for the committed payload.
 create or replace function public.submit_assignment_submission(
   p_assignment_id uuid,
   p_submission_id uuid,
@@ -2744,22 +2871,87 @@ create or replace function public.submit_assignment_submission(
 returns table (submission_id uuid)
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   v_student_id uuid := public.current_student_id();
   v_assignment public.assignments%rowtype;
-  v_submission_id uuid := coalesce(p_submission_id, gen_random_uuid());
+  v_existing_submission public.assignment_submissions%rowtype;
+  v_submission_id uuid := p_submission_id;
   v_next_version integer;
+  v_storage_key text := nullif(btrim(coalesce(p_storage_key, '')), '');
+  v_file_url text := nullif(btrim(coalesce(p_file_url, '')), '');
+  v_original_filename text := nullif(btrim(coalesce(p_original_filename, '')), '');
+  v_mime_type text := nullif(btrim(coalesce(p_mime_type, '')), '');
   v_text_answer text := nullif(btrim(coalesce(p_text_answer, '')), '');
 begin
   if public.current_profile_role() <> 'student' or v_student_id is null then
     raise exception 'only_students_can_submit' using errcode = '42501';
   end if;
 
-  select * into v_assignment
-  from public.assignments
-  where id = p_assignment_id;
+  if v_submission_id is null then
+    raise exception 'submission_id_required' using errcode = '23502';
+  end if;
+  if v_text_answer is null and v_storage_key is null then
+    raise exception 'submission_content_required' using errcode = '23514';
+  end if;
+  if v_storage_key is distinct from v_file_url then
+    raise exception 'invalid_submission_file_reference' using errcode = '23514';
+  end if;
+  if v_storage_key is null
+     and (v_original_filename is not null or v_mime_type is not null or p_size_bytes is not null)
+  then
+    raise exception 'invalid_submission_file_metadata' using errcode = '23514';
+  end if;
+  if p_size_bytes is not null and p_size_bytes < 0 then
+    raise exception 'invalid_submission_file_size' using errcode = '23514';
+  end if;
+  if v_storage_key is not null
+     and v_storage_key !~ ('^' || v_student_id::text || '/' || p_assignment_id::text || '/' || v_submission_id::text || '/submission\.[A-Za-z0-9]+$')
+  then
+    raise exception 'invalid_submission_storage_path' using errcode = '42501';
+  end if;
+
+  -- Serialize both UUID replays and version allocation. The UUID lock protects
+  -- against the same attempt being raced across identities/assignments; the
+  -- student-assignment lock preserves the one-latest-version invariant.
+  perform pg_advisory_xact_lock(
+    hashtextextended('assignment-submission-id:' || v_submission_id::text, 0)
+  );
+  perform pg_advisory_xact_lock(
+    hashtextextended('assignment-submission-version:' || p_assignment_id::text || ':' || v_student_id::text, 0)
+  );
+
+  select s.* into v_existing_submission
+  from public.assignment_submissions s
+  where s.id = v_submission_id;
+
+  if found then
+    if v_existing_submission.assignment_id <> p_assignment_id
+       or v_existing_submission.student_id <> v_student_id
+    then
+      raise exception 'submission_id_conflict' using errcode = '23505';
+    end if;
+
+    if v_existing_submission.storage_key is distinct from v_storage_key
+       or v_existing_submission.file_url is distinct from v_file_url
+       or v_existing_submission.original_filename is distinct from v_original_filename
+       or v_existing_submission.mime_type is distinct from v_mime_type
+       or v_existing_submission.size_bytes is distinct from p_size_bytes
+       or v_existing_submission.text_answer is distinct from v_text_answer
+    then
+      raise exception 'submission_retry_payload_mismatch' using errcode = '23505';
+    end if;
+
+    -- A prior transaction committed and only its response was lost. Return the
+    -- original row without creating a version or duplicating audit events.
+    return query select v_existing_submission.id;
+    return;
+  end if;
+
+  select a.* into v_assignment
+  from public.assignments a
+  where a.id = p_assignment_id;
 
   if not found then
     raise exception 'assignment_not_found' using errcode = 'P0002';
@@ -2772,25 +2964,17 @@ begin
   -- organization's assignment by guessing/knowing its id. Same error as the
   -- unpublished case so cross-org existence isn't disclosed via a distinct
   -- message.
-  if v_assignment.status <> 'published' or v_assignment.organization_id <> public.current_student_org_id() then
+  if v_assignment.status <> 'published'
+     or v_assignment.organization_id is distinct from public.current_student_org_id()
+  then
     raise exception 'assignment_not_open_for_submission' using errcode = '42501';
   end if;
 
-  if v_text_answer is null and nullif(p_storage_key, '') is null then
-    raise exception 'submission_content_required' using errcode = '23514';
-  end if;
-
-  if nullif(p_storage_key, '') is not null and p_storage_key !~ ('^' || v_student_id::text || '/' || p_assignment_id::text || '/' || v_submission_id::text || '/submission\.[A-Za-z0-9]+$') then
-    raise exception 'invalid_submission_storage_path' using errcode = '42501';
-  end if;
-
-  perform pg_advisory_xact_lock(hashtext(p_assignment_id::text || ':' || v_student_id::text));
-
-  select coalesce(max(version_number), 0) + 1
+  select coalesce(max(s.version_number), 0) + 1
   into v_next_version
-  from public.assignment_submissions
-  where assignment_id = p_assignment_id
-    and student_id = v_student_id;
+  from public.assignment_submissions s
+  where s.assignment_id = p_assignment_id
+    and s.student_id = v_student_id;
 
   update public.assignment_submissions
   set is_latest = false
@@ -2819,10 +3003,10 @@ begin
     v_submission_id,
     p_assignment_id,
     v_student_id,
-    nullif(p_storage_key, ''),
-    nullif(p_file_url, ''),
-    nullif(p_original_filename, ''),
-    nullif(p_mime_type, ''),
+    v_storage_key,
+    v_file_url,
+    v_original_filename,
+    v_mime_type,
     p_size_bytes,
     v_text_answer,
     now(),
@@ -2841,12 +3025,12 @@ begin
       'assignment_id', p_assignment_id,
       'student_id', v_student_id,
       'version_number', v_next_version,
-      'file_uploaded', nullif(p_storage_key, '') is not null,
+      'file_uploaded', v_storage_key is not null,
       'text_answer_provided', v_text_answer is not null
     )
   );
 
-  if v_next_version > 1 and nullif(p_storage_key, '') is not null then
+  if v_next_version > 1 and v_storage_key is not null then
     perform public.log_audit_event(
       'assignment_submission.file_replaced',
       'assignment_submission',
@@ -2864,6 +3048,96 @@ end;
 $$;
 
 -- ============================================================================
+-- Retry preflight: a caller checks this before re-uploading. The advisory lock
+-- shares submit_assignment_submission()'s UUID lock, so an in-flight submit
+-- settles before the check. An exact committed attempt is confirmed; an absent
+-- attempt returns no rows and may safely continue to Storage upload.
+create or replace function public.confirm_assignment_submission_attempt(
+  p_assignment_id uuid,
+  p_submission_id uuid,
+  p_storage_key text,
+  p_file_url text,
+  p_original_filename text,
+  p_mime_type text,
+  p_size_bytes bigint,
+  p_text_answer text
+)
+returns table (submission_id uuid)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_student_id uuid := public.current_student_id();
+  v_existing_submission public.assignment_submissions%rowtype;
+  v_storage_key text := nullif(btrim(coalesce(p_storage_key, '')), '');
+  v_file_url text := nullif(btrim(coalesce(p_file_url, '')), '');
+  v_original_filename text := nullif(btrim(coalesce(p_original_filename, '')), '');
+  v_mime_type text := nullif(btrim(coalesce(p_mime_type, '')), '');
+  v_text_answer text := nullif(btrim(coalesce(p_text_answer, '')), '');
+begin
+  if public.current_profile_role() <> 'student' or v_student_id is null then
+    raise exception 'only_students_can_confirm_submission' using errcode = '42501';
+  end if;
+  if p_submission_id is null then
+    raise exception 'submission_id_required' using errcode = '23502';
+  end if;
+  if v_text_answer is null and v_storage_key is null then
+    raise exception 'submission_content_required' using errcode = '23514';
+  end if;
+  if v_storage_key is distinct from v_file_url then
+    raise exception 'invalid_submission_file_reference' using errcode = '23514';
+  end if;
+  if v_storage_key is null
+     and (v_original_filename is not null or v_mime_type is not null or p_size_bytes is not null)
+  then
+    raise exception 'invalid_submission_file_metadata' using errcode = '23514';
+  end if;
+  if p_size_bytes is not null and p_size_bytes < 0 then
+    raise exception 'invalid_submission_file_size' using errcode = '23514';
+  end if;
+  if v_storage_key is not null
+     and v_storage_key !~ ('^' || v_student_id::text || '/' || p_assignment_id::text || '/' || p_submission_id::text || '/submission\.[A-Za-z0-9]+$')
+  then
+    raise exception 'invalid_submission_storage_path' using errcode = '42501';
+  end if;
+
+  perform pg_advisory_xact_lock(
+    hashtextextended('assignment-submission-id:' || p_submission_id::text, 0)
+  );
+
+  select s.* into v_existing_submission
+  from public.assignment_submissions s
+  where s.id = p_submission_id;
+
+  if not found then
+    return;
+  end if;
+
+  if v_existing_submission.assignment_id <> p_assignment_id
+     or v_existing_submission.student_id <> v_student_id
+  then
+    raise exception 'submission_id_conflict' using errcode = '23505';
+  end if;
+
+  if v_existing_submission.storage_key is distinct from v_storage_key
+     or v_existing_submission.file_url is distinct from v_file_url
+     or v_existing_submission.original_filename is distinct from v_original_filename
+     or v_existing_submission.mime_type is distinct from v_mime_type
+     or v_existing_submission.size_bytes is distinct from p_size_bytes
+     or v_existing_submission.text_answer is distinct from v_text_answer
+  then
+    raise exception 'submission_retry_payload_mismatch' using errcode = '23505';
+  end if;
+
+  return query select v_existing_submission.id;
+end;
+$$;
+
+revoke execute on function public.confirm_assignment_submission_attempt(uuid, uuid, text, text, text, text, bigint, text) from public;
+revoke execute on function public.confirm_assignment_submission_attempt(uuid, uuid, text, text, text, text, bigint, text) from anon;
+grant execute on function public.confirm_assignment_submission_attempt(uuid, uuid, text, text, text, text, bigint, text) to authenticated;
+
 -- Sessions linchpin migration (PRISMA_TO_SUPABASE_MIGRATION_PLAN.md §2).
 --
 -- Ports the Prisma `Session` / `SessionHistory` models and the full Fastify
@@ -4846,17 +5120,19 @@ begin
   where student_id = p_student_id
     and date between v_week_start and v_week_end;
 
-  -- tutorNotesSummary: up to 3 most-recent session notes in the week, each
-  -- truncated to 120 chars (Fastify left(notes,120), newest-first, first 3).
+  -- tutorNotesSummary is learner/guardian-visible through weekly_reports. Use
+  -- only the deliberately learner-facing student_summary from APPROVED
+  -- sessions; sessions.notes and tutor_private_notes remain confidential.
   select coalesce(jsonb_agg(sub.line order by sub.rn), '[]'::jsonb)
     into v_notes_summary
   from (
-    select left(btrim(s.notes), 120) as line,
-           row_number() over (order by s.date desc) as rn
+    select left(btrim(s.student_summary), 120) as line,
+           row_number() over (order by s.date desc, s.start_time desc, s.id) as rn
     from public.sessions s
     where s.student_id = p_student_id
       and s.date between v_week_start and v_week_end
-      and nullif(btrim(coalesce(s.notes, '')), '') is not null
+      and s.status = 'approved'
+      and nullif(btrim(coalesce(s.student_summary, '')), '') is not null
   ) sub
   where sub.rn <= 3;
 
@@ -5081,28 +5357,17 @@ begin
 end
 $$;
 
--- SECURITY / EXPOSURE NOTE (flagged AND fixed on review -- per the task's explicit
--- instruction to verify the tutors SELECT policies rather than assume admin/self-only):
--- these new columns are governed by the EXISTING tutors row policies.
--- `tutors_select_self_or_admin` grants SELECT to (a) admins, (b) the tutor
--- themselves, AND (c) any student with an ACTIVE tutor_student_allocations link to
--- that tutor. Arm (c) means an allocated student can read their tutor's
--- approval_status / approval_note / qualification_band. approval_note in particular
--- can carry a reviewer's internal commentary about the tutor -- an approval-workflow
--- field that was admin/self-tutor-only in Fastify (ensureTutorActive read it
--- server-side; no student route ever returned it). Postgres RLS is row-level, not
--- column-level, so the existing policy cannot exclude just these columns for arm (c)
--- -- a schema-only fix is not possible here. The actual fix is at the query layer:
--- `src/features/students/studentDashboardRepository.ts` is the ONLY student-facing
--- reader of this table, and it now selects an explicit column list (the exact
--- pre-migration-safe set: id/profile_id/subjects/grades/hourly_rate/status/created_at)
--- instead of `select('*')`, so none of the seven new columns reach a student response.
--- See `tests/frontend/tutor-onboarding-migration.test.cjs` for the assertion covering
--- both halves (the RLS row-level limitation stays documented here for future
--- readers; the query-level exclusion is verified against the actual frontend file).
--- If a *second* student-facing reader of `tutors` is ever added, it must carry the
--- same explicit column list -- this is a per-query discipline, not a table-wide
--- guarantee, precisely because RLS can't enforce it structurally.
+-- SECURITY / EXPOSURE NOTE (flagged and fixed on review): RLS controls rows,
+-- not columns, so a student SELECT arm on public.tutors exposed every approval
+-- and pay field even when the current frontend requested an explicit subset.
+-- The fix is now structural: students have no base-table SELECT path to tutors,
+-- tutor_student_allocations, or an allocated tutor's profile. The
+-- get_student_assigned_tutors() SECURITY DEFINER RPC returns only tutor id,
+-- full_name, and email for the caller's active allocations. New student-facing
+-- tutor fields must be added deliberately to that narrow return contract. The
+-- reciprocal tutor path is equally narrow: tutors retain their own allocation
+-- rows but cannot select learner/profile base rows; get_tutor_allocated_students()
+-- exposes only student_id, full_name, email, grade, school, and status.
 
 -- --- Tables -----------------------------------------------------------------
 -- tutor_id -> tutors(id) on delete cascade, matching every other tutor_id FK in
@@ -7620,6 +7885,244 @@ grant execute on function public.get_community_challenges() to authenticated;
 grant execute on function public.get_community_questions() to authenticated;
 
 -- ============================================================================
+-- Transactional student/tutor onboarding (Phase 1).
+--
+-- This SECURITY DEFINER function is necessary because it must read auth.users
+-- and create a profile plus its role row as one transaction while the public
+-- tables remain protected by RLS. The caller's identity and email are always
+-- derived server-side. New or partially provisioned accounts must have been
+-- invited by an administrator, and the requested role must match the role on
+-- that invitation. Callers can supply only non-privileged profile details; in
+-- particular, there is intentionally no hourly-rate parameter.
+-- ============================================================================
+create or replace function public.onboard_current_user(
+  p_role text,
+  p_full_name text,
+  p_phone text default null,
+  p_grade text default null,
+  p_school text default null,
+  p_parent_name text default null,
+  p_parent_contact text default null,
+  p_subjects text[] default null,
+  p_grades text[] default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_auth_user_id uuid := auth.uid();
+  v_email text;
+  v_email_confirmed_at timestamptz;
+  v_invited_at timestamptz;
+  v_authorized_role text;
+  v_full_name text := nullif(btrim(coalesce(p_full_name, '')), '');
+  v_phone text := nullif(btrim(coalesce(p_phone, '')), '');
+  v_requested_role public.user_role;
+  v_profile public.profiles%rowtype;
+  v_student public.students%rowtype;
+  v_tutor public.tutors%rowtype;
+  v_subjects text[];
+  v_grades text[];
+begin
+  if v_auth_user_id is null then
+    raise exception 'authentication_required' using errcode = '42501';
+  end if;
+
+  if p_role is null or p_role not in ('student', 'tutor') then
+    raise exception 'invalid_onboarding_role' using errcode = '22023';
+  end if;
+  v_requested_role := p_role::public.user_role;
+
+  -- Serialize retries for one Auth identity. This makes a double-click or two
+  -- concurrent browser requests deterministic instead of relying on a unique
+  -- constraint error for idempotency.
+  perform pg_advisory_xact_lock(hashtextextended('onboarding:' || v_auth_user_id::text, 0));
+
+  select p.* into v_profile
+  from public.profiles p
+  where p.auth_user_id = v_auth_user_id;
+
+  if found and v_profile.role <> v_requested_role then
+    raise exception 'onboarding_role_conflict' using errcode = '23505';
+  end if;
+
+  -- A completed profile is returned unchanged. The RPC therefore remains a
+  -- safe retry endpoint and cannot be reused later to bypass normal profile or
+  -- learner/tutor update workflows (including suspension/review state).
+  if found and v_requested_role = 'student' then
+    select s.* into v_student
+    from public.students s
+    where s.profile_id = v_profile.id;
+
+    if found then
+      return jsonb_build_object(
+        'profile', to_jsonb(v_profile),
+        'student', to_jsonb(v_student),
+        'tutor', null
+      );
+    end if;
+  elsif found and v_requested_role = 'tutor' then
+    select t.* into v_tutor
+    from public.tutors t
+    where t.profile_id = v_profile.id;
+
+    if found then
+      return jsonb_build_object(
+        'profile', to_jsonb(v_profile),
+        'student', null,
+        'tutor', to_jsonb(v_tutor)
+      );
+    end if;
+  end if;
+
+  if v_full_name is null then
+    raise exception 'full_name_required' using errcode = '23514';
+  end if;
+
+  -- Only an administrator-created invitation may open a new onboarding path.
+  -- The role stamped by admin-invite-user in server-owned app metadata is also
+  -- authoritative, so a caller cannot turn a student invitation into a tutor
+  -- account (or vice versa). raw_user_meta_data is intentionally never trusted.
+  select
+    nullif(btrim(coalesce(u.email, '')), ''),
+    u.email_confirmed_at,
+    u.invited_at,
+    nullif(btrim(coalesce(u.raw_app_meta_data ->> 'onboarding_role', '')), '')
+  into v_email, v_email_confirmed_at, v_invited_at, v_authorized_role
+  from auth.users u
+  where u.id = v_auth_user_id;
+
+  if v_email is null or v_email_confirmed_at is null then
+    raise exception 'verified_email_required' using errcode = '23514';
+  end if;
+  if v_invited_at is null then
+    raise exception 'onboarding_invitation_required' using errcode = '42501';
+  end if;
+  if v_authorized_role is null or v_authorized_role not in ('student', 'tutor') then
+    raise exception 'onboarding_invitation_role_required' using errcode = '42501';
+  end if;
+  if v_authorized_role <> p_role then
+    raise exception 'onboarding_invitation_role_mismatch' using errcode = '42501';
+  end if;
+
+  if v_requested_role = 'student' then
+    if nullif(btrim(coalesce(p_grade, '')), '') is null then
+      raise exception 'grade_required' using errcode = '23514';
+    end if;
+  else
+    select coalesce(array_agg(item order by item), '{}'::text[])
+    into v_subjects
+    from (
+      select distinct btrim(entry) as item
+      from unnest(coalesce(p_subjects, '{}'::text[])) as supplied(entry)
+      where nullif(btrim(entry), '') is not null
+    ) normalized_subjects;
+
+    select coalesce(array_agg(item order by item), '{}'::text[])
+    into v_grades
+    from (
+      select distinct btrim(entry) as item
+      from unnest(coalesce(p_grades, '{}'::text[])) as supplied(entry)
+      where nullif(btrim(entry), '') is not null
+    ) normalized_grades;
+
+    if cardinality(v_subjects) = 0 then
+      raise exception 'subjects_required' using errcode = '23514';
+    end if;
+    if cardinality(v_grades) = 0 then
+      raise exception 'grades_required' using errcode = '23514';
+    end if;
+  end if;
+
+  if v_profile.id is null then
+    insert into public.profiles (auth_user_id, full_name, email, phone, role)
+    values (v_auth_user_id, v_full_name, v_email, v_phone, v_requested_role)
+    returning * into v_profile;
+  else
+    -- Repair a legacy partial onboarding (profile exists, role row does not)
+    -- using only the Auth-owned email and this request's safe profile fields.
+    update public.profiles
+    set full_name = v_full_name,
+        email = v_email,
+        phone = v_phone,
+        updated_at = now()
+    where id = v_profile.id
+    returning * into v_profile;
+  end if;
+
+  if v_requested_role = 'student' then
+    insert into public.students (
+      profile_id,
+      grade,
+      school,
+      parent_name,
+      parent_contact,
+      status
+    )
+    values (
+      v_profile.id,
+      btrim(p_grade),
+      nullif(btrim(coalesce(p_school, '')), ''),
+      nullif(btrim(coalesce(p_parent_name, '')), ''),
+      nullif(btrim(coalesce(p_parent_contact, '')), ''),
+      'active'
+    )
+    returning * into v_student;
+
+    perform public.log_audit_event(
+      'onboarding.completed',
+      'student',
+      v_student.id::text,
+      jsonb_build_object('role', 'student')
+    );
+
+    return jsonb_build_object(
+      'profile', to_jsonb(v_profile),
+      'student', to_jsonb(v_student),
+      'tutor', null
+    );
+  end if;
+
+  insert into public.tutors (
+    profile_id,
+    subjects,
+    grades,
+    hourly_rate,
+    status,
+    approval_status
+  )
+  values (
+    v_profile.id,
+    v_subjects,
+    v_grades,
+    null,
+    'pending',
+    'pending'
+  )
+  returning * into v_tutor;
+
+  perform public.log_audit_event(
+    'onboarding.completed',
+    'tutor',
+    v_tutor.id::text,
+    jsonb_build_object('role', 'tutor')
+  );
+
+  return jsonb_build_object(
+    'profile', to_jsonb(v_profile),
+    'student', null,
+    'tutor', to_jsonb(v_tutor)
+  );
+end;
+$$;
+
+revoke execute on function public.onboard_current_user(text, text, text, text, text, text, text, text[], text[]) from public;
+revoke execute on function public.onboard_current_user(text, text, text, text, text, text, text, text[], text[]) from anon;
+grant execute on function public.onboard_current_user(text, text, text, text, text, text, text, text[], text[]) to authenticated;
+
+-- ============================================================================
 -- Edge Function rate limiting (security fix, 2026-07-24). Neither Edge
 -- Function that proxies to a paid/quota-limited upstream
 -- (odie-careers-chat-stream -> Groq) or performs a privileged write
@@ -7641,7 +8144,71 @@ create table if not exists public.edge_function_rate_limit_events (
 );
 create index if not exists idx_edge_function_rate_limit_events_lookup
   on public.edge_function_rate_limit_events(function_name, subject_id, created_at desc);
+create index if not exists idx_edge_function_rate_limit_events_created_at
+  on public.edge_function_rate_limit_events(created_at);
 alter table public.edge_function_rate_limit_events enable row level security;
+
+-- Atomically checks and records one request. The transaction-level advisory
+-- lock is scoped to a caller+function pair, so concurrent requests cannot all
+-- observe the same pre-insert count and overshoot the limit.
+create or replace function public.check_and_record_edge_function_rate_limit(
+  p_subject_id uuid,
+  p_function_name text,
+  p_limit integer,
+  p_window_seconds integer
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_function_name text := nullif(btrim(coalesce(p_function_name, '')), '');
+  v_recent_count bigint;
+begin
+  if p_subject_id is null then
+    raise exception 'rate_limit_subject_required' using errcode = '22023';
+  end if;
+  if v_function_name is null or char_length(v_function_name) > 128 then
+    raise exception 'invalid_rate_limit_function_name' using errcode = '22023';
+  end if;
+  if p_limit is null or p_limit < 1 or p_limit > 1000 then
+    raise exception 'invalid_rate_limit' using errcode = '22023';
+  end if;
+  if p_window_seconds is null or p_window_seconds < 1 or p_window_seconds > 86400 then
+    raise exception 'invalid_rate_limit_window' using errcode = '22023';
+  end if;
+
+  perform pg_advisory_xact_lock(
+    hashtextextended(p_subject_id::text || ':' || v_function_name, 0)
+  );
+
+  -- Keep one full maximum window of history. The created_at index makes this
+  -- bounded cleanup efficient even as many distinct subjects use the service.
+  delete from public.edge_function_rate_limit_events
+  where created_at < now() - interval '24 hours';
+
+  select count(*) into v_recent_count
+  from public.edge_function_rate_limit_events e
+  where e.subject_id = p_subject_id
+    and e.function_name = v_function_name
+    and e.created_at >= now() - make_interval(secs => p_window_seconds);
+
+  if v_recent_count >= p_limit then
+    return false;
+  end if;
+
+  insert into public.edge_function_rate_limit_events (subject_id, function_name)
+  values (p_subject_id, v_function_name);
+
+  return true;
+end;
+$$;
+
+revoke execute on function public.check_and_record_edge_function_rate_limit(uuid, text, integer, integer) from public;
+revoke execute on function public.check_and_record_edge_function_rate_limit(uuid, text, integer, integer) from anon;
+revoke execute on function public.check_and_record_edge_function_rate_limit(uuid, text, integer, integer) from authenticated;
+grant execute on function public.check_and_record_edge_function_rate_limit(uuid, text, integer, integer) to service_role;
 
 -- ============================================================================
 -- Base table privileges for anon/authenticated/service_role -- fixes a real

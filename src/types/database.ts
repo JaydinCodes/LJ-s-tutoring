@@ -21,6 +21,7 @@ import type {
   SessionHistoryRecord,
   SessionRecord,
   Student,
+  StudentAssignedTutor,
   StudentGuardian,
   StudentProgress,
   StudentCareerProfileRow,
@@ -28,6 +29,7 @@ import type {
   StudentSessionRow,
   Subject,
   Tutor,
+  TutorAllocatedStudentSummary,
   TutorPayment,
   TutorStudentAllocation,
   AuditLogEntry,
@@ -75,9 +77,35 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      onboard_current_user: {
+        Args: {
+          p_role: 'student' | 'tutor';
+          p_full_name: string;
+          p_phone: string | null;
+          p_grade: string | null;
+          p_school: string | null;
+          p_parent_name: string | null;
+          p_parent_contact: string | null;
+          p_subjects: string[] | null;
+          p_grades: string[] | null;
+        };
+        Returns: {
+          profile: Profile;
+          student: Student | null;
+          tutor: Tutor | null;
+        };
+      };
       get_student_assignment_submissions: {
         Args: Record<string, never>;
         Returns: AssignmentSubmission[];
+      };
+      get_student_assigned_tutors: {
+        Args: Record<string, never>;
+        Returns: StudentAssignedTutor[];
+      };
+      get_tutor_allocated_students: {
+        Args: Record<string, never>;
+        Returns: TutorAllocatedStudentSummary[];
       };
       get_parent_progress_reports: {
         Args: Record<string, never>;

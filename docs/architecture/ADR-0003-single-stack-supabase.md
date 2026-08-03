@@ -61,7 +61,8 @@ For a 5-person team moving fast, maintaining two stacks is the wrong use of effo
 4. **Retire legacy auth routes** — done as a side effect of deleting `lms-api/` entirely; the `/auth/admin/login` MFA-bypass route no longer exists anywhere.
 5. **Reconcile duplicated tables** — done per the migration plan's own table-by-table triage.
 6. **Payroll/invoicing** — done for the core RPCs (see table above); invoice PDF rendering was never built.
-7. **Decommission `lms-api/`** — ✅ done 2026-07-24. `ARCHITECTURE.md` still needs its "transitional Fastify" language updated to match (tracked separately).
+7. **Decommission `lms-api/`** — ✅ done 2026-07-24. The maintained
+   `ARCHITECTURE.md` now reflects the single-stack implementation.
 
 ## Deployment & hosting consequences
 

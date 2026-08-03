@@ -5,82 +5,75 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const alertsPath = path.join(root, 'ops', 'monitoring', 'prometheus', 'alerts.yml');
-const dashboardPath = path.join(root, 'ops', 'monitoring', 'grafana', 'api-overview.dashboard.json');
 
 function fail(message) {
-  console.error(message);
+  console.error(`Monitoring validation failed: ${message}`);
   process.exit(1);
 }
 
-function mustInclude(haystack, needle, context) {
-  if (!haystack.includes(needle)) {
-    fail(`Monitoring validation failed: missing ${context} (${needle})`);
+function read(relativePath) {
+  const filePath = path.join(root, ...relativePath.split('/'));
+  if (!fs.existsSync(filePath)) {
+    fail(`missing ${relativePath}`);
+  }
+  return fs.readFileSync(filePath, 'utf8');
+}
+
+function mustInclude(source, pattern, description) {
+  if (!pattern.test(source)) {
+    fail(`missing ${description}`);
   }
 }
 
-if (!fs.existsSync(alertsPath)) {
-  fail('Monitoring validation failed: missing Prometheus alerts file at ops/monitoring/prometheus/alerts.yml');
-}
-if (!fs.existsSync(dashboardPath)) {
-  fail('Monitoring validation failed: missing Grafana dashboard file at ops/monitoring/grafana/api-overview.dashboard.json');
-}
-
-const alertsRaw = fs.readFileSync(alertsPath, 'utf8');
-const requiredAlerts = [
-  'ProjectOdysseusHighErrorRate',
-  'ProjectOdysseusSlowRequestRate',
-  'ProjectOdysseusRequestVolumeDrop',
-  'ProjectOdysseusReadyProbeFailing',
-];
-
-for (const alertName of requiredAlerts) {
-  mustInclude(alertsRaw, `alert: ${alertName}`, 'alert rule');
-}
-
-const requiredMetricFragments = [
-  'po_requests_total',
-  'po_requests_error_total',
-  'po_requests_slow_total',
-  'probe_success{job="project-odysseus-ready"}',
-];
-
-for (const metric of requiredMetricFragments) {
-  mustInclude(alertsRaw, metric, 'alert expression metric');
-}
-
-let dashboard;
+let health;
 try {
-  dashboard = JSON.parse(fs.readFileSync(dashboardPath, 'utf8'));
+  health = JSON.parse(read('health.json'));
 } catch (error) {
-  fail(`Monitoring validation failed: invalid dashboard JSON (${error.message})`);
+  fail(`health.json is not valid JSON (${error.message})`);
 }
 
-if (!Array.isArray(dashboard.panels) || dashboard.panels.length < 4) {
-  fail('Monitoring validation failed: dashboard must define at least 4 panels');
+const healthKeys = Object.keys(health).sort();
+if (
+  healthKeys.join(',') !== 'service,status,version'
+  || health.status !== 'ok'
+  || health.service !== 'project-odysseus-web'
+  || health.version !== '1'
+) {
+  fail('health.json does not match the exact versioned web contract');
 }
 
-const panelTitles = dashboard.panels.map((panel) => String(panel.title || ''));
-const requiredTitles = [
-  'Request Rate (req/s)',
-  'Error Rate (%)',
-  'Slow Request Ratio (%)',
-  'Total Requests (1h)',
-];
+const uptime = read('.github/workflows/uptime-check.yml');
+for (const variable of ['HEALTHCHECK_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY']) {
+  mustInclude(uptime, new RegExp(`vars\\.${variable}`), `${variable} repository variable`);
+}
+for (const endpoint of [
+  '/health.json',
+  '/auth/v1/health',
+  '/rest/v1/profiles?select=id&limit=0',
+]) {
+  mustInclude(uptime, new RegExp(endpoint.replace(/[?]/g, '\\?')), `${endpoint} probe`);
+}
+mustInclude(uptime, /content-type:.*application\/json/i, 'web JSON content-type assertion');
+mustInclude(uptime, /if: failure\(\)/, 'failed-probe notification step');
 
-for (const title of requiredTitles) {
-  if (!panelTitles.includes(title)) {
-    fail(`Monitoring validation failed: missing dashboard panel title (${title})`);
-  }
+const reporting = read('src/lib/monitoring/errorReporting.ts');
+for (const [pattern, description] of [
+  [/import\.meta\.env\.PROD/, 'production-only Sentry guard'],
+  [/VITE_SENTRY_DSN/, 'Sentry DSN guard'],
+  [/sendDefaultPii: false/, 'Sentry PII default-off setting'],
+  [/beforeSend\(event\)/, 'Sentry event sanitizer'],
+  [/sensitiveKeyPattern/, 'sensitive metadata key filter'],
+  [/Sentry\.setUser\(context\.authUserId \? \{ id: context\.authUserId \} : null\)/, 'identifier-only monitoring user context'],
+]) {
+  mustInclude(reporting, pattern, description);
 }
 
-const dashboardQueryBlob = dashboard.panels
-  .flatMap((panel) => Array.isArray(panel.targets) ? panel.targets : [])
-  .map((target) => String(target.expr || ''))
-  .join('\n');
+const notFound = read('src/app/routes/NotFoundRoute.tsx');
+mustInclude(notFound, /captureAppMessage\('not_found_route'/, 'React not-found monitoring event');
+mustInclude(notFound, /action: 'not_found'/, 'not-found action tag');
 
-for (const metric of ['po_requests_total', 'po_requests_error_total', 'po_requests_slow_total']) {
-  mustInclude(dashboardQueryBlob, metric, 'dashboard query metric');
+for (const workflowPath of ['.github/workflows/app-ci.yml', '.github/workflows/release-gates.yml']) {
+  mustInclude(read(workflowPath), /npm run validate:monitoring/, `${workflowPath} monitoring gate`);
 }
 
 console.log('monitoring_assets_validation_passed');

@@ -70,8 +70,8 @@ test('submit_assignment_submission() rejects cross-org assignments, matching the
   // (authoritative, actually-applied) definition.
   const lastIdx = schema.lastIndexOf('create or replace function public.submit_assignment_submission(');
   assert.ok(lastIdx > startIdx, 'expected an interim definition followed by the authoritative one');
-  const block = schema.slice(lastIdx, lastIdx + 4000);
-  assert.match(block, /v_assignment\.organization_id <> public\.current_student_org_id\(\)/, 'submission must be rejected when the assignment belongs to a different org');
+  const block = schema.slice(lastIdx, schema.indexOf('$$;', lastIdx) + 3);
+  assert.match(block, /v_assignment\.organization_id is distinct from public\.current_student_org_id\(\)/, 'submission must reject a different org and a missing student-org binding');
 });
 
 test('assignment-submissions storage policies (insert + update) are org-scoped, not just published-status-scoped', () => {
@@ -114,8 +114,10 @@ test('both Edge Functions rate-limit before doing real work', () => {
   const inviteFn = read('supabase/functions/admin-invite-user/index.ts');
 
   for (const [fn, name] of [[odieFn, 'odie-careers-chat-stream'], [inviteFn, 'admin-invite-user']]) {
-    assert.match(fn, /edge_function_rate_limit_events/, `${name} must check the rate-limit table`);
+    assert.match(fn, /rpc\(\s*'check_and_record_edge_function_rate_limit'/, `${name} must use the atomic rate-limit RPC`);
+    assert.doesNotMatch(fn, /\.from\('edge_function_rate_limit_events'\)/, `${name} must not use a race-prone count/insert pair`);
     assert.match(fn, /'rate_limited'.*429|429.*'rate_limited'|error: 'rate_limited' \}, 429\)/, `${name} must reject over-limit callers with 429`);
+    assert.match(fn, /'rate_limiter_unavailable'.*503|503.*'rate_limiter_unavailable'|error: 'rate_limiter_unavailable' \}, 503\)/, `${name} must fail closed when the limiter is unavailable`);
   }
 });
 

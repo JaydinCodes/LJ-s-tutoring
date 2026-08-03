@@ -2,8 +2,8 @@ import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2ETutorDashboard } from '../../lib/e2e/mockRoleData';
 import { requireSupabase } from '../../lib/supabase/client';
 import { resolveSignedUrls } from '../../lib/supabase/storage';
-import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, Tutor, TutorDashboardView, TutorStudentAllocation } from '../../types/lms';
-import { loadTutorSessions, type TutorSession } from './tutorOperationsRepository';
+import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Tutor, TutorDashboardView, TutorStudentAllocation } from '../../types/lms';
+import { loadTutorAllocatedStudents, loadTutorSessions, type TutorSession } from './tutorOperationsRepository';
 
 async function getCurrentTutor() {
   const client = requireSupabase();
@@ -45,10 +45,11 @@ export async function loadTutorDashboard(): Promise<TutorDashboardView> {
   const client = requireSupabase();
   const { profile, tutor } = await getCurrentTutor();
 
-  const [classesResult, assignmentsResult, allocationsResult, sessionsResult] = await Promise.all([
+  const [classesResult, assignmentsResult, allocationsResult, allocatedStudents, sessionsResult] = await Promise.all([
     client.from('classes').select('*').eq('tutor_id', tutor.id).neq('status', 'inactive').order('day_of_week', { ascending: true }),
     client.from('assignments').select('*').eq('created_by', profile.id).order('created_at', { ascending: false }),
     client.from('tutor_student_allocations').select('*').eq('tutor_id', tutor.id).eq('status', 'active').order('created_at', { ascending: false }),
+    loadTutorAllocatedStudents(client),
     loadTutorSessions(),
   ]);
 
@@ -80,29 +81,11 @@ export async function loadTutorDashboard(): Promise<TutorDashboardView> {
     submissions = (submissionsResult.data || []) as AssignmentSubmission[];
   }
 
-  const studentIds = Array.from(new Set([
-    ...submissions.map((submission) => submission.student_id),
-    ...allocations.map((allocation) => allocation.student_id),
-  ]));
-  let students: Student[] = [];
-  if (studentIds.length) {
-    const studentsResult = await client.from('students').select('*').in('id', studentIds);
-    if (!studentsResult.error) {
-      students = (studentsResult.data || []) as Student[];
-    }
-  }
-
-  const studentProfileIds = Array.from(new Set(students.map((student) => student.profile_id).filter(Boolean)));
-  const studentProfilesResult = studentProfileIds.length
-    ? await client.from('profiles').select('*').in('id', studentProfileIds)
-    : { data: [], error: null };
-  const studentProfiles = (studentProfilesResult.data || []) as Profile[];
-  const studentProfileById = new Map(studentProfiles.map((studentProfile) => [studentProfile.id, studentProfile]));
   const assignmentTitleById = new Map(assignments.map((assignment) => [assignment.id, assignment.title]));
-  const studentById = new Map(students.map((student) => [student.id, student]));
-  const studentLabelById = new Map(students.map((student) => [
-    student.id,
-    studentProfileById.get(student.profile_id)?.full_name || [student.grade, student.school].filter(Boolean).join(' | ') || student.id,
+  const studentById = new Map(allocatedStudents.map((student) => [student.student_id, student]));
+  const studentLabelById = new Map(allocatedStudents.map((student) => [
+    student.student_id,
+    student.full_name || [student.grade, student.school].filter(Boolean).join(' | ') || student.student_id,
   ]));
   const markedCount = submissions.filter((submission) => submission.status === 'marked').length;
   // assignment-submissions is a private bucket -- resolve the stored path to a
@@ -136,11 +119,8 @@ export async function loadTutorDashboard(): Promise<TutorDashboardView> {
     allocatedStudents: allocations
       .map((allocation) => {
         const student = studentById.get(allocation.student_id);
-        const studentProfile = student ? studentProfileById.get(student.profile_id) : undefined;
         return student ? {
           ...student,
-          full_name: studentProfile?.full_name,
-          email: studentProfile?.email,
           allocation_status: allocation.status,
           focus_notes: allocation.focus_notes,
         } : null;

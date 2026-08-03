@@ -10,14 +10,14 @@ concurrency:
 jobs:
   gates:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -28,35 +28,67 @@ jobs:
           node scripts/generate-rollback-plan.js
           node scripts/check-rollback-plan.js
 
-      - name: Security + lint gate
+      - name: Lint
         run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Unit and source-contract tests
+        run: npm test
+
+      - name: Start local Supabase
+        run: npm run supabase:start
+
+      - name: Rebuild database from committed migrations
+        run: npm run supabase:reset
+
+      - name: Run runtime RLS allow-and-deny matrix
+        run: npm run test:rls:runtime
+
+      - name: Verify generated Supabase type fingerprint
+        run: npm run supabase:types:check
 
       - name: Dependency audit gate (prod)
         run: npm audit --omit=dev --audit-level=high
 
-      - name: Build + static security checks
-        run: |
-          npm run build
+      - name: Build
+        run: npm run build
 
-      - name: Install Chromium
+      - name: Static asset budget
+        run: npm run perf:budget
+
+      - name: Monitoring assets validation
+        run: npm run validate:monitoring
+
+      - name: Install Playwright Chromium
         run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser || sudo apt-get install -y chromium
-          CHROME_PATH=$(which chromium-browser || which chromium || true)
+          npm run test:e2e:install
+          CHROME_PATH=$(node -e "process.stdout.write(require('playwright').chromium.executablePath())")
           if [ -z "$CHROME_PATH" ]; then
             echo "Chromium executable not found after installation"
             exit 1
           fi
           echo "CHROME_PATH=$CHROME_PATH" >> $GITHUB_ENV
 
-      - name: Performance budgets
+      - name: Seed local Supabase and run real-auth role journeys
+        run: npm run test:e2e:supabase
+
+      - name: Frontend mock smoke journeys
+        run: npm run test:e2e
+
+      - name: Canonical route QA and Lighthouse budgets
         env:
           LHCI_CHROME_PATH: ${{ env.CHROME_PATH }}
+          PUPPETEER_EXECUTABLE_PATH: ${{ env.CHROME_PATH }}
         run: |
-          npx http-server dist -p 8080 -c-1 --silent > /tmp/release-static-server.log 2>&1 &
-          npx wait-on --timeout 60000 http://localhost:8080/ || { cat /tmp/release-static-server.log; exit 1; }
+          npm run qa:serve > /tmp/release-static-server.log 2>&1 &
+          npm run qa:wait || { cat /tmp/release-static-server.log; exit 1; }
           curl -fsS http://localhost:8080/ > /dev/null || { cat /tmp/release-static-server.log; exit 1; }
-          npx lhci autorun --config=./lighthouserc.js
+          npm run qa:html
+          npm run qa:links
+          npm run qa:a11y
+          npm run perf:lighthouse
 
       - name: Collect release evidence
         run: node scripts/collect-release-evidence.js

@@ -46,10 +46,9 @@ Thumbs.db
 playwright-report/
 test-results/
 
-# Supabase CLI local state and generated local migration copy.
+# Supabase CLI local state. SQL migration history is committed and immutable.
 supabase/.branches/
 supabase/.temp/
-supabase/migrations/20260606000000_project_odysseus_schema.sql
 
 # Agent skill content installed via `npx skills add` -- regenerate with
 # `npx skills install` from the committed skills-lock.json. Don't commit

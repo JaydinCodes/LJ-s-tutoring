@@ -1,9 +1,18 @@
 # Multi-Organisation Data Model — Design & Implementation Plan
 
+> **Historical implementation plan with a landed foundation.** Organisation and
+> membership tables, additive backfill, scoped RLS, aggregate NGO reporting, and
+> small-cohort suppression are present in the Supabase desired-state schema.
+> Inline references to a missing organisation model, `lms-api`, or Prisma are
+> preserved planning context, not current architecture. Use
+> [ARCHITECTURE.md](ARCHITECTURE.md) and runtime RLS tests for implemented state.
+
 **Status:** **Accepted 2026-07-08.** Serves as **ADR-0002**. Open questions resolved (§11).
 **Owner decision needed:** resolved (see §11).
 **Depends on / relates to:** `docs/architecture/ADR-0001-supabase-first.md`, `docs/product/CONTENT_AND_PRODUCT_STRATEGY.md` (§6), `AUDIT.md` (Critical RLS findings).
-**Scope:** Supabase browser-facing schema (`docs/supabase/schema.sql`). Prisma/Fastify finance tables are a follow-on (§9).
+**Scope:** historical design for the Supabase browser-facing schema. Current
+finance and organisation scope is documented in the maintained architecture and
+desired-state schema.
 
 ---
 

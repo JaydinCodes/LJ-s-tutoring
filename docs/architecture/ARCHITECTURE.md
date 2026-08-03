@@ -2,15 +2,24 @@
 
 Project Odysseus / LJ's Tutoring is a Supabase-first tutoring platform for Grade 8-12 CAPS Mathematics operations in South Africa.
 
-This document is the practical onboarding guide for new developers. If older docs or legacy code disagree with this document, follow this document and `docs/architecture/ADR-0001-supabase-first.md`.
+**Status:** current implementation and developer runbook, verified against the
+2026-08-03 working tree. Record the deployed commit SHA in release evidence;
+this document does not pretend an uncommitted verification has a release SHA.
+
+This document is the practical source of truth for new developers. If an older
+audit, migration plan, roadmap, or legacy folder disagrees with it, follow this
+document. ADR-0001 and ADR-0003 record why the project chose this architecture;
+they are decision history, not competing runbooks.
 
 ## Current Verdict
 
 - Active app: `src/` is the unified React, TypeScript, and Vite application for the public site, login, onboarding, student dashboard, tutor dashboard, and admin dashboard.
 - Primary platform: Supabase Auth, `profiles`, RLS, Storage, and RPC are the browser trust boundary — the **only** stack. `lms-api/` (Fastify + Prisma) was fully retired 2026-07-24; see [ADR-0003](ADR-0003-single-stack-supabase.md).
 - Backend-only / trusted-execution work (Odie AI proxy, admin user invites) runs on Supabase Edge Functions (`supabase/functions/`), not a separate service.
-- Canonical Supabase schema source: `docs/supabase/schema.sql`. Local Supabase migrations are generated from that file.
-- Legacy folders: `student-app/` is inactive reference material unless a task explicitly says otherwise (`legacy/static/` was deleted alongside `lms-api/` — it was never reachable in production).
+- Desired-state / clean-install schema reference: `docs/supabase/schema.sql`.
+- Immutable database delivery history: committed SQL under `supabase/migrations/`, applied in timestamp order by the Supabase CLI.
+- Retired frontend sources: `student-app/`, `legacy/static/`, and the obsolete `assets/app-critical.js` were removed after the unified app reached parity. Their history remains available in Git; none is part of the active build.
+- Static asset ownership: `assets/` is a closed six-file production allowlist. One untouched historical Community file remains under the owner's explicit Community exclusion and is never copied to `dist/`; see [STATIC_ASSET_OWNERSHIP.md](STATIC_ASSET_OWNERSHIP.md).
 
 ## Repository Map
 
@@ -23,14 +32,16 @@ This document is the practical onboarding guide for new developers. If older doc
 | `src/features/students/` | Active | Student dashboard, assignments, results, careers, reports, and support routes. |
 | `src/features/admin/` | Active | Admin dashboards and operational workflows. |
 | `src/features/tutors/` | Active | Tutor dashboards, classes, sessions, submissions, reports, and risk views. |
+| `src/features/parents/` | Active | Guardian-linked learner reports. |
+| `src/features/ngo/` | Active | Aggregate NGO-partner reports. |
 | `src/lib/supabase/` | Active | Public Supabase browser client setup, plus `edgeFunctions.ts` for streaming Edge Function calls. |
-| `docs/supabase/schema.sql` | Active source | Canonical Supabase tables, helper functions, RLS policies, Storage policies, and RPC functions. |
+| `docs/supabase/schema.sql` | Active desired state | Canonical clean-install reference for Supabase tables, helper functions, RLS policies, Storage policies, and RPC functions. |
 | `supabase/config.toml` | Active local setup | Supabase CLI local project configuration. |
 | `supabase/functions/` | Active | Edge Functions for backend-only/trusted-execution work (Odie AI proxy, admin user invites). |
-| `supabase/migrations/` | Generated local target | Local migration output generated from `docs/supabase/schema.sql`; generated SQL is ignored by git. |
+| `supabase/migrations/` | Active delivery history | Committed, immutable baseline and forward-only migrations replayed locally and in CI. |
 | `scripts/build-static.js` | Active | Generates static HTML shells for React routes and copies public assets into `dist/`. |
-| `assets/` | Active support assets | Static assets and runtime config files copied into the production static build. |
-| `student-app/` | Legacy | Older student app source; not the active student portal. |
+| `assets/` | Closed allowlist | Six explicitly copied/build-consumed assets plus one non-production historical Community exclusion, inventoried in [STATIC_ASSET_OWNERSHIP.md](STATIC_ASSET_OWNERSHIP.md). |
+| `student-app/`, `assets/app-critical.js` | Removed 2026-08-03 | Historical sources available through Git history; neither path participates in the active build. |
 
 ## Active Frontend App
 
@@ -56,6 +67,8 @@ Routes are registered in `src/app/App.tsx`.
 | `/onboarding/student`, `/onboarding/tutor` | Public entry, controlled writes | Self-service onboarding for non-admin roles only. |
 | `/dashboard/student/*` | Student only | Dashboard, assignments, progress, results, careers, reports, community, settings. |
 | `/dashboard/tutor/*` | Tutor only | Tutor dashboard, classes, sessions, submissions, reports, risk. |
+| `/dashboard/parent/*` | Parent only | Guardian-linked released learner reports. |
+| `/dashboard/ngo/*` | NGO partner only | Permitted aggregate cohort reports. |
 | `/dashboard/admin/*` | Admin only + MFA | Admin dashboard, student/tutor management, assignments, approvals, payments, payroll, reconciliation, reports, results, audit, privacy, retention, ops runbook. |
 | `/student/*`, `/tutor/*`, `/admin/*` | Compatibility redirects | Redirect into canonical `/dashboard/...` routes. |
 
@@ -70,7 +83,8 @@ The frontend auth flow is:
 1. `src/features/auth/AuthProvider.tsx` loads Supabase session state.
 2. `src/features/auth/authService.ts` calls `supabase.auth.getSession()`.
 3. The app reads the authenticated user's `profiles` row by `auth_user_id`.
-4. `src/features/auth/roles.ts` normalizes role values to `student`, `tutor`, or `admin`.
+4. `src/features/auth/roles.ts` normalizes role values to `student`, `tutor`,
+   `admin`, `parent`, or `ngo_partner`.
 5. `ProtectedRoute` blocks unauthenticated, missing-profile, invalid-role, and wrong-role users.
 6. Admin users must satisfy Supabase MFA assurance before admin content renders.
 
@@ -116,7 +130,8 @@ sequenceDiagram
 - `student`: may access student routes and student-owned data.
 - `tutor`: may access tutor routes and tutor-owned workflows, especially assignments they created.
 - `admin`: may access admin routes only after Supabase session, admin profile, and MFA.
-- `parent` and `ngo_partner`: exist in the Supabase role enum for future scoped reporting, but active frontend dashboards are not implemented yet.
+- `parent`: may access only guardian-linked learner reports permitted by the database boundary.
+- `ngo_partner`: may access only permitted cohort reporting data.
 
 Admin profiles must be created by trusted operator or service-role process. Public onboarding must not create admin roles.
 
@@ -253,10 +268,18 @@ Rules for future backend work:
 
 Supabase is the direction for primary product data, auth, authorization, Storage, and privileged mutations — and, as of 2026-07-24, the *only* stack (`lms-api`/Prisma fully retired, see [ADR-0003](ADR-0003-single-stack-supabase.md)).
 
-- Edit `docs/supabase/schema.sql` for Supabase schema, RLS, Storage policies, and RPC.
-- Run `npm run supabase:migration:sync` to generate the local Supabase CLI migration.
-- Run `npm run supabase:reset` to apply the generated migration to local Supabase.
-- Use `npm run test:rls` for source-level RLS/RPC contract coverage.
+The project uses imperative, committed migrations with a frozen baseline:
+
+1. Update `docs/supabase/schema.sql` so the desired-state reference remains accurate.
+2. Discover the installed CLI command with `npx supabase migration --help`, then create a descriptively named forward migration with `npx supabase migration new <description>`.
+3. Put only the forward delta in the new file. Never edit an already-applied migration.
+4. Run `npm run supabase:reset` to rebuild local Postgres from the committed migration chain.
+5. Run `npm run test:rls` for source contracts and `npm run test:rls:runtime` for the pgTAP allow/deny matrix against real PostgreSQL sessions.
+6. Commit the desired-state schema and forward migration together.
+
+`npm run supabase:legacy-baseline:overwrite` exists only to reproduce the
+historical baseline from the desired-state file. It is not part of normal
+development or CI.
 
 ## Local Development
 
@@ -294,17 +317,13 @@ npm run dev:react
 Build and verify frontend:
 
 ```bash
-npm run test:frontend:unit
+npm test
 npm run test:rls
+npm run test:rls:runtime
+npm run lint
 npm run typecheck:react
-npm run build:react
-```
-
-Run the transitional API separately when needed:
-
-```bash
-npm run dev:api
-npm run test:api
+npm run build
+npm run test:e2e
 ```
 
 Full static production build:
@@ -320,11 +339,10 @@ Local Supabase details live in `docs/supabase/LOCAL_DEVELOPMENT.md`.
 
 - Static React output is served from `dist/`.
 - Protected static shells must include `noindex` metadata; `scripts/build-static.js` handles this for dashboard and onboarding routes.
-- Browser-exposed config must contain only public values such as `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `PUBLIC_PO_API_BASE`.
+- Browser-exposed config must contain only public values such as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 - Never expose Supabase service-role keys to the browser.
 - Production admin access requires Supabase MFA configuration and verified admin factors.
-- Fastify deployment remains useful for backend services, but production browser auth is Supabase-first.
-- Portal redirect env vars such as `ADMIN_PORTAL_URL`, `TUTOR_PORTAL_URL`, and `STUDENT_PORTAL_URL` should be origins only; route paths are appended by code.
+- Scheduled uptime monitoring validates the static JSON contract, Supabase Auth health, and a zero-row PostgREST request using only the public URL and anon key.
 
 ## Security Notes
 
@@ -339,9 +357,9 @@ The platform handles minors, academic records, tutor information, parent/guardia
 - RPC: sensitive writes belong in SQL functions that validate role, ownership, state, and allowed transitions.
 - Tests: RLS/RPC policy tests should accompany every schema change that affects learner, tutor, admin, parent, or NGO data.
 
-## Still Transitional Or Needs Clarification
+## Known Gaps And Release Boundaries
 
-- Parent and NGO dashboards are not active yet; future access should be modeled as scoped RLS views/RPC, not broad admin-like reads.
-- Some Fastify API routes still use legacy cookie sessions and Prisma-era tables. They need endpoint-by-endpoint migration decisions.
-- API migrations still exist for historical features. New Supabase-first LMS work should use the Supabase schema source unless a feature is explicitly backend-only.
-- Admin onboarding/provisioning needs a trusted service-role workflow rather than public self-service.
+- The committed migration chain and pgTAP matrix are the database delivery gate; source-string RLS tests remain useful but are not runtime proof by themselves.
+- Community is not release-approved. Its safeguarding and tenant-isolation work remains explicitly deferred by the project owner and must be completed before real-user enablement.
+- Browser smoke journeys use a deterministic in-memory adapter. They test routes and UI behavior, not Supabase authorization; the pgTAP job is the database authorization gate.
+- Production database changes must flow through reviewed migrations. Never use a local or linked reset against production, and never put production learner data in seed files.

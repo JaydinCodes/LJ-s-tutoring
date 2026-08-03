@@ -29,7 +29,7 @@ test('dashboard visuals stay low-jank', () => {
   // covered here.
 });
 
-test('icons and Lighthouse tracking are covered by the performance budget', () => {
+test('icons, media, and Lighthouse tracking are covered by the performance budget', () => {
   const pkg = JSON.parse(read('package.json'));
   const shell = read('src', 'components', 'dashboard', 'DashboardShell.tsx');
   const script = read('scripts', 'check-frontend-performance-budget.cjs');
@@ -39,6 +39,9 @@ test('icons and Lighthouse tracking are covered by the performance budget', () =
   assert.ok(shell.includes("from 'lucide-react'"), 'dashboard icons must use Lucide named imports');
   assert.ok(script.includes('react-app-dist/react-app.js'), 'budget checker must inspect the built JS bundle when present');
   assert.ok(script.includes('react-app-dist/react-app.css'), 'budget checker must inspect the built CSS bundle when present');
+  assert.ok(script.includes('images/odysseus-hero-fallback.webp'), 'budget checker must cap the hero poster');
+  assert.ok(script.includes('images/bg_video-optimized.mp4'), 'budget checker must cap the hero video');
+  assert.ok(script.includes("500_000, 'tutor portraits'"), 'budget checker must cap tutor portraits as a group');
   assert.ok(docs.includes('Lighthouse before'), 'performance docs must track the before Lighthouse state');
   assert.ok(docs.includes('Lighthouse after'), 'performance docs must track the after Lighthouse state');
 });

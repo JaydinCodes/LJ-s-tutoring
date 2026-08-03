@@ -146,17 +146,22 @@ Deno.serve(async (req) => {
     // admin+AAL2-authenticated session had no throttling on mass account
     // creation. 10 invites / 10 minutes covers real bulk onboarding while
     // blocking a tight loop from a compromised admin session.
-    const rateLimitWindowStart = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    const { count: recentInviteCount } = await admin
-      .from('edge_function_rate_limit_events')
-      .select('*', { count: 'exact', head: true })
-      .eq('function_name', 'admin-invite-user')
-      .eq('subject_id', userData.user.id)
-      .gte('created_at', rateLimitWindowStart);
-    if ((recentInviteCount ?? 0) >= 10) {
+    const { data: rateLimitAllowed, error: rateLimitError } = await admin.rpc(
+      'check_and_record_edge_function_rate_limit',
+      {
+        p_subject_id: userData.user.id,
+        p_function_name: 'admin-invite-user',
+        p_limit: 10,
+        p_window_seconds: 10 * 60,
+      },
+    );
+    if (rateLimitError) {
+      console.error('rate_limit_check_failed', { functionName: 'admin-invite-user', code: rateLimitError.code });
+      return json({ error: 'rate_limiter_unavailable' }, 503);
+    }
+    if (rateLimitAllowed !== true) {
       return json({ error: 'rate_limited' }, 429);
     }
-    await admin.from('edge_function_rate_limit_events').insert({ subject_id: userData.user.id, function_name: 'admin-invite-user' });
 
     // 2) Validate the payload.
     const parsed = AdminUserInviteSchema.safeParse(await req.json());
@@ -176,31 +181,48 @@ Deno.serve(async (req) => {
     }
 
     // 4) Invite or create the Auth user.
-    const metadata = { full_name: input.fullName, role: input.role };
+    const userMetadata = { full_name: input.fullName };
     let userId: string | undefined;
+    let existingAppMetadata: Record<string, unknown> = {};
     if (input.mode === 'invite') {
       const { data, error } = await admin.auth.admin.inviteUserByEmail(input.email, {
-        data: metadata,
+        data: userMetadata,
         redirectTo: Deno.env.get('SUPABASE_INVITE_REDIRECT_URL') || undefined,
       });
       if (error) throw new Error(error.message);
       userId = data.user?.id;
+      existingAppMetadata = data.user?.app_metadata ?? {};
     } else {
       const { data, error } = await admin.auth.admin.createUser({
         email: input.email,
         password: input.password,
         email_confirm: false,
-        user_metadata: metadata,
+        user_metadata: userMetadata,
       });
       if (error) throw new Error(error.message);
       userId = data.user?.id;
+      existingAppMetadata = data.user?.app_metadata ?? {};
     }
     if (!userId) {
       return json({ error: 'supabase_auth_user_missing' }, 400);
     }
 
-    // 5) Provision profile + operational record; roll back the Auth user on failure.
+    // 5) Stamp the requested role into server-owned app metadata, preserving
+    // provider fields managed by Supabase. raw_user_meta_data is user-editable
+    // and must never be an onboarding authorization boundary.
     try {
+      const { error: appMetadataError } = await admin.auth.admin.updateUserById(userId, {
+        app_metadata: {
+          ...existingAppMetadata,
+          onboarding_role: input.role,
+        },
+      });
+      if (appMetadataError) {
+        throw new Error('onboarding_role_stamp_failed');
+      }
+
+      // 6) Provision profile + operational record; roll back the Auth user on
+      // any metadata or database failure.
       const { data: profileRow, error: profileErr } = await admin
         .from('profiles')
         .insert({

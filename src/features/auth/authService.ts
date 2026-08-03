@@ -284,7 +284,9 @@ export async function sendMagicLink(email: string) {
   const redirectTo = `${window.location.origin}/dashboard/login/`;
   const result = await client.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: redirectTo },
+    // Access is provisioned by an administrator. Never let the public magic
+    // link form silently create an uninvited Auth identity.
+    options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
   });
   if (result.error) {
     captureAppError(result.error, {

@@ -2,7 +2,7 @@ import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2EStudentDashboard } from '../../lib/e2e/mockRoleData';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import { resolveSignedUrls } from '../../lib/supabase/storage';
-import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, StudentDashboardView, StudentProgress, Tutor, TutorStudentAllocation } from '../../types/lms';
+import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, StudentAssignedTutor, StudentDashboardView, StudentProgress } from '../../types/lms';
 
 function average(values: number[]) {
   if (!values.length) {
@@ -58,39 +58,50 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     return null;
   }
 
-  const { data: auth } = await supabase.auth.getUser();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError) {
+    throw authError;
+  }
   const authUserId = auth.user?.id;
   if (!authUserId) {
     return null;
   }
 
-  const profileResult = await supabase.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+  const profileResult = await supabase.from('profiles').select('*').eq('auth_user_id', authUserId).maybeSingle();
+  if (profileResult.error) {
+    throw profileResult.error;
+  }
   const profile = profileResult.data as Profile | null;
   if (!profile) {
     return null;
   }
 
-  const studentResult = await supabase.from('students').select('*').eq('profile_id', profile.id).single();
+  const studentResult = await supabase.from('students').select('*').eq('profile_id', profile.id).maybeSingle();
+  if (studentResult.error) {
+    throw studentResult.error;
+  }
   const student = studentResult.data as Student | null;
   if (!student) {
     return null;
   }
 
-  const [assignmentsResult, progressResult, enrollmentsResult, submissionsResult, allocationsResult] = await Promise.all([
+  const [assignmentsResult, progressResult, enrollmentsResult, submissionsResult, assignedTutorsResult] = await Promise.all([
     supabase.from('assignments').select('*').eq('grade', student.grade || '').neq('status', 'draft').order('due_date', { ascending: true }),
     supabase.from('student_progress').select('*').eq('student_id', student.id).order('recorded_at', { ascending: false }),
     supabase.from('class_enrollments').select('class_id').eq('student_id', student.id).eq('status', 'active'),
     // Student submission reads must go through the redacted RPC so unreleased marks and feedback stay hidden.
     supabase.rpc('get_student_assignment_submissions'),
-    // Explicit column list (NOT select('*')): tutor_student_allocations now carries
-    // `rate_override` (the tutor's negotiated pay rate for this engagement), which must
-    // never reach a student's own dashboard response. Schedule/subject fields are fine.
-    supabase
-      .from('tutor_student_allocations')
-      .select('id, tutor_id, student_id, status, start_date, end_date, focus_notes, subject_id, allowed_days_json, allowed_time_ranges_json')
-      .eq('student_id', student.id)
-      .eq('status', 'active'),
+    // This SECURITY DEFINER projection returns only id/name/email for tutors
+    // with an active allocation to the current learner. Students have no
+    // direct SELECT policy on the allocation or tutor base tables.
+    supabase.rpc('get_student_assigned_tutors'),
   ]);
+
+  for (const result of [assignmentsResult, progressResult, enrollmentsResult, submissionsResult, assignedTutorsResult]) {
+    if (result.error) {
+      throw result.error;
+    }
+  }
 
   const assignments = (assignmentsResult.data || []) as Assignment[];
   const progress = (progressResult.data || []) as StudentProgress[];
@@ -98,32 +109,21 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
   const classesResult = enrolledClassIds.length
     ? await supabase.from('classes').select('*').in('id', enrolledClassIds).neq('status', 'inactive')
     : { data: [], error: null };
+  if (classesResult.error) {
+    throw classesResult.error;
+  }
   const classes = (classesResult.data || []) as ClassRecord[];
   const submissions = (submissionsResult.data || []) as AssignmentSubmission[];
-  const allocations = (allocationsResult.data || []) as TutorStudentAllocation[];
-  const tutorIds = allocations.map((allocation) => allocation.tutor_id);
-  // Explicit column list (NOT select('*')): tutors now carries approval/qualification
-  // vetting fields (approval_status, approval_note, qualification_band, ...) that must
-  // never reach a student's own dashboard response -- approval_note in particular can
-  // carry a reviewer's internal commentary about the tutor. See the EXPOSURE NOTE in
-  // docs/supabase/schema.sql. This is exactly the original (pre-vetting-migration)
-  // column set.
-  const tutorsResult = tutorIds.length
-    ? await supabase.from('tutors').select('id, profile_id, subjects, grades, hourly_rate, status, created_at').in('id', tutorIds)
-    : { data: [], error: null };
-  const tutors = (tutorsResult.data || []) as Tutor[];
-  const tutorProfileIds = Array.from(new Set(tutors.map((tutor) => tutor.profile_id).filter(Boolean)));
-  const tutorProfilesResult = tutorProfileIds.length
-    ? await supabase.from('profiles').select('*').in('id', tutorProfileIds)
-    : { data: [], error: null };
-  const tutorProfiles = (tutorProfilesResult.data || []) as Profile[];
-  const tutorProfileById = new Map(tutorProfiles.map((tutorProfile) => [tutorProfile.id, tutorProfile]));
+  const assignedTutors = (assignedTutorsResult.data || []) as StudentAssignedTutor[];
   const submittedIds = new Set(submissions.map((item) => item.assignment_id));
   const score = average(progress.map((item) => Number(item.score)).filter(Number.isFinite));
   const subjectIds = Array.from(new Set(assignments.map((assignment) => assignment.subject_id).filter(Boolean)));
   const subjectsResult = subjectIds.length
     ? await supabase.from('subjects').select('*').in('id', subjectIds)
     : { data: [], error: null };
+  if (subjectsResult.error) {
+    throw subjectsResult.error;
+  }
   const subjectNameById = new Map(((subjectsResult.data || []) as Array<{ id: string; name?: string }>).map((subject) => [subject.id, subject.name]));
 
   // Both storage buckets are private (see docs/supabase/schema.sql), so the
@@ -164,11 +164,7 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     assignments: assignmentsWithSubjects,
     progress,
     classes,
-    assignedTutors: tutors.map((tutor) => ({
-      ...tutor,
-      full_name: tutorProfileById.get(tutor.profile_id)?.full_name,
-      email: tutorProfileById.get(tutor.profile_id)?.email,
-    })),
+    assignedTutors,
     submissions: submissionsWithSignedUrls,
     recommendedNext: weakestProgress ? {
       title: `Recommended next: ${weakestProgress.topic}`,

@@ -37,9 +37,19 @@ All four run on **one platform, one content spine, one security model** — they
 
 ## 3. Where we are today (honest baseline)
 
-- **Live:** Supabase-first React LMS — public site, auth, student/tutor/admin dashboards, assignment submission/marking via RPC, admin MFA, audit logging, Odie AI assistant (OpenRouter-backed), careers.
-- **Partial:** an informal NGO concept (`ngo_partners` + `ngo_partner_id`) but **no real organisation isolation yet**; parent and NGO dashboards not built; volunteer logging exists in the legacy Fastify API.
-- **Known debt (from `AUDIT.md`):** 4 Critical issues — admin-MFA bypass via the legacy API login, an RLS policy that lets students bypass the submission RPC, no POPIA erasure path for Supabase data, and a process-crash handler that doesn't exit. Plus two parallel backend stacks (Supabase + Prisma) modelling the same entities.
+- **Implemented:** one Supabase-first React platform for public, student, tutor,
+  parent, NGO-partner, and admin routes. Supabase Auth/RLS/RPC/Storage form the
+  application boundary; the Fastify/Prisma stack is retired. Odie's careers
+  assistant is proxied through a Supabase Edge Function to Groq.
+- **Implemented foundation:** organisation/member tables and scoped RLS, parent
+  and aggregate NGO reporting routes, committed forward migrations, runtime RLS
+  tests, tutor applications/documents, and volunteer-log capability.
+- **Still incomplete:** the CAPS content taxonomy/authoring system, the formal
+  `tutor_vetting` allocation gate, production backup/restore evidence, and the
+  remaining release-hardening work tracked by the 2026-08-02 audit.
+- **Accepted deferment:** Community is not in use and its audit work is excluded
+  at the owner's direction. It must be disabled or redesigned before onboarding
+  real users; this deferment is not evidence that Community is production-safe.
 - **Content:** flat model, no taxonomy. The CAPS Maths Gr 8–12 spine is now **mapped** ([MATHS_CURRICULUM_MAP.md](MATHS_CURRICULUM_MAP.md)) but **not yet built as tables or authored**.
 
 ---
@@ -49,12 +59,21 @@ All four run on **one platform, one content spine, one security model** — they
 Phases are ordered by dependency and risk, not calendar dates (small team, ASAP cadence — we pull the next item when the previous is verified). **Rule: security-foundational work precedes anything that onboards a new organisation or a real learner cohort.**
 
 ### Phase A — Harden the foundation *(must precede external onboarding)*
-- Fix the 4 Critical `AUDIT.md` findings (admin-MFA server-side enforcement, submission-RPC bypass, POPIA erasure path, process-exit handler).
-- **Consolidate onto a single Supabase stack** and retire Prisma/Fastify ([ADR-0003](../architecture/ADR-0003-single-stack-supabase.md)) — move the trusted backend jobs (Odie AI proxy, email, scheduled jobs) to Supabase Edge Functions, strangler-fig style. This alone closes the admin-MFA-bypass and split-audit-trail bug classes.
-- **Exit criteria:** no open Critical/High security findings on the paths a new org would touch; one auth authority, one audit trail.
+- **Landed:** single-stack Supabase architecture, Fastify/Prisma retirement,
+  server-enforced admin MFA, assignment-submission RPC enforcement, POPIA
+  erasure path, one auth authority, and one audit trail.
+- **Current exit work:** close the non-Community Critical/High findings and all
+  required CI/release gates in the 2026-08-02 audit; record Community as an
+  explicit onboarding blocker while it remains deferred.
+- **Exit criteria:** no open Critical/High finding on any path available to a new
+  organisation or learner, and clean migration/reset/runtime-RLS evidence.
 
 ### Phase B — Multi-organisation model *(unblocks schools/NGO/community)*
-- Implement [ADR-0002](../architecture/MULTI_ORG_MODEL_PLAN.md): `organizations`, `organization_members`, org-scoped RLS, aggregate-only partner reporting, small-cohort suppression.
+- **Foundation landed:** [ADR-0002](../architecture/MULTI_ORG_MODEL_PLAN.md)
+  tables, membership model, org-scoped RLS, aggregate partner reporting, and
+  small-cohort suppression are represented in the Supabase desired-state schema.
+- Complete production migration/runtime evidence and independent cross-org
+  isolation verification before treating this as ready for an external cohort.
 - Phased zero-break migration (add → backfill → enforce → clean up).
 - **Move Supabase to Pro ($25/mo)** before onboarding any real external cohort — free tier has no backups and pauses after 7 days' inactivity, both unacceptable for minors' PII under POPIA ([ADR-0003](../architecture/ADR-0003-single-stack-supabase.md) hosting note).
 - **Exit criteria:** the cross-org isolation test suite is green — a coordinator/tutor/viewer of Org A can read zero rows from Org B; production DB has automated backups.

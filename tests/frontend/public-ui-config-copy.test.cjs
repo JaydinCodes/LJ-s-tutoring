@@ -10,11 +10,11 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, ...relativePath.split('/')), 'utf8');
 }
 
-test('public enquiry helper copy does not expose configuration names', () => {
+test('public enquiry helper copy explains the email handoff without configuration names', () => {
   const publicRoutes = read('src/app/routes/PublicRoutes.tsx');
 
-  assert.ok(publicRoutes.includes('We reply within 24 hours, Monday to Thursday.'), 'enquiry form must explain the expected reply time');
-  assert.ok(!publicRoutes.includes('Configure `VITE_PO_FORMSPREE_ENDPOINT`'), 'enquiry form must not expose its endpoint configuration name');
+  assert.ok(publicRoutes.includes('nothing is sent until you review and send it'), 'enquiry form must explain that the visitor sends the email');
+  assert.doesNotMatch(publicRoutes, /VITE_PO_FORMSPREE_ENDPOINT/, 'enquiry form must not retain its retired endpoint configuration name');
 });
 
 test('login and onboarding surfaces do not expose environment variable names', () => {

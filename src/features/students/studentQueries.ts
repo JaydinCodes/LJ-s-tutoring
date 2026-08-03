@@ -29,9 +29,10 @@ function useCachedStudentQuery<T>(queryKey: QueryKey, queryFn: () => Promise<T>,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
+  const { refetch } = query;
   const reload = useCallback(async () => {
-    await query.refetch();
-  }, [query.refetch]);
+    await refetch();
+  }, [refetch]);
 
   return {
     data: query.data ?? null,

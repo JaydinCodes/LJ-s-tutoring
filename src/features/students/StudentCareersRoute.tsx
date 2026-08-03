@@ -304,7 +304,7 @@ export function CareerHero({
 
 function HeroFact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-ios-lg border border-white/15 bg-white/10 p-4 shadow-academy-inset backdrop-blur-xl">
+    <div className="rounded-ios-lg border border-white/[0.15] bg-white/10 p-4 shadow-academy-inset backdrop-blur-xl">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-gold">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
     </div>

@@ -17,7 +17,7 @@ test('architecture docs identify the active app and Supabase-first ownership mod
   assert.match(architecture, /`docs\/supabase\/schema\.sql`/);
   assert.match(architecture, /Direct Supabase browser calls are acceptable only when RLS fully protects/);
   assert.match(architecture, /Sensitive operations must use RPC or trusted backend code/);
-  assert.match(architecture, /`student-app\/` is inactive reference material/);
+  assert.match(architecture, /`student-app\/`[\s\S]*were removed after the unified app reached parity/);
 });
 
 test('architecture docs confirm lms-api retirement and document required diagrams', () => {

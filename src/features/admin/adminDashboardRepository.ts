@@ -49,6 +49,12 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
     supabase.from('ngo_partners').select('*').order('name', { ascending: true }),
   ]);
 
+  for (const result of [studentsResult, guardiansResult, studentGuardiansResult, tutorsResult, assignmentsResult, submissionsResult, paymentsResult, tutorPaymentsResult, ngoResult]) {
+    if (result.error) {
+      throw result.error;
+    }
+  }
+
   const students = (studentsResult.data || []) as Student[];
   const guardians = (guardiansResult.data || []) as Guardian[];
   const studentGuardians = (studentGuardiansResult.data || []) as StudentGuardian[];
@@ -65,6 +71,9 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
   const profilesResult = profileIds.length
     ? await supabase.from('profiles').select('*').in('id', profileIds)
     : { data: [], error: null };
+  if (profilesResult.error) {
+    throw profilesResult.error;
+  }
   const profiles = (profilesResult.data || []) as Profile[];
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
   // assignment-submissions is a private bucket -- resolve the stored path to a

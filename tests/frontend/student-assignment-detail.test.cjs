@@ -12,7 +12,11 @@ function read(...segments) {
 test('student assignment detail route is registered for dashboard and short student URLs', () => {
   const app = read('src', 'app', 'App.tsx');
 
-  assert.ok(app.includes("import { StudentAssignmentDetailRoute }"), 'detail route component must be imported');
+  assert.match(
+    app,
+    /const StudentAssignmentDetailRoute = lazy\(\(\) => import\('\.\.\/features\/students\/StudentAssignmentDetailRoute'\)/,
+    'detail route component must load through its route-level lazy boundary',
+  );
   assert.ok(app.includes('path="/student/assignments/:assignmentId"'), 'requested /student/assignments/:assignmentId route must exist');
   assert.ok(app.includes('path="/dashboard/student/assignments/:assignmentId"'), 'dashboard assignment detail route must remain supported');
   assert.ok(app.includes('<StudentAssignmentDetailRoute />'), 'detail URLs must render the dedicated detail component');

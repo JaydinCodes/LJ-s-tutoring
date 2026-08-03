@@ -9,12 +9,14 @@ import type {
   Student,
   StudentDashboardView,
   StudentProgress,
+  TutorAllocatedStudentSummary,
   TutorDashboardView,
 } from '../../types/lms';
-import type { MarkSubmissionInput, SubmitAssignmentInput } from '../../features/assignments/assignmentMutations';
+import type { MarkSubmissionInput, SubmitAssignmentInput, SubmitAssignmentResult } from '../../features/assignments/assignmentMutations';
 
 const now = '2026-06-08T08:00:00.000Z';
 const dueDate = '2030-06-15T16:00:00.000Z';
+const e2eSubmissionAttempts = new Map<string, string>();
 
 const e2eClass: ClassRecord = {
   id: 'e2e-class-1',
@@ -44,6 +46,17 @@ const e2eStudent: Student & { full_name?: string; email?: string; allocation_sta
   created_at: now,
   full_name: 'Student E2E',
   email: 'student.e2e@projectodysseus.test',
+  allocation_status: 'active',
+  focus_notes: 'Functions and exam technique.',
+};
+
+const e2eAllocatedStudent: TutorAllocatedStudentSummary & { allocation_status?: 'active'; focus_notes?: string } = {
+  student_id: e2eStudent.id,
+  full_name: e2eStudent.full_name!,
+  email: e2eStudent.email!,
+  grade: e2eStudent.grade ?? null,
+  school: e2eStudent.school ?? null,
+  status: e2eStudent.status,
   allocation_status: 'active',
   focus_notes: 'Functions and exam technique.',
 };
@@ -133,12 +146,6 @@ export function getE2EStudentDashboard(): StudentDashboardView {
     assignedTutors: [
       {
         id: 'e2e-tutor-1',
-        profile_id: 'e2e-profile-tutor',
-        subjects: ['Mathematics'],
-        grades: ['Grade 11'],
-        hourly_rate: 450,
-        status: 'active',
-        created_at: now,
         full_name: 'Tutor E2E',
         email: 'tutor.e2e@projectodysseus.test',
       },
@@ -194,7 +201,7 @@ export function getE2ETutorDashboard(): TutorDashboardView {
       { label: 'Marked', value: '0', helper: 'Submissions with completed feedback.', tone: 'blue' },
     ],
     classes: [e2eClass],
-    allocatedStudents: [e2eStudent],
+    allocatedStudents: [e2eAllocatedStudent],
     assignments: [e2eAssignment],
     submissions: [e2eSubmission],
     markingQueue: [e2eSubmission],
@@ -338,24 +345,40 @@ export function getE2ENgoReports(): { reports: NgoAggregateReport[] } {
   };
 }
 
-export async function submitE2EAssignment(input: SubmitAssignmentInput): Promise<AssignmentSubmission> {
+export async function submitE2EAssignment(input: SubmitAssignmentInput): Promise<SubmitAssignmentResult> {
   const textAnswer = input.textAnswer?.trim() || null;
   if (!input.file && !textAnswer) {
     throw new Error('Add a file or a written answer before submitting.');
   }
 
-  return {
-    ...e2eSubmission,
-    id: 'e2e-submission-uploaded',
-    assignment_id: input.assignmentId,
-    file_url: input.file ? `assignment-submissions/${input.file.name}` : null,
-    original_filename: input.file?.name || null,
-    mime_type: input.file?.type || null,
-    size_bytes: input.file?.size || null,
-    text_answer: textAnswer,
-    submitted_at: new Date('2026-06-08T09:00:00.000Z').toISOString(),
-    status: 'submitted',
-  };
+  const payloadFingerprint = JSON.stringify({
+    assignmentId: input.assignmentId,
+    textAnswer,
+    file: input.file
+      ? {
+          name: input.file.name,
+          type: input.file.type,
+          size: input.file.size,
+        }
+      : null,
+  });
+  const committedFingerprint = e2eSubmissionAttempts.get(input.submissionId);
+  if (committedFingerprint) {
+    if (committedFingerprint !== payloadFingerprint) {
+      throw new Error('submission_retry_payload_mismatch');
+    }
+    return { submissionId: input.submissionId };
+  }
+
+  e2eSubmissionAttempts.set(input.submissionId, payloadFingerprint);
+  if (input.file?.name === 'retry-once.pdf') {
+    // Simulate the hardest browser case: the backend committed successfully,
+    // but the response disappeared. A correct UI retries the same UUID and the
+    // mock's idempotent branch above returns that one committed attempt.
+    throw new Error('Connection interrupted after the submission was saved. Retry the same work safely.');
+  }
+
+  return { submissionId: input.submissionId };
 }
 
 export async function markE2ESubmission(input: MarkSubmissionInput): Promise<AssignmentSubmission> {

@@ -234,7 +234,7 @@ export function AssignmentRow({
   const marks = submission?.marks_awarded;
 
   return (
-    <article className={`group grid gap-3 rounded-ios px-2 py-3 transition duration-fluid ease-ios sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center ${selected ? 'bg-white/78 shadow-academy-soft dark:bg-white/[0.08]' : 'hover:bg-white/58 dark:hover:bg-white/[0.05]'}`}>
+    <article className={`group grid gap-3 rounded-ios px-2 py-3 transition duration-fluid ease-ios sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center ${selected ? 'bg-white/[0.78] shadow-academy-soft dark:bg-white/[0.08]' : 'hover:bg-white/[0.58] dark:hover:bg-white/[0.05]'}`}>
       <button className="min-w-0 text-left" type="button" onClick={onSelect}>
         <div className="flex min-w-0 items-start gap-3">
           <span className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-ios bg-slate-950/[0.04] text-academy-aegean dark:bg-white/[0.06] dark:text-academy-gold">
@@ -251,7 +251,7 @@ export function AssignmentRow({
       <div className="flex items-center justify-between gap-3 pl-12 sm:justify-end sm:pl-0">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge value={status} />
-          {marks != null ? <span className="rounded-full bg-academy-gold/15 px-3 py-1 text-xs font-semibold text-academy-ink dark:text-academy-gold">{marks}%</span> : null}
+          {marks != null ? <span className="rounded-full bg-academy-gold/[0.15] px-3 py-1 text-xs font-semibold text-academy-ink dark:text-academy-gold">{marks}%</span> : null}
         </div>
         <Link
           aria-label={`Open ${assignment.title}`}

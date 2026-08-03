@@ -19,6 +19,7 @@ test('resources page uses grouped rows instead of resource cards or tables', () 
   assert.ok(source.includes('title="Resources"'), 'reports route must now present as Resources');
   assert.ok(source.includes("title: 'Learning'"), 'resources must group learning links');
   assert.ok(source.includes("title: 'Schedule'"), 'resources must group schedule rows');
+  assert.ok(source.includes("title: item.name || item.subject || 'Class'"), 'schedule rows must render the class name returned by Supabase');
   assert.ok(source.includes("title: 'Report history'"), 'resources must group report history rows');
   assert.ok(!source.includes('<DataTable<WeeklyReport'), 'resources must avoid report tables');
 });

@@ -1,7 +1,6 @@
 import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CountUpStat } from '../../components/animations/CountUpStat';
 import { Reveal, StaggerReveal } from '../../components/animations/Reveal';
 import { SplitHeroTitle } from '../../components/animations/SplitHeroTitle';
 import { StructuredData } from '../../components/seo/StructuredData';
@@ -15,56 +14,38 @@ const tutors = [
     subject: 'Mathematics',
     role: 'Senior CAPS tutor',
     bio: 'Jaydin helps learners rebuild confidence through patient explanations, exam-focused practice, and a clear plan for closing foundational gaps.',
-    image: '/images/jaydin-morrison.jpg',
+    image: '/images/jaydin-morrison.webp',
+    imageWidth: 1200,
+    imageHeight: 1600,
   },
   {
     name: 'Nicholas Dreyer',
     subject: 'Physical Sciences',
     role: 'Physics Tutor',
     bio: 'Nicholas makes Physics feel less abstract by connecting the theory to clear examples, structured calculations, and the reasoning behind every formula.',
-    image: '/images/nicholas-dreyer.png',
+    image: '/images/nicholas-dreyer.webp',
+    imageWidth: 792,
+    imageHeight: 798,
   },
   {
     name: 'Liam Newton',
     subject: 'Mathematics',
     role: 'Problem-solving tutor',
     bio: 'Liam focuses on problem-solving habits and calculus foundations, helping learners turn difficult questions into manageable steps and build momentum.',
-    image: '/images/liam-newton.jpg',
+    image: '/images/liam-newton.webp',
+    imageWidth: 1200,
+    imageHeight: 900,
   },
   {
     name: 'Logan Petrus',
     subject: 'Mathematical Literacy',
     role: 'Mathematical Literacy Tutor',
     bio: 'Logan makes Mathematical Literacy practical and approachable, helping learners apply data handling, finance, and measurement skills with confidence.',
-    image: '/images/logan-petrus.jpeg',
+    image: '/images/logan-petrus.webp',
+    imageWidth: 960,
+    imageHeight: 1280,
   },
 ];
-
-const stats = [
-  {
-    value: 1,
-    suffix: '+',
-    label: 'Years of tutoring experience',
-  },
-  {
-    value: 100,
-    suffix: '+',
-    label: 'Learners supported',
-  },
-  {
-    value: 98,
-    suffix: '%',
-    label: 'Parent satisfaction',
-  },
-  {
-    value: 12,
-    label: 'CAPS grades covered',
-  },
-];
-
-
-
-
 
 const faqs = [
   {
@@ -97,7 +78,7 @@ const faqs = [
 const tutorPerks = [
   ['Flexible hours', 'Set your schedule around studies, work, and existing commitments.'],
   ['Competitive pay', 'Earn for your expertise while making a direct academic impact.'],
-  ['Grow with us', 'Build real teaching experience as the LMS and ProVision rollout mature.'],
+  ['Grow with us', 'Build real teaching experience while helping learners make steady academic progress.'],
   ['Supportive team', 'Work with tutors who care about consistent learner progress.'],
 ];
 
@@ -117,8 +98,40 @@ const whatsappEnquiryHref = `https://wa.me/${whatsappNumber}?text=${encodeURICom
 const enquiryThrottleKey = 'po_react_enquiry_last_submit';
 const enquiryThrottleMs = 30000;
 const businessUrl = 'https://projectodysseus.live';
-const heroFallbackImage = '/images/odysseus-hero-fallback.png';
-const heroVideo = '/images/bg_video.mp4';
+const heroFallbackImage = '/images/odysseus-hero-fallback.webp';
+const heroVideo = '/images/bg_video-optimized.mp4';
+
+type NavigatorWithConnection = Navigator & {
+  connection?: EventTarget & { saveData?: boolean };
+};
+
+function useHeroVideoEnabled(prefersReducedMotion: boolean) {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setEnabled(false);
+      return;
+    }
+
+    const desktopViewport = window.matchMedia('(min-width: 640px)');
+    const connection = (navigator as NavigatorWithConnection).connection;
+    const updatePreference = () => {
+      setEnabled(desktopViewport.matches && connection?.saveData !== true);
+    };
+
+    updatePreference();
+    desktopViewport.addEventListener('change', updatePreference);
+    connection?.addEventListener('change', updatePreference);
+
+    return () => {
+      desktopViewport.removeEventListener('change', updatePreference);
+      connection?.removeEventListener('change', updatePreference);
+    };
+  }, [prefersReducedMotion]);
+
+  return enabled;
+}
 
 const localBusinessSchema = {
   '@context': 'https://schema.org',
@@ -183,6 +196,9 @@ const initialEnquiryForm: EnquiryFormState = {
 };
 
 export function PublicHomeRoute() {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const heroVideoEnabled = useHeroVideoEnabled(prefersReducedMotion);
+
   return (
     <PublicLayout>
       <StructuredData data={[localBusinessSchema, faqPageSchema]} />
@@ -192,18 +208,23 @@ export function PublicHomeRoute() {
           src={heroFallbackImage}
           alt=""
           aria-hidden="true"
+          decoding="async"
           fetchPriority="high"
+          height={768}
+          width={1376}
         />
-        <video
-          className="absolute inset-0 hidden h-full w-full object-cover object-[60%_center] opacity-35 sm:block"
-          src={heroVideo}
-          poster={heroFallbackImage}
-          autoPlay
-          muted
-          loop
-          playsInline
-          aria-hidden="true"
-        />
+        {heroVideoEnabled ? (
+          <video
+            className="absolute inset-0 h-full w-full object-cover object-[60%_center] opacity-35"
+            src={heroVideo}
+            poster={heroFallbackImage}
+            autoPlay
+            muted
+            loop
+            playsInline
+            aria-hidden="true"
+          />
+        ) : null}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.88)_48%,_rgba(15,23,42,0.62)_100%)] sm:bg-[linear-gradient(90deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.88)_48%,_rgba(15,23,42,0.62)_100%)]" />
         <div className="relative mx-auto flex min-h-[calc(100svh-4rem)] max-w-7xl flex-col justify-center px-4 pb-12 pt-16 sm:px-6 sm:py-20 lg:min-h-[86svh]">
           <p className="text-sm font-semibold uppercase tracking-[0.32em] text-brand-gold">GRADE 8–12 CAPS TUTORING</p>
@@ -217,16 +238,6 @@ export function PublicHomeRoute() {
             <a className="inline-flex justify-center rounded-full border border-brand-aegean/70 bg-brand-aegean px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-brand-deepBlue sm:text-base" href="#tutors">Meet Our Tutors</a>
             <Link className="inline-flex justify-center rounded-full border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20 sm:text-base" to="/programs">View programs</Link>
           </Reveal>
-          <StaggerReveal className="mt-8 grid max-w-4xl grid-cols-2 gap-3 sm:mt-10 lg:grid-cols-4" start="top 95%">
-            {stats.map(({ value, suffix, label }) => (
-              <div key={label} data-reveal-child className="rounded-[1.25rem] border border-brand-marble/15 bg-white/10 p-4 backdrop-blur sm:rounded-[1.5rem] sm:p-5">
-                <p className="text-2xl font-semibold text-brand-gold sm:text-3xl">
-                  <CountUpStat value={value} suffix={suffix} />
-                </p>
-                <p className="mt-1 text-xs leading-5 text-brand-parchment sm:text-sm">{label}</p>
-              </div>
-            ))}
-          </StaggerReveal>
         </div>
       </section>
 
@@ -235,8 +246,8 @@ export function PublicHomeRoute() {
       <Reveal as="section" className="bg-brand-parchment py-16">
         <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
           <div>
-            <SectionIntro title="Tutoring that feels connected, not scattered" eyebrow="React LMS workflow">
-              Students get direct maths support. Parents get clarity. Tutors get a review workflow. Admins get visibility. The public site now matches that same clean LMS identity.
+            <SectionIntro title="Tutoring that feels connected, not scattered" eyebrow="A clearer learning journey">
+              Students get direct support, families get clear updates, and tutors can keep each learner's next steps focused and measurable.
             </SectionIntro>
             <StaggerReveal className="mt-10 grid gap-4 md:grid-cols-3">
               {[
@@ -262,7 +273,7 @@ export function PublicHomeRoute() {
                   ['Latest result', '78% Algebra revision'],
                   ['Progress', 'Functions improving'],
                 ].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between gap-4 rounded-2xl bg-white/12 px-4 py-3">
+                  <div key={label} className="flex items-center justify-between gap-4 rounded-2xl bg-white/[0.12] px-4 py-3">
                     <span className="text-sm text-brand-parchment">{label}</span>
                     <span className="text-sm font-semibold">{value}</span>
                   </div>
@@ -321,9 +332,9 @@ export function AboutRoute() {
       <section className="bg-slate-950 px-6 py-20 text-white">
         <div className="mx-auto max-w-4xl">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand-gold">About</p>
-          <h1 className="mt-4 text-5xl font-semibold tracking-tight">Maths tutoring with operational discipline behind it.</h1>
+          <h1 className="mt-4 text-5xl font-semibold tracking-tight">Focused tutoring built around each learner.</h1>
           <p className="mt-6 text-lg leading-8 text-slate-200">
-            Project Odysseus started as focused maths support and is becoming a full LMS-style platform for learners, tutors, admins, parents, and NGO partners.
+            Project Odysseus helps Grade 8-12 learners strengthen foundations, prepare for assessments, and approach difficult work with a clearer plan.
           </p>
         </div>
       </section>
@@ -343,9 +354,13 @@ export function ProgramsRoute() {
     <PublicLayout>
       <section className="bg-brand-parchment px-6 py-20">
         <div className="mx-auto max-w-7xl">
-          <SectionIntro title="CAPS tutoring programmes" eyebrow="Grade 8-12 support">
-            Focused tutoring plans for Mathematics, Mathematical Literacy, and Physical Sciences learners who need stronger foundations, clearer methods, and measurable progress.
-          </SectionIntro>
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Grade 8-12 support</p>
+            <h1 className="greek-display mt-3 text-4xl font-semibold tracking-tight text-slate-950">CAPS tutoring programmes</h1>
+            <p className="mt-4 text-sm leading-7 text-slate-600">
+              Focused tutoring plans for Mathematics, Mathematical Literacy, and Physical Sciences learners who need stronger foundations, clearer methods, and measurable progress.
+            </p>
+          </div>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
             {programmes.map(([title, description]) => (
               <article key={title} className="rounded-[1.5rem] border border-brand-marble bg-white p-6 shadow-sm shadow-slate-200/50">
@@ -373,7 +388,7 @@ export function GuidesIndexRoute() {
       <section className="bg-white px-6 py-20">
         <div className="mx-auto max-w-4xl">
           <SectionIntro title="Learning guides" eyebrow="Resources">
-            Short, practical resources for learners and parents. These are now served through the React app while the old static guide files remain available for compatibility.
+            Short, practical resources that help learners revise with purpose and help families understand what to work on next.
           </SectionIntro>
           <div className="mt-10 rounded-lg border border-slate-200 bg-slate-50 p-6">
             <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Matric Maths Mistakes Guide</h2>
@@ -486,17 +501,16 @@ export function PrivacyRoute() {
       <LegalSection title="Third-Party Services">
         <p>
           Project Odysseus uses service providers to operate the platform, including Supabase for authentication, database, and
-          storage services, hosting providers for the website and portal, communication tools such as email or WhatsApp links,
-          form handling where configured, and error monitoring for technical diagnostics. We do not intentionally send learner
+          storage services, hosting providers for the website and portal, the visitor's email or WhatsApp app for enquiries,
+          and error monitoring for technical diagnostics. We do not intentionally send learner
           marks, private notes, uploaded file contents, or guardian contact details to monitoring tools.
         </p>
         <p>
-          Project Odysseus includes an AI study assistant ("Odie"). To generate tutoring help, some learning context — such as a
-          learner's grade, the subject and content of the current task, and recent assessment results — may be sent to a
-          third-party AI provider (currently OpenRouter and the underlying model providers it routes to), which may process this
-          information on servers outside South Africa. We aim to send only the minimum context needed, and we do not send
-          guardian contact details or full identity records to the AI provider. If you would prefer that your child not use the
-          AI assistant, please contact us.
+          Project Odysseus includes an AI careers assistant ("Odie"). To generate a response, we send the learner's current
+          question, up to eight preceding chat messages, and the careers-profile details shown in Odie (interests, preferred
+          subjects, saved careers, and APS target) to third-party AI provider Groq. Groq may process this information on servers
+          outside South Africa. We do not intentionally send guardian contact details, marks, uploaded files, or full identity
+          records to the AI provider. If you would prefer that your child not use the AI assistant, please contact us.
         </p>
       </LegalSection>
 
@@ -694,7 +708,7 @@ function TutorSection() {
     <Reveal as="section" id="tutors" className="bg-brand-parchment py-16">
       <div className="mx-auto max-w-7xl px-6">
         <SectionIntro title="Meet the tutors" eyebrow="Academic support">
-          Preserve the strongest public-site trust signal while the LMS migration moves tutor operations into React.
+          Meet the people who turn difficult topics into clear explanations, useful practice, and achievable next steps.
         </SectionIntro>
         <StaggerReveal className="mt-10 grid gap-4 md:grid-cols-3">
           {tutors.map((tutor) => (
@@ -722,6 +736,10 @@ function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
           className={`aspect-[4/3] w-full object-cover ${transitionClass} ${prefersReducedMotion ? '' : 'group-hover:scale-[1.03]'}`}
           src={tutor.image}
           alt={`${tutor.name}, ${tutor.role} for ${tutor.subject}`}
+          decoding="async"
+          height={tutor.imageHeight}
+          loading="lazy"
+          width={tutor.imageWidth}
         />
         <button
           className="absolute inset-0 z-10 focus:outline-none focus:ring-4 focus:ring-inset focus:ring-brand-gold"
@@ -781,7 +799,7 @@ function GuideSection() {
     <Reveal as="section" variant="marble" className="bg-white py-16">
       <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
         <SectionIntro title="Matric maths guide" eyebrow="Free resource">
-          Keep the useful lead-magnet path alive during the migration. Learners can still open the guide while future downloads and follow-ups move into onboarding and reporting workflows.
+          Review the common habits that cost marks, then use practical checks to make each test and exam response clearer.
         </SectionIntro>
         <div className="rounded-[1.5rem] border border-brand-marble bg-brand-parchment p-6 shadow-sm">
           <h3 className="text-xl font-semibold text-brand-obsidian">Common matric maths mistakes</h3>
@@ -802,7 +820,7 @@ function FaqSection() {
     <Reveal as="section" id="faq" variant="marble" className="bg-white py-16">
       <div className="mx-auto max-w-4xl px-6">
         <SectionIntro title="Frequently asked questions" eyebrow="Tutoring details">
-          The core public-site answers are now available in React while the legacy landing page remains in the repository for comparison.
+          Find quick answers about sessions, subjects, rescheduling, online support, and our first-session promise.
         </SectionIntro>
         <StaggerReveal className="mt-10 grid gap-3" staggerBy={0.08}>
           {faqs.map((faq, index) => <FaqItem key={faq.question} faq={faq} index={index} />)}
@@ -905,17 +923,13 @@ function BecomeTutorSection() {
 function EnquirySection() {
   const [form, setForm] = useState<EnquiryFormState>(initialEnquiryForm);
   const [status, setStatus] = useState<EnquiryStatus>({ tone: 'idle', message: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const formspreeEndpoint = import.meta.env.VITE_PO_FORMSPREE_ENDPOINT as string | undefined;
-  const hasFormspreeEndpoint = Boolean(formspreeEndpoint && !formspreeEndpoint.includes('YOUR_FORM_ID'));
 
   function updateField(field: keyof EnquiryFormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
   function buildMailtoHref(details: EnquiryFormState) {
-    const subject = 'Tutoring enquiry (React website form)';
+    const subject = 'Tutoring enquiry (website)';
     const body = [
       'Hi Project Odysseus,',
       '',
@@ -975,7 +989,7 @@ function EnquirySection() {
     return '';
   }
 
-  async function submitEnquiry(event: FormEvent<HTMLFormElement>) {
+  function submitEnquiry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const validationMessage = validateForm();
     if (validationMessage) {
@@ -990,44 +1004,9 @@ function EnquirySection() {
       message: form.message.trim(),
     };
 
-    setIsSubmitting(true);
-    setStatus({ tone: 'info', message: 'Sending enquiry...' });
     window.sessionStorage.setItem(enquiryThrottleKey, String(Date.now()));
-
-    try {
-      if (!hasFormspreeEndpoint || !formspreeEndpoint) {
-        window.location.href = buildMailtoHref(trimmedForm);
-        setStatus({ tone: 'info', message: 'Opening your email app with the enquiry details.' });
-        return;
-      }
-
-      const payload = new FormData();
-      payload.set('name', trimmedForm.name);
-      payload.set('email', trimmedForm.email);
-      payload.set('grade', trimmedForm.grade);
-      payload.set('message', trimmedForm.message);
-      payload.set('form_type', 'react_public_enquiry');
-
-      const response = await fetch(formspreeEndpoint, {
-        method: 'POST',
-        body: payload,
-        headers: { Accept: 'application/json' },
-      });
-
-      if (!response.ok) {
-        throw new Error('Enquiry submission failed');
-      }
-
-      setForm(initialEnquiryForm);
-      setStatus({ tone: 'success', message: "Thank you. We'll be in touch within 24 hours." });
-    } catch {
-      setStatus({
-        tone: 'error',
-        message: 'The form could not submit right now. Please use WhatsApp or email below.',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    setStatus({ tone: 'info', message: 'Opening your email app with the enquiry details.' });
+    window.location.href = buildMailtoHref(trimmedForm);
   }
 
   return (
@@ -1137,10 +1116,10 @@ function EnquirySection() {
               status.message
                 ? `mt-4 rounded-lg px-3 py-2 text-sm ${
                 status.tone === 'success'
-                  ? 'bg-green-500/15 text-green-200'
+                  ? 'bg-green-500/[0.15] text-green-200'
                   : status.tone === 'error'
-                    ? 'bg-red-500/15 text-red-200'
-                    : 'bg-sky-500/15 text-sky-200'
+                    ? 'bg-red-500/[0.15] text-red-200'
+                    : 'bg-sky-500/[0.15] text-sky-200'
                   }`
                 : 'sr-only'
             }
@@ -1151,13 +1130,12 @@ function EnquirySection() {
           </p>
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="mt-5 w-full rounded-lg bg-brand-gold px-4 py-3 text-sm font-semibold text-brand-obsidian transition hover:bg-[#f7d24f] disabled:cursor-not-allowed disabled:opacity-70"
+            className="mt-5 w-full rounded-lg bg-brand-gold px-4 py-3 text-sm font-semibold text-brand-obsidian transition hover:bg-[#f7d24f]"
           >
-            {isSubmitting ? 'Sending...' : 'Send enquiry'}
+            Prepare email enquiry
           </button>
           <p id="enquiry-helper" className="mt-3 text-xs leading-5 text-slate-400">
-            We reply within 24 hours, Monday to Thursday. If direct submission is unavailable, we will open a pre-filled email for you.
+            This opens a pre-filled message in your email app; nothing is sent until you review and send it. You can also use WhatsApp below.
           </p>
         </form>
       </div>

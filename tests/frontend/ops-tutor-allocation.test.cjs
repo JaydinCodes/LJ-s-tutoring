@@ -34,10 +34,13 @@ test('tutor and student dashboards consume allocation-scoped data', () => {
   assert.match(tutorRepo, /from\('tutor_student_allocations'\)\.select\('\*'\)\.eq\('tutor_id', tutor\.id\)\.eq\('status', 'active'\)/);
   assert.match(tutorRepo, /allocatedStudents:/);
   assert.match(tutorRoute, /Allocated students/);
-  // The student read is deliberately narrowed to an explicit column list (NOT
-  // select('*')) so the tutor's `rate_override` pay rate never reaches a
-  // student's dashboard response. See allocation-contract-fields.test.cjs.
-  assert.match(studentRepo, /from\('tutor_student_allocations'\)[\s\S]*?\.select\([^)]*subject_id[^)]*\)[\s\S]*?\.eq\('student_id', student\.id\)[\s\S]*?\.eq\('status', 'active'\)/);
-  assert.doesNotMatch(studentRepo, /from\('tutor_student_allocations'\)[\s\S]*?rate_override[\s\S]*?\.eq\('student_id', student\.id\)/);
-  assert.match(studentRepo, /assignedTutors:/);
+  // The student read is deliberately narrowed to a SECURITY DEFINER RPC (NOT a
+  // direct table read) so the tutor's `rate_override` pay rate and other
+  // sensitive allocation/tutor fields never reach a student's dashboard
+  // response. See allocation-contract-fields.test.cjs and
+  // tutor-onboarding-migration.test.cjs.
+  assert.doesNotMatch(studentRepo, /from\('tutor_student_allocations'\)/);
+  assert.match(studentRepo, /rpc\('get_student_assigned_tutors'\)/);
+  // Shorthand property syntax now that the RPC result is used as-is.
+  assert.match(studentRepo, /\bassignedTutors\b/);
 });

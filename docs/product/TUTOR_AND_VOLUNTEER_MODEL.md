@@ -40,7 +40,9 @@ Everyone who will have contact with minors passes vetting **before** any learner
 3. **National Child Protection Register (Part B)** check — Children's Act 38 of 2005 screening (persons unsuitable to work with children).
 4. **National Register for Sex Offenders** check — Sexual Offences Act screening.
 5. **Reference checks** — at least two, contactable.
-6. **Qualification verification** — degree/subject competence (already partially modelled: the legacy `TutorProfile` carries qualification band + documents).
+6. **Qualification verification** — degree/subject competence. Supabase tutor
+   applications, tutor profile approval fields, private `tutor-documents`
+   Storage, and document metadata provide the current implementation base.
 7. **Signed Code of Conduct** — child-protection code, behavioural expectations, reporting duties.
 8. **Safeguarding induction** — short mandatory training + acknowledgement.
 
@@ -70,7 +72,9 @@ Applied → Screening → Interview → Vetting (§3) → Induction → Active
 - **Induction** — safeguarding training + platform onboarding.
 - **Active** — eligible for allocation to learners/classes.
 
-The legacy Fastify API already has a tutor **application + approval workflow** and qualification/documents on `TutorProfile` — we extend it with the vetting states rather than building from scratch.
+Supabase already has a tutor **application + approval workflow**, qualification
+metadata, and private document handling. The remaining work is to add the formal
+vetting record and make every allocation/class-assignment RPC enforce it.
 
 ---
 
@@ -100,7 +104,10 @@ Builds on [ADR-0002](../architecture/MULTI_ORG_MODEL_PLAN.md); keep the canonica
   );
   ```
 - **The hard gate:** allocation (`tutor_student_allocations`) and class assignment RPCs must check `tutor_vetting.status = 'passed'` and `expires_at > now()` for the tutor **before** creating the link. Enforce in the SECURITY DEFINER RPC, not just the UI.
-- **Volunteer hours:** the community strand needs hour logging for reporting/impact **and** to track the mandatory 6–10 hrs/month commitment. Volunteer-log capability already exists in the legacy API; carry it into the Supabase model as `volunteer_sessions (profile_id, organization_id, class_id, hours, occurred_on, notes)`, with a monthly rollup view for the commitment check.
+- **Volunteer hours:** Supabase `volunteer_events` and `volunteer_logs` plus their
+  secured RPCs provide the current event/log foundation. A future monthly rollup
+  must enforce and report the 6–10 hours/month operational commitment without
+  exposing cross-tutor details.
 
 **RLS:** `tutor_vetting` is **platform-admin-only** (it contains sensitive check data) — not visible to coordinators, tutors, or the tutor themselves beyond a boolean "cleared" status surfaced via a safe view/RPC.
 

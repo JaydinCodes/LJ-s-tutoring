@@ -153,7 +153,7 @@ export function ResultsHero({
 
 function ResultSignal({ label, value, helper, to }: { label: string; value: string; helper: string; to?: string }) {
   const body = (
-    <div className="min-h-28 rounded-ios-lg border border-white/15 bg-white/10 p-4 text-left shadow-academy-inset backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white/[0.14]">
+    <div className="min-h-28 rounded-ios-lg border border-white/[0.15] bg-white/10 p-4 text-left shadow-academy-inset backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white/[0.14]">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">{label}</p>
       <p className="mt-2 truncate text-xl font-semibold text-white">{value}</p>
       <p className="mt-1 line-clamp-2 text-xs leading-5 text-academy-parchment">{helper}</p>
@@ -327,10 +327,10 @@ function PremiumResultMetric({
   to?: string;
 }) {
   const toneClass = {
-    navy: 'border-white/65 bg-brand-navy text-white shadow-[0_18px_45px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-white/[0.08]',
-    aegean: 'border-white/70 bg-white/76 text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
-    gold: 'border-white/70 bg-white/76 text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
-    marble: 'border-white/70 bg-white/76 text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+    navy: 'border-white/[0.65] bg-brand-navy text-white shadow-[0_18px_45px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-white/[0.08]',
+    aegean: 'border-white/70 bg-white/[0.76] text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+    gold: 'border-white/70 bg-white/[0.76] text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
+    marble: 'border-white/70 bg-white/[0.76] text-brand-obsidian shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment',
   }[tone];
   const accentClass = {
     navy: 'text-brand-gold bg-white/10 border-white/10',
@@ -369,7 +369,7 @@ function LearnerTrendChart({ items }: { items: StudentResultItem[] }) {
   }
   if (chronological.length === 1) {
     return (
-      <div className="mt-5 rounded-[1.5rem] border border-white/70 bg-white/62 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]">
+      <div className="mt-5 rounded-[1.5rem] border border-white/70 bg-white/[0.62] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]">
         <p className="text-sm font-semibold text-brand-obsidian">First mark recorded: {formatPercent(chronological[0].percentage)}</p>
         <p className="mt-2 text-sm text-slate-600">A trend line needs at least two released marks.</p>
       </div>
@@ -402,7 +402,7 @@ function LearnerTrendChart({ items }: { items: StudentResultItem[] }) {
 function ClassAnalyticsSummary({ data, buckets }: { data: { available: boolean; privacyThreshold: number; overview: { classAverage: number | null; numberOfLearners: number } | null; positioning: string }; buckets: ClassDistributionBucket[] }) {
   if (!data.available || !data.overview) {
     return (
-      <div className="mt-4 rounded-2xl border border-white/70 bg-white/55 p-4 text-sm leading-6 text-slate-600 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-marble">
+      <div className="mt-4 rounded-2xl border border-white/70 bg-white/[0.55] p-4 text-sm leading-6 text-slate-600 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-marble">
         Anonymous class analytics are hidden until at least {data.privacyThreshold} learners are represented.
       </div>
     );
@@ -415,7 +415,7 @@ function ClassAnalyticsSummary({ data, buckets }: { data: { available: boolean; 
         <MiniMetric label="Learners" value={String(data.overview.numberOfLearners)} />
       </div>
       <DistributionBars buckets={buckets} />
-      <p className="rounded-2xl border border-white/70 bg-white/62 px-4 py-3 text-sm font-semibold text-brand-obsidian backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment">{data.positioning}</p>
+      <p className="rounded-2xl border border-white/70 bg-white/[0.62] px-4 py-3 text-sm font-semibold text-brand-obsidian backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment">{data.positioning}</p>
     </div>
   );
 }
@@ -423,7 +423,7 @@ function ClassAnalyticsSummary({ data, buckets }: { data: { available: boolean; 
 function DistributionBars({ buckets }: { buckets: ClassDistributionBucket[] }) {
   const max = Math.max(1, ...buckets.map((bucket) => bucket.count));
   return (
-    <div className="flex h-32 items-end gap-2 rounded-2xl border border-white/70 bg-white/55 p-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]">
+    <div className="flex h-32 items-end gap-2 rounded-2xl border border-white/70 bg-white/[0.55] p-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]">
       {buckets.map((bucket) => (
         <div key={bucket.range} className="flex min-w-0 flex-1 flex-col items-center gap-1">
           <div className="flex h-20 w-full items-end">
@@ -457,7 +457,7 @@ function SubjectSummaryGrid({ items }: { items: StudentResultItem[] }) {
         const subjectAverage = average(subjectItems.map((item) => item.percentage));
         return (
           <StaggerItem key={subject}>
-            <Link className="block rounded-[1.5rem] border border-white/70 bg-white/68 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:border-brand-gold/50 dark:border-white/10 dark:bg-white/[0.05]" to={`/dashboard/student/results/subjects/${encodeURIComponent(subject)}`}>
+            <Link className="block rounded-[1.5rem] border border-white/70 bg-white/[0.68] p-4 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:border-brand-gold/50 dark:border-white/10 dark:bg-white/[0.05]" to={`/dashboard/student/results/subjects/${encodeURIComponent(subject)}`}>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">{subject}</p>
               <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-100">{formatPercent(subjectAverage)}</p>
               <div className="mt-3"><AnimatedProgressBar value={subjectAverage || 0} color={chartPalette[index % chartPalette.length]} /></div>
@@ -501,7 +501,7 @@ function ResultDetail({ result }: { result: StudentResultItem }) {
 
       <Card>
         <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Feedback</h2>
-        <p className="mt-3 rounded-2xl border border-white/70 bg-white/58 p-4 text-sm leading-7 text-slate-700 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-marble">{result.feedbackSummary || 'No written feedback supplied.'}</p>
+        <p className="mt-3 rounded-2xl border border-white/70 bg-white/[0.58] p-4 text-sm leading-7 text-slate-700 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-marble">{result.feedbackSummary || 'No written feedback supplied.'}</p>
       </Card>
     </div>
   );
@@ -528,7 +528,7 @@ function CognitiveBreakdown({ levels }: { levels: StudentResultCognitiveLevel[] 
         const score = item?.score ?? null;
         const weak = score != null && score < 50;
         return (
-          <div key={level} className={`rounded-2xl border p-3 backdrop-blur-xl ${weak ? 'border-amber-200/80 bg-amber-50/75 text-amber-950 dark:border-amber-300/20 dark:bg-amber-300/10 dark:text-amber-100' : 'border-white/70 bg-white/58 dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-parchment'}`}>
+          <div key={level} className={`rounded-2xl border p-3 backdrop-blur-xl ${weak ? 'border-amber-200/80 bg-amber-50/75 text-amber-950 dark:border-amber-300/20 dark:bg-amber-300/10 dark:text-amber-100' : 'border-white/70 bg-white/[0.58] dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-parchment'}`}>
             <div className="flex justify-between gap-3 text-sm font-semibold">
               <span>{level}</span>
               <span>{formatPercent(score)}</span>
@@ -581,7 +581,7 @@ function TopicBreakdown({ topics }: { topics: StudentResultTopic[] }) {
   return (
     <div className="mt-4 space-y-3">
       {topics.map((topic, index) => (
-        <div key={`${topic.subject}-${topic.topic}`} className="rounded-2xl border border-white/70 bg-white/58 p-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]">
+        <div key={`${topic.subject}-${topic.topic}`} className="rounded-2xl border border-white/70 bg-white/[0.58] p-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]">
           <div className="flex justify-between gap-3 text-sm font-semibold text-brand-obsidian dark:text-brand-parchment">
             <span>{topic.topic}</span>
             <span>{formatPercent(topic.score)}</span>
@@ -608,7 +608,7 @@ function ResultList({ items, emptyTitle }: { items: StudentResultItem[]; emptyTi
   return (
     <div className="mt-5 space-y-3">
       {sortByDate(items).map((item) => (
-        <Link key={item.id} className="block rounded-[1.5rem] border border-white/70 bg-white/68 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-2xl transition hover:border-brand-gold/50 dark:border-white/10 dark:bg-white/[0.05]" to={`/dashboard/student/results/${item.id}`}>
+        <Link key={item.id} className="block rounded-[1.5rem] border border-white/70 bg-white/[0.68] p-4 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-2xl transition hover:border-brand-gold/50 dark:border-white/10 dark:bg-white/[0.05]" to={`/dashboard/student/results/${item.id}`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold text-slate-950 dark:text-slate-100">{item.title}</p>
@@ -624,7 +624,7 @@ function ResultList({ items, emptyTitle }: { items: StudentResultItem[]; emptyTi
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/58 p-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]">
+    <div className="rounded-2xl border border-white/70 bg-white/[0.58] p-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">{label}</p>
       <p className="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">{value}</p>
     </div>

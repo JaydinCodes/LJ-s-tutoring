@@ -19,7 +19,7 @@ test('static build prerenders crawlable public content without exposing dashboar
   const guide = readDist('guides/matric-maths-mistakes-guide/index.html');
   const dashboard = readDist('dashboard/student/index.html');
 
-  assert.match(home, /<title>Maths Tutoring Cape Town and South Africa \| Project Odysseus LMS<\/title>/);
+  assert.match(home, /<title>Maths Tutoring Cape Town and South Africa \| Project Odysseus<\/title>/);
   assert.match(home, /<meta name="description" content="[^"]+">/);
   assert.match(home, /<main data-prerendered-page="home">/);
   assert.match(home, /<h1>Project Odysseus<\/h1>/);

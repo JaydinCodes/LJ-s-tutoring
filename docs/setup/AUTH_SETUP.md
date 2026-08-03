@@ -1,106 +1,87 @@
 # Auth Setup
 
-Project Odysseus is Supabase-first. Browser sign-in, session state, and role access should use Supabase Auth plus Supabase-backed `profiles` rows.
+Project Odysseus uses Supabase Auth for browser identity and sessions. Role
+authorization comes from the signed-in user's `profiles` row plus database RLS;
+the retired Fastify cookie/OAuth stack is not part of current setup.
 
-This document previously described Fastify-owned Google OAuth sessions as the primary portal auth model. Treat that flow as transitional backend history unless a specific backend-only service still needs it. New browser-facing auth work must use Supabase Auth providers and RLS-backed role checks.
+## Supabase project configuration
 
-## Supabase Auth Direction
+1. Enable the required sign-in methods in Supabase Dashboard > Authentication.
+2. Set the Site URL to the deployed public origin.
+3. Add exact local, preview, and production callback URLs to the Supabase redirect
+   allow list. Keep preview wildcards as narrow as the hosting platform permits.
+4. For Google sign-in, create a Google OAuth web client and register the callback
+   URL Supabase shows for the provider. Store the client ID and secret in the
+   Supabase provider configuration, never in browser variables.
+5. Disable unneeded providers and review email-confirmation behavior before
+   onboarding real users.
 
-- Configure email/password, magic link, and Google OAuth in the Supabase project.
-- Store application role and profile metadata in the `profiles` table.
-- Use RLS policies and secure RPC functions for authorization.
-- Do not store browser auth tokens in localStorage.
-- Do not introduce a second browser session cookie for LMS routes.
+## Browser environment
+
+Only the public project URL and anon key belong in the frontend:
+
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=replace_with_public_anon_key
+```
+
+Never expose `SUPABASE_SERVICE_ROLE_KEY` or Edge Function server secrets in
+`VITE_*`, generated config, HTML, or a browser bundle. Trusted admin invitations
+and AI proxy calls stay in Supabase Edge Functions.
+
+## Profiles and roles
+
+- Each Auth user needs the corresponding application profile created through the
+  approved transactional onboarding/admin path.
+- RLS is the authorization boundary; hiding a route or navigation item is only a
+  user-experience control.
+- Role mutations, invitations, and other privileged operations use secured RPCs
+  or Edge Functions rather than direct browser table updates.
+- Reset and verify local policy behavior with the instructions in
+  [LOCAL_DEVELOPMENT.md](../supabase/LOCAL_DEVELOPMENT.md).
 
 ## Admin MFA
 
-Production admin access requires Supabase Auth MFA. The React admin route guard checks:
+Production admin access requires Supabase Auth MFA, a normalized `admin` profile
+role, and Authenticator Assurance Level 2 (`aal2`) with a verified TOTP factor.
+The React admin guard calls `getAuthenticatorAssuranceLevel()` and blocks access
+when the MFA status cannot be read or the session is only `aal1`.
 
-1. A valid Supabase session.
-2. A linked `profiles` row with the normalized `admin` role.
-3. Supabase authenticator assurance level `aal2`, or a verified TOTP factor that can be challenged and verified.
+The application uses Supabase MFA enrollment, challenge, verification, factor
+listing, and assurance-level APIs. Email OTP may be a first-factor sign-in
+method, but it is not the required admin second factor.
 
-Enable MFA in Supabase Dashboard > Authentication > Multi-Factor Auth, then require each admin account to enroll and verify a TOTP factor before using `/dashboard/admin`. Admins without a verified factor see `MFA setup required` and can start the in-app setup flow. The app creates a Supabase TOTP factor, shows the QR code and manual secret, asks for the six-digit authenticator code, verifies it, then refreshes the session so Supabase promotes the admin session to `aal2`. Admins with a verified factor but an `aal1` session see `MFA required` and must enter their authenticator code. If Supabase MFA status cannot be read, admin access remains blocked.
+`VITE_PO_DEV_ADMIN_MFA_BYPASS=true` is for local UI development only and is
+ignored by production builds. Do not set it in staging or production (and do not
+set it in preview environments either).
 
-The frontend uses `supabase.auth.mfa.getAuthenticatorAssuranceLevel()`, `supabase.auth.mfa.listFactors()`, `supabase.auth.mfa.enroll()`, `supabase.auth.mfa.challenge()`, and `supabase.auth.mfa.verify()`.
+## Local development
 
-Email OTP is not used as the admin second factor in this implementation. Email/password or magic links can still be first-factor sign-in methods, but the production admin gate requires a verified Supabase TOTP factor for the `aal2` assurance check.
-
-Local UI development can set `VITE_PO_DEV_ADMIN_MFA_BYPASS=true`, but the code ignores that flag in production builds. Do not set it in staging or production.
-
-## Transitional Google Auth Notes
-
-The Fastify API still contains Google OAuth routes from the older API-session model. Keep these notes only for migration support while the platform converges on Supabase Auth.
-
-## Google Cloud Console
-
-1. Create or open a Google Cloud project.
-2. Configure the OAuth consent screen.
-3. Create an OAuth 2.0 Client ID for a Web application.
-4. Add authorized redirect URIs:
-   - Local student callback: `http://localhost:3001/auth/google/student/callback`
-   - Local tutor callback: `http://localhost:3001/auth/google/callback`
-   - Local admin callback: `http://localhost:3001/auth/google/admin/callback`
-   - Production student callback: `https://student.projectodysseus.live/api/auth/google/student/callback`
-   - Production tutor callback: `https://projectodysseus.live/api/auth/google/callback`
-   - Production admin callback: `https://admin.projectodysseus.live/api/auth/google/admin/callback`
-5. Copy the client ID and client secret into environment variables. Do not commit real secrets.
-
-## Required Environment
-
-Set these for local development:
-
-```env
-PUBLIC_PO_API_BASE=/api
-PUBLIC_BASE_URL=https://projectodysseus.live
-STUDENT_PORTAL_URL=https://student.projectodysseus.live
-TUTOR_PORTAL_URL=https://tutor.projectodysseus.live
-ADMIN_PORTAL_URL=https://admin.projectodysseus.live
-CORS_ORIGIN=https://student.projectodysseus.live
-COOKIE_SECRET=replace_with_long_random_value
-JWT_SECRET=replace_with_long_random_value
-JWT_EXPIRES_IN=15m
-SESSION_MAX_AGE_SECONDS=900
-GOOGLE_CLIENT_ID=replace_with_google_client_id
-GOOGLE_CLIENT_SECRET=replace_with_google_client_secret
-GOOGLE_CALLBACK_URL=https://projectodysseus.live/api/auth/google/callback
-GOOGLE_STUDENT_CALLBACK_URL=https://student.projectodysseus.live/api/auth/google/student/callback
-GOOGLE_ADMIN_CALLBACK_URL=https://admin.projectodysseus.live/api/auth/google/admin/callback
+```bash
+npm run supabase:start
+npm run supabase:reset
+npm run dev:react
 ```
 
-Production additionally fails fast unless `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `PUBLIC_BASE_URL`, `STUDENT_PORTAL_URL`, and `GOOGLE_STUDENT_CALLBACK_URL` are present. Production URL values must use HTTPS.
+Use local Auth users and matching profiles; do not commit passwords. To verify
+student, tutor, and admin role mapping through RLS, set the temporary
+`VERIFY_*_EMAIL` and `VERIFY_*_PASSWORD` variables documented in the root
+[README](../../README.md), then run:
 
-Portal URL values must be origins only. The auth service appends `/dashboard/admin/`, `/dashboard/tutor/`, or `/dashboard/student/` after login.
+```bash
+npm run verify:supabase:roles
+```
 
-## Local Development
+## Manual verification
 
-1. Copy `.env.example` to `.env` and fill only local values.
-2. Run database migrations with `npm run migrate`.
-3. Start the API and static site with `npm run dev`.
-4. Open `http://localhost:8081/dashboard/login/`.
-5. Use a Google account whose email already exists as an active `STUDENT` user.
+- An unauthenticated user is sent to `/dashboard/login` from protected routes.
+- Student, tutor, parent, NGO-partner, and admin users land on their own shell.
+- Cross-role queries and mutations fail at the database boundary, not just in
+  React.
+- An admin with `aal1` is asked to complete TOTP and cannot render protected
+  admin content first.
+- Sign-out clears the active Supabase session and protected data disappears.
+- The runtime pgTAP suite passes after a clean migration reset.
 
-## Production Notes
-
-- Serve the API over HTTPS behind the configured `PUBLIC_BASE_URL`.
-- Set `NODE_ENV=production` so session and OAuth cookies use `Secure`.
-- Keep `ENFORCE_SAME_ORIGIN=true`.
-- Include the student portal origin in `CORS_ORIGIN`.
-- Rotate `JWT_SECRET` and `COOKIE_SECRET` through the deployment secret manager, not source control.
-
-## Security Assumptions
-
-- Google OAuth is sign-in only; student accounts are pre-created by admins.
-- ID tokens are validated server-side for signature, issuer, audience, expiry, nonce, and verified email.
-- Sessions are stored in HttpOnly cookies; frontend code never stores auth tokens in localStorage.
-- Student API data remains protected by server-side session validation and `STUDENT` RBAC.
-- Static HTML may load before auth validation, but private dashboard data is fetched only after `/auth/session` confirms a student session.
-
-## Manual Verification
-
-- Visit `/dashboard/` while signed out and confirm redirect to `/dashboard/login/`.
-- Confirm the login page shows only `Continue with Google`.
-- Complete Google sign-in with a registered active student email and confirm redirect to `/dashboard/`.
-- Confirm the dashboard shows the Google profile name/email/avatar when available.
-- Sign out from the dashboard and confirm the old session cannot access `/dashboard`.
-- Try Google sign-in with an unregistered or wrong-role account and confirm the login page shows an error.
+Historical Fastify OAuth callbacks and environment variables are preserved only
+in [the archived runbook](../archive/LEGACY_FASTIFY_DOCKER_RUNBOOK.md).

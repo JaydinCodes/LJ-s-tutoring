@@ -165,6 +165,65 @@ module.exports = {
   // ============================================================================
   overrides: [
     {
+      files: ['src/**/*.{ts,tsx}'],
+      parser: '@typescript-eslint/parser',
+      parserOptions: {
+        project: './tsconfig.app.json',
+        tsconfigRootDir: __dirname,
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      plugins: ['@typescript-eslint', 'react', 'react-hooks', 'jsx-a11y'],
+      extends: [
+        'plugin:@typescript-eslint/recommended',
+        'plugin:react/recommended',
+        'plugin:react/jsx-runtime',
+        'plugin:jsx-a11y/recommended',
+      ],
+      settings: {
+        react: {
+          version: 'detect',
+        },
+      },
+      rules: {
+        // TypeScript performs these checks more accurately than the base rules.
+        'no-undef': 'off',
+        'no-unused-vars': 'off',
+        '@typescript-eslint/no-unused-vars': 'off',
+        '@typescript-eslint/no-empty-object-type': 'off',
+
+        // Do not make the initial TS adoption a formatting migration. These
+        // style rules remain active for the existing JavaScript scope.
+        'comma-dangle': 'off',
+        'curly': 'off',
+        'eqeqeq': 'off',
+        'indent': 'off',
+        'quotes': 'off',
+
+        // Streaming readers intentionally use `while (true)` and break on EOF.
+        'no-constant-condition': ['error', { checkLoops: false }],
+
+        // Keep async UI work explicit: await it, return it, or deliberately void it.
+        '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
+
+        // React/JSX correctness checks that are useful without requiring a compiler.
+        'react/prop-types': 'off',
+        'react/no-unescaped-entities': 'off',
+        'react-hooks/rules-of-hooks': 'error',
+        'react-hooks/exhaustive-deps': 'error',
+
+        // Custom component props named `role` are domain roles, not ARIA roles.
+        'jsx-a11y/aria-role': ['error', { ignoreNonDOM: true }],
+
+        // Overlay click-away surfaces are paired with focus-managed dialogs.
+        // Runtime Pa11y and Playwright checks cover their keyboard behavior.
+        'jsx-a11y/click-events-have-key-events': 'off',
+        'jsx-a11y/no-noninteractive-element-interactions': 'off',
+        'jsx-a11y/no-static-element-interactions': 'off',
+      },
+    },
+    {
       files: ['scripts/**/*.js'],
       env: {
         node: true,

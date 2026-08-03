@@ -23,7 +23,9 @@ Start with `docs/architecture/ARCHITECTURE.md` for the current implementation ma
 
 - A unified Vite + React + TypeScript LMS migration app in `src/`.
 - `supabase/` for the Postgres schema/RLS/RPC source of truth (`docs/supabase/schema.sql`) and Edge Functions requiring trusted server execution.
-- Build scripts that compile the unified React bundle, generate React route shells, serve the React public root from `dist/index.html`, and inject the public API base.
+- Build scripts that compile the unified React bundle, generate React route
+  shells, serve the React public root from `dist/index.html`, and validate the
+  generated public configuration/assets.
 
 ## Quick start
 
@@ -44,7 +46,7 @@ src/                 Unified React + TypeScript LMS frontend
 supabase/            Edge Functions and local Supabase CLI config
 docs/                Architecture, setup, deployment, compliance, release, and ops docs
 .do/                 DigitalOcean App Platform spec
-assets/              Public support assets copied into the React static build
+assets/              Closed public-asset allowlist plus one owner-excluded historical Community file
 images/              Public images used by React routes and SEO metadata
 scripts/             Build, verification, release, and operational helper scripts
 tests/               Frontend unit tests and browser E2E tests
@@ -56,7 +58,11 @@ Root-level config files are intentionally kept at the top level because the rela
 
 ## React LMS migration
 
-The production build now serves the unified React app for public, student, admin, tutor, auth, and onboarding routes. Legacy static source files are retained only as inactive reference material unless explicitly reintroduced.
+The production build now serves the unified React app for public, student,
+tutor, parent, NGO-partner, admin, auth, and onboarding routes. Retired static
+route trees and non-Community legacy assets were removed. The sole historical
+asset left in place is excluded Community code that is not copied to production.
+See `docs/architecture/STATIC_ASSET_OWNERSHIP.md` for the exact inventory.
 
 Primary React app:
 
@@ -73,103 +79,52 @@ Important unified React routes:
 - Student: `/dashboard/student`, `/dashboard/student/assignments`, `/dashboard/student/progress`, `/dashboard/student/results`, `/dashboard/student/careers`, `/dashboard/student/reports`, `/dashboard/student/community`
 - Admin: `/dashboard/admin`, `/dashboard/admin/users`, `/dashboard/admin/students`, `/dashboard/admin/tutors`, `/dashboard/admin/allocations`, `/dashboard/admin/classes`, `/dashboard/admin/assignments`, `/dashboard/admin/approvals`, `/dashboard/admin/payments`, `/dashboard/admin/payroll`, `/dashboard/admin/reconciliation`, `/dashboard/admin/reports`, `/dashboard/admin/results`, `/dashboard/admin/audit`, `/dashboard/admin/privacy-requests`, `/dashboard/admin/retention`, `/dashboard/admin/ops-runbook`
 - Tutor: `/dashboard/tutor`, `/dashboard/tutor/classes`, `/dashboard/tutor/sessions`, `/dashboard/tutor/submissions`, `/dashboard/tutor/reports`, `/dashboard/tutor/risk`
+- Parent: `/dashboard/parent/reports`
+- NGO partner: `/dashboard/ngo/reports`
 
 Migration tracking:
 
-- Audit and slice history: `docs/MIGRATION_AUDIT.md`
+- Historical audit and slice snapshot: `docs/MIGRATION_AUDIT.md`
 - Documentation map: `docs/README.md`
 - Supabase schema source: `docs/supabase/schema.sql`
 - Supabase auth seed notes: `docs/supabase/auth-seed-notes.md`
 - Supabase production RLS review: `docs/supabase/PRODUCTION_RLS_REVIEW.md`
 - Local Supabase setup: `docs/supabase/LOCAL_DEVELOPMENT.md`
-- Cleanup checklist: `docs/REACT_MIGRATION_CLEANUP_CHECKLIST.md`
+- Historical cleanup checklist: `docs/REACT_MIGRATION_CLEANUP_CHECKLIST.md`
 
 Supabase-first migration rules:
 
-- Edit `docs/supabase/schema.sql` for Supabase tables, RLS, Storage policies, and RPC.
-- Run `npm run supabase:migration:sync` before local Supabase resets.
+- Keep `docs/supabase/schema.sql` current as the desired-state / clean-install reference.
+- Create a new immutable forward migration under `supabase/migrations/` for every database change; never amend an applied migration.
+- Run `npm run supabase:reset`, `npm run test:rls`, and `npm run test:rls:runtime` before sharing a migration.
 - Use direct browser Supabase writes only when RLS fully protects ownership and allowed fields.
 - Use RPC or trusted backend code for marking, feedback, result release, role management, payments, privacy work, and other privileged mutations.
-- Treat `student-app/`, `legacy/static/`, and Prisma-era API migrations as legacy/transitional unless a task explicitly targets them.
+- The retired `student-app/` tree and obsolete `assets/app-critical.js` were removed after unified React parity; use Git history for comparisons instead of restoring them to the active tree.
 
-## Docker Postgres
+## Retired backend instructions
 
-If you do not have Postgres installed locally, use the bundled Docker setup.
-
-```bash
-docker compose up -d db
-```
-
-That starts Postgres 16 on `localhost:5433` with the defaults from `.env.example`:
-
-```env
-LOCAL_POSTGRES_PASSWORD=postgres
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/lms
-```
-
-To run the API and Postgres together in Docker:
-
-```bash
-docker compose up api db
-```
-
-The API container waits for Postgres to become healthy before starting migrations.
-
-## Production Docker API
-
-Use the dedicated production compose file to run only the API service against an external managed Postgres database.
-
-Required environment variables in `.env`:
-
-- `DATABASE_URL` (Supabase pooler/session Postgres connection string; direct Supabase DB hosts can be IPv6-only)
-- `COOKIE_SECRET`
-- `JWT_SECRET`
-- `PUBLIC_BASE_URL`
-
-Start production API container:
-
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-View logs:
-
-```bash
-docker compose -f docker-compose.prod.yml logs -f api
-```
-
-Stop production API container:
-
-```bash
-docker compose -f docker-compose.prod.yml down
-```
-
-If you use DigitalOcean Managed Postgres, make sure the server public IP is allowed in the cluster Trusted Sources list, otherwise the API cannot connect.
-
-Optional P4 gateway layer (Nginx, centralized edge auth + rate limiting):
-
-```bash
-docker compose -f docker-compose.prod.yml -f docker-compose.gateway.yml up -d --build
-```
-
-Set `GATEWAY_SHARED_KEY` in `.env` (or shell) before running the gateway overlay.
-For CI/CD and hosted deployments, set `GATEWAY_SHARED_KEY` as a repository/deployment secret as well.
-
-Gateway docs and policy template: `ops/gateway/README.md` and `ops/gateway/nginx/nginx.conf`.
+The Fastify/Prisma API and its Docker Compose deployment are not part of the
+active repository or production topology. Their former commands are preserved
+only in [the archived runbook](docs/archive/LEGACY_FASTIFY_DOCKER_RUNBOOK.md)
+for audit/history context. Do not use them for current setup or deployment.
 
 ## Uptime Monitor
 
 The scheduled workflow at `.github/workflows/uptime-check.yml` checks:
 
-- `GET ${HEALTHCHECK_URL}/health`
+- `GET ${HEALTHCHECK_URL}/health.json`, including JSON Content-Type and the exact static contract.
+- Supabase Auth health at `${SUPABASE_URL}/auth/v1/health`.
+- A zero-row PostgREST `profiles` probe using only the public anon key.
 
-Set the `HEALTHCHECK_URL` repository secret to enable it.
+Set repository variables `HEALTHCHECK_URL`, `SUPABASE_URL`, and
+`SUPABASE_ANON_KEY`. Missing configuration fails rather than reporting a false
+green result.
 
 ### Local URLs
 
 - Static React build: `http://localhost:8080`
 - React dev app: `http://localhost:5173`
-- API: `http://localhost:3001`
+- Local Supabase API: `http://127.0.0.1:54321`
 - Login: `http://localhost:8080/dashboard/login/`
 - Student dashboard: `http://localhost:8080/dashboard/student/`
 - Tutor dashboard: `http://localhost:8080/dashboard/tutor/`
@@ -181,21 +136,18 @@ Set the `HEALTHCHECK_URL` repository secret to enable it.
 Only safe public values should be exposed to browser code.
 
 ```env
-PUBLIC_PO_API_BASE=http://localhost:3001
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
-VITE_PO_FORMSPREE_ENDPOINT=
 ```
 
-`PUBLIC_PO_API_BASE` is injected into `dist/assets/portal-config.js` during the static build.
-`VITE_PO_FORMSPREE_ENDPOINT` is optional; when omitted, the React public enquiry form opens a pre-filled email fallback.
-`SUPABASE_SERVICE_ROLE_KEY` is intentionally omitted from public client config. It is backend-only for API operations such as admin user invitations.
+Public enquiries open a pre-filled message in the visitor's email app, with WhatsApp offered as an alternative. The site does not send enquiry details to a third-party form processor.
+`SUPABASE_SERVICE_ROLE_KEY` is intentionally omitted from public client config. It is available only to trusted Edge Functions such as admin user invitations.
 
 See `.env.example` for the canonical variable list (placeholders only).
 
 ### Supabase dashboard role verification
 
-After applying `docs/supabase/schema.sql` and creating Auth users plus matching `profiles` rows, verify role mapping without committing passwords:
+After resetting from committed migrations and creating Auth users plus matching `profiles` rows, verify role mapping without committing passwords:
 
 ```powershell
 $env:VERIFY_ADMIN_EMAIL="admin@example.com"
@@ -216,20 +168,21 @@ npm run build        # Build the React bundle, generate route shells, inject con
 npm run build:react  # Build the unified React LMS bundle
 npm run build:static # Generate React route shells and copy required public assets to dist/
 npm run supabase:start # Start local Supabase through the CLI
-npm run supabase:reset # Generate and apply the local Supabase schema/RLS/RPC migration
+npm run supabase:reset # Rebuild local Supabase from committed migrations
 npm run inject:config
 npm run serve        # Serve dist/ on port 8080
 npm run dev          # Serve the static site (build:static + serve)
-npm run start        # Serve static site + run API prod server (after build:api)
-npm run lint         # Lint JS and validate HTML
-npm run test:unit    # Run frontend helper and React migration unit tests
+npm run start        # Serve the built static site
+npm run lint         # Lint JS, active TypeScript/React, and root HTML
+npm run typecheck    # Type-check the active React app
+npm test             # Run frontend and source-contract tests
 npm run test:rls     # Validate Supabase schema/RLS/RPC source contracts
-npm run test:api     # Run LMS API integration tests
-npm run test:e2e:api # Run LMS API E2E tests
-npm run test:all     # Run frontend unit + API integration + API E2E
-npm run test         # Alias of test:all
-docker compose up -d db # Start only Postgres in Docker
-docker compose up api db # Run API + Postgres in Docker
+npm run test:rls:runtime # Run pgTAP authorization tests on local Supabase
+npm run test:e2e     # Run deterministic frontend browser journeys (mock adapter)
+npm run perf:budget  # Enforce static asset budgets
+npm run qa:html      # Validate generated route shells after npm run build
+npm run qa:links     # Check canonical internal routes while dist is served
+npm run qa:a11y      # Run Pa11y on canonical public/login routes while dist is served
 ```
 
 ## Production Static Output
@@ -239,10 +192,13 @@ dist/
   index.html
   react-app-dist/
   assets/
+    analytics-module.js
     analytics.js
+    lib/
+      sanitize.js
     portal-config.js
-    seo-index.js
     sw-register.js
+    tailwind-input.css
   dashboard/
     student/
     admin/

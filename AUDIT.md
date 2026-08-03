@@ -1,5 +1,12 @@
 # Project Odysseus — Engineering & Security Audit
 
+> **Historical audit snapshot — superseded.** This file describes a repository
+> that still contained Fastify/Prisma and OpenRouter; those claims are not the
+> current implementation. Do not use it as an architecture, security, or release
+> runbook. Use [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) and the
+> [2026-08-03 audit remediation status](docs/release/AUDIT_REMEDIATION_STATUS_2026-08-03.md).
+> Findings and fixes below are retained as audit history.
+
 **Scope:** Full monorepo — Supabase-first React/Vite LMS frontend (`src/`), transitional Fastify + Prisma backend (`lms-api/`), Supabase schema/RLS/RPC (`docs/supabase/schema.sql`), Odie AI assistant, legacy static assets, docs, CI/CD.
 **Method:** Direct file reads across all layers (not filename inference), cross-checked against `docs/architecture/ARCHITECTURE.md` and `docs/architecture/ADR-0001-supabase-first.md`, spot-verified against source for the two Critical findings below.
 
@@ -79,7 +86,7 @@ No org-level tenancy; isolation is per-row ownership. See Phase 3 for the concre
 | Google OAuth | `lms-api/src/routes/auth.ts` | Legacy sign-in for admin/tutor/student |
 | DigitalOcean App Platform | `.do/app.yaml` | Deployment target, CORS/env config |
 | Sentry | `src/lib/monitoring/errorReporting.ts`, `lms-api/src/lib/error-monitor.ts` (hand-rolled, no `@sentry/node`) | Error monitoring, frontend + backend |
-| Formspree | `src/app/routes/PublicRoutes.tsx` | Public enquiry form submission |
+| Email and WhatsApp | `src/app/routes/PublicRoutes.tsx` | The visitor reviews and sends a pre-filled public enquiry in their chosen app |
 
 ---
 

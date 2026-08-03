@@ -12,7 +12,6 @@ export function OnboardingRoute({ role }: { role: Extract<UserRole, 'student' | 
   const auth = useAuth();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [grade, setGrade] = useState('');
   const [school, setSchool] = useState('');
@@ -20,19 +19,15 @@ export function OnboardingRoute({ role }: { role: Extract<UserRole, 'student' | 
   const [parentContact, setParentContact] = useState('');
   const [subjects, setSubjects] = useState('');
   const [grades, setGrades] = useState('');
-  const [hourlyRate, setHourlyRate] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const user = auth.session?.user;
-    if (!email && user?.email) {
-      setEmail(user.email);
-    }
     if (!fullName && user?.user_metadata?.full_name && typeof user.user_metadata.full_name === 'string') {
       setFullName(user.user_metadata.full_name);
     }
-  }, [auth.session, email, fullName]);
+  }, [auth.session, fullName]);
 
   if (auth.loading) {
     return <OnboardingShell role={role}><Card>Checking your session...</Card></OnboardingShell>;
@@ -56,9 +51,9 @@ export function OnboardingRoute({ role }: { role: Extract<UserRole, 'student' | 
     setError(null);
     try {
       if (role === 'student') {
-        await completeStudentOnboarding({ fullName, email, phone, grade, school, parentName, parentContact });
+        await completeStudentOnboarding({ fullName, phone, grade, school, parentName, parentContact });
       } else {
-        await completeTutorOnboarding({ fullName, email, phone, subjects, grades, hourlyRate });
+        await completeTutorOnboarding({ fullName, phone, subjects, grades });
       }
       await auth.refresh();
       navigate(getDashboardPath(role), { replace: true });
@@ -79,9 +74,6 @@ export function OnboardingRoute({ role }: { role: Extract<UserRole, 'student' | 
         <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={(event) => void submit(event)}>
           <FormField label="Full name">
             <TextInput required value={fullName} onChange={(event) => setFullName(event.target.value)} />
-          </FormField>
-          <FormField label="Email">
-            <TextInput required type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
           </FormField>
           <FormField label="Phone">
             <TextInput value={phone} onChange={(event) => setPhone(event.target.value)} />
@@ -109,9 +101,6 @@ export function OnboardingRoute({ role }: { role: Extract<UserRole, 'student' | 
               </FormField>
               <FormField label="Grades" hint="Comma-separated list, for example: Grade 10, Grade 11, Grade 12">
                 <TextInput required value={grades} onChange={(event) => setGrades(event.target.value)} />
-              </FormField>
-              <FormField label="Hourly rate">
-                <TextInput type="number" min="0" step="1" value={hourlyRate} onChange={(event) => setHourlyRate(event.target.value)} />
               </FormField>
             </>
           )}

@@ -145,17 +145,22 @@ Deno.serve(async (req) => {
   // other students. 20 requests / 10 minutes is generous for genuine back-
   // and-forth chat while blocking a tight loop.
   const subjectId = (profileRow as { id: string }).id;
-  const rateLimitWindowStart = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-  const { count: recentRequestCount } = await admin
-    .from('edge_function_rate_limit_events')
-    .select('*', { count: 'exact', head: true })
-    .eq('function_name', 'odie-careers-chat-stream')
-    .eq('subject_id', subjectId)
-    .gte('created_at', rateLimitWindowStart);
-  if ((recentRequestCount ?? 0) >= 20) {
+  const { data: rateLimitAllowed, error: rateLimitError } = await admin.rpc(
+    'check_and_record_edge_function_rate_limit',
+    {
+      p_subject_id: subjectId,
+      p_function_name: 'odie-careers-chat-stream',
+      p_limit: 20,
+      p_window_seconds: 10 * 60,
+    },
+  );
+  if (rateLimitError) {
+    console.error('rate_limit_check_failed', { functionName: 'odie-careers-chat-stream', code: rateLimitError.code });
+    return json({ error: 'rate_limiter_unavailable' }, 503);
+  }
+  if (rateLimitAllowed !== true) {
     return json({ error: 'rate_limited' }, 429);
   }
-  await admin.from('edge_function_rate_limit_events').insert({ subject_id: subjectId, function_name: 'odie-careers-chat-stream' });
 
   // 2) Validate the payload.
   const parsed = ChatRequestSchema.safeParse(await req.json().catch(() => null));

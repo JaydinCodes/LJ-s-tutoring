@@ -24,6 +24,51 @@ function assertSizeIfBuilt(relativePath, maxBytes) {
   console.log(`[perf-budget] ${relativePath}: ${size}/${maxBytes} bytes`);
 }
 
+function assertCombinedSize(relativePaths, maxBytes, label) {
+  const files = relativePaths.map((relativePath) => ({
+    relativePath,
+    filePath: path.join(root, relativePath),
+  }));
+  const missing = files.filter(({ filePath }) => !fs.existsSync(filePath));
+  assert(missing.length === 0, `${label} is missing: ${missing.map(({ relativePath }) => relativePath).join(', ')}`);
+  const size = files.reduce((total, { filePath }) => total + fs.statSync(filePath).size, 0);
+  assert(size <= maxBytes, `${label} is ${size} bytes, above budget ${maxBytes}`);
+  console.log(`[perf-budget] ${label}: ${size}/${maxBytes} bytes`);
+}
+
+function collectFiles(directory, predicate) {
+  const files = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...collectFiles(entryPath, predicate));
+    } else if (predicate(entryPath)) {
+      files.push(entryPath);
+    }
+  }
+  return files;
+}
+
+function assertGeneratedJsBudget(relativeDirectory, maxTotalBytes, maxAsyncChunkBytes) {
+  const directory = path.join(root, relativeDirectory);
+  if (!fs.existsSync(directory)) {
+    console.log(`[perf-budget] skipped generated JS check for missing ${relativeDirectory}`);
+    return;
+  }
+
+  const jsFiles = collectFiles(directory, (filePath) => filePath.endsWith('.js'));
+  assert(jsFiles.length > 1, `${relativeDirectory} must contain a code-split entry and async chunks`);
+
+  const totalBytes = jsFiles.reduce((total, filePath) => total + fs.statSync(filePath).size, 0);
+  const asyncChunks = jsFiles.filter((filePath) => path.basename(filePath) !== 'react-app.js');
+  const largestAsyncChunk = Math.max(...asyncChunks.map((filePath) => fs.statSync(filePath).size));
+
+  assert(totalBytes <= maxTotalBytes, `${relativeDirectory} generated JS is ${totalBytes} bytes, above total budget ${maxTotalBytes}`);
+  assert(largestAsyncChunk <= maxAsyncChunkBytes, `${relativeDirectory} largest async chunk is ${largestAsyncChunk} bytes, above budget ${maxAsyncChunkBytes}`);
+  console.log(`[perf-budget] generated JS: ${totalBytes}/${maxTotalBytes} bytes across ${jsFiles.length} files`);
+  console.log(`[perf-budget] largest async chunk: ${largestAsyncChunk}/${maxAsyncChunkBytes} bytes`);
+}
+
 const queries = read('src', 'features', 'students', 'studentQueries.ts');
 const shell = read('src', 'components', 'dashboard', 'DashboardShell.tsx');
 const motion = read('src', 'components', 'dashboard', 'DashboardDesignSystem.tsx');
@@ -42,7 +87,16 @@ assert(motion.includes('transformOrigin'), 'progress animation must use transfor
 assert(docs.includes('Lighthouse before'), 'Lighthouse before score must be tracked in docs');
 assert(docs.includes('Lighthouse after'), 'Lighthouse after score must be tracked in docs');
 
-assertSizeIfBuilt('react-app-dist/react-app.js', 1_500_000);
+assertSizeIfBuilt('react-app-dist/react-app.js', 1_400_000);
+assertGeneratedJsBudget('react-app-dist', 2_700_000, 150_000);
 assertSizeIfBuilt('react-app-dist/react-app.css', 90_000);
+assertSizeIfBuilt('images/odysseus-hero-fallback.webp', 150_000);
+assertSizeIfBuilt('images/bg_video-optimized.mp4', 1_000_000);
+assertCombinedSize([
+  'images/jaydin-morrison.webp',
+  'images/nicholas-dreyer.webp',
+  'images/liam-newton.webp',
+  'images/logan-petrus.webp',
+], 500_000, 'tutor portraits');
 
 console.log('[perf-budget] frontend performance budget checks passed');

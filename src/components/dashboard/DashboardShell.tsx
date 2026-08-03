@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Bell,
   BookOpen,
@@ -25,7 +25,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { signOut } from '../../features/auth/authService';
 import { useStudentNotifications } from '../../features/students/useStudentNotifications';
-import { NotificationSheet, NotificationDrawer } from '../../features/students/StudentNotificationsPanel';
+import { NotificationDialog } from '../../features/students/StudentNotificationsPanel';
+import { useModalDialog } from '../../hooks/useModalDialog';
 
 type DashboardNavItem = {
   to: string;
@@ -112,6 +113,49 @@ function getSectionHome(section: DashboardSection) {
   return `/dashboard/${section}`;
 }
 
+function useDashboardSignOut(refreshAuth: () => Promise<void>) {
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+
+  async function handleSignOut() {
+    if (isSigningOut) return;
+
+    setIsSigningOut(true);
+    setSignOutError(null);
+
+    try {
+      await signOut();
+      await refreshAuth();
+      window.location.assign('/dashboard/login');
+    } catch {
+      setSignOutError('We could not sign you out. Check your connection and try again.');
+    } finally {
+      setIsSigningOut(false);
+    }
+  }
+
+  return { handleSignOut, isSigningOut, signOutError };
+}
+
+function SignOutFailure({
+  busy,
+  message,
+  onRetry,
+}: {
+  busy: boolean;
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-ios border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-400/40 dark:bg-red-950/40 dark:text-red-100" role="alert">
+      <p>{message}</p>
+      <button className="min-h-10 rounded-lg border border-current px-3 font-semibold disabled:cursor-not-allowed disabled:opacity-60" disabled={busy} onClick={onRetry} type="button">
+        {busy ? 'Retrying...' : 'Try again'}
+      </button>
+    </div>
+  );
+}
+
 export function DashboardShell(props: ShellProps) {
   if (props.section === 'student') {
     return <AppShell {...props} />;
@@ -127,16 +171,11 @@ export function AppShell({ title, subtitle, children }: ShellProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { data: notifications } = useStudentNotifications();
   const unreadCount = (notifications ?? []).filter((n) => !n.is_read).length;
-
-  async function handleSignOut() {
-    await signOut();
-    await auth.refresh();
-    window.location.assign('/dashboard/login');
-  }
+  const { handleSignOut, isSigningOut, signOutError } = useDashboardSignOut(auth.refresh);
 
   return (
     <div className="academy-app-bg">
-      <div className="mx-auto grid min-h-screen w-full max-w-[1180px] grid-cols-1 lg:grid-cols-[5rem_minmax(0,1fr)]">
+      <div className="mx-auto grid min-h-screen w-full max-w-[1180px] grid-cols-1 lg:grid-cols-[5rem_minmax(0,1fr)]" data-modal-background>
         <DesktopRail navItems={nav.student} />
         <main className="min-w-0 px-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-5 lg:px-6 lg:pb-8 lg:pt-5">
           <TopStudentHeader
@@ -145,19 +184,23 @@ export function AppShell({ title, subtitle, children }: ShellProps) {
             subtitle={subtitle}
             title={title}
             onSignOut={() => void handleSignOut()}
+            signingOut={isSigningOut}
             unreadCount={unreadCount}
             onOpenNotifications={() => setNotificationsOpen(true)}
           />
+          {signOutError ? (
+            <SignOutFailure busy={isSigningOut} message={signOutError} onRetry={() => void handleSignOut()} />
+          ) : null}
           <div className="mx-auto mt-4 w-full max-w-4xl space-y-4">{children}</div>
         </main>
       </div>
-      <MobileBottomNav navItems={nav.student} onSignOut={() => void handleSignOut()} />
-      <NotificationSheet open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
-      <NotificationDrawer open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
+      <MobileBottomNav navItems={nav.student} onSignOut={() => void handleSignOut()} signingOut={isSigningOut} />
+      <NotificationDialog open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
       {onCareersPage ? (
         <a
           aria-label="Open Odie career assistant"
           className="fixed bottom-[calc(6.35rem+env(safe-area-inset-bottom))] right-4 z-40 grid h-14 w-14 place-items-center rounded-full bg-academy-gold text-academy-ink shadow-[0_18px_44px_rgba(15,23,42,0.24)] transition duration-fluid ease-ios hover:scale-[1.03] focus-visible:outline-academy-gold lg:bottom-6 lg:right-6"
+          data-modal-background
           href="#odie-career-assistant"
         >
           <Sparkles className="h-5 w-5" aria-hidden="true" strokeWidth={2.2} />
@@ -173,6 +216,7 @@ export function TopStudentHeader({
   subtitle,
   title,
   onSignOut,
+  signingOut,
   unreadCount,
   onOpenNotifications,
 }: {
@@ -181,6 +225,7 @@ export function TopStudentHeader({
   subtitle: string;
   title: string;
   onSignOut: () => void;
+  signingOut: boolean;
   unreadCount: number;
   onOpenNotifications: () => void;
 }) {
@@ -198,30 +243,31 @@ export function TopStudentHeader({
         <div className="flex shrink-0 items-center gap-2">
           <NavLink
             aria-label="Open resources"
-            className="grid h-11 w-11 place-items-center rounded-ios border border-slate-950/10 bg-white/64 text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09]"
+            className="grid h-11 w-11 place-items-center rounded-ios border border-slate-950/10 bg-white/[0.64] text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09]"
             to="/dashboard/student/reports"
           >
             <BookOpen className="h-4 w-4" aria-hidden="true" />
           </NavLink>
           <NavLink
             aria-label="Open settings"
-            className="grid h-11 w-11 place-items-center rounded-ios border border-slate-950/10 bg-white/64 text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09]"
+            className="grid h-11 w-11 place-items-center rounded-ios border border-slate-950/10 bg-white/[0.64] text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09]"
             to="/dashboard/student/settings"
           >
             <Settings className="h-4 w-4" aria-hidden="true" />
           </NavLink>
           <button
             aria-label="Sign out"
-            className="hidden h-11 items-center gap-2 rounded-full border border-slate-950/10 bg-white/64 px-4 text-sm font-semibold text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09] sm:inline-flex"
+            className="hidden h-11 items-center gap-2 rounded-full border border-slate-950/10 bg-white/[0.64] px-4 text-sm font-semibold text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09] sm:inline-flex"
+            disabled={signingOut}
             type="button"
             onClick={onSignOut}
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
-            Sign out
+            {signingOut ? 'Signing out...' : 'Sign out'}
           </button>
           <button
             aria-label={unreadCount > 0 ? `Open notifications, ${unreadCount} unread`: 'Open notifications'}
-            className="relative grid h-11 w-11 place-items-center rounded-ios border border-slate-952/10 bg-white/64 text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09]"
+            className="relative grid h-11 w-11 place-items-center rounded-ios border border-slate-950/10 bg-white/[0.64] text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09]"
             type="button"
             onClick={onOpenNotifications}
           >
@@ -284,33 +330,47 @@ export function DesktopRail({ navItems }: { navItems: DashboardNavItem[] }) {
   );
 }
 
-export function MobileBottomNav({ navItems, onSignOut }: { navItems: DashboardNavItem[]; onSignOut: () => void }) {
+export function MobileBottomNav({
+  navItems,
+  onSignOut,
+  signingOut,
+}: {
+  navItems: DashboardNavItem[];
+  onSignOut: () => void;
+  signingOut: boolean;
+}) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const primaryItems = navItems.length <= 5 ? navItems : navItems.slice(0, 4);
   const overflowItems = navItems.length <= 5 ? [] : navItems.slice(4);
   const visibleCount = primaryItems.length + (overflowItems.length ? 1 : 0);
+  useModalDialog({ dialogRef, onClose: () => setOpen(false), open });
 
   return (
     <>
       {open ? (
         <div
-          aria-hidden={!open}
           className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-sm lg:hidden"
-          onClick={() => setOpen(false)}
+          onMouseDown={(event) => {
+            if (event.currentTarget === event.target) setOpen(false);
+          }}
         >
           <div
-            aria-label="More navigation"
+            aria-labelledby="student-more-navigation-title"
             aria-modal="true"
             className="fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-50 max-h-[min(28rem,calc(100vh-8rem))] overflow-auto rounded-sheet border border-white/70 bg-white/[0.94] p-3 shadow-[0_24px_80px_rgba(15,23,42,0.22)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/[0.94]"
-            onClick={(event) => event.stopPropagation()}
+            id="student-more-navigation"
+            ref={dialogRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="mb-2 flex items-center justify-between gap-3 px-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">More</p>
+              <p id="student-more-navigation-title" className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">More</p>
               <button
                 aria-label="Close menu"
                 className="grid min-h-9 min-w-9 place-items-center rounded-ios border border-slate-950/10 bg-white text-sm font-semibold text-academy-ink dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment"
+                data-modal-initial-focus
                 onClick={() => setOpen(false)}
                 type="button"
               >
@@ -339,17 +399,18 @@ export function MobileBottomNav({ navItems, onSignOut }: { navItems: DashboardNa
             <div className="mt-3 border-t border-slate-950/10 pt-3 dark:border-white/10">
               <button
                 className="flex min-h-11 w-full items-center justify-center gap-2 rounded-ios border border-slate-950/10 bg-white px-4 text-sm font-semibold text-academy-ink dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment"
+                disabled={signingOut}
                 onClick={onSignOut}
                 type="button"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />
-                Sign out
+                {signingOut ? 'Signing out...' : 'Sign out'}
               </button>
             </div>
           </div>
         </div>
       ) : null}
-      <nav aria-label="Student portal" className="academy-bottom-nav lg:hidden">
+      <nav aria-label="Student portal" className="academy-bottom-nav lg:hidden" data-modal-background>
         <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${visibleCount}, minmax(0, 1fr))` }}>
           {primaryItems.map((item) => {
             const Icon = item.icon;
@@ -369,7 +430,7 @@ export function MobileBottomNav({ navItems, onSignOut }: { navItems: DashboardNa
             );
           })}
           {overflowItems.length ? (
-            <button aria-expanded={open} className="academy-nav-item" onClick={() => setOpen(true)} type="button">
+            <button aria-controls="student-more-navigation" aria-expanded={open} aria-haspopup="dialog" className="academy-nav-item" onClick={() => setOpen(true)} type="button">
               <Ellipsis className="mx-auto mb-1 h-4 w-4 text-current" aria-hidden="true" strokeWidth={2} />
               <span className="block truncate">More</span>
             </button>
@@ -385,17 +446,12 @@ function LegacyDashboardShell({ title, subtitle, section, children }: ShellProps
   const sectionLabel = `${section} dashboard`;
   const navItems = nav[section];
   const homeHref = getSectionHome(section);
-
-  async function handleSignOut() {
-    await signOut();
-    await auth.refresh();
-    window.location.assign('/dashboard/login');
-  }
+  const { handleSignOut, isSigningOut, signOutError } = useDashboardSignOut(auth.refresh);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_12%_0%,_rgba(31,111,139,0.12),_transparent_30%),radial-gradient(circle_at_88%_8%,_rgba(244,197,24,0.10),_transparent_26%),linear-gradient(180deg,_#f7f8fb_0%,_#eef2f7_100%)] text-brand-obsidian dark:bg-[radial-gradient(circle_at_12%_0%,_rgba(31,111,139,0.2),_transparent_30%),linear-gradient(180deg,_#070b14_0%,_#111827_100%)] dark:text-brand-parchment">
-      <div className="mx-auto flex max-w-[1640px] gap-4 px-3 py-3 sm:px-4 lg:gap-6 lg:py-5">
-        <aside className="sticky top-5 hidden h-[calc(100vh-2.5rem)] w-72 rounded-[2rem] border border-white/70 bg-white/72 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.09)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25 lg:flex lg:flex-col">
+      <div className="mx-auto flex max-w-[1640px] gap-4 px-3 py-3 sm:px-4 lg:gap-6 lg:py-5" data-modal-background>
+        <aside className="sticky top-5 hidden h-[calc(100vh-2.5rem)] w-72 rounded-[2rem] border border-white/70 bg-white/[0.72] p-5 shadow-[0_24px_70px_rgba(15,23,42,0.09)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25 lg:flex lg:flex-col">
           <div className="flex items-center gap-3 border-b border-slate-950/5 pb-5 dark:border-white/10">
             <div className="grid h-11 w-11 place-items-center rounded-[1.2rem] bg-brand-navy text-sm font-bold text-white shadow-[0_12px_30px_rgba(15,23,42,0.18)] dark:bg-white dark:text-slate-950">PO</div>
             <div>
@@ -424,7 +480,7 @@ function LegacyDashboardShell({ title, subtitle, section, children }: ShellProps
           </nav>
         </aside>
         <main className="min-w-0 flex-1">
-          <header className="rounded-[1.5rem] border border-white/70 bg-white/72 p-4 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25 sm:rounded-[2rem] sm:p-5">
+          <header className="rounded-[1.5rem] border border-white/70 bg-white/[0.72] p-4 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25 sm:rounded-[2rem] sm:p-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-aegean dark:text-brand-gold">{sectionLabel}</p>
@@ -432,14 +488,6 @@ function LegacyDashboardShell({ title, subtitle, section, children }: ShellProps
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{subtitle}</p>
               </div>
               <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-                <button
-                  type="button"
-                  aria-label="Dashboard alerts"
-                  className="relative grid h-11 w-11 place-items-center rounded-[1.2rem] border border-slate-950/10 bg-white/70 text-sm font-bold text-brand-navy shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-brand-parchment dark:hover:bg-white/[0.09]"
-                >
-                  <Bell className="h-4 w-4 text-current" aria-hidden="true" />
-                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900" />
-                </button>
                 {auth.profile ? (
                   <div className="flex min-w-0 items-center gap-2 rounded-[1.3rem] border border-slate-950/5 bg-white/60 p-2 pr-3 dark:border-white/10 dark:bg-white/[0.05] sm:gap-3">
                     <div className="grid h-10 w-10 place-items-center rounded-[1.1rem] bg-brand-navy text-sm font-bold text-white dark:bg-white dark:text-slate-950">
@@ -449,14 +497,17 @@ function LegacyDashboardShell({ title, subtitle, section, children }: ShellProps
                       <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">{auth.profile.full_name}</p>
                       <p className="text-xs capitalize text-slate-500 dark:text-slate-400">{auth.profile.role}</p>
                     </div>
-                    <button className="text-xs font-semibold text-slate-600 underline dark:text-slate-300" type="button" onClick={() => void handleSignOut()}>
-                      Sign out
+                    <button className="text-xs font-semibold text-slate-600 underline disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-300" disabled={isSigningOut} type="button" onClick={() => void handleSignOut()}>
+                      {isSigningOut ? 'Signing out...' : 'Sign out'}
                     </button>
                   </div>
                 ) : null}
               </div>
             </div>
           </header>
+          {signOutError ? (
+            <SignOutFailure busy={isSigningOut} message={signOutError} onRetry={() => void handleSignOut()} />
+          ) : null}
           <div className="mt-4 space-y-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-4">{children}</div>
         </main>
       </div>
@@ -464,6 +515,7 @@ function LegacyDashboardShell({ title, subtitle, section, children }: ShellProps
         homeHref={homeHref}
         navItems={navItems}
         onSignOut={() => void handleSignOut()}
+        signingOut={isSigningOut}
         section={section}
       />
     </div>
@@ -474,33 +526,49 @@ function MobileRoleNav({
   homeHref,
   navItems,
   onSignOut,
+  signingOut,
   section,
 }: {
   homeHref: string;
   navItems: DashboardNavItem[];
   onSignOut: () => void;
+  signingOut: boolean;
   section: DashboardSection;
 }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const primaryItems = navItems.length <= 5 ? navItems : navItems.slice(0, 4);
   const overflowItems = navItems.length <= 5 ? [] : navItems.slice(4);
   const visibleCount = primaryItems.length + (overflowItems.length ? 1 : 0);
+  const dialogTitleId = `${section}-more-navigation-title`;
+  const dialogId = `${section}-more-navigation`;
+  useModalDialog({ dialogRef, onClose: () => setOpen(false), open });
 
   return (
     <>
       {open ? (
-        <div className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-sm lg:hidden" onClick={() => setOpen(false)}>
+        <div
+          className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-sm lg:hidden"
+          onMouseDown={(event) => {
+            if (event.currentTarget === event.target) setOpen(false);
+          }}
+        >
           <div
+            aria-labelledby={dialogTitleId}
+            aria-modal="true"
             className="absolute inset-x-3 bottom-[calc(5.8rem+env(safe-area-inset-bottom))] max-h-[min(32rem,calc(100vh-7rem))] overflow-auto rounded-[1.5rem] border border-white/70 bg-white/95 p-3 shadow-[0_24px_80px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-950/95"
-            onClick={(event) => event.stopPropagation()}
+            id={dialogId}
+            ref={dialogRef}
+            role="dialog"
+            tabIndex={-1}
           >
             <div className="mb-2 flex items-center justify-between gap-3 px-1">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">{section} navigation</p>
+                <p id={dialogTitleId} className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">{section} navigation</p>
                 <p className="mt-1 truncate text-sm text-slate-600 dark:text-slate-300">Jump to any dashboard area</p>
               </div>
-              <button className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-slate-950/10 bg-white text-sm font-semibold text-slate-800 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" type="button" onClick={() => setOpen(false)}>
+              <button className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-slate-950/10 bg-white text-sm font-semibold text-slate-800 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" data-modal-initial-focus type="button" onClick={() => setOpen(false)}>
                 Close
               </button>
             </div>
@@ -508,15 +576,15 @@ function MobileRoleNav({
               {overflowItems.map((item) => <MobileMenuLink key={item.to} item={item} onSelect={() => setOpen(false)} />)}
             </nav>
             <div className="mt-3 border-t border-slate-950/10 pt-3 dark:border-white/10">
-              <button className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-950/10 bg-white px-4 text-sm font-semibold text-slate-800 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" type="button" onClick={onSignOut}>
+              <button className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-950/10 bg-white px-4 text-sm font-semibold text-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" disabled={signingOut} type="button" onClick={onSignOut}>
                 <LogOut className="h-4 w-4" aria-hidden="true" />
-                Sign out
+                {signingOut ? 'Signing out...' : 'Sign out'}
               </button>
             </div>
           </div>
         </div>
       ) : null}
-      <nav aria-label={`${section} dashboard`} className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 rounded-[1.45rem] border border-white/70 bg-white/[0.86] p-2 shadow-[0_22px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/[0.82] lg:hidden">
+      <nav aria-label={`${section} dashboard`} className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 rounded-[1.45rem] border border-white/70 bg-white/[0.86] p-2 shadow-[0_22px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/[0.82] lg:hidden" data-modal-background>
         <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${visibleCount}, minmax(0, 1fr))` }}>
           {primaryItems.map((item) => {
             const Icon = item.icon;
@@ -538,6 +606,8 @@ function MobileRoleNav({
           {overflowItems.length ? (
             <button
               aria-expanded={open}
+              aria-controls={dialogId}
+              aria-haspopup="dialog"
               className="rounded-xl px-1.5 py-2 text-center text-[0.68rem] font-semibold leading-tight text-slate-600 transition hover:bg-white/70 dark:text-brand-marble dark:hover:bg-white/[0.08]"
               type="button"
               onClick={() => setOpen(true)}

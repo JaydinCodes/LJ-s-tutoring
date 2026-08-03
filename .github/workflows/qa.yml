@@ -43,10 +43,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -109,8 +109,8 @@ jobs:
       # ========================================================================
       - name: Start static server
         run: |
-          npx http-server dist -p 8080 -c-1 --silent > /tmp/qa-static-server.log 2>&1 &
-          npx wait-on http://localhost:8080/ --timeout 30000 || { cat /tmp/qa-static-server.log; exit 1; }
+          npm run qa:serve > /tmp/qa-static-server.log 2>&1 &
+          npm run qa:wait || { cat /tmp/qa-static-server.log; exit 1; }
           curl -fsS http://localhost:8080/ > /dev/null || { cat /tmp/qa-static-server.log; exit 1; }
 
       # ========================================================================
@@ -121,7 +121,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          npx html-validate "dist/**/*.html" --config .htmlvalidate.js --formatter json > html-validation.json
+          npm run --silent qa:html -- --formatter json > html-validation.json
           code=$?
           if [ "$code" -eq 0 ]; then
             echo "status=passed" >> $GITHUB_OUTPUT
@@ -146,14 +146,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-
-
-          npx linkinator http://localhost:8080 \
-            --recurse \
-            --timeout 10000 \
-            --concurrency 4 \
-            --skip "^mailto:|^tel:|^https?:\/\/(?!localhost:8080)" \
-            --format json > link-check.json
+          npm run --silent qa:links -- --format json > link-check.json
           code=$?
           if [ "$code" -eq 0 ]; then
             echo "status=passed" >> $GITHUB_OUTPUT
@@ -180,7 +173,7 @@ jobs:
           PUPPETEER_EXECUTABLE_PATH: ${{ env.CHROME_PATH }}
         run: |
           set +e
-          npx pa11y-ci --json > pa11y-report.json
+          npm run --silent qa:a11y -- --json > pa11y-report.json
           code=$?
           if [ "$code" -eq 0 ]; then
             echo "status=passed" >> $GITHUB_OUTPUT

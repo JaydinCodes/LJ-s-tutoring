@@ -144,7 +144,7 @@ export function TutorDashboardRoute() {
 
 function ActionLink({ href, icon: Icon, label, meta }: { href: string; icon: typeof Users; label: string; meta: string }) {
   return (
-    <Link className="flex items-center gap-3 rounded-[1.25rem] border border-white/15 bg-white/10 p-3 text-left text-white transition hover:bg-white/15" to={href}>
+    <Link className="flex items-center gap-3 rounded-[1.25rem] border border-white/[0.15] bg-white/10 p-3 text-left text-white transition hover:bg-white/[0.15]" to={href}>
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[1rem] bg-white/10 text-brand-gold">
         <Icon className="h-5 w-5" aria-hidden="true" />
       </span>

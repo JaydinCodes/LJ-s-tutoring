@@ -1,0 +1,810 @@
+begin;
+
+select no_plan();
+
+-- Keep role simulation local to this transaction. Supabase's auth.uid() and
+-- auth.jwt() helpers read these request settings exactly as PostgREST does.
+create function pg_temp.authenticate_as(p_user_id uuid, p_aal text default 'aal1')
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config('request.jwt.claim.sub', p_user_id::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'sub', p_user_id::text,
+      'role', 'authenticated',
+      'aal', p_aal
+    )::text,
+    true
+  );
+end;
+$$;
+
+-- SECURITY INVOKER helper used to count rows affected by an authenticated
+-- Storage UPDATE. PostgreSQL only permits a data-modifying CTE at statement
+-- top level, so wrapping UPDATE + ROW_COUNT keeps the pgTAP assertion scalar
+-- while preserving the caller's RLS context.
+create function pg_temp.update_storage_object_metadata(p_name text, p_metadata jsonb)
+returns bigint
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_rows bigint;
+begin
+  update storage.objects
+  set metadata = p_metadata
+  where bucket_id = 'assignment-submissions'
+    and name = p_name;
+  get diagnostics v_rows = row_count;
+  return v_rows;
+end;
+$$;
+
+-- Stable fixture identities.
+insert into auth.users (
+  instance_id,
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  invited_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at,
+  confirmation_token,
+  email_change,
+  email_change_token_new,
+  recovery_token
+)
+select
+  '00000000-0000-0000-0000-000000000000'::uuid,
+  seed.id::uuid,
+  'authenticated',
+  'authenticated',
+  seed.email,
+  '',
+  now(),
+  case when seed.is_invited then now() else null end,
+  '{"provider":"email","providers":["email"]}'::jsonb
+    || case
+      when seed.onboarding_role is null then '{}'::jsonb
+      else jsonb_build_object('onboarding_role', seed.onboarding_role)
+    end,
+  case
+    when seed.user_metadata_role is null then '{}'::jsonb
+    else jsonb_build_object('role', seed.user_metadata_role)
+  end,
+  now(),
+  now(),
+  seed.id,
+  '',
+  seed.id,
+  seed.id
+from (values
+  ('00000000-0000-0000-0000-000000000001', 'rls-admin@example.test', null, null, false),
+  ('00000000-0000-0000-0000-000000000002', 'rls-student-a@example.test', null, null, false),
+  ('00000000-0000-0000-0000-000000000003', 'rls-tutor-a@example.test', null, null, false),
+  ('00000000-0000-0000-0000-000000000004', 'rls-parent-a@example.test', null, null, false),
+  ('00000000-0000-0000-0000-000000000005', 'rls-ngo-a@example.test', null, null, false),
+  ('00000000-0000-0000-0000-000000000006', 'rls-student-b@example.test', null, null, false),
+  ('00000000-0000-0000-0000-000000000007', 'rls-tutor-b@example.test', null, null, false),
+  ('00000000-0000-0000-0000-000000000008', 'rls-parent-b@example.test', null, null, false),
+  ('00000000-0000-0000-0000-000000000009', 'rls-uninvited@example.test', 'student', 'student', false),
+  ('00000000-0000-0000-0000-000000000010', 'rls-invited-student@example.test', 'student', 'tutor', true),
+  ('00000000-0000-0000-0000-000000000011', 'rls-invited-no-role@example.test', null, 'student', true)
+) as seed(id, email, onboarding_role, user_metadata_role, is_invited);
+
+insert into public.organizations (id, name, type, status)
+values
+  ('a0000000-0000-0000-0000-000000000001', 'RLS NGO Alpha', 'ngo', 'active'),
+  ('a0000000-0000-0000-0000-000000000002', 'RLS School Beta', 'school', 'active');
+
+insert into public.profiles (id, auth_user_id, full_name, email, role)
+values
+  ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'RLS Admin', 'rls-admin@example.test', 'admin'),
+  ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', 'Student Alpha', 'rls-student-a@example.test', 'student'),
+  ('10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', 'Tutor Alpha', 'rls-tutor-a@example.test', 'tutor'),
+  ('10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000004', 'Parent Alpha', 'rls-parent-a@example.test', 'parent'),
+  ('10000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000005', 'NGO Alpha Viewer', 'rls-ngo-a@example.test', 'ngo_partner'),
+  ('10000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000006', 'Student Beta', 'rls-student-b@example.test', 'student'),
+  ('10000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000007', 'Tutor Beta', 'rls-tutor-b@example.test', 'tutor'),
+  ('10000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000008', 'Parent Beta', 'rls-parent-b@example.test', 'parent');
+
+insert into public.students (id, profile_id, grade, school, status, organization_id)
+values
+  ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'Grade 11', 'Alpha School', 'active', 'a0000000-0000-0000-0000-000000000001'),
+  ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000006', 'Grade 11', 'Beta School', 'active', 'a0000000-0000-0000-0000-000000000002');
+
+insert into public.tutors (id, profile_id, subjects, grades, status, approval_status)
+values
+  ('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', array['Mathematics'], array['Grade 11'], 'active', 'approved'),
+  ('30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000007', array['Mathematics'], array['Grade 11'], 'active', 'approved');
+
+insert into public.organization_members (organization_id, profile_id, org_role, status)
+values
+  ('a0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', 'tutor', 'active'),
+  ('a0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000005', 'partner_viewer', 'active'),
+  ('a0000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000007', 'tutor', 'active');
+
+insert into public.guardians (id, profile_id, full_name, email, status)
+values
+  ('40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'Parent Alpha', 'rls-parent-a@example.test', 'active'),
+  ('40000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000008', 'Parent Beta', 'rls-parent-b@example.test', 'active');
+
+insert into public.student_guardians (student_id, guardian_id, relationship_type, is_primary, can_receive_reports, status)
+values
+  ('20000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', 'parent', true, true, 'active'),
+  ('20000000-0000-0000-0000-000000000002', '40000000-0000-0000-0000-000000000002', 'parent', true, true, 'active');
+
+insert into public.subjects (id, name, grade, curriculum)
+values ('90000000-0000-0000-0000-000000000001', 'Mathematics', 'Grade 11', 'CAPS');
+
+insert into public.assignments (id, title, subject_id, grade, created_by, status, organization_id)
+values
+  ('50000000-0000-0000-0000-000000000001', 'Alpha Published One', '90000000-0000-0000-0000-000000000001', 'Grade 11', '10000000-0000-0000-0000-000000000003', 'published', 'a0000000-0000-0000-0000-000000000001'),
+  ('50000000-0000-0000-0000-000000000002', 'Alpha Published Two', '90000000-0000-0000-0000-000000000001', 'Grade 11', '10000000-0000-0000-0000-000000000003', 'published', 'a0000000-0000-0000-0000-000000000001'),
+  ('50000000-0000-0000-0000-000000000003', 'Alpha Draft', '90000000-0000-0000-0000-000000000001', 'Grade 11', '10000000-0000-0000-0000-000000000003', 'draft', 'a0000000-0000-0000-0000-000000000001'),
+  ('50000000-0000-0000-0000-000000000004', 'Beta Published', '90000000-0000-0000-0000-000000000001', 'Grade 11', '10000000-0000-0000-0000-000000000007', 'published', 'a0000000-0000-0000-0000-000000000002');
+
+insert into public.classes (id, name, tutor_id, subject_id, grade, status, organization_id)
+values
+  ('c0000000-0000-0000-0000-000000000001', 'Alpha Mathematics', '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001', 'Grade 11', 'active', 'a0000000-0000-0000-0000-000000000001'),
+  ('c0000000-0000-0000-0000-000000000002', 'Beta Mathematics', '30000000-0000-0000-0000-000000000002', '90000000-0000-0000-0000-000000000001', 'Grade 11', 'active', 'a0000000-0000-0000-0000-000000000002');
+
+insert into public.class_enrollments (id, class_id, student_id, status)
+values
+  ('d0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'active'),
+  ('d0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', 'active');
+
+insert into public.tutor_student_allocations (
+  id,
+  tutor_id,
+  student_id,
+  status,
+  focus_notes,
+  subject_id,
+  rate_override,
+  allowed_days_json,
+  allowed_time_ranges_json
+)
+values
+  (
+    'e0000000-0000-0000-0000-000000000001',
+    '30000000-0000-0000-0000-000000000001',
+    '20000000-0000-0000-0000-000000000001',
+    'active',
+    'Internal Alpha focus notes',
+    '90000000-0000-0000-0000-000000000001',
+    777.77,
+    '["monday"]'::jsonb,
+    '[{"start":"15:00","end":"17:00"}]'::jsonb
+  ),
+  (
+    'e0000000-0000-0000-0000-000000000002',
+    '30000000-0000-0000-0000-000000000002',
+    '20000000-0000-0000-0000-000000000002',
+    'active',
+    'Internal Beta focus notes',
+    '90000000-0000-0000-0000-000000000001',
+    888.88,
+    '["tuesday"]'::jsonb,
+    '[{"start":"14:00","end":"16:00"}]'::jsonb
+  );
+
+insert into public.assignment_submissions (
+  id,
+  assignment_id,
+  student_id,
+  text_answer,
+  status,
+  marks_awarded,
+  feedback,
+  marks_released,
+  feedback_released,
+  released_at
+)
+values
+  ('60000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'Alpha answer one', 'marked', 61, 'Not released', false, false, null),
+  ('60000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', 'Alpha answer two', 'marked', 88, 'Released feedback', true, true, now()),
+  ('60000000-0000-0000-0000-000000000003', '50000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000002', 'Beta answer', 'marked', 73, 'Beta feedback', true, true, now());
+
+insert into public.student_notifications (id, student_id, type, title, body)
+values
+  ('80000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'GRADE_RELEASED', 'Alpha result', 'Your Alpha result is ready.'),
+  ('80000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', 'GRADE_RELEASED', 'Beta result', 'Your Beta result is ready.');
+
+insert into storage.objects (bucket_id, name, owner, metadata)
+values
+  ('assignment-files', '50000000-0000-0000-0000-000000000001/brief.pdf', '00000000-0000-0000-0000-000000000003', '{}'::jsonb),
+  ('assignment-files', '50000000-0000-0000-0000-000000000002/brief.pdf', '00000000-0000-0000-0000-000000000003', '{}'::jsonb),
+  ('assignment-files', '50000000-0000-0000-0000-000000000003/draft.pdf', '00000000-0000-0000-0000-000000000003', '{}'::jsonb),
+  ('assignment-files', '50000000-0000-0000-0000-000000000004/brief.pdf', '00000000-0000-0000-0000-000000000007', '{}'::jsonb),
+  ('assignment-submissions', '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/60000000-0000-0000-0000-000000000001/submission.pdf', '00000000-0000-0000-0000-000000000002', '{}'::jsonb),
+  ('assignment-submissions', '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000002/60000000-0000-0000-0000-000000000002/submission.pdf', '00000000-0000-0000-0000-000000000002', '{}'::jsonb),
+  ('assignment-submissions', '20000000-0000-0000-0000-000000000002/50000000-0000-0000-0000-000000000004/60000000-0000-0000-0000-000000000003/submission.pdf', '00000000-0000-0000-0000-000000000006', '{}'::jsonb);
+
+-- Edge Function limiter: service-role-only execution, threshold behavior,
+-- retention, and a real database failure that must propagate to the caller.
+-- The Edge Functions translate that RPC error into a fail-closed 503.
+insert into public.edge_function_rate_limit_events (id, subject_id, function_name, created_at)
+values (
+  'f0000000-0000-0000-0000-000000000001',
+  'f0000000-0000-0000-0000-000000000010',
+  'pgTAP-stale-cleanup',
+  now() - interval '25 hours'
+);
+
+create function pg_temp.force_rate_limit_insert_failure()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.function_name = 'pgTAP-forced-insert-failure' then
+    raise exception 'forced_rate_limit_insert_failure' using errcode = 'P0001';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger pg_tap_force_rate_limit_insert_failure
+before insert on public.edge_function_rate_limit_events
+for each row execute function pg_temp.force_rate_limit_insert_failure();
+
+set local role service_role;
+
+select is(
+  public.check_and_record_edge_function_rate_limit(
+    'f0000000-0000-0000-0000-000000000011',
+    'pgTAP-threshold',
+    2,
+    60
+  ),
+  true,
+  'service-role limiter allows the first request'
+);
+select is(
+  public.check_and_record_edge_function_rate_limit(
+    'f0000000-0000-0000-0000-000000000011',
+    'pgTAP-threshold',
+    2,
+    60
+  ),
+  true,
+  'service-role limiter allows the request at the configured threshold'
+);
+select is(
+  public.check_and_record_edge_function_rate_limit(
+    'f0000000-0000-0000-0000-000000000011',
+    'pgTAP-threshold',
+    2,
+    60
+  ),
+  false,
+  'service-role limiter denies requests beyond the threshold'
+);
+select is(
+  public.check_and_record_edge_function_rate_limit(
+    'f0000000-0000-0000-0000-000000000010',
+    'pgTAP-stale-cleanup',
+    5,
+    60
+  ),
+  true,
+  'limiter records a request after stale-event cleanup'
+);
+select throws_ok(
+  $$
+    select public.check_and_record_edge_function_rate_limit(
+      'f0000000-0000-0000-0000-000000000012',
+      'pgTAP-forced-insert-failure',
+      2,
+      60
+    )
+  $$,
+  'P0001',
+  'forced_rate_limit_insert_failure',
+  'limiter propagates a real insert failure instead of failing open'
+);
+
+reset role;
+
+select is(
+  (select count(*) from public.edge_function_rate_limit_events where id = 'f0000000-0000-0000-0000-000000000001'),
+  0::bigint,
+  'limiter deletes events older than 24 hours'
+);
+select is(
+  (
+    select count(*)
+    from public.edge_function_rate_limit_events
+    where subject_id = 'f0000000-0000-0000-0000-000000000011'
+      and function_name = 'pgTAP-threshold'
+  ),
+  2::bigint,
+  'denied limiter request does not create an event'
+);
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
+set local role authenticated;
+
+select throws_ok(
+  $$
+    select public.check_and_record_edge_function_rate_limit(
+      'f0000000-0000-0000-0000-000000000011',
+      'pgTAP-authenticated-denial',
+      2,
+      60
+    )
+  $$,
+  '42501',
+  'permission denied for function check_and_record_edge_function_rate_limit',
+  'authenticated browser role cannot execute the service-role limiter'
+);
+
+reset role;
+
+-- Student Alpha: published own-org learning data only; results are redacted
+-- through the RPC and notifications/storage remain owner scoped.
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
+set local role authenticated;
+
+select is((select count(*) from public.assignments), 2::bigint, 'student sees published assignments in own organization');
+select is((select count(*) from public.assignments where status = 'draft'), 0::bigint, 'student cannot see own-org drafts');
+select is((select count(*) from public.assignments where organization_id = 'a0000000-0000-0000-0000-000000000002'), 0::bigint, 'student cannot see cross-organization assignments');
+select is((select count(*) from public.assignment_submissions), 0::bigint, 'student cannot read raw submission/result rows');
+select is((select count(*) from public.get_student_assignment_submissions()), 2::bigint, 'student result RPC returns only own submissions');
+select ok((select marks_awarded is null from public.get_student_assignment_submissions() where assignment_id = '50000000-0000-0000-0000-000000000001'), 'student RPC redacts unreleased marks');
+select is((select marks_awarded from public.get_student_assignment_submissions() where assignment_id = '50000000-0000-0000-0000-000000000002'), 88::numeric, 'student RPC exposes released marks');
+select is((select count(*) from public.student_notifications), 1::bigint, 'student sees only own notifications');
+select is((select count(*) from public.guardians), 0::bigint, 'student cannot read guardian records');
+select is((select count(*) from public.tutors), 0::bigint, 'student cannot read tutor base rows or hourly/approval fields');
+select is((select count(*) from public.tutor_student_allocations), 0::bigint, 'student cannot read allocation base rows or rate overrides');
+select is((select count(*) from public.profiles where id = '10000000-0000-0000-0000-000000000003'), 0::bigint, 'student cannot read the allocated tutor base profile');
+select is((select count(*) from public.get_student_assigned_tutors()), 1::bigint, 'student safe RPC returns one actively assigned tutor');
+select is((select full_name from public.get_student_assigned_tutors()), 'Tutor Alpha', 'student safe RPC returns the assigned tutor display name');
+select is((select email from public.get_student_assigned_tutors()), 'rls-tutor-a@example.test', 'student safe RPC returns the assigned tutor email');
+select is((select count(*) from jsonb_object_keys((select to_jsonb(t) from public.get_student_assigned_tutors() t))), 3::bigint, 'student safe RPC exposes exactly id, full_name, and email');
+select throws_ok(
+  $$select * from public.get_tutor_allocated_students()$$,
+  '42501',
+  'only_tutors_can_view_allocated_students',
+  'student cannot call the tutor-only learner directory RPC'
+);
+select is((select count(*) from public.classes), 1::bigint, 'student sees only an enrolled own-organization class without recursive RLS');
+select is((select count(*) from public.class_enrollments), 1::bigint, 'student sees only their own class enrollment');
+select is((select count(*) from public.classes where organization_id = 'a0000000-0000-0000-0000-000000000002'), 0::bigint, 'student cannot see a cross-organization class');
+select is((select count(*) from storage.objects where bucket_id = 'assignment-files'), 2::bigint, 'student sees published own-org assignment files');
+select is((select count(*) from storage.objects where bucket_id = 'assignment-submissions'), 2::bigint, 'student sees only own submission files');
+
+reset role;
+
+-- Tutor Alpha: organization/member and creator ownership both apply.
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000003');
+set local role authenticated;
+
+select is((select count(*) from public.assignments), 3::bigint, 'tutor sees own organization assignments including drafts');
+select is((select count(*) from public.assignments where organization_id = 'a0000000-0000-0000-0000-000000000002'), 0::bigint, 'tutor cannot see cross-organization assignments');
+select is((select count(*) from public.assignment_submissions), 2::bigint, 'tutor sees submissions only for assignments they created');
+select is((select count(*) from public.student_notifications), 0::bigint, 'tutor cannot read student notifications');
+select is((select count(*) from public.guardians), 0::bigint, 'tutor cannot read guardian records');
+select is((select count(*) from public.tutors), 1::bigint, 'tutor retains access to their own tutor base row');
+select is((select count(*) from public.tutor_student_allocations), 1::bigint, 'tutor retains access to their own active allocation');
+select is((select count(*) from public.students), 0::bigint, 'tutor cannot read learner base rows or guardian/parent fields');
+select is((select count(*) from public.profiles where id = '10000000-0000-0000-0000-000000000002'), 0::bigint, 'tutor cannot read the allocated learner base profile');
+select is((select count(*) from public.get_tutor_allocated_students()), 1::bigint, 'tutor safe RPC returns one actively allocated learner');
+select is((select full_name from public.get_tutor_allocated_students()), 'Student Alpha', 'tutor safe RPC returns the allocated learner display name');
+select is((select email from public.get_tutor_allocated_students()), 'rls-student-a@example.test', 'tutor safe RPC returns the allocated learner email');
+select is((select grade from public.get_tutor_allocated_students()), 'Grade 11', 'tutor safe RPC returns the allocated learner grade');
+select is((select school from public.get_tutor_allocated_students()), 'Alpha School', 'tutor safe RPC returns the allocated learner school');
+select is((select count(*) from public.get_tutor_allocated_students() where student_id = '20000000-0000-0000-0000-000000000002'), 0::bigint, 'tutor safe RPC excludes cross-organization learners');
+select is((select count(*) from jsonb_object_keys((select to_jsonb(s) from public.get_tutor_allocated_students() s))), 6::bigint, 'tutor safe RPC exposes exactly the six approved learner fields');
+select throws_ok(
+  $$select * from public.get_student_assigned_tutors()$$,
+  '42501',
+  'only_students_can_view_assigned_tutors',
+  'tutor cannot call the student-only tutor directory RPC'
+);
+select is((select count(*) from public.classes), 1::bigint, 'tutor sees their own class without recursive RLS');
+select is((select count(*) from public.class_enrollments), 1::bigint, 'tutor sees enrollments only for their own class without recursive RLS');
+select is((select count(*) from public.class_enrollments where class_id = 'c0000000-0000-0000-0000-000000000002'), 0::bigint, 'tutor cannot see cross-organization class enrollments');
+select is((select count(*) from storage.objects where bucket_id = 'assignment-files'), 3::bigint, 'tutor sees files only for assignments they created');
+select is((select count(*) from storage.objects where bucket_id = 'assignment-submissions'), 2::bigint, 'tutor sees submission files only for assignments they created');
+
+reset role;
+
+-- Parent Alpha: no raw learner tables; the linked, release-aware report RPC is
+-- the only results path.
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000004');
+set local role authenticated;
+
+select is((select count(*) from public.assignments), 0::bigint, 'parent cannot read assignments directly');
+select is((select count(*) from public.assignment_submissions), 0::bigint, 'parent cannot read raw submissions/results');
+select is((select count(*) from public.get_parent_progress_reports()), 1::bigint, 'parent sees released results for linked learner');
+select is((select count(*) from public.get_parent_progress_reports() where student_id = '20000000-0000-0000-0000-000000000002'), 0::bigint, 'parent cannot see another organization learner report');
+select is((select count(*) from public.guardians), 1::bigint, 'parent sees only own guardian record');
+select is((select count(*) from public.student_guardians), 1::bigint, 'parent sees only own learner link');
+select is((select count(*) from public.student_notifications), 0::bigint, 'parent cannot read student notifications');
+select is((select count(*) from storage.objects where bucket_id in ('assignment-files', 'assignment-submissions')), 0::bigint, 'parent cannot read assignment storage');
+
+reset role;
+
+-- NGO partner viewer: organization identity and aggregate RPC only; no raw
+-- learner, guardian, result, notification, or Storage access.
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000005');
+set local role authenticated;
+
+select is((select count(*) from public.organizations), 1::bigint, 'NGO viewer sees only own organization');
+select is((select count(*) from public.organizations where id = 'a0000000-0000-0000-0000-000000000002'), 0::bigint, 'NGO viewer cannot see another organization');
+select is((select count(*) from public.students), 0::bigint, 'NGO viewer cannot read raw learner records');
+select is((select count(*) from public.assignment_submissions), 0::bigint, 'NGO viewer cannot read raw submissions/results');
+select is((select count(*) from public.guardians), 0::bigint, 'NGO viewer cannot read guardian records');
+select is((select count(*) from public.student_notifications), 0::bigint, 'NGO viewer cannot read notifications');
+select is((select count(*) from storage.objects where bucket_id in ('assignment-files', 'assignment-submissions')), 0::bigint, 'NGO viewer cannot read assignment storage');
+select ok((public.get_org_cohort_report('a0000000-0000-0000-0000-000000000001')->>'suppressed')::boolean, 'NGO viewer can call own-org privacy-suppressed aggregate');
+select throws_ok(
+  $$select public.get_org_cohort_report('a0000000-0000-0000-0000-000000000002')$$,
+  '42501',
+  'not_authorized',
+  'NGO viewer cannot call another organization aggregate'
+);
+
+reset role;
+
+-- Admin policy is gated by authoritative AAL2, not the frontend MFA screen.
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000001', 'aal1');
+set local role authenticated;
+
+select ok(not public.is_platform_admin(), 'AAL1 admin session is not platform-admin authorized');
+select is((select count(*) from public.profiles), 1::bigint, 'AAL1 admin sees only their ordinary self profile');
+select is((select count(*) from public.assignments), 0::bigint, 'AAL1 admin cannot use admin assignment access');
+select is((select count(*) from public.assignment_submissions), 0::bigint, 'AAL1 admin cannot use admin result access');
+select is((select count(*) from public.classes), 0::bigint, 'AAL1 admin cannot use admin class access');
+select is((select count(*) from public.class_enrollments), 0::bigint, 'AAL1 admin cannot use admin enrollment access');
+select is((select count(*) from storage.objects where bucket_id in ('assignment-files', 'assignment-submissions')), 0::bigint, 'AAL1 admin cannot use admin storage access');
+
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000001', 'aal2');
+set local role authenticated;
+
+select ok(public.is_platform_admin(), 'AAL2 admin session is platform-admin authorized');
+select is((select count(*) from public.assignments), 4::bigint, 'AAL2 admin sees assignments across organizations');
+select is((select count(*) from public.assignment_submissions), 3::bigint, 'AAL2 admin sees submissions/results across organizations');
+select is((select count(*) from public.guardians), 2::bigint, 'AAL2 admin sees guardian records across organizations');
+select is((select count(*) from public.student_guardians), 2::bigint, 'AAL2 admin sees guardian links across organizations');
+select is((select count(*) from public.tutors), 2::bigint, 'AAL2 admin sees tutor base rows across organizations');
+select is((select count(*) from public.tutor_student_allocations), 2::bigint, 'AAL2 admin sees allocations across organizations');
+select is((select count(*) from public.classes), 2::bigint, 'AAL2 admin sees classes across organizations');
+select is((select count(*) from public.class_enrollments), 2::bigint, 'AAL2 admin sees class enrollments across organizations');
+select is((select count(*) from public.organizations where id in ('a0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees both organizations');
+select is((select count(*) from storage.objects where bucket_id = 'assignment-files'), 4::bigint, 'AAL2 admin sees assignment files across organizations');
+select is((select count(*) from storage.objects where bucket_id = 'assignment-submissions'), 3::bigint, 'AAL2 admin sees submission files across organizations');
+select is((select count(*) from public.student_notifications), 0::bigint, 'even AAL2 admin cannot read student-only notifications');
+
+reset role;
+
+-- Storage write checks run last so the successful insert cannot affect the
+-- read-count assertions above. The allowed key has 3 folders because
+-- storage.foldername() excludes submission.pdf.
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
+set local role authenticated;
+
+select is(
+  (
+    select p.provolatile::text
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'can_write_uncommitted_assignment_submission_storage'
+  ),
+  'v',
+  'Storage write guard is VOLATILE so its lock-and-check cannot be plan-folded'
+);
+select ok(
+  pg_get_functiondef('public.can_write_uncommitted_assignment_submission_storage(text)'::regprocedure)
+    like '%pg_advisory_xact_lock%',
+  'Storage write guard takes the submission attempt advisory lock'
+);
+select ok(
+  public.can_write_uncommitted_assignment_submission_storage(
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
+  ),
+  'locked Storage guard allows an own uncommitted attempt'
+);
+select ok(
+  not public.can_write_uncommitted_assignment_submission_storage(
+    '20000000-0000-0000-0000-000000000002/50000000-0000-0000-0000-000000000004/60000000-0000-0000-0000-000000000003/submission.pdf'
+  ),
+  'Storage guard is not a cross-student committed-key oracle'
+);
+select ok(
+  not public.can_write_uncommitted_assignment_submission_storage(
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/arbitrary.pdf'
+  ),
+  'Storage guard rejects filenames outside the submission.ext RPC contract'
+);
+
+select lives_ok(
+  $$
+    insert into storage.objects (bucket_id, name, owner, metadata)
+    values (
+      'assignment-submissions',
+      '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      '00000000-0000-0000-0000-000000000002',
+      '{}'::jsonb
+    )
+  $$,
+  'student can upload a correctly-shaped own-org submission key'
+);
+select lives_ok(
+  $$
+    update storage.objects
+    set metadata = '{"retry":true}'::jsonb
+    where bucket_id = 'assignment-submissions'
+      and name = '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
+  $$,
+  'student can update the same Storage object during upload retry'
+);
+
+select lives_ok(
+  $$
+    select public.submit_assignment_submission(
+      p_assignment_id => '50000000-0000-0000-0000-000000000001',
+      p_submission_id => '70000000-0000-0000-0000-000000000001',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_original_filename => 'retry.pdf',
+      p_mime_type => 'application/pdf',
+      p_size_bytes => 123,
+      p_text_answer => 'Stable retry payload'
+    )
+  $$,
+  'first stable submission attempt commits'
+);
+select is(
+  (
+    select submission_id
+    from public.confirm_assignment_submission_attempt(
+      p_assignment_id => '50000000-0000-0000-0000-000000000001',
+      p_submission_id => '70000000-0000-0000-0000-000000000001',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_original_filename => 'retry.pdf',
+      p_mime_type => 'application/pdf',
+      p_size_bytes => 123,
+      p_text_answer => 'Stable retry payload'
+    )
+  ),
+  '70000000-0000-0000-0000-000000000001'::uuid,
+  'confirmed attempt returns before a retry upload'
+);
+select is(
+  pg_temp.update_storage_object_metadata(
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+    '{"tampered":true}'::jsonb
+  ),
+  0::bigint,
+  'committed submission evidence cannot be overwritten'
+);
+select is(
+  (
+    select metadata
+    from storage.objects
+    where bucket_id = 'assignment-submissions'
+      and name = '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
+  ),
+  '{"retry":true}'::jsonb,
+  'post-commit overwrite attempt leaves the stored evidence unchanged'
+);
+select ok(
+  not public.can_write_uncommitted_assignment_submission_storage(
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
+  ),
+  'locked Storage guard rejects the caller-owned key after commit'
+);
+select throws_ok(
+  $$
+    insert into storage.objects (bucket_id, name, owner, metadata)
+    values (
+      'assignment-submissions',
+      '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.png',
+      '00000000-0000-0000-0000-000000000002',
+      '{}'::jsonb
+    )
+  $$,
+  '42501',
+  'new row violates row-level security policy for table "objects"',
+  'committed attempt UUID cannot create alternate-extension orphan evidence'
+);
+select lives_ok(
+  $$
+    select public.submit_assignment_submission(
+      p_assignment_id => '50000000-0000-0000-0000-000000000001',
+      p_submission_id => '70000000-0000-0000-0000-000000000001',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_original_filename => 'retry.pdf',
+      p_mime_type => 'application/pdf',
+      p_size_bytes => 123,
+      p_text_answer => 'Stable retry payload'
+    )
+  $$,
+  'unchanged submission retry returns the committed attempt'
+);
+select throws_ok(
+  $$
+    select public.submit_assignment_submission(
+      p_assignment_id => '50000000-0000-0000-0000-000000000001',
+      p_submission_id => '70000000-0000-0000-0000-000000000001',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_original_filename => 'retry.pdf',
+      p_mime_type => 'application/pdf',
+      p_size_bytes => 123,
+      p_text_answer => 'Edited after an ambiguous response'
+    )
+  $$,
+  '23505',
+  'submission_retry_payload_mismatch',
+  'same attempt UUID cannot confirm a changed payload'
+);
+select throws_ok(
+  $$
+    select public.submit_assignment_submission(
+      p_assignment_id => '50000000-0000-0000-0000-000000000002',
+      p_submission_id => '70000000-0000-0000-0000-000000000001',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000002/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000002/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_original_filename => 'retry.pdf',
+      p_mime_type => 'application/pdf',
+      p_size_bytes => 123,
+      p_text_answer => 'Stable retry payload'
+    )
+  $$,
+  '23505',
+  'submission_id_conflict',
+  'same attempt UUID cannot be rebound to another assignment'
+);
+select is(
+  (select count(*) from public.get_student_assignment_submissions() where id = '70000000-0000-0000-0000-000000000001'),
+  1::bigint,
+  'idempotent replay creates one submission row'
+);
+select is(
+  (select version_number from public.get_student_assignment_submissions() where id = '70000000-0000-0000-0000-000000000001'),
+  2,
+  'idempotent replay allocates one new version number'
+);
+select throws_ok(
+  $$
+    insert into storage.objects (bucket_id, name, owner, metadata)
+    values (
+      'assignment-submissions',
+      '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000004/70000000-0000-0000-0000-000000000002/submission.pdf',
+      '00000000-0000-0000-0000-000000000002',
+      '{}'::jsonb
+    )
+  $$,
+  '42501',
+  'new row violates row-level security policy for table "objects"',
+  'student cannot upload a cross-organization submission key'
+);
+
+reset role;
+
+select is(
+  (
+    select count(*)
+    from public.audit_log
+    where action = 'assignment_submission.created'
+      and entity_id = '70000000-0000-0000-0000-000000000001'
+  ),
+  1::bigint,
+  'idempotent replay creates one audit event'
+);
+
+-- Onboarding is an invite-only transition. Existing, fully provisioned rows
+-- remain safe retries, while uninvited, role-less, conflicting, and role-
+-- escalation attempts are rejected before any profile is created.
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
+set local role authenticated;
+
+select lives_ok(
+  $$select public.onboard_current_user('student', '')$$,
+  'completed admin-provisioned student onboarding is an idempotent retry'
+);
+select throws_ok(
+  $$select public.onboard_current_user('tutor', 'Student Alpha')$$,
+  '23505',
+  'onboarding_role_conflict',
+  'completed student profile cannot be retried as tutor'
+);
+
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000009');
+set local role authenticated;
+
+select throws_ok(
+  $$
+    select public.onboard_current_user(
+      p_role => 'student',
+      p_full_name => 'Uninvited Student',
+      p_grade => 'Grade 10'
+    )
+  $$,
+  '42501',
+  'onboarding_invitation_required',
+  'confirmed but uninvited Auth identity cannot onboard'
+);
+
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000011');
+set local role authenticated;
+
+select throws_ok(
+  $$
+    select public.onboard_current_user(
+      p_role => 'student',
+      p_full_name => 'Roleless Invite',
+      p_grade => 'Grade 10'
+    )
+  $$,
+  '42501',
+  'onboarding_invitation_role_required',
+  'invitation without a managed student or tutor role cannot onboard'
+);
+
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000010');
+set local role authenticated;
+
+select throws_ok(
+  $$
+    select public.onboard_current_user(
+      p_role => 'tutor',
+      p_full_name => 'Invited Student'
+    )
+  $$,
+  '42501',
+  'onboarding_invitation_role_mismatch',
+  'student invitation cannot be escalated into a tutor account'
+);
+select lives_ok(
+  $$
+    select public.onboard_current_user(
+      p_role => 'student',
+      p_full_name => 'Invited Student',
+      p_grade => 'Grade 10'
+    )
+  $$,
+  'matching invited student can complete onboarding atomically'
+);
+select is(
+  (select count(*) from public.profiles where auth_user_id = '00000000-0000-0000-0000-000000000010'),
+  1::bigint,
+  'successful invited onboarding creates exactly one profile'
+);
+select is(
+  (
+    select count(*)
+    from public.students s
+    join public.profiles p on p.id = s.profile_id
+    where p.auth_user_id = '00000000-0000-0000-0000-000000000010'
+  ),
+  1::bigint,
+  'successful invited onboarding creates exactly one student role row'
+);
+
+reset role;
+
+select * from finish();
+rollback;

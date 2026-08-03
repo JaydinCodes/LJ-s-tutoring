@@ -1,7 +1,7 @@
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { requireSupabase } from '../../lib/supabase/client';
 import { callRpc } from '../../lib/supabase/rpc';
-import type { Profile, SessionRecord, Student, StudentScoreSnapshotRecord, WeeklyReportPayload, WeeklyReportRecord } from '../../types/lms';
+import type { Profile, SessionRecord, StudentScoreSnapshotRecord, TutorAllocatedStudentSummary, WeeklyReportPayload, WeeklyReportRecord } from '../../types/lms';
 
 export interface TutorSession {
   id: string;
@@ -85,6 +85,16 @@ async function getCurrentTutorId(): Promise<string> {
   return tutor.id;
 }
 
+export async function loadTutorAllocatedStudents(
+  client = requireSupabase(),
+): Promise<TutorAllocatedStudentSummary[]> {
+  const result = await client.rpc('get_tutor_allocated_students');
+  if (result.error) {
+    throw result.error;
+  }
+  return (result.data || []) as TutorAllocatedStudentSummary[];
+}
+
 // Session status in Supabase (session_status enum) is lowercase; the existing
 // component contract (TutorSessionsRoute, SessionReportPanel) was written
 // against Fastify's uppercase Prisma-era strings ('DRAFT'/'SUBMITTED'/...).
@@ -130,31 +140,11 @@ export async function loadTutorSessions(): Promise<{ sessions: TutorSession[] }>
   }
   const rows = (sessionsResult.data || []) as SessionRecord[];
 
-  const studentIds = Array.from(new Set(rows.map((row) => row.student_id)));
-  const studentsResult = studentIds.length
-    ? await client.from('students').select('*').in('id', studentIds)
-    : { data: [], error: null };
-  if (studentsResult.error) {
-    throw studentsResult.error;
-  }
-  const students = (studentsResult.data || []) as Student[];
-  const studentById = new Map(students.map((student) => [student.id, student]));
-
-  const profileIds = Array.from(new Set(students.map((student) => student.profile_id).filter(Boolean)));
-  const profilesResult = profileIds.length
-    ? await client.from('profiles').select('*').in('id', profileIds)
-    : { data: [], error: null };
-  if (profilesResult.error) {
-    throw profilesResult.error;
-  }
-  const profileById = new Map(((profilesResult.data || []) as Profile[]).map((profile) => [profile.id, profile]));
+  const allocatedStudents = await loadTutorAllocatedStudents(client);
+  const studentNameById = new Map(allocatedStudents.map((student) => [student.student_id, student.full_name]));
 
   return {
-    sessions: rows.map((row) => {
-      const student = studentById.get(row.student_id);
-      const studentName = student ? profileById.get(student.profile_id)?.full_name : undefined;
-      return mapSessionRow(row, studentName);
-    }),
+    sessions: rows.map((row) => mapSessionRow(row, studentNameById.get(row.student_id))),
   };
 }
 
@@ -218,31 +208,11 @@ export async function loadTutorReports(): Promise<{ items: TutorWeeklyReport[] }
   }
   const rows = (reportsResult.data || []) as WeeklyReportRecord[];
 
-  const studentIds = Array.from(new Set(rows.map((row) => row.student_id)));
-  const studentsResult = studentIds.length
-    ? await client.from('students').select('*').in('id', studentIds)
-    : { data: [], error: null };
-  if (studentsResult.error) {
-    throw studentsResult.error;
-  }
-  const students = (studentsResult.data || []) as Student[];
-  const studentById = new Map(students.map((student) => [student.id, student]));
-
-  const profileIds = Array.from(new Set(students.map((student) => student.profile_id).filter(Boolean)));
-  const profilesResult = profileIds.length
-    ? await client.from('profiles').select('*').in('id', profileIds)
-    : { data: [], error: null };
-  if (profilesResult.error) {
-    throw profilesResult.error;
-  }
-  const profileById = new Map(((profilesResult.data || []) as Profile[]).map((profile) => [profile.id, profile]));
+  const allocatedStudents = await loadTutorAllocatedStudents(client);
+  const studentNameById = new Map(allocatedStudents.map((student) => [student.student_id, student.full_name]));
 
   return {
-    items: rows.map((row) => {
-      const student = studentById.get(row.student_id);
-      const studentName = student ? profileById.get(student.profile_id)?.full_name : undefined;
-      return mapReport(row, studentName);
-    }),
+    items: rows.map((row) => mapReport(row, studentNameById.get(row.student_id))),
   };
 }
 
@@ -304,31 +274,16 @@ export async function loadTutorRiskScores(): Promise<{ items: TutorRiskScore[] }
     }
   }
 
-  const studentsResult = await client.from('students').select('*').in('id', studentIds);
-  if (studentsResult.error) {
-    throw studentsResult.error;
-  }
-  const students = (studentsResult.data || []) as Student[];
-  const studentById = new Map(students.map((student) => [student.id, student]));
-
-  const profileIds = Array.from(new Set(students.map((student) => student.profile_id).filter(Boolean)));
-  const profilesResult = profileIds.length
-    ? await client.from('profiles').select('*').in('id', profileIds)
-    : { data: [], error: null };
-  if (profilesResult.error) {
-    throw profilesResult.error;
-  }
-  const profileById = new Map(((profilesResult.data || []) as Profile[]).map((profile) => [profile.id, profile]));
+  const allocatedStudents = await loadTutorAllocatedStudents(client);
+  const studentNameById = new Map(allocatedStudents.map((student) => [student.student_id, student.full_name]));
 
   return {
     items: studentIds.map((studentId) => {
       const snapshot = latestByStudent.get(studentId);
-      const student = studentById.get(studentId);
-      const studentName = student ? profileById.get(student.profile_id)?.full_name : undefined;
       return {
         id: snapshot?.id,
         student_id: studentId,
-        student_name: studentName,
+        student_name: studentNameById.get(studentId),
         risk_score: snapshot?.risk_score,
         momentum_score: snapshot?.momentum_score,
         reasons: snapshot?.reasons_json,

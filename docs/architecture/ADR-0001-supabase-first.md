@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted.
+Accepted. Implementation completed with the single-stack retirement recorded in
+[ADR-0003](ADR-0003-single-stack-supabase.md).
 
 ## Decision
 
@@ -16,7 +17,9 @@ The canonical production model is:
 - Supabase Storage owns private learner and assignment files.
 - Secure Postgres RPC functions own privileged mutations that cannot safely be exposed as direct table updates.
 
-The Fastify API may still exist for server-side jobs, integrations, AI services, email, reporting exports, scheduled work, and other operations that require trusted backend execution. It must not become a second identity or authorization source for the browser application.
+Trusted server execution now runs in Supabase Edge Functions or secured database
+RPCs. The former Fastify API is retired and must not be reintroduced as a second
+identity, authorization, or data authority.
 
 ## Rationale
 
@@ -43,7 +46,8 @@ This also reduces product risk. Students, tutors, admins, parents, and NGO partn
 - Sensitive writes must go through secure RPC functions, especially marking, result release, payments, role management, account provisioning, submission review, and privacy operations.
 - File uploads must use private Supabase Storage buckets with scoped paths and RLS-backed access rules.
 - Admin-only actions must be protected by RLS, RPC checks, and service-role-only backend paths where needed.
-- Backend services must accept Supabase identity claims or service-role authority rather than issuing an unrelated browser session.
+- Edge Functions must accept Supabase identity claims or service-role authority
+  as appropriate rather than issuing an unrelated browser session.
 - Database migrations and schema documentation must describe the Supabase production schema as the canonical schema.
 
 ## Code Quality Rules For New Files
@@ -62,8 +66,9 @@ Comments are required for new code files where the domain rule is not obvious fr
 
 ## Consequences
 
-- Existing API-cookie authentication becomes transitional for browser workflows.
+- The former API-cookie authentication was transitional and is now retired.
 - Existing direct Supabase mutations must be audited and moved to RPC where they touch privileged fields.
 - Existing docs that describe the Fastify API as the browser auth source must be updated.
 - Tests must include Supabase Auth, RLS, RPC, and Storage policy coverage.
-- Future parent and NGO portals must be designed from this same Supabase-first authorization model.
+- Parent and NGO portals use this same Supabase-first authorization model; future
+  role surfaces must do the same.

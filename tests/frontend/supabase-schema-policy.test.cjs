@@ -84,27 +84,44 @@ test('students read assignment submissions through release-redacted RPC', () => 
 
 test('class and enrollment RLS is scoped to admins, assigned tutors, and enrolled students', () => {
   assert.match(schema, /create or replace function public\.current_tutor_id\(\)/);
+  assert.match(schema, /create or replace function public\.current_student_class_ids\(\)[\s\S]*security definer[\s\S]*set search_path = ''/);
+  assert.match(schema, /create or replace function public\.current_tutor_class_ids\(\)[\s\S]*security definer[\s\S]*set search_path = ''/);
   assert.match(schema, /alter table public\.classes add column if not exists name/);
   assert.match(schema, /alter table public\.classes add column if not exists status/);
   assert.match(schema, /drop policy if exists "classes_read_authenticated"/);
   assert.match(schema, /create policy "classes_select_scoped"/);
   assert.match(schema, /tutor_id = public\.current_tutor_id\(\)/);
-  assert.match(schema, /ce\.student_id = public\.current_student_id\(\)/);
+  assert.match(schema, /id in \(select public\.current_student_class_ids\(\)\)/);
   assert.match(schema, /drop policy if exists "class_enrollments_read_authenticated"/);
   assert.match(schema, /create policy "class_enrollments_select_scoped"/);
+  assert.match(schema, /class_id in \(select public\.current_tutor_class_ids\(\)\)/);
   assert.doesNotMatch(schema, /create policy "classes_read_authenticated"[\s\S]*auth\.uid\(\) is not null/);
   assert.doesNotMatch(schema, /create policy "class_enrollments_read_authenticated"[\s\S]*auth\.uid\(\) is not null/);
 });
 
-test('tutor-student allocation RLS scopes learner visibility to active assignments', () => {
+test('tutor-student allocation base rows are tutor/admin-only and students use a safe RPC', () => {
   assert.match(schema, /create table if not exists public\.tutor_student_allocations/);
   assert.match(schema, /unique \(tutor_id, student_id\)/);
   assert.match(schema, /alter table public\.tutor_student_allocations enable row level security/);
   assert.match(schema, /create policy "tutor_student_allocations_select_scoped"/);
   assert.match(schema, /tutor_id = public\.current_tutor_id\(\)/);
-  assert.match(schema, /student_id = public\.current_student_id\(\)/);
   assert.match(schema, /create policy "admin_manage_tutor_student_allocations"/);
-  assert.match(schema, /create policy "profiles_select_allocated_learning_relationship"/);
-  assert.match(schema, /create policy "students_select_self_or_admin"[\s\S]*tutor_student_allocations/);
-  assert.match(schema, /create policy "tutors_select_self_or_admin"[\s\S]*tutor_student_allocations/);
+  assert.doesNotMatch(schema, /create policy "profiles_select_allocated_learning_relationship"/);
+  assert.match(schema, /create or replace function public\.get_student_assigned_tutors\(\)/);
+  assert.match(schema, /revoke execute on function public\.get_student_assigned_tutors\(\) from public/);
+  assert.match(schema, /grant execute on function public\.get_student_assigned_tutors\(\) to authenticated/);
+  assert.match(schema, /create or replace function public\.get_tutor_allocated_students\(\)/);
+  assert.match(schema, /revoke execute on function public\.get_tutor_allocated_students\(\) from public/);
+  assert.match(schema, /grant execute on function public\.get_tutor_allocated_students\(\) to authenticated/);
+
+  for (const [policyName, forbidden] of [
+    ['students_select_self_or_admin', /current_tutor_id|tutor_student_allocations/],
+    ['tutors_select_self_or_admin', /current_student_id|tutor_student_allocations/],
+    ['tutor_student_allocations_select_scoped', /current_student_id/],
+  ]) {
+    const start = schema.indexOf(`create policy "${policyName}"`);
+    const block = schema.slice(start, schema.indexOf('\n);', start) + 3);
+    assert.ok(start >= 0, `expected ${policyName}`);
+    assert.doesNotMatch(block, forbidden, `${policyName} must not expose a cross-role base row`);
+  }
 });

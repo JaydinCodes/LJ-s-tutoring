@@ -4,11 +4,12 @@ Project Odysseus is Supabase-first. Local Supabase is the repeatable test surfac
 
 ## Prerequisites
 
-- Node.js 20
-- Docker Desktop
-- Supabase CLI, either installed globally or run through `npx supabase`
+- Node.js 24 with npm 11
+- A Docker-compatible container runtime
+- The project-pinned Supabase CLI installed by `npm ci`
 
-Do not use production Supabase credentials for local tests.
+Do not use production Supabase credentials for local tests, and never expose the
+local stack to an external network.
 
 ## Local Environment
 
@@ -32,23 +33,28 @@ SUPABASE_TEST_PROJECT_REF=local
 SUPABASE_PRODUCTION_PROJECT_REF=
 ```
 
-`SUPABASE_PRODUCTION_PROJECT_REF` is intentionally blank in local files. Production project refs and service-role keys belong only in the deployment secret manager. `SUPABASE_SERVICE_ROLE_KEY` is backend-only for API tasks such as admin user invitations; never expose it through Vite or `portal-config.js`.
+`SUPABASE_PRODUCTION_PROJECT_REF` is intentionally blank in local files. Production project refs and service-role keys belong only in the deployment secret manager. `SUPABASE_SERVICE_ROLE_KEY` is Edge-Function-only for trusted work such as admin user invitations; never expose it through Vite or `portal-config.js`.
 
-## Schema Source Of Truth
+## Desired State And Migration History
 
-Edit this file when changing Supabase schema, RLS, Storage policies, or RPC:
+Keep the clean-install desired state current in:
 
 ```text
 docs/supabase/schema.sql
 ```
 
-The Supabase CLI applies migrations from `supabase/migrations`. To avoid two editable SQL sources, the repo generates a local migration copy from the schema source:
+The deployable history is the ordered, committed SQL in `supabase/migrations/`.
+The baseline is frozen. Normal changes are forward-only:
 
 ```bash
-npm run supabase:migration:sync
+npx supabase migration --help
+npx supabase migration new <descriptive-name>
 ```
 
-The generated migration file is ignored by git.
+Put only the forward delta in the new migration, update
+`docs/supabase/schema.sql` to the same final state, and commit both. Never amend
+an applied migration. `npm run supabase:legacy-baseline:overwrite` is a
+historical bootstrap escape hatch, not a normal development command.
 
 ## Start And Reset
 
@@ -64,31 +70,29 @@ Apply or reset local schema/RLS/RPC:
 npm run supabase:reset
 ```
 
-This runs `supabase:migration:sync` first, then resets the local Supabase database with the generated migration.
+This destroys only the local database, replays every committed migration in
+timestamp order, and loads configured local seed data. It must never be used
+with `--linked` against production.
 
 ## Tests
 
-Frontend source-contract tests:
+Frontend and source-contract tests:
 
 ```bash
-npm run test:frontend:unit
+npm test
 ```
 
-RLS/RPC contract tests:
+RLS/RPC source-contract and real PostgreSQL tests:
 
 ```bash
 npm run test:rls
+npm run test:rls:runtime
 ```
 
-These tests do not contact production Supabase. `test:rls` validates that the local schema source includes the required RLS/RPC contracts before you apply them.
-
-Fastify API tests remain separate:
-
-```bash
-npm run test:api
-```
-
-Those tests still use `DATABASE_URL_TEST` and the transitional API database setup.
+Neither command contacts production Supabase. `test:rls` checks source
+contracts. `test:rls:runtime` runs pgTAP against the reset local database with
+real role/session settings and verifies allow and deny paths. Browser
+Playwright tests use a mock adapter and do not replace this database gate.
 
 ## Manual RLS Verification
 
@@ -109,6 +113,7 @@ Verify these policies locally before production cutover:
 - Tutor can select and mark submissions only for assignments they created.
 - Tutor cannot mark another tutor's assignment submission.
 - Admin can manage assignment submissions according to the admin policy.
+- Parent and NGO roles cannot escape their explicitly linked/scoped reports.
 
 ## CI Notes
 
@@ -116,9 +121,12 @@ CI should run:
 
 ```bash
 npm ci
-npm run supabase:migration:sync
-npm run test:frontend:unit
+npm run supabase:start
+npm run supabase:reset
+npm test
 npm run test:rls
+npm run test:rls:runtime
 ```
 
-Only add live Supabase integration tests to CI after a dedicated non-production Supabase project exists. Never point CI at production Supabase.
+The required app CI job performs this against an ephemeral local stack. It uses
+no hosted-project credentials and must never point at production Supabase.

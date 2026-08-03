@@ -17,6 +17,8 @@ export function useAsyncResource<T>(loader: () => Promise<T>, deps: unknown[] = 
     } finally {
       setLoading(false);
     }
+    // The hook's caller owns the reload boundary, analogous to useEffect deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   useEffect(() => {

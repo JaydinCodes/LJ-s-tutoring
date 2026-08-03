@@ -1,5 +1,11 @@
 # DoD Closure Report - 2026-03-25
 
+> **Historical snapshot:** this report predates the 2026-07-24 retirement of
+> Fastify/Prisma and references deleted services, tests, workflows, and
+> telemetry. It is retained as decision history only. Use the current
+> architecture, release governance, alert matrix, and audit-remediation status
+> for operational decisions.
+
 ## Scope
 This artifact maps the highest-impact production gaps to implemented controls, executable evidence, and residual risks.
 

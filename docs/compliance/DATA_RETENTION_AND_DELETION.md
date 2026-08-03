@@ -1,102 +1,53 @@
-# Data Retention and Deletion
+# Data Retention And Deletion
 
-> **Stale (2026-07-24):** this describes the retired `lms-api` retention job
-> (Fastify + Prisma, `RETENTION_*` env vars on "the API service",
-> `retention-cleanup.yml`). `lms-api` is fully deleted. There is a
-> Supabase-native `run_retention_cleanup()` RPC (`docs/supabase/schema.sql`),
-> but it covers a narrower, different set of tables
-> (`assignment_submissions`/`student_progress`/`payments`/`tutor_payments`/`audit_log`)
-> and has no scheduled trigger (no `pg_cron` job calls it) — `sessions`,
-> `invoices`, `invoice_lines`, `pay_periods`, and `adjustments` have **no**
-> retention coverage at all right now. Not urgent (every one of those tables
-> is at 0 rows as of this note), but a real compliance gap once real usage
-> starts. See `docs/architecture/PRISMA_TO_SUPABASE_MIGRATION_PLAN.md` §6 step
-> 7 for the full context. This document needs a rewrite once that gap is
-> properly closed.
+This is the current Supabase control summary. The former Fastify retention job,
+`RETENTION_*` API variables, and Prisma backup scripts are retired and must not
+be used. See [POPIA_DATA_MAP.md](POPIA_DATA_MAP.md) for the complete inventory,
+processors, and open compliance actions.
 
-This document describes how the platform handles data retention and privacy requests. It reflects the current production behavior and the scheduled cleanup job.
+## Implemented retention RPC
 
-## Retention Policy (Configurable)
+`public.run_retention_cleanup(p_apply boolean default false)` is
+`SECURITY DEFINER`, admin/trusted-context gated, and defaults to a non-destructive
+dry run. It currently covers:
 
-Retention is controlled by environment variables in the API service:
+- assignment submissions and associated private files after 3 years;
+- student progress after 3 years;
+- audit events after 5 years; and
+- settled student/tutor payments after 7 years.
 
-- `RETENTION_SESSIONS_YEARS` (default 7)
-- `RETENTION_SESSION_HISTORY_YEARS` (default 7)
-- `RETENTION_INVOICES_YEARS` (default 7)
-- `RETENTION_AUDIT_YEARS` (default 5)
-- `RETENTION_MAGIC_LINK_DAYS` (default 30)
-- `RETENTION_PRIVACY_REQUESTS_YEARS` (default 3)
+Pending payments are not purged. A Storage permission failure returns a follow-up
+signal rather than pretending the corresponding object was removed.
 
-Cutoffs are calculated from the current time. The admin Retention page shows current values and eligible counts.
+There is no committed production scheduler evidence for this RPC. Sessions,
+history, reports, notifications, invoices/pay periods, onboarding documents,
+volunteer records, and other domains still need reviewed retention decisions.
+Before enabling a production apply run, obtain privacy/finance approval, review
+the dry-run counts, confirm backup/restore evidence, assign an operator and
+rollback/incident owner, and retain the execution evidence.
 
-## What Gets Cleaned Up
+## Privacy requests
 
-Scheduled cleanup removes or anonymizes data that falls outside the retention windows.
+- `export_student_data` provides the implemented access-export dataset.
+- `anonymize_student` removes major academic/reporting data, clears session free
+  text, detaches guardian links, and anonymizes profile/student identity while
+  preserving required financial/audit history.
+- `process_privacy_request` tracks and dispatches approved access/deletion work.
+- Corrections use reviewed admin updates and must be recorded in the request.
 
-### Deleted
-- Magic link tokens with `expires_at` before the cutoff.
-- Audit log entries older than the audit retention window.
-- Session history entries older than the session history retention window.
-- Invoice lines and invoices with `period_end` before the invoice cutoff.
-- Adjustments older than the invoice cutoff, if no remaining invoice line references exist.
-- Pay periods older than the invoice cutoff with no remaining adjustments.
-- Sessions older than the session retention cutoff, only when they are not referenced by invoice lines.
-- Privacy requests older than the privacy request retention window.
+The service-role completion procedure must handle any Storage object the SQL role
+could not delete and disable/delete the corresponding Supabase Auth identity.
+Every new learner-linked table must be added deliberately to export, erasure, and
+retention tests; the functions do not discover schema additions automatically.
 
-### Anonymized
-- Tutor and student profiles are anonymized if their latest sessions and invoices are older than retention cutoffs.
-- Anonymization removes names and contact data and scrubs session notes/locations.
-- Invoice line descriptions tied to anonymized sessions are replaced with a neutral label.
+## Minimum evidence per request
 
-## Privacy Request Workflow
+- requester identity and guardian authority where the learner is a minor;
+- request scope, decision, legal/financial hold, and approver;
+- dry-run or export result stored in a protected location;
+- SQL, Storage, and Auth completion status;
+- audit reference, completion date, and exception/incident notes; and
+- secure deletion of temporary export files after delivery.
 
-Admin requests are tracked in the `privacy_requests` table.
-
-### Request Types
-- **ACCESS**: export data in JSON for the requested subject.
-- **CORRECTION**: update tutor or student data using an admin-supplied correction payload.
-- **DELETION**: delete data when allowed; otherwise anonymize due to retention constraints.
-
-### Access Requests
-Exports include tutor/student data and linked sessions, assignments, invoices, and history where applicable. Export output is delivered as JSON via the admin endpoint.
-
-### Deletion Requests
-If any in-scope financial records must be retained, the subject is anonymized instead of deleted. If no in-scope records remain, related data is removed.
-
-## Operational Process
-
-1. Create a privacy request in the admin UI.
-2. Export data (for access requests).
-3. Apply corrections (for correction requests).
-4. Close the request with an outcome (fulfilled, corrected, deleted, anonymized, or rejected).
-5. Audit logs are written for each request action.
-
-## Running Cleanup
-
-The cleanup script is designed for cron or scheduled GitHub Actions:
-
-```bash
-npm run retention:cleanup --prefix lms-api
-```
-
-Ensure `DATABASE_URL` and retention env vars are set in the runtime environment.
-
-## Backup Encryption and Retention
-
-Backups must be encrypted at rest. The API repository includes an encrypted backup helper:
-
-```bash
-BACKUP_PASSPHRASE=change_me DATABASE_URL=... \
-	./lms-api/scripts/backup-encrypted.sh
-```
-
-Store encrypted backups in a restricted location with access limited to admins.
-
-Suggested schedule:
-
-- Nightly encrypted backup with 30-day retention.
-- Monthly encrypted backup with 12-month retention.
-
-## Retention Verification Evidence
-
-Each cleanup run writes an evidence record to the `retention_events` table. The admin Retention page surfaces the latest event and deletion counts for audit readiness.
+Legal review is required before these technical controls are treated as a full
+POPIA retention and data-subject-rights programme.

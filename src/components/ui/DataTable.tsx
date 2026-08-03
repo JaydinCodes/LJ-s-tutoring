@@ -13,7 +13,7 @@ export function DataTable<T>({ columns, rows, empty }: { columns: Array<Column<T
   }
 
   return (
-    <div className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-white/55 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]">
+    <div className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-white/[0.55] shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]">
       <div className="grid gap-3 p-2 sm:p-3 md:hidden">
         {rows.map((row, index) => (
           <article key={index} className="rounded-2xl border border-white/70 bg-white/70 p-3 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05] sm:p-4">
@@ -28,12 +28,12 @@ export function DataTable<T>({ columns, rows, empty }: { columns: Array<Column<T
       </div>
       <div className="hidden overflow-x-auto md:block">
         <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
-          <thead className="bg-white/55 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-white/[0.04] dark:text-brand-marble">
+          <thead className="bg-white/[0.55] text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-white/[0.04] dark:text-brand-marble">
             <tr>
               {columns.map((column) => <th key={column.key} className="px-4 py-3">{column.label}</th>)}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-950/10 bg-white/45 dark:divide-white/10 dark:bg-transparent">
+          <tbody className="divide-y divide-slate-950/10 bg-white/[0.45] dark:divide-white/10 dark:bg-transparent">
             {rows.map((row, index) => (
               <tr key={index}>
                 {columns.map((column) => <td key={column.key} className="px-4 py-3 text-slate-700 dark:text-slate-300">{column.render(row)}</td>)}
