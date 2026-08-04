@@ -2315,6 +2315,7 @@ with check (public.is_platform_admin());
 -- privacy-request pipeline, same as everyone else. Admins keep DELETE via
 -- the separate "admin_full_access_students" policy (defined earlier, above).
 drop policy if exists "students_coordinator_org_manage" on public.students;
+drop policy if exists "students_coordinator_org_select" on public.students;
 create policy "students_coordinator_org_select"
 on public.students for select
 using (
@@ -2322,6 +2323,7 @@ using (
   or public.current_org_role(organization_id) = 'coordinator'
 );
 
+drop policy if exists "students_coordinator_org_insert" on public.students;
 create policy "students_coordinator_org_insert"
 on public.students for insert
 with check (
@@ -2329,6 +2331,7 @@ with check (
   or public.current_org_role(organization_id) = 'coordinator'
 );
 
+drop policy if exists "students_coordinator_org_update" on public.students;
 create policy "students_coordinator_org_update"
 on public.students for update
 using (
