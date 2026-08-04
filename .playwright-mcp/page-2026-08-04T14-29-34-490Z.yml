@@ -1,0 +1,136 @@
+- generic [ref=f4e2]:
+  - region "Notifications alt+T"
+  - generic [ref=f4e24]:
+    - complementary [ref=f4e25]:
+      - generic [ref=f4e26]:
+        - generic [ref=f4e27]: PO
+        - generic [ref=f4e28]:
+          - paragraph [ref=f4e29]: Project Odysseus
+          - paragraph [ref=f4e30]: Learning management
+      - navigation [ref=f4e31]:
+        - link "Overview" [ref=f4e32] [cursor=pointer]:
+          - /url: /dashboard/admin
+        - link "Students" [ref=f4e41] [cursor=pointer]:
+          - /url: /dashboard/admin/students
+        - link "Allocations" [ref=f4e48] [cursor=pointer]:
+          - /url: /dashboard/admin/allocations
+        - link "Users" [ref=f4e56] [cursor=pointer]:
+          - /url: /dashboard/admin/users
+        - link "Tutors" [ref=f4e63] [cursor=pointer]:
+          - /url: /dashboard/admin/tutors
+        - link "Classes" [ref=f4e75] [cursor=pointer]:
+          - /url: /dashboard/admin/classes
+        - link "Assignments" [ref=f4e81] [cursor=pointer]:
+          - /url: /dashboard/admin/assignments
+        - link "Approvals" [ref=f4e88] [cursor=pointer]:
+          - /url: /dashboard/admin/approvals
+        - link "Payments" [ref=f4e96] [cursor=pointer]:
+          - /url: /dashboard/admin/payments
+        - link "Payroll" [ref=f4e106] [cursor=pointer]:
+          - /url: /dashboard/admin/payroll
+        - link "Reconciliation" [ref=f4e113] [cursor=pointer]:
+          - /url: /dashboard/admin/reconciliation
+        - link "Reports" [ref=f4e120] [cursor=pointer]:
+          - /url: /dashboard/admin/reports
+        - link "Results" [ref=f4e126] [cursor=pointer]:
+          - /url: /dashboard/admin/results
+        - link "Audit" [ref=f4e136] [cursor=pointer]:
+          - /url: /dashboard/admin/audit
+        - link "Privacy" [ref=f4e143] [cursor=pointer]:
+          - /url: /dashboard/admin/privacy-requests
+        - link "Retention" [ref=f4e151] [cursor=pointer]:
+          - /url: /dashboard/admin/retention
+        - link "Runbook" [ref=f4e158] [cursor=pointer]:
+          - /url: /dashboard/admin/ops-runbook
+    - main [ref=f4e165]:
+      - generic [ref=f4e167]:
+        - generic [ref=f4e168]:
+          - paragraph [ref=f4e169]: admin dashboard
+          - heading "Admin Dashboard" [level=1] [ref=f4e170]
+          - paragraph [ref=f4e171]: Operational React console for learners, tutors, assignments, payments, reporting, and ProVision rollout support.
+        - generic [ref=f4e173]:
+          - generic [ref=f4e174]: A
+          - generic [ref=f4e175]:
+            - paragraph [ref=f4e176]: Admin E2E
+            - paragraph [ref=f4e177]: admin
+          - button "Sign out" [ref=f4e178] [cursor=pointer]
+      - generic [ref=f4e179]:
+        - generic [ref=f4e180]:
+          - article [ref=f4e181]:
+            - paragraph [ref=f4e183]: Students
+            - paragraph [ref=f4e190]: "1"
+            - paragraph [ref=f4e191]: Recent learner records.
+          - article [ref=f4e192]:
+            - paragraph [ref=f4e194]: Tutors
+            - paragraph [ref=f4e201]: "1"
+            - paragraph [ref=f4e202]: Recent tutor records.
+          - article [ref=f4e203]:
+            - paragraph [ref=f4e205]: Assignments
+            - paragraph [ref=f4e210]: "1"
+            - paragraph [ref=f4e211]: Recently created assignment records.
+          - article [ref=f4e212]:
+            - paragraph [ref=f4e214]: Outstanding payments
+            - paragraph [ref=f4e221]: R0.00
+            - paragraph [ref=f4e222]: Student payments not marked as paid.
+        - generic [ref=f4e223]:
+          - generic [ref=f4e224]:
+            - heading "Students" [level=2] [ref=f4e225]
+            - table [ref=f4e229]:
+              - rowgroup [ref=f4e230]:
+                - row [ref=f4e231]:
+                  - columnheader "Student" [ref=f4e232]
+                  - columnheader "Grade" [ref=f4e233]
+                  - columnheader "School" [ref=f4e234]
+                  - columnheader "Status" [ref=f4e235]
+              - rowgroup [ref=f4e236]:
+                - row [ref=f4e237]:
+                  - cell "Student E2E" [ref=f4e238]
+                  - cell "Grade 11" [ref=f4e239]
+                  - cell "Launch High" [ref=f4e240]
+                  - cell "active" [ref=f4e241]
+          - generic [ref=f4e243]:
+            - heading "Tutors" [level=2] [ref=f4e244]
+            - table [ref=f4e248]:
+              - rowgroup [ref=f4e249]:
+                - row [ref=f4e250]:
+                  - columnheader "Tutor" [ref=f4e251]
+                  - columnheader "Subjects" [ref=f4e252]
+                  - columnheader "Rate" [ref=f4e253]
+                  - columnheader "Status" [ref=f4e254]
+              - rowgroup [ref=f4e255]:
+                - row [ref=f4e256]:
+                  - cell "Tutor E2E" [ref=f4e257]
+                  - cell "Mathematics" [ref=f4e258]
+                  - cell "R 450" [ref=f4e259]
+                  - cell "active" [ref=f4e260]
+        - generic [ref=f4e262]:
+          - generic [ref=f4e263]:
+            - heading "Assignment management" [level=2] [ref=f4e264]
+            - table [ref=f4e268]:
+              - rowgroup [ref=f4e269]:
+                - row [ref=f4e270]:
+                  - columnheader "Title" [ref=f4e271]
+                  - columnheader "Grade" [ref=f4e272]
+                  - columnheader "Due" [ref=f4e273]
+                  - columnheader "Status" [ref=f4e274]
+              - rowgroup [ref=f4e275]:
+                - row [ref=f4e276]:
+                  - cell "Quadratic Functions Launch Smoke" [ref=f4e277]
+                  - cell "Grade 11" [ref=f4e278]
+                  - cell "15 Jun 2030" [ref=f4e279]
+                  - cell "published" [ref=f4e280]
+          - generic [ref=f4e282]:
+            - generic [ref=f4e283]:
+              - heading "Payment overview" [level=2] [ref=f4e284]
+              - generic [ref=f4e286]:
+                - heading "No payment records yet" [level=3] [ref=f4e292]
+                - paragraph [ref=f4e293]: Student and tutor payment records will appear here once they are added.
+            - generic [ref=f4e294]:
+              - heading "ProVision and organogram" [level=2] [ref=f4e295]
+              - generic [ref=f4e296]:
+                - generic [ref=f4e297]:
+                  - paragraph [ref=f4e298]: Academic operations
+                  - paragraph [ref=f4e299]: Admin | Students, tutors, classes, assignments
+                - generic [ref=f4e300]:
+                  - paragraph [ref=f4e301]: NGO reporting
+                  - paragraph [ref=f4e302]: Partner | Launch impact reporting

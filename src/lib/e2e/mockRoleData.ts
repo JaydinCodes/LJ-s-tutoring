@@ -101,6 +101,14 @@ const e2eSubmission: AssignmentSubmission & { assignment_title?: string; student
   marks_released: false,
   feedback_released: false,
   released_at: null,
+  // Pre-graded so the AI-draft prefill/badge (aiGradingPrefill.ts) is
+  // exercisable in every review surface without a real Gemini call.
+  ai_marks_awarded: 78,
+  ai_feedback: 'Good use of factorisation; turning point check was correct. Show the discriminant step explicitly next time.',
+  ai_rubric_scores_json: { method: 45, accuracy: 33 },
+  ai_confidence: 82,
+  ai_graded_at: now,
+  ai_grading_status: 'completed',
   assignment_title: e2eAssignment.title,
   student_label: e2eStudent.full_name,
   student_name: e2eStudent.full_name,

@@ -12,6 +12,7 @@ import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { formatDate } from '../../lib/utils/format';
 import type { DashboardMetric } from '../../types/lms';
+import { getAiGradingPrefill } from '../assignments/aiGradingPrefill';
 import { markSubmission } from '../assignments/assignmentMutations';
 import type { AdminMarkbookRow } from './adminMarkbookRepository';
 import { loadAdminMarkbook, summarizeRows } from './adminMarkbookRepository';
@@ -101,9 +102,10 @@ export function AdminResultsRoute() {
 }
 
 function MarkEditPanel({ row, onSaved }: { row: AdminMarkbookRow | null; onSaved: () => Promise<void> }) {
-  const [marksAwarded, setMarksAwarded] = useState(row?.marks_awarded == null ? '' : String(row.marks_awarded));
-  const [feedback, setFeedback] = useState(row?.feedback || '');
-  const [rubricScoresJson, setRubricScoresJson] = useState(JSON.stringify(row?.rubric_scores_json || {}, null, 2));
+  const initialPrefill = row ? getAiGradingPrefill(row) : null;
+  const [marksAwarded, setMarksAwarded] = useState(initialPrefill?.marksAwarded ?? '');
+  const [feedback, setFeedback] = useState(initialPrefill?.feedback ?? '');
+  const [rubricScoresJson, setRubricScoresJson] = useState(initialPrefill?.rubricScoresJson ?? '{}');
   const [marksReleased, setMarksReleased] = useState(Boolean(row?.marks_released));
   const [feedbackReleased, setFeedbackReleased] = useState(Boolean(row?.feedback_released));
   const [status, setStatus] = useState<'submitted' | 'marked' | 'returned'>(row?.status === 'returned' ? 'returned' : row?.status === 'submitted' ? 'submitted' : 'marked');
@@ -112,9 +114,10 @@ function MarkEditPanel({ row, onSaved }: { row: AdminMarkbookRow | null; onSaved
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setMarksAwarded(row?.marks_awarded == null ? '' : String(row.marks_awarded));
-    setFeedback(row?.feedback || '');
-    setRubricScoresJson(JSON.stringify(row?.rubric_scores_json || {}, null, 2));
+    const prefill = row ? getAiGradingPrefill(row) : null;
+    setMarksAwarded(prefill?.marksAwarded ?? '');
+    setFeedback(prefill?.feedback ?? '');
+    setRubricScoresJson(prefill?.rubricScoresJson ?? '{}');
     setMarksReleased(Boolean(row?.marks_released));
     setFeedbackReleased(Boolean(row?.feedback_released));
     setStatus(row?.status === 'returned' ? 'returned' : row?.status === 'submitted' ? 'submitted' : 'marked');
@@ -163,6 +166,11 @@ function MarkEditPanel({ row, onSaved }: { row: AdminMarkbookRow | null; onSaved
     <Card>
       <h2 className="text-xl font-semibold text-slate-950">Edit mark</h2>
       <p className="mt-1 text-sm leading-6 text-slate-600">{selectedRow.student_name} | {selectedRow.assignment_title}</p>
+      {initialPrefill?.isAiDraft ? (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+          AI-suggested draft{initialPrefill.aiConfidence != null ? ` (confidence ${initialPrefill.aiConfidence}%)` : ''} -- review before releasing.
+        </p>
+      ) : null}
       <form className="mt-5 grid gap-4" onSubmit={(event) => void submit(event)}>
         <FormField label="Marks awarded" hint="Must be between 0 and 100.">
           <TextInput type="number" min="0" max="100" step="0.01" value={marksAwarded} onChange={(event) => setMarksAwarded(event.target.value)} />

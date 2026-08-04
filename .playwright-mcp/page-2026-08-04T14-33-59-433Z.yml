@@ -1,0 +1,4 @@
+- generic [ref=f7e2]:
+  - region "Notifications alt+T"
+  - main [ref=f7e3]:
+    - status [ref=f7e4]: Loading page...

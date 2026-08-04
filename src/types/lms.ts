@@ -77,6 +77,10 @@ export interface Assignment {
   status: AssignmentStatus | string;
   attachment_url?: string | null;
   rubric_json?: RubricCriterion[] | null;
+  // Model answer for AI-assisted marking (grade-submission Edge Function).
+  // Stored in the private assignment-memos bucket -- never readable by
+  // students, unlike attachment_url (assignment-files, student-readable).
+  memo_url?: string | null;
   created_at: string;
 }
 
@@ -132,6 +136,15 @@ export interface AssignmentSubmission {
   marks_released?: boolean | null;
   feedback_released?: boolean | null;
   released_at?: string | null;
+  // Written by the grade-submission Edge Function only -- a draft the tutor
+  // review UI prefills from, never auto-copied into the real marks_awarded/
+  // feedback/rubric_scores_json fields above (a human must explicitly save).
+  ai_marks_awarded?: number | null;
+  ai_feedback?: string | null;
+  ai_rubric_scores_json?: Record<string, number | string | null> | null;
+  ai_confidence?: number | null;
+  ai_graded_at?: string | null;
+  ai_grading_status?: 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped' | string;
 }
 
 export interface AuditLogEntry {

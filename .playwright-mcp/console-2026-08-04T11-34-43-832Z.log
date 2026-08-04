@@ -1,0 +1,2 @@
+[     455ms] [ERROR] The Content Security Policy directive 'frame-ancestors' is ignored when delivered via a <meta> element. @ https://admin.projectodysseus.live/dashboard/admin:16
+[     455ms] [ERROR] Executing inline script violates the following Content Security Policy directive 'script-src 'self''. Either the 'unsafe-inline' keyword, a hash ('sha256-yhwwAzfDBWEh+W4BAdemGpl8IZD2ZdVdlp6Ef/hQNpE='), or a nonce ('nonce-...') is required to enable inline execution. The action has been blocked. @ https://admin.projectodysseus.live/dashboard/admin:26

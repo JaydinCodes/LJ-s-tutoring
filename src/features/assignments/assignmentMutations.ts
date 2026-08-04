@@ -13,6 +13,9 @@ export interface CreateAssignmentInput {
   curriculum?: string;
   dueDate?: string;
   attachment?: File | null;
+  // Model answer for AI-assisted marking -- private assignment-memos bucket,
+  // never student-readable (unlike attachment, assignment-files).
+  memo?: File | null;
   rubricJson?: string;
 }
 
@@ -37,6 +40,7 @@ export interface UpdateAssignmentInput {
   dueDate?: string;
   status: AssignmentStatus;
   attachment?: File | null;
+  memo?: File | null;
   rubricJson?: string;
 }
 
@@ -78,6 +82,17 @@ function captureAssignmentError(action: string, error: unknown, metadata: Record
     action,
     metadata,
   });
+}
+
+// Fire-and-forget: AI grading is a background bonus, never a requirement for
+// a successful submit. grade-submission claims the row idempotently, so it's
+// safe to call this from every path that confirms the submission exists.
+async function triggerAiGrading(client: ReturnType<typeof requireSupabase>, submissionId: string) {
+  try {
+    await client.functions.invoke('grade-submission', { body: { submissionId } });
+  } catch (err) {
+    captureAssignmentError('assignment_submission.ai_grading_trigger_failed', err, { submission_id: submissionId });
+  }
 }
 
 async function confirmSubmissionAttempt(
@@ -247,6 +262,7 @@ export async function createAssignment(input: CreateAssignmentInput) {
       created_by: string;
       status: string;
       attachment_url: string | null;
+      memo_url: string | null;
       rubric_json: unknown;
     }) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
   })
@@ -259,6 +275,7 @@ export async function createAssignment(input: CreateAssignmentInput) {
       created_by: profile.id,
       status: 'published',
       attachment_url: null,
+      memo_url: null,
       rubric_json: parseJsonField(input.rubricJson, [], 'Rubric'),
     })
     .select('*')
@@ -307,6 +324,40 @@ export async function createAssignment(input: CreateAssignmentInput) {
     assignment = updated.data as Assignment;
   }
 
+  if (input.memo) {
+    const path = `${assignment.id}/${Date.now()}-${safeFileName(input.memo)}`;
+    const uploaded = await client.storage.from('assignment-memos').upload(path, input.memo, {
+      upsert: true,
+      contentType: input.memo.type || undefined,
+    });
+    if (uploaded.error) {
+      captureAssignmentError('assignment.memo_upload_failed', uploaded.error, {
+        assignment_id: assignment.id,
+        upload_size_bytes: input.memo.size,
+        mime_type: input.memo.type || null,
+      });
+      throw uploaded.error;
+    }
+
+    const updated = await (client.from('assignments') as unknown as {
+      update: (payload: { memo_url: string }) => {
+        eq: (column: string, value: string) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
+      };
+    })
+      .update({ memo_url: uploaded.data.path })
+      .eq('id', assignment.id)
+      .select('*')
+      .single();
+
+    if (updated.error) {
+      captureAssignmentError('assignment.memo_update_failed', updated.error, {
+        assignment_id: assignment.id,
+      });
+      throw updated.error;
+    }
+    assignment = updated.data as Assignment;
+  }
+
   await recordAuditEvent({
     action: 'assignment.created',
     entityType: 'assignment',
@@ -316,6 +367,7 @@ export async function createAssignment(input: CreateAssignmentInput) {
       status: assignment.status,
       subject_id: assignment.subject_id,
       attachment_uploaded: Boolean(input.attachment),
+      memo_uploaded: Boolean(input.memo),
     },
   });
 
@@ -373,6 +425,7 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
     due_date: input.dueDate ? new Date(input.dueDate).toISOString() : null,
     status: input.status,
     attachment_url: current.attachment_url || null,
+    memo_url: current.memo_url || null,
     rubric_json: parseJsonField(input.rubricJson, current.rubric_json || [], 'Rubric'),
   };
 
@@ -392,6 +445,23 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
       throw uploaded.error;
     }
     payload.attachment_url = uploaded.data.path;
+  }
+
+  if (input.memo) {
+    const path = `${input.assignmentId}/${Date.now()}-${safeFileName(input.memo)}`;
+    const uploaded = await client.storage.from('assignment-memos').upload(path, input.memo, {
+      upsert: true,
+      contentType: input.memo.type || undefined,
+    });
+    if (uploaded.error) {
+      captureAssignmentError('assignment.memo_replace_failed', uploaded.error, {
+        assignment_id: input.assignmentId,
+        upload_size_bytes: input.memo.size,
+        mime_type: input.memo.type || null,
+      });
+      throw uploaded.error;
+    }
+    payload.memo_url = uploaded.data.path;
   }
 
   const updated = await (client.from('assignments') as unknown as {
@@ -424,6 +494,7 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
       grade: assignment.grade,
       subject_id: assignment.subject_id,
       attachment_replaced: Boolean(input.attachment),
+      memo_replaced: Boolean(input.memo),
     },
   });
 
@@ -435,6 +506,18 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
       metadata: {
         previous_attachment_url: current.attachment_url,
         new_attachment_url: assignment.attachment_url,
+      },
+    });
+  }
+
+  if (input.memo) {
+    await recordAuditEvent({
+      action: 'assignment.memo_replaced',
+      entityType: 'assignment',
+      entityId: assignment.id,
+      metadata: {
+        previous_memo_url: current.memo_url,
+        new_memo_url: assignment.memo_url,
       },
     });
   }
@@ -498,6 +581,7 @@ export async function submitAssignment(input: SubmitAssignmentInput): Promise<Su
   // never uploaded over. An absent attempt is the only state that proceeds.
   try {
     if (await confirmSubmissionAttempt(client, rpcArgs)) {
+      await triggerAiGrading(client, submissionId);
       return { submissionId };
     }
   } catch (confirmationError) {
@@ -565,6 +649,7 @@ export async function submitAssignment(input: SubmitAssignmentInput): Promise<Su
     // click; no Storage object is removed or overwritten here.
     try {
       if (await confirmSubmissionAttempt(client, rpcArgs)) {
+        await triggerAiGrading(client, submissionId);
         return { submissionId };
       }
     } catch (confirmationError) {
@@ -580,6 +665,7 @@ export async function submitAssignment(input: SubmitAssignmentInput): Promise<Su
     throw new Error('Submission confirmation was incomplete. Retry safely with the same work.');
   }
 
+  await triggerAiGrading(client, submissionId);
   return { submissionId };
 }
 

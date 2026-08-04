@@ -7,6 +7,7 @@ import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { toUserFacingError } from '../../lib/utils/errors';
 import { formatDate } from '../../lib/utils/format';
 import type { AssignmentSubmission } from '../../types/lms';
+import { getAiGradingPrefill } from '../assignments/aiGradingPrefill';
 import { markSubmission } from '../assignments/assignmentMutations';
 
 export function TutorSubmissionReviewCard({
@@ -16,9 +17,10 @@ export function TutorSubmissionReviewCard({
   submission: AssignmentSubmission & { assignment_title?: string; student_label?: string };
   onSaved: () => Promise<void>;
 }) {
-  const [marksAwarded, setMarksAwarded] = useState(submission.marks_awarded == null ? '' : String(submission.marks_awarded));
-  const [feedback, setFeedback] = useState(submission.feedback || '');
-  const [rubricScoresJson, setRubricScoresJson] = useState(JSON.stringify(submission.rubric_scores_json || {}, null, 2));
+  const aiPrefill = getAiGradingPrefill(submission);
+  const [marksAwarded, setMarksAwarded] = useState(aiPrefill.marksAwarded);
+  const [feedback, setFeedback] = useState(aiPrefill.feedback);
+  const [rubricScoresJson, setRubricScoresJson] = useState(aiPrefill.rubricScoresJson);
   const [marksReleased, setMarksReleased] = useState(Boolean(submission.marks_released));
   const [feedbackReleased, setFeedbackReleased] = useState(Boolean(submission.feedback_released));
   const [status, setStatus] = useState<'submitted' | 'marked' | 'returned'>(
@@ -69,6 +71,11 @@ export function TutorSubmissionReviewCard({
         {submission.file_url ? <div><dt className="font-semibold text-slate-800">File</dt><dd><a className="break-all text-xs font-semibold text-brand-aegean hover:text-brand-gold" href={submission.file_url} rel="noreferrer" target="_blank">Open submitted file</a></dd></div> : null}
         {submission.text_answer ? <div><dt className="font-semibold text-slate-800">Answer</dt><dd className="rounded-lg bg-slate-50 p-3">{submission.text_answer}</dd></div> : null}
       </dl>
+      {aiPrefill.isAiDraft ? (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+          AI-suggested draft{aiPrefill.aiConfidence != null ? ` (confidence ${aiPrefill.aiConfidence}%)` : ''} -- review before releasing.
+        </p>
+      ) : null}
       <form className="mt-4 grid gap-3" onSubmit={(event) => void submit(event)}>
         <div className="grid gap-3 sm:grid-cols-2">
           <FormField label="Marks awarded">
