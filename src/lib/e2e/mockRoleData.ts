@@ -1,4 +1,5 @@
 import type { AdminMarkbookView } from '../../features/admin/adminMarkbookRepository';
+import type { AdminStudentDetailView } from '../../features/admin/adminStudentDetailRepository';
 import type { NgoAggregateReport } from '../../features/ngo/ngoReportsRepository';
 import type { ParentReportStudent } from '../../features/parents/parentReportsRepository';
 import type {
@@ -11,6 +12,7 @@ import type {
   StudentProgress,
   TutorAllocatedStudentSummary,
   TutorDashboardView,
+  TutorStudentAllocation,
 } from '../../types/lms';
 import type { MarkSubmissionInput, SubmitAssignmentInput, SubmitAssignmentResult } from '../../features/assignments/assignmentMutations';
 
@@ -102,6 +104,18 @@ const e2eSubmission: AssignmentSubmission & { assignment_title?: string; student
   assignment_title: e2eAssignment.title,
   student_label: e2eStudent.full_name,
   student_name: e2eStudent.full_name,
+};
+
+const e2eAllocation: TutorStudentAllocation = {
+  id: 'e2e-allocation-1',
+  tutor_id: 'e2e-tutor-1',
+  student_id: e2eStudent.id,
+  status: 'active',
+  start_date: now,
+  end_date: null,
+  focus_notes: 'Functions and exam technique.',
+  created_at: now,
+  updated_at: now,
 };
 
 const e2eProgress: StudentProgress[] = [
@@ -309,6 +323,25 @@ export function getE2EAdminMarkbook(): AdminMarkbookView {
       pendingSubmissions: 1,
       averageMark: null,
     },
+  };
+}
+
+export function getE2EAdminStudentDetail(studentId: string): AdminStudentDetailView {
+  const matches = studentId === e2eStudent.id;
+  return {
+    allocations: matches ? [{ ...e2eAllocation, tutor_name: 'Tutor E2E', tutor_email: 'tutor.e2e@projectodysseus.test' }] : [],
+    submissions: matches ? [{ ...e2eSubmission, assignment_title: e2eAssignment.title, subject_name: 'Mathematics' }] : [],
+    tutors: [{
+      id: 'e2e-tutor-1',
+      profile_id: 'e2e-profile-tutor',
+      subjects: ['Mathematics'],
+      grades: ['Grade 11'],
+      hourly_rate: 450,
+      status: 'active',
+      created_at: now,
+      full_name: 'Tutor E2E',
+      email: 'tutor.e2e@projectodysseus.test',
+    }],
   };
 }
 

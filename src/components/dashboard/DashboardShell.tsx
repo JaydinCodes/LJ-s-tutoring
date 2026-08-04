@@ -47,10 +47,10 @@ const nav = {
   ],
   admin: [
     { to: '/dashboard/admin', label: 'Overview', icon: LayoutDashboard },
-    { to: '/dashboard/admin/users', label: 'Users', icon: UserPlus },
     { to: '/dashboard/admin/students', label: 'Students', icon: GraduationCap },
-    { to: '/dashboard/admin/tutors', label: 'Tutors', icon: Brain },
     { to: '/dashboard/admin/allocations', label: 'Allocations', icon: Target },
+    { to: '/dashboard/admin/users', label: 'Users', icon: UserPlus },
+    { to: '/dashboard/admin/tutors', label: 'Tutors', icon: Brain },
     { to: '/dashboard/admin/classes', label: 'Classes', icon: BookOpen },
     { to: '/dashboard/admin/assignments', label: 'Assignments', icon: ScrollText },
     { to: '/dashboard/admin/approvals', label: 'Approvals', icon: Target },

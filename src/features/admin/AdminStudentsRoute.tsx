@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
@@ -8,43 +9,66 @@ import { FormField, TextInput } from '../../components/ui/FormField';
 import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
-import type { Guardian, NgoPartner, RecordStatus, Student, StudentGuardian } from '../../types/lms';
+import { formatDate } from '../../lib/utils/format';
+import type { Guardian, NgoPartner, RecordStatus, Student, StudentGuardian, Tutor } from '../../types/lms';
+import { assignTutorToStudent, type AllocationInput } from './allocationManagementMutations';
 import { loadAdminDashboard } from './adminDashboardRepository';
+import type { AdminStudentSubmission } from './adminStudentDetailRepository';
+import { loadAdminStudentDetail } from './adminStudentDetailRepository';
 import { createGuardianRecord, deactivateGuardianLink, linkGuardianToStudent, updateGuardianRecord } from './guardianMutations';
 import { createStudentRecord, updateStudentRecord } from './rosterMutations';
 
+type AdminStudentRow = Student & { full_name?: string; email?: string; phone?: string | null; ngo_partner?: string };
+
 export function AdminStudentsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminDashboard, []);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const selectedStudent = data?.students.find((student) => student.id === selectedStudentId) || null;
 
   return (
     <DashboardShell title="Students" subtitle="Operational learner list for onboarding, support status, and NGO rollout visibility." section="admin">
       <CreateStudentForm ngoPartners={data?.ngoPartners || []} onCreated={reload} />
       <CreateGuardianForm onCreated={reload} />
-      <Card>
-        {loading ? <LoadingState title="Loading students" description="Fetching learner, guardian, and NGO roster records..." /> : null}
-        {error ? <ErrorState title="Student roster unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
-        {data ? (
-          <div className="space-y-5">
-            <DataTable<Student & { full_name?: string; email?: string; ngo_partner?: string }>
-              rows={data.students}
-              empty="No student records are available yet."
-              columns={[
-                { key: 'name', label: 'Student', render: (row) => <span className="font-semibold text-slate-950">{row.full_name || row.id}</span> },
-                { key: 'email', label: 'Email', render: (row) => row.email || 'Pending' },
-                { key: 'grade', label: 'Grade', render: (row) => row.grade || 'Pending' },
-                { key: 'school', label: 'School', render: (row) => row.school || 'Pending' },
-                { key: 'parent', label: 'Parent', render: (row) => row.parent_name || 'Pending' },
-                { key: 'status', label: 'Status', render: (row) => <StatusBadge value={row.status || 'pending'} /> },
-              ]}
-            />
-            <div className="grid gap-4 xl:grid-cols-2">
-              {data.students.map((student) => (
-                <StudentRecordCard key={student.id} student={student} guardians={data.guardians} ngoPartners={data.ngoPartners} onSaved={reload} />
-              ))}
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_460px]">
+        <Card>
+          <h2 className="text-xl font-semibold text-slate-950">Students</h2>
+          <p className="mt-1 text-sm text-slate-600">Choose a student to view their full profile, tutor allocation, and assignment submissions.</p>
+          {loading ? <LoadingState title="Loading students" description="Fetching learner, guardian, and NGO roster records..." /> : null}
+          {error ? <ErrorState title="Student roster unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
+          {data ? (
+            <div className="mt-5">
+              <DataTable<AdminStudentRow>
+                rows={data.students}
+                empty="No student records are available yet."
+                columns={[
+                  { key: 'name', label: 'Student', render: (row) => <span className="font-semibold text-slate-950">{row.full_name || row.id}</span> },
+                  { key: 'email', label: 'Email', render: (row) => row.email || 'Pending' },
+                  { key: 'grade', label: 'Grade', render: (row) => row.grade || 'Pending' },
+                  { key: 'school', label: 'School', render: (row) => row.school || 'Pending' },
+                  { key: 'parent', label: 'Parent', render: (row) => row.parent_name || 'Pending' },
+                  { key: 'status', label: 'Status', render: (row) => <StatusBadge value={row.status || 'pending'} /> },
+                  { key: 'action', label: 'Action', render: (row) => <button className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-800" type="button" onClick={() => setSelectedStudentId(row.id)}>View</button> },
+                ]}
+              />
             </div>
-          </div>
-        ) : null}
-      </Card>
+          ) : null}
+        </Card>
+        {selectedStudent ? (
+          <StudentDetailPanel
+            key={selectedStudent.id}
+            studentId={selectedStudent.id}
+            student={selectedStudent}
+            guardians={data?.guardians || []}
+            ngoPartners={data?.ngoPartners || []}
+            onSaved={reload}
+          />
+        ) : (
+          <Card>
+            <h2 className="text-xl font-semibold text-slate-950">Student detail</h2>
+            <EmptyState title="No student selected" description="Choose a student from the table to view their profile, tutor allocation, and submissions." />
+          </Card>
+        )}
+      </section>
       <Card>
         <h2 className="text-xl font-semibold text-slate-950">Guardians</h2>
         <p className="mt-1 text-sm text-slate-600">Manage parent and guardian records separately from learner rows so reports and communication permissions stay auditable.</p>
@@ -56,6 +80,122 @@ export function AdminStudentsRoute() {
         ) : null}
       </Card>
     </DashboardShell>
+  );
+}
+
+function StudentDetailPanel({
+  studentId,
+  student,
+  guardians,
+  ngoPartners,
+  onSaved,
+}: {
+  studentId: string;
+  student: AdminStudentRow;
+  guardians: Array<Guardian & { linked_students?: Array<StudentGuardian & { student_name?: string }> }>;
+  ngoPartners: NgoPartner[];
+  onSaved: () => Promise<void>;
+}) {
+  const { data, loading, error, reload } = useAsyncResource(() => loadAdminStudentDetail(studentId), [studentId]);
+
+  return (
+    <div className="space-y-4">
+      <StudentRecordCard student={student} guardians={guardians} ngoPartners={ngoPartners} onSaved={onSaved} />
+      <Card>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-950">Tutor allocation</h3>
+            <p className="mt-1 text-sm text-slate-600">Current tutor assignment for this learner.</p>
+          </div>
+          <Link className="text-xs font-semibold text-brand-aegean underline" to="/dashboard/admin/allocations">Manage all allocations</Link>
+        </div>
+        {loading ? <LoadingState title="Loading allocation" description="Fetching tutor allocation records..." /> : null}
+        {error ? <ErrorState title="Allocation unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
+        {data ? (
+          <div className="mt-4 space-y-3">
+            {data.allocations.map((allocation) => (
+              <div key={allocation.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                <span>{allocation.tutor_name || allocation.tutor_email || allocation.tutor_id} | {[allocation.start_date, allocation.end_date].filter(Boolean).join(' to ') || 'Open'}</span>
+                <StatusBadge value={allocation.status} />
+              </div>
+            ))}
+            {!data.allocations.length ? <p className="text-sm text-slate-600">No tutor allocated yet.</p> : null}
+            <AssignTutorForm studentId={studentId} tutors={data.tutors} onAssigned={async () => { await reload(); await onSaved(); }} />
+          </div>
+        ) : null}
+      </Card>
+      <Card>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-950">Assignments & submissions</h3>
+            <p className="mt-1 text-sm text-slate-600">Read-only view. Open the Markbook to enter marks or return work.</p>
+          </div>
+          <Link className="text-xs font-semibold text-brand-aegean underline" to="/dashboard/admin/results">Open Markbook</Link>
+        </div>
+        {data ? (
+          <div className="mt-4 space-y-2">
+            {data.submissions.map((submission) => <SubmissionRow key={submission.id} submission={submission} />)}
+            {!data.submissions.length ? <p className="text-sm text-slate-600">No submissions yet.</p> : null}
+          </div>
+        ) : null}
+      </Card>
+    </div>
+  );
+}
+
+function AssignTutorForm({ studentId, tutors, onAssigned }: { studentId: string; tutors: Array<Tutor & { full_name?: string; email?: string }>; onAssigned: () => Promise<void> }) {
+  const [tutorId, setTutorId] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const input: AllocationInput = { tutorId, studentId, status: 'active', startDate };
+      await assignTutorToStudent(input);
+      setTutorId('');
+      setStartDate('');
+      setMessage('Tutor allocated.');
+      await onAssigned();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not assign tutor.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-3" onSubmit={(event) => void submit(event)}>
+      <select required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={tutorId} onChange={(event) => setTutorId(event.target.value)}>
+        <option value="">Choose tutor</option>
+        {tutors.map((tutor) => <option key={tutor.id} value={tutor.id}>{tutor.full_name || tutor.email || tutor.id}</option>)}
+      </select>
+      <TextInput type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+      <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" disabled={busy || !tutorId} type="submit">
+        {busy ? 'Assigning...' : 'Assign tutor'}
+      </button>
+      {message ? <p className="text-sm font-semibold text-emerald-700 sm:col-span-3">{message}</p> : null}
+      {error ? <p className="text-sm font-semibold text-red-700 sm:col-span-3">{error}</p> : null}
+    </form>
+  );
+}
+
+function SubmissionRow({ submission }: { submission: AdminStudentSubmission }) {
+  return (
+    <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-semibold text-slate-950">{submission.assignment_title}</span>
+        <StatusBadge value={submission.status} />
+      </div>
+      <p className="mt-1 text-xs text-slate-500">{[submission.subject_name, formatDate(submission.submitted_at)].filter(Boolean).join(' | ')}</p>
+      <p className="mt-1 text-xs text-slate-600">{submission.marks_awarded == null ? 'Marks pending' : `${submission.marks_awarded}%`}</p>
+      {submission.file_url ? <a className="mt-1 inline-block text-xs font-semibold text-brand-aegean underline" href={submission.file_url} target="_blank" rel="noreferrer">Open file</a> : null}
+    </div>
   );
 }
 
