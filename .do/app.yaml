@@ -167,6 +167,121 @@ ingress:
       component:
         name: website
         preserve_path_prefix: true
+    # sw.js, health.json, robots.txt, and sitemap.xml are all root-level files
+    # scripts/build-static.js copies into dist/ (see its copyTargets list), but
+    # they were missing from this allowlist -- so every request for them fell
+    # through to the catch-all authority redirect further below (any
+    # unmatched path on {admin,tutor,student}.projectodysseus.live 302s to
+    # that subdomain's /dashboard/<role>/). For sw.js specifically this was a
+    # real production incident, not just a routing nit: the Service Worker
+    # spec rejects a *redirected* response when fetching the SW script for
+    # install or update-check, so browsers could never install it, and any
+    # browser that had already registered an older sw.js (from before this
+    # redirect rule existed) could never receive an update -- permanently
+    # stuck serving old cached JS chunks (via sw.js's own cache-first
+    # strategy) against whatever the currently-deployed main bundle expects,
+    # which is what produced the React error #321 "invalid hook call"
+    # crashes reported 2026-08-04 on both the student and admin dashboards.
+    # robots.txt/sitemap.xml being redirected instead of served is a real but
+    # lower-severity SEO bug (crawlers got a dashboard redirect instead of
+    # the actual file); health.json matters if HEALTHCHECK_URL (see the
+    # uptime workflow) points at one of these subdomains.
+    - match:
+        authority:
+          exact: admin.projectodysseus.live
+        path:
+          prefix: /sw.js
+      component:
+        name: website
+        preserve_path_prefix: true
+    - match:
+        authority:
+          exact: tutor.projectodysseus.live
+        path:
+          prefix: /sw.js
+      component:
+        name: website
+        preserve_path_prefix: true
+    - match:
+        authority:
+          exact: student.projectodysseus.live
+        path:
+          prefix: /sw.js
+      component:
+        name: website
+        preserve_path_prefix: true
+    - match:
+        authority:
+          exact: admin.projectodysseus.live
+        path:
+          prefix: /health.json
+      component:
+        name: website
+        preserve_path_prefix: true
+    - match:
+        authority:
+          exact: tutor.projectodysseus.live
+        path:
+          prefix: /health.json
+      component:
+        name: website
+        preserve_path_prefix: true
+    - match:
+        authority:
+          exact: student.projectodysseus.live
+        path:
+          prefix: /health.json
+      component:
+        name: website
+        preserve_path_prefix: true
+    - match:
+        authority:
+          exact: admin.projectodysseus.live
+        path:
+          prefix: /robots.txt
+      component:
+        name: website
+        preserve_path_prefix: true
+    - match:
+        authority:
+          exact: tutor.projectodysseus.live
+        path:
+          prefix: /robots.txt
+      component:
+        name: website
+        preserve_path_prefix: true
+    - match:
+        authority:
+          exact: student.projectodysseus.live
+        path:
+          prefix: /robots.txt
+      component:
+        name: website
+        preserve_path_prefix: true
+    - match:
+        authority:
+          exact: admin.projectodysseus.live
+        path:
+          prefix: /sitemap.xml
+      component:
+        name: website
+        preserve_path_prefix: true
+    - match:
+        authority:
+          exact: tutor.projectodysseus.live
+        path:
+          prefix: /sitemap.xml
+      component:
+        name: website
+        preserve_path_prefix: true
+    - match:
+        authority:
+          exact: student.projectodysseus.live
+        path:
+          prefix: /sitemap.xml
+      component:
+        name: website
+        preserve_path_prefix: true
     - match:
         authority:
           exact: admin.projectodysseus.live
