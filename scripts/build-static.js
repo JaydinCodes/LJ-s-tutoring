@@ -6,6 +6,22 @@ const dist = path.join(root, 'dist');
 const buildVersion = process.env.RELEASE_VERSION || process.env.GITHUB_SHA || String(Date.now());
 const safeBuildVersion = `po-v-${buildVersion}`.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80);
 
+// react-app.js/.css are content-hashed by Vite (see vite.app.config.ts), same as
+// chunks/*.js, so both the HTML entry reference and every lazy chunk's internal
+// `import ... from "../react-app-<hash>.js"` resolve to the exact same immutable
+// URL. Previously the entry files kept a static, unhashed name and were
+// cache-busted only on the HTML <script>/<link> tags via a `?v=` query string;
+// chunk-to-entry imports emitted by Rollup never carried that query string, so a
+// CDN edge cache could keep serving a stale pre-deploy build of react-app.js at
+// the bare URL for up to 24h while the HTML pulled the fresh one -- two different
+// React module instances loaded on one page, causing minified React error #321.
+const reactAppDistSrc = path.join(root, 'react-app-dist');
+const reactAppJsFile = fs.readdirSync(reactAppDistSrc).find((f) => /^react-app-.*\.js$/.test(f));
+const reactAppCssFile = fs.readdirSync(reactAppDistSrc).find((f) => /^react-app-.*\.css$/.test(f));
+if (!reactAppJsFile || !reactAppCssFile) {
+  throw new Error(`Could not locate hashed react-app.js/.css in ${reactAppDistSrc}`);
+}
+
 const copyTargets = [
   'health.json',
   'sw.js',
@@ -272,12 +288,12 @@ ${description}${robots}${canonical}${openGraph}    <meta name="theme-color" cont
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="stylesheet" href="/react-app-dist/react-app.css?v=${safeBuildVersion}">
+    <link rel="stylesheet" href="/react-app-dist/${reactAppCssFile}">
 ${publicScripts}
   </head>
   <body>
     <div id="root">${prerenderedContent}</div>
-    <script type="module" src="/react-app-dist/react-app.js?v=${safeBuildVersion}"></script>
+    <script type="module" src="/react-app-dist/${reactAppJsFile}"></script>
   </body>
 </html>
 `;
@@ -301,7 +317,10 @@ for (const file of compatibilityHtmlFiles) {
 
 const swPath = path.join(dist, 'sw.js');
 if (fs.existsSync(swPath)) {
-  const sw = fs.readFileSync(swPath, 'utf8').replace('const VERSION = "po-v-dev";', `const VERSION = "${safeBuildVersion}";`);
+  const sw = fs.readFileSync(swPath, 'utf8')
+    .replace('const VERSION = "po-v-dev";', `const VERSION = "${safeBuildVersion}";`)
+    .replace('const REACT_APP_JS_PATH = "/react-app-dist/react-app.js";', `const REACT_APP_JS_PATH = "/react-app-dist/${reactAppJsFile}";`)
+    .replace('const REACT_APP_CSS_PATH = "/react-app-dist/react-app.css";', `const REACT_APP_CSS_PATH = "/react-app-dist/${reactAppCssFile}";`);
   fs.writeFileSync(swPath, sw);
 }
 

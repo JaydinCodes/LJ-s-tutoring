@@ -5,17 +5,22 @@
    - Media/images: Stale-while-revalidate
 */
 
-// Build script replaces VERSION in dist/sw.js.
+// Build script replaces VERSION and the REACT_APP_*_PATH placeholders in dist/sw.js.
 const VERSION = "po-v-dev";
 const CACHE_APP = `po-app-${VERSION}`;
 const CACHE_MEDIA = `po-media-${VERSION}`;
 const CACHE_DOCS = `po-docs-${VERSION}`;
 
+// react-app.js/.css are content-hashed (see vite.app.config.ts), so these paths
+// already change on every build that changes their content -- no `?v=` needed.
+const REACT_APP_JS_PATH = "/react-app-dist/react-app.js";
+const REACT_APP_CSS_PATH = "/react-app-dist/react-app.css";
+
 const PRECACHE_URLS = [
   `/?v=${VERSION}`,
   `/index.html?v=${VERSION}`,
-  `/react-app-dist/react-app.css?v=${VERSION}`,
-  `/react-app-dist/react-app.js?v=${VERSION}`,
+  REACT_APP_CSS_PATH,
+  REACT_APP_JS_PATH,
   `/favicon.svg?v=${VERSION}`,
 ];
 

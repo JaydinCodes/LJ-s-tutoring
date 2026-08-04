@@ -30,16 +30,16 @@ export default defineConfig(({ command }) => ({
     lib: {
       entry: path.resolve(rootDir, 'src/app/main.tsx'),
       formats: ['es'],
-      fileName: () => 'react-app.js',
+      fileName: () => 'react-app-[hash].js',
     },
     rollupOptions: {
       preserveEntrySignatures: false,
       output: {
-        entryFileNames: 'react-app.js',
+        entryFileNames: 'react-app-[hash].js',
         chunkFileNames: 'chunks/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
           if (assetInfo.name === 'style.css') {
-            return 'react-app.css';
+            return 'react-app-[hash].css';
           }
           return '[name][extname]';
         },

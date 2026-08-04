@@ -37,8 +37,8 @@ test('icons, media, and Lighthouse tracking are covered by the performance budge
 
   assert.equal(pkg.scripts['perf:budget'], 'node scripts/check-frontend-performance-budget.cjs');
   assert.ok(shell.includes("from 'lucide-react'"), 'dashboard icons must use Lucide named imports');
-  assert.ok(script.includes('react-app-dist/react-app.js'), 'budget checker must inspect the built JS bundle when present');
-  assert.ok(script.includes('react-app-dist/react-app.css'), 'budget checker must inspect the built CSS bundle when present');
+  assert.ok(script.includes("findHashedReactAppAsset(reactAppDistDir, '.js')"), 'budget checker must inspect the built, content-hashed JS bundle when present');
+  assert.ok(script.includes("findHashedReactAppAsset(reactAppDistDir, '.css')"), 'budget checker must inspect the built, content-hashed CSS bundle when present');
   assert.ok(script.includes('images/odysseus-hero-fallback.webp'), 'budget checker must cap the hero poster');
   assert.ok(script.includes('images/bg_video-optimized.mp4'), 'budget checker must cap the hero video');
   assert.ok(script.includes("500_000, 'tutor portraits'"), 'budget checker must cap tutor portraits as a group');

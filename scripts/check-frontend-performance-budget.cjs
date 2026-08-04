@@ -24,6 +24,26 @@ function assertSizeIfBuilt(relativePath, maxBytes) {
   console.log(`[perf-budget] ${relativePath}: ${size}/${maxBytes} bytes`);
 }
 
+// react-app.js/.css are content-hashed by Vite (react-app-<hash>.{js,css}, see
+// vite.app.config.ts), so the filename isn't known ahead of build time.
+function findHashedReactAppAsset(directory, extension) {
+  if (!fs.existsSync(directory)) {
+    return null;
+  }
+  const match = fs.readdirSync(directory).find((f) => f.startsWith('react-app-') && f.endsWith(extension));
+  return match ? path.join(directory, match) : null;
+}
+
+function assertSizeIfBuiltPath(filePath, label, maxBytes) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    console.log(`[perf-budget] skipped size check for missing ${label}`);
+    return;
+  }
+  const size = fs.statSync(filePath).size;
+  assert(size <= maxBytes, `${label} is ${size} bytes, above budget ${maxBytes}`);
+  console.log(`[perf-budget] ${label}: ${size}/${maxBytes} bytes`);
+}
+
 function assertCombinedSize(relativePaths, maxBytes, label) {
   const files = relativePaths.map((relativePath) => ({
     relativePath,
@@ -60,7 +80,7 @@ function assertGeneratedJsBudget(relativeDirectory, maxTotalBytes, maxAsyncChunk
   assert(jsFiles.length > 1, `${relativeDirectory} must contain a code-split entry and async chunks`);
 
   const totalBytes = jsFiles.reduce((total, filePath) => total + fs.statSync(filePath).size, 0);
-  const asyncChunks = jsFiles.filter((filePath) => path.basename(filePath) !== 'react-app.js');
+  const asyncChunks = jsFiles.filter((filePath) => !/^react-app-.+\.js$/.test(path.basename(filePath)));
   const largestAsyncChunk = Math.max(...asyncChunks.map((filePath) => fs.statSync(filePath).size));
 
   assert(totalBytes <= maxTotalBytes, `${relativeDirectory} generated JS is ${totalBytes} bytes, above total budget ${maxTotalBytes}`);
@@ -87,9 +107,10 @@ assert(motion.includes('transformOrigin'), 'progress animation must use transfor
 assert(docs.includes('Lighthouse before'), 'Lighthouse before score must be tracked in docs');
 assert(docs.includes('Lighthouse after'), 'Lighthouse after score must be tracked in docs');
 
-assertSizeIfBuilt('react-app-dist/react-app.js', 1_400_000);
+const reactAppDistDir = path.join(root, 'react-app-dist');
+assertSizeIfBuiltPath(findHashedReactAppAsset(reactAppDistDir, '.js'), 'react-app-dist/react-app-<hash>.js', 1_400_000);
 assertGeneratedJsBudget('react-app-dist', 2_700_000, 150_000);
-assertSizeIfBuilt('react-app-dist/react-app.css', 90_000);
+assertSizeIfBuiltPath(findHashedReactAppAsset(reactAppDistDir, '.css'), 'react-app-dist/react-app-<hash>.css', 90_000);
 assertSizeIfBuilt('images/odysseus-hero-fallback.webp', 150_000);
 assertSizeIfBuilt('images/bg_video-optimized.mp4', 1_000_000);
 assertCombinedSize([

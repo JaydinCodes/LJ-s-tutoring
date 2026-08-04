@@ -155,10 +155,10 @@ test('major route modules load through real production code-split boundaries', (
   assert.match(app, /<Suspense fallback=\{<RouteLoadingFallback \/>\}>/);
   assert.match(viteConfig, /formats: \['es'\]/);
   assert.match(viteConfig, /preserveEntrySignatures: false/);
-  assert.match(viteConfig, /entryFileNames: 'react-app\.js'/);
+  assert.match(viteConfig, /entryFileNames: 'react-app-\[hash\]\.js'/);
   assert.match(viteConfig, /chunkFileNames: 'chunks\/\[name\]-\[hash\]\.js'/);
-  assert.match(buildStatic, /<script type="module" src="\/react-app-dist\/react-app\.js/);
-  assert.match(performanceBudget, /assertSizeIfBuilt\('react-app-dist\/react-app\.js', 1_400_000\)/);
+  assert.match(buildStatic, /<script type="module" src="\/react-app-dist\/\$\{reactAppJsFile\}"/);
+  assert.match(performanceBudget, /assertSizeIfBuiltPath\(findHashedReactAppAsset\(reactAppDistDir, '\.js'\), 'react-app-dist\/react-app-<hash>\.js', 1_400_000\)/);
   assert.match(performanceBudget, /assertGeneratedJsBudget\('react-app-dist', 2_700_000, 150_000\)/);
   assert.match(performanceDocs, /eager entry: 1,365,990 bytes/);
   assert.match(performanceDocs, /all generated JavaScript: 2,582,900 bytes across 48 files/);

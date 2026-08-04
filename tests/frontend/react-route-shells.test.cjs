@@ -83,8 +83,8 @@ test('build-static generates direct shell files for every nested React route', (
     );
   }
 
-  assert.ok(buildStatic.includes('/react-app-dist/react-app.js'), 'React shell must load the unified React bundle');
-  assert.ok(buildStatic.includes('/react-app-dist/react-app.css'), 'React shell must load the unified React stylesheet');
+  assert.ok(buildStatic.includes('/react-app-dist/${reactAppJsFile}'), 'React shell must load the content-hashed unified React bundle');
+  assert.ok(buildStatic.includes('/react-app-dist/${reactAppCssFile}'), 'React shell must load the content-hashed unified React stylesheet');
   assert.ok(buildStatic.includes("''"), 'React shell generation must replace dist/index.html for root cutover');
   assert.ok(buildStatic.includes('routeMeta'), 'React shell generation must provide public route metadata');
   assert.ok(buildStatic.includes('/assets/analytics.js'), 'Public React shells must load the fail-safe analytics bridge');
