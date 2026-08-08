@@ -61,6 +61,33 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
     );
   }
 
+  const requiresOperationalAccess = currentRole === 'student' || currentRole === 'tutor';
+  if (
+  requiresOperationalAccess &&
+  auth.operationalAccess !== 'allowed'
+) {
+  return (
+    <GuardShell>
+      <GuardMonitoringEvent
+        action="auth.operational_access_denied"
+        role={currentRole}
+        route={location.pathname}
+        metadata={{
+          operational_access: auth.operationalAccess,
+        }}
+      />
+
+      <PermissionDeniedState
+        dashboardHref="/"
+        description={
+          currentRole === 'tutor'
+            ? 'Your tutor account is not currently approved and active for portal access. Please contact an administrator.'
+            : 'Your learner account is not currently active for portal access. Please contact an administrator.'
+        }
+      />
+    </GuardShell>
+  );
+}
   if (currentRole === 'admin') {
     return <AdminMfaGate>{children}</AdminMfaGate>;
   }

@@ -7,6 +7,8 @@ import { getDashboardPath, normalizeUserRole, type SupportedDashboardRole } from
 
 export { getDashboardPath } from './roles';
 
+export type OperationalAccess = 'allowed' | 'blocked' | 'not_applicable';
+
 export type AuthStatus =
   | 'loading'
   | 'unauthenticated'
@@ -45,6 +47,7 @@ export interface AuthState {
   session: Session | null;
   profile: AuthProfile | null;
   status: AuthStatus;
+  operationalAccess: OperationalAccess;
   adminMfa: AdminMfaState;
   error: string | null;
 }
@@ -194,58 +197,148 @@ export async function verifyAdminMfa(input: { factorId: string; challengeId: str
 export async function fetchCurrentProfile() {
   if (isE2EAuthMockEnabled()) {
     const snapshot = getE2EMockAuthSnapshot();
+    const role = snapshot.profile?.role;
+
+    const operationalAccess: OperationalAccess =
+      role === 'student' || role === 'tutor'
+        ? 'allowed'
+        : 'not_applicable';
+
     return {
       ...snapshot,
-      adminMfa: snapshot.profile?.role === 'admin'
-        ? { status: 'dev_bypass', currentLevel: 'dev_bypass', nextLevel: 'dev_bypass', factorId: null, error: null } satisfies AdminMfaState
-        : ADMIN_MFA_NOT_APPLICABLE,
+      operationalAccess,
+      adminMfa:
+        role === 'admin'
+          ? {
+              status: 'dev_bypass',
+              currentLevel: 'dev_bypass',
+              nextLevel: 'dev_bypass',
+              factorId: null,
+              error: null,
+            } satisfies AdminMfaState
+          : ADMIN_MFA_NOT_APPLICABLE,
     };
   }
 
   if (!isSupabaseConfigured || !supabase) {
-    return { session: null, profile: null, status: 'error' as const, adminMfa: ADMIN_MFA_NOT_APPLICABLE };
+    return {
+      session: null,
+      profile: null,
+      status: 'error' as const,
+      operationalAccess: 'not_applicable' as const,
+      adminMfa: ADMIN_MFA_NOT_APPLICABLE,
+    };
   }
 
   const sessionResult = await supabase.auth.getSession();
+
   if (sessionResult.error) {
     captureAppError(sessionResult.error, {
       featureArea: 'auth',
       action: 'auth.get_session_failed',
     });
+
     throw sessionResult.error;
   }
 
   const session = sessionResult.data.session;
   const authUserId = session?.user.id;
+
   if (!authUserId) {
-    return { session: null, profile: null, status: 'unauthenticated' as const, adminMfa: ADMIN_MFA_NOT_APPLICABLE };
+    return {
+      session: null,
+      profile: null,
+      status: 'unauthenticated' as const,
+      operationalAccess: 'not_applicable' as const,
+      adminMfa: ADMIN_MFA_NOT_APPLICABLE,
+    };
   }
 
-  const profileResult = await supabase.from('profiles').select('*').eq('auth_user_id', authUserId).maybeSingle();
+  const profileResult = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('auth_user_id', authUserId)
+    .maybeSingle();
+
   if (profileResult.error) {
     captureAppError(profileResult.error, {
       featureArea: 'auth',
       action: 'auth.profile_load_failed',
       metadata: { has_auth_user: true },
     });
+
     throw profileResult.error;
   }
 
   if (!profileResult.data) {
-    return { session, profile: null, status: 'missing_profile' as const, adminMfa: ADMIN_MFA_NOT_APPLICABLE };
+    return {
+      session,
+      profile: null,
+      status: 'missing_profile' as const,
+      operationalAccess: 'not_applicable' as const,
+      adminMfa: ADMIN_MFA_NOT_APPLICABLE,
+    };
   }
 
   const role = normalizeUserRole((profileResult.data as Profile).role);
+
   if (!role) {
-    return { session, profile: null, status: 'invalid_role' as const, adminMfa: ADMIN_MFA_NOT_APPLICABLE };
+    return {
+      session,
+      profile: null,
+      status: 'invalid_role' as const,
+      operationalAccess: 'not_applicable' as const,
+      adminMfa: ADMIN_MFA_NOT_APPLICABLE,
+    };
   }
 
-  const adminMfa = role === 'admin' ? await getAdminMfaState() : ADMIN_MFA_NOT_APPLICABLE;
+  let operationalAccess: OperationalAccess = 'not_applicable';
+
+  if (role === 'student') {
+    const accessResult = await supabase.rpc('current_active_student_id');
+
+    if (accessResult.error) {
+      captureAppError(accessResult.error, {
+        featureArea: 'auth',
+        action: 'auth.student_operational_access_failed',
+      });
+
+      throw accessResult.error;
+    }
+
+    operationalAccess = accessResult.data ? 'allowed' : 'blocked';
+  }
+
+  if (role === 'tutor') {
+    const accessResult = await supabase.rpc(
+      'current_approved_active_tutor_id',
+    );
+
+    if (accessResult.error) {
+      captureAppError(accessResult.error, {
+        featureArea: 'auth',
+        action: 'auth.tutor_operational_access_failed',
+      });
+
+      throw accessResult.error;
+    }
+
+    operationalAccess = accessResult.data ? 'allowed' : 'blocked';
+  }
+
+  const adminMfa =
+    role === 'admin'
+      ? await getAdminMfaState()
+      : ADMIN_MFA_NOT_APPLICABLE;
 
   return {
     session,
-    profile: { ...(profileResult.data as Profile), role },
+    profile: {
+      ...(profileResult.data as Profile),
+      role,
+    },
     status: 'authenticated' as const,
+    operationalAccess,
     adminMfa,
   };
 }
