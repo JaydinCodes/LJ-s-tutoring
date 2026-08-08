@@ -221,6 +221,10 @@ export interface Database {
         Args: { p_apply?: boolean };
         Returns: unknown;
       };
+      run_retention_cleanup_scheduled: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
       create_study_room: {
         Args: { p_subject: string; p_grade?: string | null };
         Returns: CommunityRoomRow;

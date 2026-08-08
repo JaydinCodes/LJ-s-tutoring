@@ -1,0 +1,714 @@
+--- /dev/null
++++ b/supabase/migrations/20260805140000_secure_retention_cleanup.sql
+@@ -0,0 +1,171 @@
++-- SEC-01: split retention cleanup into explicitly authorized entry points.
++--
++-- 1. The existing admin RPC remains available to authenticated callers, but
++--    performs a server-side platform-admin + AAL2 check before reaching the
++--    destructive worker.
++-- 2. Scheduled apply runs use a separate no-argument RPC that is executable
++--    only by service_role and also validates the signed JWT role claim.
++-- 3. The shared worker lives in a non-exposed schema and is not executable by
++--    any API role.
++--
++-- Revoke first so an interrupted/partial deployment fails closed.
++revoke all on function public.run_retention_cleanup(boolean)
++from public, anon, authenticated, service_role;
++
++create schema if not exists private;
++revoke all on schema private from public, anon, authenticated, service_role;
++
++create or replace function private.execute_retention_cleanup(p_apply boolean)
++returns jsonb
++language plpgsql
++security definer
++set search_path = pg_catalog
++as $$
++declare
++  v_submissions_years int := 3;
++  v_progress_years    int := 3;
++  v_audit_years       int := 5;
++  v_financial_years   int := 7;
++  v_now  timestamptz := now();
++  v_sub_cut  timestamptz := v_now - make_interval(years => v_submissions_years);
++  v_prog_cut timestamptz := v_now - make_interval(years => v_progress_years);
++  v_aud_cut  timestamptz := v_now - make_interval(years => v_audit_years);
++  v_fin_cut  timestamptz := v_now - make_interval(years => v_financial_years);
++  v_submissions int;
++  v_progress int;
++  v_audit int;
++  v_payments int;
++  v_tutor_payments int;
++  v_files int := 0;
++begin
++  select count(*) into v_submissions
++  from public.assignment_submissions
++  where submitted_at < v_sub_cut;
++
++  select count(*) into v_progress
++  from public.student_progress
++  where recorded_at < v_prog_cut;
++
++  select count(*) into v_audit
++  from public.audit_log
++  where created_at < v_aud_cut;
++
++  select count(*) into v_payments
++  from public.payments
++  where paid_at is not null
++    and paid_at < v_fin_cut;
++
++  select count(*) into v_tutor_payments
++  from public.tutor_payments
++  where paid_at is not null
++    and paid_at < v_fin_cut;
++
++  if p_apply then
++    begin
++      delete from storage.objects o
++      where o.bucket_id = 'assignment-submissions'
++        and exists (
++          select 1
++          from public.assignment_submissions s
++          where s.submitted_at < v_sub_cut
++            and (storage.foldername(o.name))[1] = s.student_id::text
++            and (storage.foldername(o.name))[3] = s.id::text
++        );
++      get diagnostics v_files = row_count;
++    exception
++      when insufficient_privilege then
++        v_files := -1;
++    end;
++
++    delete from public.assignment_submissions where submitted_at < v_sub_cut;
++    delete from public.student_progress where recorded_at < v_prog_cut;
++    delete from public.payments where paid_at is not null and paid_at < v_fin_cut;
++    delete from public.tutor_payments where paid_at is not null and paid_at < v_fin_cut;
++    delete from public.audit_log where created_at < v_aud_cut;
++
++    perform public.log_audit_event(
++      'retention.cleanup_applied',
++      'system',
++      null,
++      jsonb_build_object(
++        'submissions', v_submissions,
++        'progress', v_progress,
++        'payments', v_payments,
++        'tutor_payments', v_tutor_payments,
++        'audit', v_audit,
++        'files', v_files
++      )
++    );
++  end if;
++
++  return jsonb_build_object(
++    'applied', p_apply,
++    'as_of', v_now,
++    'windows_years', jsonb_build_object(
++      'submissions', v_submissions_years,
++      'progress', v_progress_years,
++      'audit', v_audit_years,
++      'financial', v_financial_years
++    ),
++    'eligible', jsonb_build_object(
++      'submissions', v_submissions,
++      'progress', v_progress,
++      'payments', v_payments,
++      'tutor_payments', v_tutor_payments,
++      'audit', v_audit
++    ),
++    'files_removed', case when p_apply then v_files else null end
++  );
++end;
++$$;
++
++revoke all on function private.execute_retention_cleanup(boolean)
++from public, anon, authenticated, service_role;
++
++-- Browser/admin entry point. Keeping this signature avoids a frontend API
++-- change while removing the unsafe auth.uid() IS NULL trust shortcut.
++create or replace function public.run_retention_cleanup(p_apply boolean default false)
++returns jsonb
++language plpgsql
++security definer
++set search_path = pg_catalog
++as $$
++begin
++  if not public.is_platform_admin() then
++    raise exception 'not_authorized' using errcode = '42501';
++  end if;
++
++  return private.execute_retention_cleanup(p_apply);
++end;
++$$;
++
++revoke all on function public.run_retention_cleanup(boolean)
++from public, anon, authenticated, service_role;
++grant execute on function public.run_retention_cleanup(boolean) to authenticated;
++
++-- Scheduler entry point. It always applies cleanup and requires both the
++-- service_role database grant and the signed service_role JWT claim.
++create or replace function public.run_retention_cleanup_scheduled()
++returns jsonb
++language plpgsql
++security definer
++set search_path = pg_catalog
++as $$
++begin
++  if coalesce(auth.jwt() ->> 'role', '') <> 'service_role' then
++    raise exception 'service_role_jwt_required' using errcode = '42501';
++  end if;
++
++  return private.execute_retention_cleanup(true);
++end;
++$$;
++
++revoke all on function public.run_retention_cleanup_scheduled()
++from public, anon, authenticated, service_role;
++grant execute on function public.run_retention_cleanup_scheduled() to service_role;
++
++comment on function public.run_retention_cleanup(boolean) is
++  'Admin-only retention dry-run/apply RPC. Requires platform admin authorization with AAL2.';
++
++comment on function public.run_retention_cleanup_scheduled() is
++  'Service-role-only scheduled retention apply RPC. Requires a signed JWT role claim of service_role.';
+--- a/docs/supabase/schema.sql
++++ b/docs/supabase/schema.sql
+@@ -1985,93 +1985,166 @@
+ 
+ -- ============================================================================
+ -- Retention cleanup for Supabase-owned data (POPIA_DATA_MAP §5).
+--- SECURITY DEFINER. **DEFAULTS TO A DRY RUN**: with p_apply => false (the
+--- default) it only COUNTS eligible rows and deletes nothing. Pass p_apply => true
+--- to actually purge. Retention windows are named constants below; move them to a
+--- config table if they ever need runtime tuning.
+ --
+--- Schedule the real run with pg_cron or a scheduled Edge Function:
+---     select public.run_retention_cleanup(true);
+---
+--- Notes:
+---  * Only SETTLED payments (paid_at set) past the financial window are purged —
+---    pending/unpaid financial records are never touched.
+---  * Odie chat history lives in the legacy Prisma DB and is purged by the Fastify
+---    retention job, not here.
++-- The destructive worker is private and has no API-role EXECUTE grants.
++-- Browser calls use the admin + AAL2-gated run_retention_cleanup RPC.
++-- Scheduled apply runs use run_retention_cleanup_scheduled(), which is granted
++-- only to service_role and validates the signed JWT role claim.
+ -- ============================================================================
+-create or replace function public.run_retention_cleanup(p_apply boolean default false)
++create schema if not exists private;
++revoke all on schema private from public, anon, authenticated, service_role;
++
++create or replace function private.execute_retention_cleanup(p_apply boolean)
+ returns jsonb
+ language plpgsql
+ security definer
+-set search_path = public
++set search_path = pg_catalog
+ as $$
+ declare
+-  v_submissions_years int := 3;   -- academic submissions + uploaded files
+-  v_progress_years    int := 3;   -- per-concept score history
+-  v_audit_years       int := 5;   -- audit trail (compliance)
+-  v_financial_years   int := 7;   -- settled payments (tax/financial retention)
++  v_submissions_years int := 3;
++  v_progress_years    int := 3;
++  v_audit_years       int := 5;
++  v_financial_years   int := 7;
+   v_now  timestamptz := now();
+   v_sub_cut  timestamptz := v_now - make_interval(years => v_submissions_years);
+   v_prog_cut timestamptz := v_now - make_interval(years => v_progress_years);
+   v_aud_cut  timestamptz := v_now - make_interval(years => v_audit_years);
+   v_fin_cut  timestamptz := v_now - make_interval(years => v_financial_years);
+-  v_submissions int; v_progress int; v_audit int; v_payments int; v_tutor_payments int;
++  v_submissions int;
++  v_progress int;
++  v_audit int;
++  v_payments int;
++  v_tutor_payments int;
+   v_files int := 0;
+ begin
+-  -- Allow admins (manual runs) and trusted server contexts with no browser JWT
+-  -- (pg_cron / service_role / scheduled Edge Function), where auth.uid() is null.
+-  -- Regular signed-in non-admins are blocked; anon has no EXECUTE grant at all.
+-  if not (public.is_platform_admin() or auth.uid() is null) then
+-    raise exception 'not_authorized' using errcode = '42501';
+-  end if;
+-
+-  select count(*) into v_submissions    from public.assignment_submissions where submitted_at < v_sub_cut;
+-  select count(*) into v_progress       from public.student_progress       where recorded_at  < v_prog_cut;
+-  select count(*) into v_audit          from public.audit_log              where created_at   < v_aud_cut;
+-  select count(*) into v_payments       from public.payments               where paid_at is not null and paid_at < v_fin_cut;
+-  select count(*) into v_tutor_payments from public.tutor_payments         where paid_at is not null and paid_at < v_fin_cut;
++  select count(*) into v_submissions
++  from public.assignment_submissions
++  where submitted_at < v_sub_cut;
++
++  select count(*) into v_progress
++  from public.student_progress
++  where recorded_at < v_prog_cut;
++
++  select count(*) into v_audit
++  from public.audit_log
++  where created_at < v_aud_cut;
++
++  select count(*) into v_payments
++  from public.payments
++  where paid_at is not null
++    and paid_at < v_fin_cut;
++
++  select count(*) into v_tutor_payments
++  from public.tutor_payments
++  where paid_at is not null
++    and paid_at < v_fin_cut;
+ 
+   if p_apply then
+-    -- Remove submission files from Storage first (path: student/assignment/submission/file).
+     begin
+       delete from storage.objects o
+-       where o.bucket_id = 'assignment-submissions'
+-         and exists (
+-           select 1 from public.assignment_submissions s
+-           where s.submitted_at < v_sub_cut
+-             and (storage.foldername(o.name))[1] = s.student_id::text
+-             and (storage.foldername(o.name))[3] = s.id::text
+-         );
++      where o.bucket_id = 'assignment-submissions'
++        and exists (
++          select 1
++          from public.assignment_submissions s
++          where s.submitted_at < v_sub_cut
++            and (storage.foldername(o.name))[1] = s.student_id::text
++            and (storage.foldername(o.name))[3] = s.id::text
++        );
+       get diagnostics v_files = row_count;
+-    exception when insufficient_privilege then v_files := -1;
++    exception
++      when insufficient_privilege then
++        v_files := -1;
+     end;
+ 
+     delete from public.assignment_submissions where submitted_at < v_sub_cut;
+-    delete from public.student_progress       where recorded_at  < v_prog_cut;
+-    delete from public.payments               where paid_at is not null and paid_at < v_fin_cut;
+-    delete from public.tutor_payments         where paid_at is not null and paid_at < v_fin_cut;
+-    delete from public.audit_log              where created_at   < v_aud_cut;
+-
+-    perform public.log_audit_event('retention.cleanup_applied', 'system', null,
+-      jsonb_build_object('submissions', v_submissions, 'progress', v_progress,
+-                         'payments', v_payments, 'tutor_payments', v_tutor_payments,
+-                         'audit', v_audit, 'files', v_files));
++    delete from public.student_progress where recorded_at < v_prog_cut;
++    delete from public.payments where paid_at is not null and paid_at < v_fin_cut;
++    delete from public.tutor_payments where paid_at is not null and paid_at < v_fin_cut;
++    delete from public.audit_log where created_at < v_aud_cut;
++
++    perform public.log_audit_event(
++      'retention.cleanup_applied',
++      'system',
++      null,
++      jsonb_build_object(
++        'submissions', v_submissions,
++        'progress', v_progress,
++        'payments', v_payments,
++        'tutor_payments', v_tutor_payments,
++        'audit', v_audit,
++        'files', v_files
++      )
++    );
+   end if;
+ 
+   return jsonb_build_object(
+     'applied', p_apply,
+     'as_of', v_now,
+-    'windows_years', jsonb_build_object('submissions', v_submissions_years, 'progress', v_progress_years,
+-                                        'audit', v_audit_years, 'financial', v_financial_years),
+-    'eligible', jsonb_build_object('submissions', v_submissions, 'progress', v_progress,
+-                                   'payments', v_payments, 'tutor_payments', v_tutor_payments, 'audit', v_audit),
++    'windows_years', jsonb_build_object(
++      'submissions', v_submissions_years,
++      'progress', v_progress_years,
++      'audit', v_audit_years,
++      'financial', v_financial_years
++    ),
++    'eligible', jsonb_build_object(
++      'submissions', v_submissions,
++      'progress', v_progress,
++      'payments', v_payments,
++      'tutor_payments', v_tutor_payments,
++      'audit', v_audit
++    ),
+     'files_removed', case when p_apply then v_files else null end
+   );
+ end;
+ $$;
+ 
++revoke all on function private.execute_retention_cleanup(boolean)
++from public, anon, authenticated, service_role;
++
++create or replace function public.run_retention_cleanup(p_apply boolean default false)
++returns jsonb
++language plpgsql
++security definer
++set search_path = pg_catalog
++as $$
++begin
++  if not public.is_platform_admin() then
++    raise exception 'not_authorized' using errcode = '42501';
++  end if;
++
++  return private.execute_retention_cleanup(p_apply);
++end;
++$$;
++
++revoke all on function public.run_retention_cleanup(boolean)
++from public, anon, authenticated, service_role;
+ grant execute on function public.run_retention_cleanup(boolean) to authenticated;
+ 
++create or replace function public.run_retention_cleanup_scheduled()
++returns jsonb
++language plpgsql
++security definer
++set search_path = pg_catalog
++as $$
++begin
++  if coalesce(auth.jwt() ->> 'role', '') <> 'service_role' then
++    raise exception 'service_role_jwt_required' using errcode = '42501';
++  end if;
++
++  return private.execute_retention_cleanup(true);
++end;
++$$;
++
++revoke all on function public.run_retention_cleanup_scheduled()
++from public, anon, authenticated, service_role;
++grant execute on function public.run_retention_cleanup_scheduled() to service_role;
++
++comment on function public.run_retention_cleanup(boolean) is
++  'Admin-only retention dry-run/apply RPC. Requires platform admin authorization with AAL2.';
++
++comment on function public.run_retention_cleanup_scheduled() is
++  'Service-role-only scheduled retention apply RPC. Requires a signed JWT role claim of service_role.';
++
+ -- ============================================================================
+ -- Multi-organisation model — Phase 0 (prep) + Phase 1 (additive backfill).
+ -- ADR-0002: docs/architecture/MULTI_ORG_MODEL_PLAN.md.
+--- a/docs/compliance/DATA_RETENTION_AND_DELETION.md
++++ b/docs/compliance/DATA_RETENTION_AND_DELETION.md
+@@ -7,9 +7,13 @@
+ 
+ ## Implemented retention RPC
+ 
+-`public.run_retention_cleanup(p_apply boolean default false)` is
+-`SECURITY DEFINER`, admin/trusted-context gated, and defaults to a non-destructive
+-dry run. It currently covers:
++`public.run_retention_cleanup(p_apply boolean default false)` is an
++admin-only `SECURITY DEFINER` RPC protected by the authoritative platform-admin
++check (including AAL2) and defaults to a non-destructive dry run. Scheduled
++apply runs use `public.run_retention_cleanup_scheduled()`, which is executable
++only by `service_role` and also validates the signed JWT role claim. The shared
++destructive worker lives in the non-exposed `private` schema and has no API-role
++`EXECUTE` grants. The cleanup currently covers:
+ 
+ - assignment submissions and associated private files after 3 years;
+ - student progress after 3 years;
+--- a/docs/compliance/POPIA_DATA_MAP.md
++++ b/docs/compliance/POPIA_DATA_MAP.md
+@@ -69,8 +69,12 @@
+ 
+ ## Retention controls implemented today
+ 
+-`run_retention_cleanup(p_apply boolean default false)` is admin/trusted-context
+-gated and defaults to a dry run. With `p_apply => true` it currently covers:
++`run_retention_cleanup(p_apply boolean default false)` is admin-only, requires
++the authoritative platform-admin check (including AAL2), and defaults to a dry
++run. Scheduled apply runs use `run_retention_cleanup_scheduled()`, which is
++granted only to `service_role` and validates the signed JWT role claim. The
++shared destructive worker is private and has no API-role `EXECUTE` grants. With
++`p_apply => true` the cleanup currently covers:
+ 
+ | Data | Window | Behavior |
+ |---|---|---|
+--- a/supabase/tests/database/rls_role_matrix.test.sql
++++ b/supabase/tests/database/rls_role_matrix.test.sql
+@@ -256,8 +256,66 @@
+ before insert on public.edge_function_rate_limit_events
+ for each row execute function pg_temp.force_rate_limit_insert_failure();
+ 
++-- Retention cleanup privileges are split between an authenticated admin RPC and
++-- a service-role-only scheduler RPC. The private worker is unreachable to API
++-- roles even if a caller knows its name.
++select ok(
++  not has_function_privilege('anon', 'public.run_retention_cleanup(boolean)', 'execute'),
++  'anon has no EXECUTE privilege on the admin retention RPC'
++);
++select ok(
++  has_function_privilege('authenticated', 'public.run_retention_cleanup(boolean)', 'execute'),
++  'authenticated can reach the admin RPC so its authoritative admin check can run'
++);
++select ok(
++  not has_function_privilege('service_role', 'public.run_retention_cleanup(boolean)', 'execute'),
++  'service_role cannot use the browser/admin retention RPC'
++);
++select ok(
++  not has_function_privilege('anon', 'public.run_retention_cleanup_scheduled()', 'execute'),
++  'anon has no EXECUTE privilege on the scheduler retention RPC'
++);
++select ok(
++  not has_function_privilege('authenticated', 'public.run_retention_cleanup_scheduled()', 'execute'),
++  'authenticated has no EXECUTE privilege on the scheduler retention RPC'
++);
++select ok(
++  has_function_privilege('service_role', 'public.run_retention_cleanup_scheduled()', 'execute'),
++  'service_role has EXECUTE privilege on the scheduler retention RPC'
++);
++select ok(
++  not has_function_privilege('anon', 'private.execute_retention_cleanup(boolean)', 'execute'),
++  'anon cannot execute the private retention worker'
++);
++select ok(
++  not has_function_privilege('authenticated', 'private.execute_retention_cleanup(boolean)', 'execute'),
++  'authenticated cannot execute the private retention worker'
++);
++select ok(
++  not has_function_privilege('service_role', 'private.execute_retention_cleanup(boolean)', 'execute'),
++  'service_role cannot bypass the scheduler wrapper to execute the private worker'
++);
++
+ set local role service_role;
+ 
++select throws_ok(
++  $$select public.run_retention_cleanup_scheduled()$$,
++  '42501',
++  'service_role_jwt_required',
++  'database role alone is insufficient without a signed service_role JWT claim'
++);
++
++select set_config(
++  'request.jwt.claims',
++  jsonb_build_object('role', 'service_role')::text,
++  true
++);
++select is(
++  (public.run_retention_cleanup_scheduled() ->> 'applied')::boolean,
++  true,
++  'service-role scheduler applies cleanup when both grant and JWT role are valid'
++);
++
+ select is(
+   public.check_and_record_edge_function_rate_limit(
+     'f0000000-0000-0000-0000-000000000011',
+@@ -349,11 +407,46 @@
+ 
+ reset role;
+ 
++select set_config(
++  'request.jwt.claims',
++  jsonb_build_object('role', 'anon')::text,
++  true
++);
++set local role anon;
++
++select throws_ok(
++  $$select public.run_retention_cleanup(false)$$,
++  '42501',
++  'permission denied for function run_retention_cleanup',
++  'anonymous callers cannot execute the admin retention RPC'
++);
++select throws_ok(
++  $$select public.run_retention_cleanup_scheduled()$$,
++  '42501',
++  'permission denied for function run_retention_cleanup_scheduled',
++  'anonymous callers cannot execute the scheduler retention RPC'
++);
++
++reset role;
++
+ -- Student Alpha: published own-org learning data only; results are redacted
+ -- through the RPC and notifications/storage remain owner scoped.
+ select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
+ set local role authenticated;
+ 
++select throws_ok(
++  $$select public.run_retention_cleanup(false)$$,
++  '42501',
++  'not_authorized',
++  'student cannot run retention cleanup'
++);
++select throws_ok(
++  $$select public.run_retention_cleanup_scheduled()$$,
++  '42501',
++  'permission denied for function run_retention_cleanup_scheduled',
++  'student cannot execute the scheduler retention RPC'
++);
++
+ select is((select count(*) from public.assignments), 2::bigint, 'student sees published assignments in own organization');
+ select is((select count(*) from public.assignments where status = 'draft'), 0::bigint, 'student cannot see own-org drafts');
+ select is((select count(*) from public.assignments where organization_id = 'a0000000-0000-0000-0000-000000000002'), 0::bigint, 'student cannot see cross-organization assignments');
+@@ -388,6 +481,19 @@
+ select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000003');
+ set local role authenticated;
+ 
++select throws_ok(
++  $$select public.run_retention_cleanup(false)$$,
++  '42501',
++  'not_authorized',
++  'tutor cannot run retention cleanup'
++);
++select throws_ok(
++  $$select public.run_retention_cleanup_scheduled()$$,
++  '42501',
++  'permission denied for function run_retention_cleanup_scheduled',
++  'tutor cannot execute the scheduler retention RPC'
++);
++
+ select is((select count(*) from public.assignments), 3::bigint, 'tutor sees own organization assignments including drafts');
+ select is((select count(*) from public.assignments where organization_id = 'a0000000-0000-0000-0000-000000000002'), 0::bigint, 'tutor cannot see cross-organization assignments');
+ select is((select count(*) from public.assignment_submissions), 2::bigint, 'tutor sees submissions only for assignments they created');
+@@ -423,6 +529,19 @@
+ select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000004');
+ set local role authenticated;
+ 
++select throws_ok(
++  $$select public.run_retention_cleanup(false)$$,
++  '42501',
++  'not_authorized',
++  'parent cannot run retention cleanup'
++);
++select throws_ok(
++  $$select public.run_retention_cleanup_scheduled()$$,
++  '42501',
++  'permission denied for function run_retention_cleanup_scheduled',
++  'parent cannot execute the scheduler retention RPC'
++);
++
+ select is((select count(*) from public.assignments), 0::bigint, 'parent cannot read assignments directly');
+ select is((select count(*) from public.assignment_submissions), 0::bigint, 'parent cannot read raw submissions/results');
+ select is((select count(*) from public.get_parent_progress_reports()), 1::bigint, 'parent sees released results for linked learner');
+@@ -439,6 +558,19 @@
+ select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000005');
+ set local role authenticated;
+ 
++select throws_ok(
++  $$select public.run_retention_cleanup(false)$$,
++  '42501',
++  'not_authorized',
++  'NGO user cannot run retention cleanup'
++);
++select throws_ok(
++  $$select public.run_retention_cleanup_scheduled()$$,
++  '42501',
++  'permission denied for function run_retention_cleanup_scheduled',
++  'NGO user cannot execute the scheduler retention RPC'
++);
++
+ select is((select count(*) from public.organizations), 1::bigint, 'NGO viewer sees only own organization');
+ select is((select count(*) from public.organizations where id = 'a0000000-0000-0000-0000-000000000002'), 0::bigint, 'NGO viewer cannot see another organization');
+ select is((select count(*) from public.students), 0::bigint, 'NGO viewer cannot read raw learner records');
+@@ -461,6 +593,12 @@
+ set local role authenticated;
+ 
+ select ok(not public.is_platform_admin(), 'AAL1 admin session is not platform-admin authorized');
++select throws_ok(
++  $$select public.run_retention_cleanup(false)$$,
++  '42501',
++  'not_authorized',
++  'AAL1 admin cannot run retention cleanup'
++);
+ select is((select count(*) from public.profiles), 1::bigint, 'AAL1 admin sees only their ordinary self profile');
+ select is((select count(*) from public.assignments), 0::bigint, 'AAL1 admin cannot use admin assignment access');
+ select is((select count(*) from public.assignment_submissions), 0::bigint, 'AAL1 admin cannot use admin result access');
+@@ -474,6 +612,11 @@
+ set local role authenticated;
+ 
+ select ok(public.is_platform_admin(), 'AAL2 admin session is platform-admin authorized');
++select is(
++  (public.run_retention_cleanup(false) ->> 'applied')::boolean,
++  false,
++  'AAL2 admin can run a non-destructive retention dry run'
++);
+ select is((select count(*) from public.assignments), 4::bigint, 'AAL2 admin sees assignments across organizations');
+ select is((select count(*) from public.assignment_submissions), 3::bigint, 'AAL2 admin sees submissions/results across organizations');
+ select is((select count(*) from public.guardians), 2::bigint, 'AAL2 admin sees guardian records across organizations');
+@@ -732,6 +875,19 @@
+ set local role authenticated;
+ 
+ select throws_ok(
++  $$select public.run_retention_cleanup(false)$$,
++  '42501',
++  'not_authorized',
++  'ordinary authenticated user without a profile cannot run retention cleanup'
++);
++select throws_ok(
++  $$select public.run_retention_cleanup_scheduled()$$,
++  '42501',
++  'permission denied for function run_retention_cleanup_scheduled',
++  'ordinary authenticated user cannot execute the scheduler retention RPC'
++);
++
++select throws_ok(
+   $$
+     select public.onboard_current_user(
+       p_role => 'student',
+--- a/tests/frontend/supabase-schema-policy.test.cjs
++++ b/tests/frontend/supabase-schema-policy.test.cjs
+@@ -125,3 +125,35 @@
+     assert.doesNotMatch(block, forbidden, `${policyName} must not expose a cross-role base row`);
+   }
+ });
++
++test('retention cleanup has separate fail-closed admin and scheduler entry points', () => {
++  const adminStart = schema.indexOf('create or replace function public.run_retention_cleanup(p_apply boolean default false)');
++  const schedulerStart = schema.indexOf('create or replace function public.run_retention_cleanup_scheduled()');
++  const adminBlock = schema.slice(adminStart, schedulerStart);
++  const schedulerBlock = schema.slice(schedulerStart);
++
++  assert.ok(adminStart >= 0, 'expected admin retention RPC');
++  assert.ok(schedulerStart >= 0, 'expected scheduled retention RPC');
++  assert.match(schema, /create schema if not exists private/);
++  assert.match(schema, /create or replace function private\.execute_retention_cleanup\(p_apply boolean\)/);
++  assert.match(
++    schema,
++    /revoke all on function private\.execute_retention_cleanup\(boolean\)\s+from public, anon, authenticated, service_role;/,
++  );
++
++  assert.match(adminBlock, /if not public\.is_platform_admin\(\) then/);
++  assert.doesNotMatch(adminBlock, /auth\.uid\(\) is null/);
++  assert.match(
++    adminBlock,
++    /revoke all on function public\.run_retention_cleanup\(boolean\)\s+from public, anon, authenticated, service_role;/,
++  );
++  assert.match(adminBlock, /grant execute on function public\.run_retention_cleanup\(boolean\) to authenticated;/);
++
++  assert.match(schedulerBlock, /coalesce\(auth\.jwt\(\) ->> 'role', ''\) <> 'service_role'/);
++  assert.match(
++    schedulerBlock,
++    /revoke all on function public\.run_retention_cleanup_scheduled\(\)\s+from public, anon, authenticated, service_role;/,
++  );
++  assert.match(schedulerBlock, /grant execute on function public\.run_retention_cleanup_scheduled\(\) to service_role;/);
++});
++
+--- a/src/types/database.ts
++++ b/src/types/database.ts
+@@ -221,6 +221,10 @@
+         Args: { p_apply?: boolean };
+         Returns: unknown;
+       };
++      run_retention_cleanup_scheduled: {
++        Args: Record<string, never>;
++        Returns: unknown;
++      };
+       create_study_room: {
+         Args: { p_subject: string; p_grade?: string | null };
+         Returns: CommunityRoomRow;
+--- a/supabase/types/public.generated.ts
++++ b/supabase/types/public.generated.ts
+@@ -3549,6 +3549,7 @@
+         }
+       }
+       run_retention_cleanup: { Args: { p_apply?: boolean }; Returns: Json }
++      run_retention_cleanup_scheduled: { Args: never; Returns: Json }
+       session_date_pay_period_locked: {
+         Args: { p_date: string }
+         Returns: boolean

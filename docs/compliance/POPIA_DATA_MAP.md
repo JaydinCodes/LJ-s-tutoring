@@ -69,8 +69,12 @@ contacts, and cross-border transfer bases outside this technical map.
 
 ## Retention controls implemented today
 
-`run_retention_cleanup(p_apply boolean default false)` is admin/trusted-context
-gated and defaults to a dry run. With `p_apply => true` it currently covers:
+`run_retention_cleanup(p_apply boolean default false)` is admin-only, requires
+the authoritative platform-admin check (including AAL2), and defaults to a dry
+run. Scheduled apply runs use `run_retention_cleanup_scheduled()`, which is
+granted only to `service_role` and validates the signed JWT role claim. The
+shared destructive worker is private and has no API-role `EXECUTE` grants. With
+`p_apply => true` the cleanup currently covers:
 
 | Data | Window | Behavior |
 |---|---|---|

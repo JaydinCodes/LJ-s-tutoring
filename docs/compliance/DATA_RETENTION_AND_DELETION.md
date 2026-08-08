@@ -7,9 +7,13 @@ processors, and open compliance actions.
 
 ## Implemented retention RPC
 
-`public.run_retention_cleanup(p_apply boolean default false)` is
-`SECURITY DEFINER`, admin/trusted-context gated, and defaults to a non-destructive
-dry run. It currently covers:
+`public.run_retention_cleanup(p_apply boolean default false)` is an
+admin-only `SECURITY DEFINER` RPC protected by the authoritative platform-admin
+check (including AAL2) and defaults to a non-destructive dry run. Scheduled
+apply runs use `public.run_retention_cleanup_scheduled()`, which is executable
+only by `service_role` and also validates the signed JWT role claim. The shared
+destructive worker lives in the non-exposed `private` schema and has no API-role
+`EXECUTE` grants. The cleanup currently covers:
 
 - assignment submissions and associated private files after 3 years;
 - student progress after 3 years;

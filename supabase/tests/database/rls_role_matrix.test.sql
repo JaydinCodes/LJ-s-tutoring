@@ -256,7 +256,65 @@ create trigger pg_tap_force_rate_limit_insert_failure
 before insert on public.edge_function_rate_limit_events
 for each row execute function pg_temp.force_rate_limit_insert_failure();
 
+-- Retention cleanup privileges are split between an authenticated admin RPC and
+-- a service-role-only scheduler RPC. The private worker is unreachable to API
+-- roles even if a caller knows its name.
+select ok(
+  not has_function_privilege('anon', 'public.run_retention_cleanup(boolean)', 'execute'),
+  'anon has no EXECUTE privilege on the admin retention RPC'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.run_retention_cleanup(boolean)', 'execute'),
+  'authenticated can reach the admin RPC so its authoritative admin check can run'
+);
+select ok(
+  not has_function_privilege('service_role', 'public.run_retention_cleanup(boolean)', 'execute'),
+  'service_role cannot use the browser/admin retention RPC'
+);
+select ok(
+  not has_function_privilege('anon', 'public.run_retention_cleanup_scheduled()', 'execute'),
+  'anon has no EXECUTE privilege on the scheduler retention RPC'
+);
+select ok(
+  not has_function_privilege('authenticated', 'public.run_retention_cleanup_scheduled()', 'execute'),
+  'authenticated has no EXECUTE privilege on the scheduler retention RPC'
+);
+select ok(
+  has_function_privilege('service_role', 'public.run_retention_cleanup_scheduled()', 'execute'),
+  'service_role has EXECUTE privilege on the scheduler retention RPC'
+);
+select ok(
+  not has_function_privilege('anon', 'private.execute_retention_cleanup(boolean)', 'execute'),
+  'anon cannot execute the private retention worker'
+);
+select ok(
+  not has_function_privilege('authenticated', 'private.execute_retention_cleanup(boolean)', 'execute'),
+  'authenticated cannot execute the private retention worker'
+);
+select ok(
+  not has_function_privilege('service_role', 'private.execute_retention_cleanup(boolean)', 'execute'),
+  'service_role cannot bypass the scheduler wrapper to execute the private worker'
+);
+
 set local role service_role;
+
+select throws_ok(
+  $$select public.run_retention_cleanup_scheduled()$$,
+  '42501',
+  'service_role_jwt_required',
+  'database role alone is insufficient without a signed service_role JWT claim'
+);
+
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object('role', 'service_role')::text,
+  true
+);
+select is(
+  (public.run_retention_cleanup_scheduled() ->> 'applied')::boolean,
+  true,
+  'service-role scheduler applies cleanup when both grant and JWT role are valid'
+);
 
 select is(
   public.check_and_record_edge_function_rate_limit(
@@ -349,10 +407,45 @@ select throws_ok(
 
 reset role;
 
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object('role', 'anon')::text,
+  true
+);
+set local role anon;
+
+select throws_ok(
+  $$select public.run_retention_cleanup(false)$$,
+  '42501',
+  'permission denied for function run_retention_cleanup',
+  'anonymous callers cannot execute the admin retention RPC'
+);
+select throws_ok(
+  $$select public.run_retention_cleanup_scheduled()$$,
+  '42501',
+  'permission denied for function run_retention_cleanup_scheduled',
+  'anonymous callers cannot execute the scheduler retention RPC'
+);
+
+reset role;
+
 -- Student Alpha: published own-org learning data only; results are redacted
 -- through the RPC and notifications/storage remain owner scoped.
 select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
 set local role authenticated;
+
+select throws_ok(
+  $$select public.run_retention_cleanup(false)$$,
+  '42501',
+  'not_authorized',
+  'student cannot run retention cleanup'
+);
+select throws_ok(
+  $$select public.run_retention_cleanup_scheduled()$$,
+  '42501',
+  'permission denied for function run_retention_cleanup_scheduled',
+  'student cannot execute the scheduler retention RPC'
+);
 
 select is((select count(*) from public.assignments), 2::bigint, 'student sees published assignments in own organization');
 select is((select count(*) from public.assignments where status = 'draft'), 0::bigint, 'student cannot see own-org drafts');
@@ -387,6 +480,19 @@ reset role;
 -- Tutor Alpha: organization/member and creator ownership both apply.
 select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000003');
 set local role authenticated;
+
+select throws_ok(
+  $$select public.run_retention_cleanup(false)$$,
+  '42501',
+  'not_authorized',
+  'tutor cannot run retention cleanup'
+);
+select throws_ok(
+  $$select public.run_retention_cleanup_scheduled()$$,
+  '42501',
+  'permission denied for function run_retention_cleanup_scheduled',
+  'tutor cannot execute the scheduler retention RPC'
+);
 
 select is((select count(*) from public.assignments), 3::bigint, 'tutor sees own organization assignments including drafts');
 select is((select count(*) from public.assignments where organization_id = 'a0000000-0000-0000-0000-000000000002'), 0::bigint, 'tutor cannot see cross-organization assignments');
@@ -423,6 +529,19 @@ reset role;
 select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000004');
 set local role authenticated;
 
+select throws_ok(
+  $$select public.run_retention_cleanup(false)$$,
+  '42501',
+  'not_authorized',
+  'parent cannot run retention cleanup'
+);
+select throws_ok(
+  $$select public.run_retention_cleanup_scheduled()$$,
+  '42501',
+  'permission denied for function run_retention_cleanup_scheduled',
+  'parent cannot execute the scheduler retention RPC'
+);
+
 select is((select count(*) from public.assignments), 0::bigint, 'parent cannot read assignments directly');
 select is((select count(*) from public.assignment_submissions), 0::bigint, 'parent cannot read raw submissions/results');
 select is((select count(*) from public.get_parent_progress_reports()), 1::bigint, 'parent sees released results for linked learner');
@@ -438,6 +557,19 @@ reset role;
 -- learner, guardian, result, notification, or Storage access.
 select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000005');
 set local role authenticated;
+
+select throws_ok(
+  $$select public.run_retention_cleanup(false)$$,
+  '42501',
+  'not_authorized',
+  'NGO user cannot run retention cleanup'
+);
+select throws_ok(
+  $$select public.run_retention_cleanup_scheduled()$$,
+  '42501',
+  'permission denied for function run_retention_cleanup_scheduled',
+  'NGO user cannot execute the scheduler retention RPC'
+);
 
 select is((select count(*) from public.organizations), 1::bigint, 'NGO viewer sees only own organization');
 select is((select count(*) from public.organizations where id = 'a0000000-0000-0000-0000-000000000002'), 0::bigint, 'NGO viewer cannot see another organization');
@@ -461,6 +593,12 @@ select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000001', 'aal1');
 set local role authenticated;
 
 select ok(not public.is_platform_admin(), 'AAL1 admin session is not platform-admin authorized');
+select throws_ok(
+  $$select public.run_retention_cleanup(false)$$,
+  '42501',
+  'not_authorized',
+  'AAL1 admin cannot run retention cleanup'
+);
 select is((select count(*) from public.profiles), 1::bigint, 'AAL1 admin sees only their ordinary self profile');
 select is((select count(*) from public.assignments), 0::bigint, 'AAL1 admin cannot use admin assignment access');
 select is((select count(*) from public.assignment_submissions), 0::bigint, 'AAL1 admin cannot use admin result access');
@@ -474,6 +612,11 @@ select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000001', 'aal2');
 set local role authenticated;
 
 select ok(public.is_platform_admin(), 'AAL2 admin session is platform-admin authorized');
+select is(
+  (public.run_retention_cleanup(false) ->> 'applied')::boolean,
+  false,
+  'AAL2 admin can run a non-destructive retention dry run'
+);
 select is((select count(*) from public.assignments), 4::bigint, 'AAL2 admin sees assignments across organizations');
 select is((select count(*) from public.assignment_submissions), 3::bigint, 'AAL2 admin sees submissions/results across organizations');
 select is((select count(*) from public.guardians), 2::bigint, 'AAL2 admin sees guardian records across organizations');
@@ -730,6 +873,19 @@ reset role;
 
 select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000009');
 set local role authenticated;
+
+select throws_ok(
+  $$select public.run_retention_cleanup(false)$$,
+  '42501',
+  'not_authorized',
+  'ordinary authenticated user without a profile cannot run retention cleanup'
+);
+select throws_ok(
+  $$select public.run_retention_cleanup_scheduled()$$,
+  '42501',
+  'permission denied for function run_retention_cleanup_scheduled',
+  'ordinary authenticated user cannot execute the scheduler retention RPC'
+);
 
 select throws_ok(
   $$

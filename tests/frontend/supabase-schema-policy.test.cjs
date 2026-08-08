@@ -125,3 +125,35 @@ test('tutor-student allocation base rows are tutor/admin-only and students use a
     assert.doesNotMatch(block, forbidden, `${policyName} must not expose a cross-role base row`);
   }
 });
+
+test('retention cleanup has separate fail-closed admin and scheduler entry points', () => {
+  const adminStart = schema.indexOf('create or replace function public.run_retention_cleanup(p_apply boolean default false)');
+  const schedulerStart = schema.indexOf('create or replace function public.run_retention_cleanup_scheduled()');
+  const adminBlock = schema.slice(adminStart, schedulerStart);
+  const schedulerBlock = schema.slice(schedulerStart);
+
+  assert.ok(adminStart >= 0, 'expected admin retention RPC');
+  assert.ok(schedulerStart >= 0, 'expected scheduled retention RPC');
+  assert.match(schema, /create schema if not exists private/);
+  assert.match(schema, /create or replace function private\.execute_retention_cleanup\(p_apply boolean\)/);
+  assert.match(
+    schema,
+    /revoke all on function private\.execute_retention_cleanup\(boolean\)\s+from public, anon, authenticated, service_role;/,
+  );
+
+  assert.match(adminBlock, /if not public\.is_platform_admin\(\) then/);
+  assert.doesNotMatch(adminBlock, /auth\.uid\(\) is null/);
+  assert.match(
+    adminBlock,
+    /revoke all on function public\.run_retention_cleanup\(boolean\)\s+from public, anon, authenticated, service_role;/,
+  );
+  assert.match(adminBlock, /grant execute on function public\.run_retention_cleanup\(boolean\) to authenticated;/);
+
+  assert.match(schedulerBlock, /coalesce\(auth\.jwt\(\) ->> 'role', ''\) <> 'service_role'/);
+  assert.match(
+    schedulerBlock,
+    /revoke all on function public\.run_retention_cleanup_scheduled\(\)\s+from public, anon, authenticated, service_role;/,
+  );
+  assert.match(schedulerBlock, /grant execute on function public\.run_retention_cleanup_scheduled\(\) to service_role;/);
+});
+
