@@ -239,4 +239,4 @@ with check (
       and a.organization_id = public.current_student_org_id()
   )
   and public.can_write_uncommitted_assignment_submission_storage(name)
-);
+);;

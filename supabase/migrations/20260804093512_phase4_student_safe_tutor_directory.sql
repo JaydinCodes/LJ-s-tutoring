@@ -104,4 +104,4 @@ $$;
 
 revoke execute on function public.get_tutor_allocated_students() from public;
 revoke execute on function public.get_tutor_allocated_students() from anon;
-grant execute on function public.get_tutor_allocated_students() to authenticated;
+grant execute on function public.get_tutor_allocated_students() to authenticated;;

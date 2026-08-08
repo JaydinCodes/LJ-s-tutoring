@@ -280,4 +280,4 @@ $$;
 revoke execute on function public.check_and_record_edge_function_rate_limit(uuid, text, integer, integer) from public;
 revoke execute on function public.check_and_record_edge_function_rate_limit(uuid, text, integer, integer) from anon;
 revoke execute on function public.check_and_record_edge_function_rate_limit(uuid, text, integer, integer) from authenticated;
-grant execute on function public.check_and_record_edge_function_rate_limit(uuid, text, integer, integer) to service_role;
+grant execute on function public.check_and_record_edge_function_rate_limit(uuid, text, integer, integer) to service_role;;

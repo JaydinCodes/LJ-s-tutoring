@@ -95,3 +95,4 @@ begin
       check (ai_grading_status in ('pending', 'in_progress', 'completed', 'failed', 'skipped'));
   end if;
 end $$;
+;

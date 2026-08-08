@@ -140,4 +140,4 @@ $$;
 
 revoke execute on function public.generate_weekly_report(uuid, date) from public;
 revoke execute on function public.generate_weekly_report(uuid, date) from anon;
-grant execute on function public.generate_weekly_report(uuid, date) to authenticated;
+grant execute on function public.generate_weekly_report(uuid, date) to authenticated;;

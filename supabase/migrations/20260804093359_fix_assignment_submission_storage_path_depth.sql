@@ -41,4 +41,4 @@ with check (
     where a.status = 'published'
       and a.organization_id = public.current_student_org_id()
   )
-);
+);;

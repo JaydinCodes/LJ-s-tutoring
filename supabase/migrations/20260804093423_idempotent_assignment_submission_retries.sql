@@ -185,4 +185,4 @@ $$;
 
 revoke execute on function public.submit_assignment_submission(uuid, uuid, text, text, text, text, bigint, text) from public;
 revoke execute on function public.submit_assignment_submission(uuid, uuid, text, text, text, text, bigint, text) from anon;
-grant execute on function public.submit_assignment_submission(uuid, uuid, text, text, text, text, bigint, text) to authenticated;
+grant execute on function public.submit_assignment_submission(uuid, uuid, text, text, text, text, bigint, text) to authenticated;;
