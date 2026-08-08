@@ -16,9 +16,9 @@ jobs:
       - name: Check health endpoint
         id: health
         env:
-          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
         run: |
           missing=()
           for name in HEALTHCHECK_URL SUPABASE_URL SUPABASE_ANON_KEY; do
