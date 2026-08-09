@@ -275,6 +275,7 @@ test('SEC-02 security headers are an executable edge policy with live production
   assert.match(worker, /'nonce-\$\{nonce\}'/);
   assert.match(worker, /HTMLRewriter/);
   assert.match(worker, /name="csp-nonce"/);
+  assert.match(worker, /Cache-Control', 'no-store, max-age=0'/);
 
   assert.equal(packageJson.scripts['verify:production:headers'], 'node scripts/verify-production-security-headers.cjs');
   assert.match(probe, /PRODUCTION_ORIGINS is required/);
@@ -282,6 +283,7 @@ test('SEC-02 security headers are an executable edge policy with live production
   assert.match(probe, /X-Content-Type-Options must be nosniff/);
   assert.match(probe, /Strict-Transport-Security must have max-age/);
   assert.match(probe, /frame-ancestors/);
+  assert.match(probe, /__security_header_probe/);
   assert.match(uptime, /vars\.PRODUCTION_ORIGINS/);
   assert.match(uptime, /npm run verify:production:headers/);
   assert.match(deployment, /npm run verify:production:headers/);

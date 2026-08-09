@@ -70,6 +70,11 @@ export default {
       return securedResponse;
     }
 
+    // Every HTML response contains a fresh CSP nonce. Do not let an edge cache
+    // reuse an old HTML header set (or its nonce) after a security-policy
+    // change; static JS/CSS/image caching is unaffected.
+    headers.set('Cache-Control', 'no-store, max-age=0');
+
     return new HTMLRewriter()
       .on('head', {
         element(element) {

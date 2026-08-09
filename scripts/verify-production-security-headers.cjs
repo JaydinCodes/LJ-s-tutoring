@@ -1,3 +1,5 @@
+const { randomUUID } = require('node:crypto');
+
 const requiredOrigins = (process.env.PRODUCTION_ORIGINS || '')
   .split(',')
   .map((value) => value.trim().replace(/\/+$/, ''))
@@ -17,6 +19,9 @@ function requireDirective(origin, csp, directive, expectedValue) {
 
 async function verifyOrigin(origin) {
   const url = new URL(`${origin}/`);
+  // Header transforms are edge-local. A unique probe URL guarantees this check
+  // observes the currently deployed policy instead of an older cached shell.
+  url.searchParams.set('__security_header_probe', randomUUID());
   if (url.protocol !== 'https:') {
     fail(origin, 'must use HTTPS');
   }
