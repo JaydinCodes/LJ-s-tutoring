@@ -10,6 +10,11 @@
 -- on every one of these functions (confirmed), so revoking PUBLIC removes
 -- anon's (and any other unlisted role's) access without affecting them.
 
+-- A clean schema legitimately lacks a few production-only function
+-- signatures, so revoke the inherited PUBLIC grant without naming them.
+revoke execute on all functions in schema public from public;
+
+/* Historical explicit list retained for audit context:
 revoke execute on function public.anonymize_student(uuid) from public;
 revoke execute on function public.approve_session(uuid) from public;
 revoke execute on function public.can_mark_submission(uuid) from public;
@@ -63,4 +68,5 @@ revoke execute on function public.update_session(uuid,date,time without time zon
 revoke execute on function public.upsert_tutor_application(jsonb,jsonb,jsonb,jsonb,text,text) from public;
 revoke execute on function public.verify_tutor_document(uuid,text,text) from public;
 revoke execute on function public.verify_volunteer_log(uuid,volunteer_log_status,text) from public;
-revoke execute on function public.void_adjustment(uuid,text) from public;;
+revoke execute on function public.void_adjustment(uuid,text) from public;
+*/

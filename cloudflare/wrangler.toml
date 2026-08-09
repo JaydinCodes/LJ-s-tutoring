@@ -1,0 +1,8 @@
+name = "project-odysseus-security-edge"
+main = "src/worker.mjs"
+compatibility_date = "2026-08-09"
+
+# Configure the four production routes in the Cloudflare dashboard, or with
+# `wrangler deploy --route`. The worker needs one non-proxied DigitalOcean
+# origin URL, supplied as ORIGIN_URL at deploy time; do not point it at one of
+# these public routes or it will recurse through Cloudflare.

@@ -13,15 +13,24 @@ jobs:
   healthcheck:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out monitoring probes
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+
       - name: Check health endpoint
         id: health
         env:
           HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL }}
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          PRODUCTION_ORIGINS: ${{ vars.PRODUCTION_ORIGINS }}
         run: |
           missing=()
-          for name in HEALTHCHECK_URL SUPABASE_URL SUPABASE_ANON_KEY; do
+          for name in HEALTHCHECK_URL SUPABASE_URL SUPABASE_ANON_KEY PRODUCTION_ORIGINS; do
             if [ -z "${!name}" ]; then
               missing+=("$name")
             fi
@@ -60,9 +69,11 @@ jobs:
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
             "${SUPABASE_URL%/}/rest/v1/profiles?select=id&limit=0" | \
             jq -e 'type == "array" and length == 0' > /dev/null
+
+          npm run verify:production:headers
       - name: Create or update issue on failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const title = 'Uptime check failed';

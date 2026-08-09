@@ -1,6 +1,8 @@
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { requireSupabase } from '../../lib/supabase/client';
 import { callRpc } from '../../lib/supabase/rpc';
+import { weeklyReportPayload } from '../../lib/schema/json';
+import type { Database } from '../../types/database';
 import type { Profile, SessionRecord, StudentScoreSnapshotRecord, TutorAllocatedStudentSummary, WeeklyReportPayload, WeeklyReportRecord } from '../../types/lms';
 
 export interface TutorSession {
@@ -159,12 +161,12 @@ export async function saveTutorSessionReport(sessionId: string, input: {
   const client = requireSupabase();
   const session = await callRpc(client, 'submit_session_report', {
     p_session_id: sessionId,
-    p_attendance_status: input.attendanceStatus ?? null,
-    p_topics_covered: input.topicsCovered ?? null,
-    p_learner_struggles: input.learnerStruggles ?? null,
-    p_homework_assigned: input.homeworkAssigned ?? null,
-    p_tutor_private_notes: input.tutorPrivateNotes ?? null,
-    p_student_summary: input.studentSummary ?? null,
+    p_attendance_status: input.attendanceStatus ?? '',
+    p_topics_covered: input.topicsCovered ?? '',
+    p_learner_struggles: input.learnerStruggles ?? '',
+    p_homework_assigned: input.homeworkAssigned ?? '',
+    p_tutor_private_notes: input.tutorPrivateNotes ?? '',
+    p_student_summary: input.studentSummary ?? '',
   });
   return { session: mapSessionRow(session) };
 }
@@ -185,7 +187,10 @@ function mondayOf(date: Date): string {
   return monday.toISOString().slice(0, 10);
 }
 
-function mapReport(row: WeeklyReportRecord, studentName?: string): TutorWeeklyReport {
+type DbWeeklyReport = Database['public']['Tables']['weekly_reports']['Row'];
+type DbStudentScoreSnapshot = Database['public']['Tables']['student_score_snapshots']['Row'];
+
+function mapReport(row: DbWeeklyReport, studentName?: string): TutorWeeklyReport {
   return {
     id: row.id,
     student_id: row.student_id,
@@ -193,7 +198,7 @@ function mapReport(row: WeeklyReportRecord, studentName?: string): TutorWeeklyRe
     week_start: row.week_start,
     week_end: row.week_end,
     created_at: row.created_at,
-    payload: row.payload_json,
+    payload: weeklyReportPayload(row.payload_json),
   };
 }
 
@@ -206,7 +211,7 @@ export async function loadTutorReports(): Promise<{ items: TutorWeeklyReport[] }
   if (reportsResult.error) {
     throw reportsResult.error;
   }
-  const rows = (reportsResult.data || []) as WeeklyReportRecord[];
+  const rows = reportsResult.data || [];
 
   const allocatedStudents = await loadTutorAllocatedStudents(client);
   const studentNameById = new Map(allocatedStudents.map((student) => [student.student_id, student.full_name]));
@@ -222,7 +227,7 @@ export async function loadTutorReport(reportId: string): Promise<{ report: Tutor
   if (result.error) {
     throw result.error;
   }
-  return { report: mapReport(result.data as WeeklyReportRecord) };
+  return { report: mapReport(result.data) };
 }
 
 export async function regenerateTutorReport(studentId: string): Promise<{ report: TutorWeeklyReport }> {
@@ -266,8 +271,8 @@ export async function loadTutorRiskScores(): Promise<{ items: TutorRiskScore[] }
   if (snapshotsResult.error) {
     throw snapshotsResult.error;
   }
-  const snapshots = (snapshotsResult.data || []) as StudentScoreSnapshotRecord[];
-  const latestByStudent = new Map<string, StudentScoreSnapshotRecord>();
+  const snapshots = snapshotsResult.data || [];
+  const latestByStudent = new Map<string, DbStudentScoreSnapshot>();
   for (const snapshot of snapshots) {
     if (!latestByStudent.has(snapshot.student_id)) {
       latestByStudent.set(snapshot.student_id, snapshot);
@@ -286,7 +291,17 @@ export async function loadTutorRiskScores(): Promise<{ items: TutorRiskScore[] }
         student_name: studentNameById.get(studentId),
         risk_score: snapshot?.risk_score,
         momentum_score: snapshot?.momentum_score,
-        reasons: snapshot?.reasons_json,
+        reasons: Array.isArray(snapshot?.reasons_json)
+          ? snapshot.reasons_json
+            .map((reason): string | { label?: string; detail?: string } | null => {
+              if (typeof reason === 'string') return reason;
+              if (reason && !Array.isArray(reason) && typeof reason === 'object') {
+                return { label: typeof reason.label === 'string' ? reason.label : undefined, detail: typeof reason.detail === 'string' ? reason.detail : undefined };
+              }
+              return null;
+            })
+            .filter((reason): reason is string | { label?: string; detail?: string } => reason !== null)
+          : undefined,
       };
     }),
   };

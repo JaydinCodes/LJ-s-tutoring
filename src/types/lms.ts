@@ -77,9 +77,8 @@ export interface Assignment {
   status: AssignmentStatus | string;
   attachment_url?: string | null;
   rubric_json?: RubricCriterion[] | null;
-  // Model answer for AI-assisted marking (grade-submission Edge Function).
-  // Stored in the private assignment-memos bucket -- never readable by
-  // students, unlike attachment_url (assignment-files, student-readable).
+  // Private legacy tutor memo path. New memo upload/replacement is retired,
+  // and the grading worker never reads or sends this data to Gemini.
   memo_url?: string | null;
   created_at: string;
 }
@@ -438,13 +437,23 @@ export interface InvoiceLineRecord {
 // the retired Fastify GET /admin/integrity/pay-period/:weekStart response 1:1
 // so the frontend needs no reshaping.
 export interface PayPeriodIntegritySnapshot {
+  normalizedWeekStart?: string;
   payPeriod: { id?: string; status?: string };
   overlaps: Array<{ session_id: string; tutor_id: string; student_id: string; date: string; start_time: string; end_time: string; overlap_id: string }>;
   outsideAssignmentWindow: Array<{ id: string; tutor_id: string; student_id: string; date: string; start_time: string; end_time: string }>;
   missingInvoiceLines: Array<{ id: string; tutor_id: string; date: string }>;
   invoiceTotalMismatches: Array<{ id: string; invoice_number: string; total_amount: number; line_total: number }>;
   pendingSubmissions: Array<{ tutor_id: string; tutor_name?: string; pending: number }>;
+  missingRates: Array<{
+    session_id: string;
+    tutor_id: string;
+    tutor_name?: string;
+    date: string;
+    hourly_rate?: number | null;
+    rate_override?: number | null;
+  }>;
   duplicateSessions: Array<{ tutor_id: string; student_id: string; date: string; start_time: string; end_time: string; count: number }>;
+  canClose?: boolean;
 }
 
 // Supabase public.privacy_requests row (see docs/supabase/schema.sql). Student
@@ -453,16 +462,30 @@ export interface PayPeriodIntegritySnapshot {
 // RecordStatus enum: 'pending' (open) -> 'approved' (processed/closed) once
 // process_privacy_request() has run.
 export type PrivacyRequestType = 'access' | 'correction' | 'deletion';
+export type PrivacyDeletionProcessingState =
+  | 'queued'
+  | 'locked'
+  | 'auth_banned'
+  | 'storage_deleted'
+  | 'db_erased'
+  | 'auth_deleted'
+  | 'completed';
 
 export interface PrivacyRequestRecord {
   id: string;
-  subject_student_id: string;
+  subject_student_id: string | null;
   subject_profile_id?: string | null;
   request_type: PrivacyRequestType;
   status: RecordStatus;
   requested_by?: string | null;
   notes?: string | null;
   result: Record<string, unknown>;
+  processing_state?: PrivacyDeletionProcessingState;
+  processing_subject_auth_user_id?: string | null;
+  processing_started_at?: string | null;
+  processing_completed_at?: string | null;
+  storage_files_removed?: number;
+  last_error?: string | null;
   created_at: string;
   updated_at: string;
 }

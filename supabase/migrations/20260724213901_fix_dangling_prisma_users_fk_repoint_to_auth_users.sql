@@ -8,6 +8,15 @@
 -- (e.g. profiles.auth_user_id references auth.users(id)), preserving each
 -- column's existing ON DELETE behavior exactly.
 
+-- A clean Supabase-native schema never had the retired Prisma table. In that
+-- case every FK below is already absent or correctly points at auth.users, so
+-- this historical production repair must be a no-op.
+do $$
+begin
+  if to_regclass('public.users') is null then
+    return;
+  end if;
+
 alter table public.adjustments drop constraint adjustments_approved_by_user_id_fkey;
 alter table public.adjustments add constraint adjustments_approved_by_user_id_fkey foreign key (approved_by_user_id) references auth.users(id) on delete set null;
 
@@ -153,4 +162,6 @@ alter table public.weekly_reports drop constraint weekly_reports_user_id_fkey;
 alter table public.weekly_reports add constraint weekly_reports_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
 
 -- Now fully unreferenced: drop the dead Prisma-era table itself.
-drop table public.users;;
+drop table if exists public.users;
+end
+$$;

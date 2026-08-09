@@ -1,0 +1,23 @@
+{
+  "siteUrl": "https://projectodysseus.live",
+  "rootAssets": ["/assets", "/react-app-dist", "/images", "/favicon.svg", "/sw.js", "/health.json", "/robots.txt", "/sitemap.xml"],
+  "portalHosts": ["admin.projectodysseus.live", "tutor.projectodysseus.live", "student.projectodysseus.live"],
+  "routes": [
+    { "path": "/", "shell": true, "public": true, "title": "Maths Tutoring Cape Town and South Africa", "description": "Project Odysseus provides focused Grade 8-12 CAPS Mathematics, Mathematical Literacy, and Physical Sciences tutoring in Cape Town." },
+    { "path": "/login", "shell": true, "public": true },
+    { "path": "/about", "shell": true, "public": true, "title": "About Project Odysseus", "description": "Learn about the Project Odysseus tutoring approach and the people helping Grade 8-12 learners build confidence and stronger study habits." },
+    { "path": "/programs", "shell": true, "public": true, "title": "Grade 8-12 Maths Programs", "description": "CAPS tutoring programmes for Grade 8-12 learners who need stronger foundations, clearer methods, or focused exam preparation." },
+    { "path": "/guides", "shell": true, "public": true, "title": "Learning Guides", "description": "Practical Project Odysseus maths learning guides for Grade 8-12 learners and families." },
+    { "path": "/guides/matric-maths-mistakes-guide", "shell": true, "public": true, "title": "Matric Maths Mistakes Guide", "description": "A concise Grade 12 maths guide for avoiding common exam mistakes and improving revision consistency." },
+    { "path": "/privacy", "shell": true, "public": true, "title": "Privacy", "description": "Project Odysseus privacy information for tutoring operations, learner data, tutor workflows, and portal access." },
+    { "path": "/terms", "shell": true, "public": true, "title": "Terms", "description": "Project Odysseus terms for tutoring services, learning workflows, and role-based LMS features." },
+    { "path": "/onboarding/student", "shell": true }, { "path": "/onboarding/tutor", "shell": true },
+    { "path": "/dashboard/login", "shell": true }, { "path": "/dashboard/student", "shell": true }, { "path": "/dashboard/student/assignments", "shell": true }, { "path": "/dashboard/student/progress", "shell": true }, { "path": "/dashboard/student/results", "shell": true }, { "path": "/dashboard/student/careers", "shell": true }, { "path": "/dashboard/student/reports", "shell": true }, { "path": "/dashboard/student/community", "shell": true }, { "path": "/dashboard/student/settings", "shell": true },
+    { "path": "/dashboard/parent", "shell": true }, { "path": "/dashboard/parent/reports", "shell": true }, { "path": "/dashboard/ngo", "shell": true }, { "path": "/dashboard/ngo/reports", "shell": true },
+    { "path": "/dashboard/admin", "shell": true }, { "path": "/dashboard/admin/users", "shell": true }, { "path": "/dashboard/admin/students", "shell": true }, { "path": "/dashboard/admin/tutors", "shell": true }, { "path": "/dashboard/admin/allocations", "shell": true }, { "path": "/dashboard/admin/classes", "shell": true }, { "path": "/dashboard/admin/assignments", "shell": true }, { "path": "/dashboard/admin/approvals", "shell": true }, { "path": "/dashboard/admin/payments", "shell": true }, { "path": "/dashboard/admin/payroll", "shell": true }, { "path": "/dashboard/admin/reconciliation", "shell": true }, { "path": "/dashboard/admin/reports", "shell": true }, { "path": "/dashboard/admin/results", "shell": true }, { "path": "/dashboard/admin/audit", "shell": true }, { "path": "/dashboard/admin/privacy-requests", "shell": true }, { "path": "/dashboard/admin/retention", "shell": true }, { "path": "/dashboard/admin/ops-runbook", "shell": true },
+    { "path": "/dashboard/tutor", "shell": true }, { "path": "/dashboard/tutor/classes", "shell": true }, { "path": "/dashboard/tutor/sessions", "shell": true }, { "path": "/dashboard/tutor/submissions", "shell": true }, { "path": "/dashboard/tutor/reports", "shell": true }, { "path": "/dashboard/tutor/risk", "shell": true }
+  ],
+  "redirects": [
+    { "from": "/admin/*", "to": "/dashboard/admin" }, { "from": "/student", "to": "/dashboard/student" }, { "from": "/student/assignments", "to": "/dashboard/student/assignments" }, { "from": "/tutor/*", "to": "/dashboard/tutor" }, { "from": "/reports/*", "to": "/dashboard/student/reports" }, { "from": "/dashboard", "to": "/dashboard/student" }, { "from": "/dashboard/", "to": "/dashboard/student" }, { "from": "/dashboard/login.html", "to": "/dashboard/login" }, { "from": "/dashboard/parent", "to": "/dashboard/parent/reports" }, { "from": "/dashboard/ngo", "to": "/dashboard/ngo/reports" }
+  ]
+}

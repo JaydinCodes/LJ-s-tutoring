@@ -1,0 +1,71 @@
+name: Deploy production
+
+on:
+  workflow_run:
+    workflows: ["Release Gates"]
+    branches: [ main ]
+    types: [completed]
+
+# Never overlap deployments. A newer main push cancels its older release gate;
+# the SHA assertion below also prevents an already-completed older gate from
+# deploying after main has moved.
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - name: Check out the tested commit for deployment probes
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+
+      - name: Confirm main still points at the tested commit
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const testedSha = context.payload.workflow_run.head_sha;
+            const { data: main } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'heads/main',
+            });
+            if (main.object.sha !== testedSha) {
+              core.setFailed(
+                `Refusing deployment: Release Gates tested ${testedSha}, but main is now ${main.object.sha}.`,
+              );
+            }
+
+      - name: Install pinned DigitalOcean CLI action
+        uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Deploy the tested main commit
+        env:
+          DIGITALOCEAN_APP_ID: ${{ secrets.DIGITALOCEAN_APP_ID }}
+        run: |
+          test -n "$DIGITALOCEAN_APP_ID" || { echo "DIGITALOCEAN_APP_ID is required"; exit 1; }
+          doctl apps create-deployment "$DIGITALOCEAN_APP_ID" --wait
+
+      - name: Verify live production security headers
+        env:
+          PRODUCTION_ORIGINS: ${{ vars.PRODUCTION_ORIGINS }}
+        run: npm run verify:production:headers

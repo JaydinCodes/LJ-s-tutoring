@@ -58,12 +58,16 @@ const publicRoutes = [
 
 test('unified React app registers migrated public and protected routes', () => {
   const app = fs.readFileSync(path.join(root, 'src', 'app', 'App.tsx'), 'utf8');
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'src', 'app', 'route-manifest.json'), 'utf8'));
 
   for (const route of [...publicRoutes, ...protectedRoutes]) {
     if (route === '/') {
       assert.match(app, /<Route path="\/" element=/, 'root route must be registered');
     } else {
-      assert.ok(app.includes(`path="${route}"`), `${route} must be registered in App.tsx`);
+      assert.ok(
+        app.includes(`path="${route}"`) || manifest.routes.some((entry) => entry.path === route),
+        `${route} must be registered in App.tsx or the route manifest`,
+      );
     }
   }
 

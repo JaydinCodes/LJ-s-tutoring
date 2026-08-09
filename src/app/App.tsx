@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
+import { routeRedirects } from './routeManifest';
 
 const AdminAllocationsRoute = lazy(() => import('../features/admin/AdminAllocationsRoute').then((module) => ({ default: module.AdminAllocationsRoute })));
 const AdminAssignmentsRoute = lazy(() => import('../features/admin/AdminAssignmentsRoute').then((module) => ({ default: module.AdminAssignmentsRoute })));
@@ -65,15 +66,11 @@ export function App() {
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           <Route path="/" element={<PublicHomeRoute />} />
-        <Route path="/admin/*" element={<Navigate to="/dashboard/admin" replace />} />
-        <Route path="/student/assignments" element={<Navigate to="/dashboard/student/assignments" replace />} />
+          {routeRedirects.map((redirect) => <Route key={redirect.from} path={redirect.from} element={<Navigate to={redirect.to} replace />} />)}
         <Route path="/student/assignments/:assignmentId" element={<ProtectedRoute roles={['student']}><StudentAssignmentDetailRoute /></ProtectedRoute>} />
         <Route path="/student/results" element={<ProtectedRoute roles={['student']}><StudentResultsRoute /></ProtectedRoute>} />
         <Route path="/student/results/subjects/:subject" element={<ProtectedRoute roles={['student']}><StudentResultsSubjectRoute /></ProtectedRoute>} />
         <Route path="/student/results/:resultId" element={<ProtectedRoute roles={['student']}><StudentResultDetailRoute /></ProtectedRoute>} />
-        <Route path="/student" element={<Navigate to="/dashboard/student" replace />} />
-        <Route path="/tutor/*" element={<Navigate to="/dashboard/tutor" replace />} />
-        <Route path="/reports/*" element={<Navigate to="/dashboard/student/reports" replace />} />
         <Route path="/about" element={<AboutRoute />} />
         <Route path="/programs" element={<ProgramsRoute />} />
         <Route path="/guides" element={<GuidesIndexRoute />} />
@@ -81,10 +78,7 @@ export function App() {
         <Route path="/privacy" element={<PrivacyRoute />} />
         <Route path="/terms" element={<TermsRoute />} />
         <Route path="/login" element={<LoginRoute />} />
-        <Route path="/dashboard" element={<Navigate to="/dashboard/student" replace />} />
-        <Route path="/dashboard/" element={<Navigate to="/dashboard/student" replace />} />
         <Route path="/dashboard/login" element={<LoginRoute />} />
-        <Route path="/dashboard/login.html" element={<Navigate to="/dashboard/login" replace />} />
         <Route path="/onboarding/student" element={<OnboardingRoute role="student" />} />
         <Route path="/onboarding/tutor" element={<OnboardingRoute role="tutor" />} />
         <Route path="/dashboard/student" element={<ProtectedRoute roles={['student']}><StudentDashboardRoute /></ProtectedRoute>} />
@@ -98,9 +92,7 @@ export function App() {
         <Route path="/dashboard/student/community" element={<ProtectedRoute roles={['student']}><StudentCommunityRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/reports" element={<ProtectedRoute roles={['student']}><StudentReportsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/settings" element={<ProtectedRoute roles={['student']}><StudentSettingsRoute /></ProtectedRoute>} />
-        <Route path="/dashboard/parent" element={<Navigate to="/dashboard/parent/reports" replace />} />
         <Route path="/dashboard/parent/reports" element={<ProtectedRoute roles={['parent']}><ParentReportsRoute /></ProtectedRoute>} />
-        <Route path="/dashboard/ngo" element={<Navigate to="/dashboard/ngo/reports" replace />} />
         <Route path="/dashboard/ngo/reports" element={<ProtectedRoute roles={['ngo_partner']}><NgoReportsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin" element={<ProtectedRoute roles={['admin']}><AdminDashboardRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/students" element={<ProtectedRoute roles={['admin']}><AdminStudentsRoute /></ProtectedRoute>} />

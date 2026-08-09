@@ -8314,16 +8314,15 @@ alter default privileges in schema public grant usage, select on sequences to an
 revoke all on public.profile_identities from anon, authenticated;
 
 -- ============================================================================
--- AI-assisted marking (v1, see supabase/migrations/20260804150000_ai_assisted_
--- marking.sql). A grade-submission Edge Function drafts a mark/feedback the
--- moment a student submits, so a tutor opens the review screen to an
--- already-graded draft instead of marking cold. It only ever writes the ai_*
--- columns below -- a human still explicitly reviews and saves through
+-- AI-assisted marking (v2). A grade-submission Edge Function drafts a
+-- mark/feedback after a student submits, so a tutor opens the review screen
+-- to an already-graded draft instead of marking cold. It only ever writes the
+-- ai_* columns below -- a human still explicitly reviews and saves through
 -- mark_submission() before anything reaches marks_awarded/feedback/
 -- rubric_scores_json or the release flags.
 --
--- Grading needs a memo (model answer) to check the student's work against,
--- beyond the rubric's criteria labels/max marks.
+-- A memo (model answer) is optional. The worker can still draft from the
+-- rubric, assignment context, and submission evidence when a memo is absent.
 alter table public.assignments add column if not exists memo_url text;
 
 -- Unlike assignment-files (student-readable, see

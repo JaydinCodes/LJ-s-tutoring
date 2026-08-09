@@ -23,10 +23,8 @@ test('dashboard visuals stay low-jank', () => {
 
   assert.ok(motion.includes('useReducedMotion'), 'animations must honor reduced-motion users');
   assert.ok(motion.includes('transformOrigin'), 'progress bars must animate via transform instead of layout width changes');
-  // NOTE: the old Fastify API bounded result-list queries (LIMIT 24/100). The
-  // Supabase-native dashboard queries (studentDashboardRepository.ts) have no
-  // equivalent .limit() call -- a known, unaddressed gap at pilot scale, not
-  // covered here.
+  const dashboard = read('src', 'features', 'students', 'studentDashboardRepository.ts');
+  assert.ok(dashboard.includes('DASHBOARD_DETAIL_LIMIT = 100'), 'dashboard presentation lists must be explicitly bounded');
 });
 
 test('icons, media, and Lighthouse tracking are covered by the performance budget', () => {

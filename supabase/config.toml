@@ -8,8 +8,8 @@ extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [db]
-port = 54322
-shadow_port = 54320
+port = 55432
+shadow_port = 55430
 major_version = 15
 
 [studio]
@@ -38,9 +38,34 @@ enable_signup = true
 enable_signup = true
 enable_confirmations = false
 
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 # Disabled: the local analytics (Logflare) sidecar container fails its health
 # check on Windows without a TCP-exposed Docker daemon (a documented Supabase
 # CLI limitation, not specific to this project) and isn't needed for local
 # dev/RLS testing.
 [analytics]
 enabled = false
+
+[functions.process-privacy-deletion]
+enabled = true
+verify_jwt = false
+import_map = "./functions/process-privacy-deletion/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/process-privacy-deletion/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/process-privacy-deletion/*.html" ]
+
+[functions.grade-submission]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/grade-submission/index.ts"
+
+[functions.cleanup-submission-assets]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/cleanup-submission-assets/index.ts"

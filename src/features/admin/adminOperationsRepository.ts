@@ -1,6 +1,7 @@
 import { isSupabaseConfigured, requireSupabase, supabase } from '../../lib/supabase/client';
 import { callRpc } from '../../lib/supabase/rpc';
 import type { AuditLogEntry, PrivacyRequestRecord, PrivacyRequestType, Profile, SessionRecord, Student, Tutor } from '../../types/lms';
+import type { Database } from '../../types/database';
 
 export interface AdminSession {
   id: string;
@@ -52,11 +53,16 @@ export interface AdminSessionList {
 export interface PrivacyRequest {
   id: string;
   request_type: PrivacyRequestType;
-  subject_student_id: string;
+  subject_student_id: string | null;
   subject_student_name?: string;
   reason?: string | null;
   status: string;
   result: Record<string, unknown>;
+  processing_state?: PrivacyRequestRecord['processing_state'];
+  processing_started_at?: string | null;
+  processing_completed_at?: string | null;
+  storage_files_removed?: number;
+  last_error?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -93,6 +99,7 @@ export async function loadApprovalQueue(params: URLSearchParams): Promise<AdminS
   const client = requireSupabase();
 
   const status = params.get('status')?.toLowerCase();
+  const sessionStatuses = ['draft', 'submitted', 'approved', 'rejected'] as const;
   const page = Math.max(1, Number(params.get('page') || 1));
   const pageSize = Math.min(200, Math.max(1, Number(params.get('pageSize') || 25)));
   const from = (page - 1) * pageSize;
@@ -105,8 +112,9 @@ export async function loadApprovalQueue(params: URLSearchParams): Promise<AdminS
     .order('date', { ascending })
     .order('start_time', { ascending })
     .range(from, to);
-  if (status) {
-    query = query.eq('status', status);
+  const selectedSessionStatus = sessionStatuses.find((candidate) => candidate === status);
+  if (selectedSessionStatus) {
+    query = query.eq('status', selectedSessionStatus);
   }
 
   const sessionsResult = await query;
@@ -166,14 +174,14 @@ export async function approveSession(sessionId: string): Promise<{ session: Admi
 
 export async function rejectSession(sessionId: string, reason?: string): Promise<{ session: AdminSession }> {
   const client = requireSupabase();
-  const session = await callRpc(client, 'reject_session', { p_session_id: sessionId, p_reason: reason ?? null });
+  const session = await callRpc(client, 'reject_session', { p_session_id: sessionId, p_reason: reason ?? '' });
   return { session: mapAdminSessionRow(session) };
 }
 
 // UI keeps Fastify's OPEN/CLOSED filter labels; Supabase's record_status
 // distinguishes 'pending' (open, not yet processed) from 'approved' (a
 // request that has run its export/correction/deletion and closed).
-const PRIVACY_STATUS_FILTER: Record<string, string> = { OPEN: 'pending', CLOSED: 'approved' };
+const PRIVACY_STATUS_FILTER: Record<string, Database['public']['Enums']['record_status']> = { OPEN: 'pending', CLOSED: 'approved' };
 
 function mapPrivacyRequest(row: PrivacyRequestRecord, studentName?: string): PrivacyRequest {
   return {
@@ -184,6 +192,11 @@ function mapPrivacyRequest(row: PrivacyRequestRecord, studentName?: string): Pri
     reason: row.notes,
     status: row.status,
     result: row.result,
+    processing_state: row.processing_state,
+    processing_started_at: row.processing_started_at,
+    processing_completed_at: row.processing_completed_at,
+    storage_files_removed: row.storage_files_removed,
+    last_error: row.last_error,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -203,7 +216,11 @@ export async function loadPrivacyRequests(status = ''): Promise<{ requests: Priv
   }
   const rows = (result.data || []) as PrivacyRequestRecord[];
 
-  const studentIds = Array.from(new Set(rows.map((row) => row.subject_student_id).filter(Boolean)));
+  const studentIds = Array.from(new Set(
+    rows
+      .map((row) => row.subject_student_id)
+      .filter((studentId): studentId is string => Boolean(studentId)),
+  ));
   const studentsResult = studentIds.length
     ? await client.from('students').select('*').in('id', studentIds)
     : { data: [], error: null };
@@ -222,7 +239,7 @@ export async function loadPrivacyRequests(status = ''): Promise<{ requests: Priv
   const studentNameById = new Map(students.map((student) => [student.id, profileById.get(student.profile_id)?.full_name || student.id]));
 
   return {
-    requests: rows.map((row) => mapPrivacyRequest(row, studentNameById.get(row.subject_student_id))),
+    requests: rows.map((row) => mapPrivacyRequest(row, studentNameById.get(row.subject_student_id ?? ''))),
     total: result.count ?? rows.length,
   };
 }
@@ -255,9 +272,66 @@ export async function createPrivacyRequest(input: { requestType: PrivacyRequestT
   return { request: mapPrivacyRequest(result.data as PrivacyRequestRecord) };
 }
 
-export async function closePrivacyRequest(requestId: string): Promise<{ request: PrivacyRequest }> {
+async function readPrivacyDeletionError(error: unknown): Promise<string> {
+  const context = (error as { context?: Response })?.context;
+  if (context && typeof context.json === 'function') {
+    try {
+      const body = await context.clone().json() as { error?: unknown; stage?: unknown };
+      const code = typeof body.error === 'string' ? body.error : null;
+      const stage = typeof body.stage === 'string' ? body.stage : null;
+      if (code) {
+        return stage ? `${code}:${stage}` : code;
+      }
+    } catch {
+      // Fall through to the generic FunctionsHttpError message.
+    }
+  }
+  return error instanceof Error ? error.message : 'privacy_deletion_failed';
+}
+
+function readablePrivacyDeletionError(raw: string) {
+  if (raw.includes('admin_mfa_required')) {
+    return 'Admin MFA is required before deleting learner data.';
+  }
+  if (raw.includes('admin_required')) {
+    return 'Only platform administrators can process deletion requests.';
+  }
+  if (raw.includes('rate_limited')) {
+    return 'Too many deletion attempts were made. Wait a few minutes and retry.';
+  }
+  if (raw.includes('privacy_request_not_found')) {
+    return 'This privacy request no longer exists.';
+  }
+  if (raw.includes('privacy_request_is_not_deletion')) {
+    return 'This request is not a deletion request.';
+  }
+  if (raw.includes('supabase_bearer_required') || raw.includes('supabase_bearer_invalid')) {
+    return 'Your admin session is no longer valid. Sign in again and retry.';
+  }
+  if (raw.includes('privacy_deletion_failed')) {
+    return 'Deletion stopped before completion. The learner remains locked; retry the request after checking the recorded stage.';
+  }
+  return raw;
+}
+
+export async function closePrivacyRequest(
+  requestId: string,
+  requestType: PrivacyRequestType,
+): Promise<{ request: PrivacyRequest }> {
   const client = requireSupabase();
-  await callRpc(client, 'process_privacy_request', { p_request_id: requestId });
+
+  if (requestType === 'deletion') {
+    const invokeResult = await client.functions.invoke('process-privacy-deletion', {
+      body: { requestId },
+    });
+    if (invokeResult.error) {
+      const raw = await readPrivacyDeletionError(invokeResult.error);
+      throw new Error(readablePrivacyDeletionError(raw));
+    }
+  } else {
+    await callRpc(client, 'process_privacy_request', { p_request_id: requestId });
+  }
+
   const result = await client.from('privacy_requests').select('*').eq('id', requestId).single();
   if (result.error) {
     throw result.error;

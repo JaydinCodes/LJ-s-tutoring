@@ -35,6 +35,7 @@ test('student class loading uses enrollments rather than broad grade-matched cla
   assert.match(studentRepo, /from\('class_enrollments'\)\.select\('class_id'\)/);
   assert.match(studentRepo, /\.eq\('student_id', student\.id\)/);
   assert.match(studentRepo, /\.eq\('status', 'active'\)/);
-  assert.match(studentRepo, /from\('classes'\)\.select\('\*'\)\.in\('id', enrolledClassIds\)/);
+  assert.match(studentRepo, /from\('classes'\)\.select\('id, name, tutor_id/);
+  assert.match(studentRepo, /\.in\('id', enrolledClassIds\).*\.limit\(DASHBOARD_DETAIL_LIMIT\)/);
   assert.doesNotMatch(studentRepo, /from\('classes'\)\.select\('\*'\)\.eq\('grade', student\.grade/);
 });

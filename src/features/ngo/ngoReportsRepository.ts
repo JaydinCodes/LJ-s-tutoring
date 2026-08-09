@@ -2,7 +2,6 @@ import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2ENgoReports } from '../../lib/e2e/mockRoleData';
 import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { requireSupabase } from '../../lib/supabase/client';
-import type { Assignment, AssignmentSubmission, ClassEnrollment, ClassRecord, NgoPartner, Student, StudentProgress } from '../../types/lms';
 
 export interface NgoAggregateReport {
   ngo_partner_id: string;
@@ -12,78 +11,76 @@ export interface NgoAggregateReport {
   average_mark: number | null;
   active_classes: number;
   progress_topic_count: number;
+  suppressed?: boolean;
+  suppression_reason?: string;
+}
+
+type CohortRpcReport = {
+  organization_id: string;
+  learner_count: number;
+  suppressed: boolean;
+  suppression_reason?: string;
+  average_progress_score?: number;
+  marked_submission_count?: number;
+};
+type NgoMembership = { organization_id: string; organizations: { name?: string } | null };
+type CohortRpcClient = { rpc: (name: 'get_org_cohort_report', args: { p_org_id: string }) => Promise<{ data: unknown; error: Error | null }> };
+
+const MEMBERSHIP_PAGE_SIZE = 100;
+
+async function loadNgoMemberships(client: ReturnType<typeof requireSupabase>): Promise<NgoMembership[]> {
+  const rows: NgoMembership[] = [];
+  for (let offset = 0; ; offset += MEMBERSHIP_PAGE_SIZE) {
+    const page = await client
+      .from('organization_members')
+      .select('organization_id, organizations(name)')
+      .eq('org_role', 'partner_viewer')
+      .eq('status', 'active')
+      .order('organization_id')
+      .range(offset, offset + MEMBERSHIP_PAGE_SIZE - 1);
+    if (page.error) throw page.error;
+    const pageRows = (page.data || []) as unknown as NgoMembership[];
+    rows.push(...pageRows);
+    if (pageRows.length < MEMBERSHIP_PAGE_SIZE) return rows;
+  }
 }
 
 export async function loadNgoReports(): Promise<{ reports: NgoAggregateReport[] }> {
-  if (isE2EAuthMockEnabled()) {
-    return getE2ENgoReports();
-  }
+  if (isE2EAuthMockEnabled()) return getE2ENgoReports();
 
   const client = requireSupabase();
-  const [partnersResult, studentsResult, submissionsResult, assignmentsResult, classesResult, enrollmentsResult, progressResult] = await Promise.all([
-    client.from('ngo_partners').select('*').order('name', { ascending: true }),
-    client.from('students').select('*'),
-    client.from('assignment_submissions').select('id,assignment_id,student_id,marks_awarded,marks_released'),
-    client.from('assignments').select('id'),
-    client.from('classes').select('*').eq('status', 'active'),
-    client.from('class_enrollments').select('*').eq('status', 'active'),
-    client.from('student_progress').select('id,student_id'),
-  ]);
-
-  for (const result of [partnersResult, studentsResult, submissionsResult, assignmentsResult, classesResult, enrollmentsResult, progressResult]) {
+  // An NGO partner may see only its own membership rows. Every cohort metric
+  // comes from the SECURITY DEFINER aggregate RPC; do not join learner data in
+  // the browser, even for counts.
+  let memberRows: NgoMembership[];
+  try {
+    memberRows = await loadNgoMemberships(client);
+  } catch (error) {
+    captureAppError(error, { featureArea: 'ngo', action: 'ngo_reports.memberships_load_failed', role: 'ngo_partner' });
+    throw error;
+  }
+  const reports = await Promise.all(memberRows.map(async (membership) => {
+    const result = await (client as unknown as CohortRpcClient).rpc('get_org_cohort_report', { p_org_id: membership.organization_id });
     if (result.error) {
-      captureAppError(result.error, {
-        featureArea: 'ngo',
-        action: 'ngo_reports.load_failed',
-        role: 'ngo_partner',
-      });
+      captureAppError(result.error, { featureArea: 'ngo', action: 'ngo_reports.aggregate_load_failed', role: 'ngo_partner' });
       throw result.error;
     }
-  }
-
-  const partners = (partnersResult.data || []) as NgoPartner[];
-  const students = (studentsResult.data || []) as Student[];
-  const submissions = (submissionsResult.data || []) as AssignmentSubmission[];
-  const assignments = (assignmentsResult.data || []) as Assignment[];
-  const classes = (classesResult.data || []) as ClassRecord[];
-  const enrollments = (enrollmentsResult.data || []) as ClassEnrollment[];
-  const progress = (progressResult.data || []) as StudentProgress[];
-  const assignmentIds = new Set(assignments.map((assignment) => assignment.id));
-
-  const reports = partners.map<NgoAggregateReport>((partner) => {
-    const partnerStudents = students.filter((student) => student.ngo_partner_id === partner.id);
-    const studentIds = new Set(partnerStudents.map((student) => student.id));
-    const releasedSubmissions = submissions.filter((submission) => (
-      studentIds.has(submission.student_id)
-      && assignmentIds.has(submission.assignment_id)
-      && submission.marks_released
-      && submission.marks_awarded != null
-    ));
-    const activeClassIds = new Set(classes
-      .filter((classRecord) => classRecord.ngo_partner_id === partner.id)
-      .map((classRecord) => classRecord.id));
-    for (const enrollment of enrollments) {
-      if (studentIds.has(enrollment.student_id)) {
-        activeClassIds.add(enrollment.class_id);
-      }
-    }
-
+    const aggregate = result.data as unknown as CohortRpcReport;
+    const organization = membership.organizations;
     return {
-      ngo_partner_id: partner.id,
-      ngo_partner_name: partner.name,
-      student_count: partnerStudents.length,
-      released_results: releasedSubmissions.length,
-      average_mark: average(releasedSubmissions.map((submission) => Number(submission.marks_awarded))),
-      active_classes: activeClassIds.size,
-      progress_topic_count: progress.filter((item) => studentIds.has(item.student_id)).length,
-    };
-  });
+      ngo_partner_id: membership.organization_id,
+      ngo_partner_name: organization?.name || 'Partner cohort',
+      student_count: aggregate.learner_count,
+      // The approved RPC exposes marked submission counts, not learner-level
+      // result rows. Keep this legacy UI field until its label is renamed.
+      released_results: aggregate.marked_submission_count || 0,
+      average_mark: aggregate.average_progress_score ?? null,
+      active_classes: 0,
+      progress_topic_count: 0,
+      suppressed: aggregate.suppressed,
+      suppression_reason: aggregate.suppression_reason,
+    } satisfies NgoAggregateReport;
+  }));
 
   return { reports };
-}
-
-function average(values: number[]) {
-  const cleanValues = values.filter(Number.isFinite);
-  if (!cleanValues.length) return null;
-  return Math.round((cleanValues.reduce((total, value) => total + value, 0) / cleanValues.length) * 10) / 10;
 }

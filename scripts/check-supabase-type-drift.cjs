@@ -12,7 +12,10 @@ function normalize(value) {
 
 const generated = normalize(execFileSync(
   process.execPath,
-  [supabaseCli, 'gen', 'types', '--local', '--schema', 'public'],
+  // The linked project is the production schema authority. Local Docker may
+  // intentionally be a snapshot during recovery, so generating from it could
+  // bless a stale contract.
+  [supabaseCli, 'gen', 'types', '--linked', '--schema', 'public'],
   { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] },
 ));
 

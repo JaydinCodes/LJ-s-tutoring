@@ -53,5 +53,6 @@ test('local Supabase migration history is committed, immutable, and separate fro
   );
   assert.match(config, /project_id = "project-odysseus-local"/);
   assert.match(config, /port = 54321/);
-  assert.match(config, /port = 54322/);
+  assert.match(config, /\[db\][\s\S]*port = 55432/);
+  assert.match(config, /shadow_port = 55430/);
 });

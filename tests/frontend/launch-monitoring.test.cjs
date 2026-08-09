@@ -62,5 +62,5 @@ test('LAUNCH-06 critical workflow failures are captured', () => {
   assert.match(adminAssignments, /admin_assignment\.create_failed/);
   assert.match(adminAssignments, /admin_submission_review\.save_failed/);
   assert.match(parentReports, /parent_reports\.rpc_failed/);
-  assert.match(ngoReports, /ngo_reports\.load_failed/);
+  assert.match(ngoReports, /ngo_reports\.(memberships|aggregate)_load_failed/);
 });

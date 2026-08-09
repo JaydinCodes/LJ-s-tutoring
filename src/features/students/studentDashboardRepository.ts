@@ -1,15 +1,18 @@
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2EStudentDashboard } from '../../lib/e2e/mockRoleData';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
+import { callRpc } from '../../lib/supabase/rpc';
 import { resolveSignedUrls } from '../../lib/supabase/storage';
 import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, StudentAssignedTutor, StudentDashboardView, StudentProgress } from '../../types/lms';
 
-function average(values: number[]) {
-  if (!values.length) {
-    return null;
-  }
-  return Math.round(values.reduce((total, value) => total + value, 0) / values.length);
-}
+const DASHBOARD_DETAIL_LIMIT = 100;
+
+type StudentDashboardMetrics = {
+  overall_score: number | null;
+  assignments_completed: number;
+  open_assignments: number;
+  classes: number;
+};
 
 function academicStatus(score: number | null) {
   if (score == null) return 'Awaiting results';
@@ -86,11 +89,14 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
   }
 
   const [assignmentsResult, progressResult, enrollmentsResult, submissionsResult, assignedTutorsResult] = await Promise.all([
-    supabase.from('assignments').select('*').eq('grade', student.grade || '').neq('status', 'draft').order('due_date', { ascending: true }),
-    supabase.from('student_progress').select('*').eq('student_id', student.id).order('recorded_at', { ascending: false }),
-    supabase.from('class_enrollments').select('class_id').eq('student_id', student.id).eq('status', 'active'),
+    // Students never query the raw assignments table. This database-owned,
+    // explicit projection omits private/internal fields (including memo_url)
+    // and applies the same eligibility gate as uploads and submission RPCs.
+    supabase.rpc('get_student_accessible_assignments').limit(DASHBOARD_DETAIL_LIMIT),
+    supabase.from('student_progress').select('id, student_id, subject_id, topic, score, cognitive_level, recorded_at').eq('student_id', student.id).order('recorded_at', { ascending: false }).limit(DASHBOARD_DETAIL_LIMIT),
+    supabase.from('class_enrollments').select('class_id').eq('student_id', student.id).eq('status', 'active').limit(DASHBOARD_DETAIL_LIMIT),
     // Student submission reads must go through the redacted RPC so unreleased marks and feedback stay hidden.
-    supabase.rpc('get_student_assignment_submissions'),
+    supabase.rpc('get_student_assignment_submissions').limit(DASHBOARD_DETAIL_LIMIT),
     // This SECURITY DEFINER projection returns only id/name/email for tutors
     // with an active allocation to the current learner. Students have no
     // direct SELECT policy on the allocation or tutor base tables.
@@ -107,7 +113,7 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
   const progress = (progressResult.data || []) as StudentProgress[];
   const enrolledClassIds = ((enrollmentsResult.data || []) as Array<{ class_id: string }>).map((item) => item.class_id);
   const classesResult = enrolledClassIds.length
-    ? await supabase.from('classes').select('*').in('id', enrolledClassIds).neq('status', 'inactive')
+    ? await supabase.from('classes').select('id, name, tutor_id, subject_id, grade, location, day_of_week, start_time, end_time, ngo_partner_id, status, created_at, updated_at').in('id', enrolledClassIds).neq('status', 'inactive').limit(DASHBOARD_DETAIL_LIMIT)
     : { data: [], error: null };
   if (classesResult.error) {
     throw classesResult.error;
@@ -115,12 +121,18 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
   const classes = (classesResult.data || []) as ClassRecord[];
   const submissions = (submissionsResult.data || []) as AssignmentSubmission[];
   const assignedTutors = (assignedTutorsResult.data || []) as StudentAssignedTutor[];
-  const submittedIds = new Set(submissions.map((item) => item.assignment_id));
-  const score = average(progress.map((item) => Number(item.score)).filter(Number.isFinite));
+  // Exact totals live in the database. The arrays above are bounded
+  // presentation data and must never be used to derive a dashboard metric.
+  const dashboardMetrics = await callRpc(supabase, 'get_student_dashboard_metrics', {});
+  if (!dashboardMetrics) {
+    throw new Error('Student dashboard metrics were not returned.');
+  }
+  const metrics = dashboardMetrics as StudentDashboardMetrics;
+  const score = metrics.overall_score == null ? null : Number(metrics.overall_score);
   const subjectIds = Array.from(new Set([
     ...assignments.map((assignment) => assignment.subject_id),
     ...progress.map((item) => item.subject_id),
-  ].filter(Boolean)));
+  ].filter((subjectId): subjectId is string => typeof subjectId === 'string')));
   const subjectsResult = subjectIds.length
     ? await supabase.from('subjects').select('*').in('id', subjectIds)
     : { data: [], error: null };
@@ -163,10 +175,10 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
       parent: student.parent_name || undefined,
     },
     metrics: [
-      { label: 'Overall score', value: score == null ? '--' : `${score}%`, helper: 'Average from recent progress records.', tone: 'violet' },
-      { label: 'Assignments completed', value: String(submittedIds.size), helper: 'Submitted assignment records.', tone: 'teal' },
-      { label: 'Open assignments', value: String(assignmentsWithSubjects.filter((item) => !submittedIds.has(item.id)).length), helper: 'Published work not yet submitted.', tone: 'amber' },
-      { label: 'Classes', value: String(classes.length), helper: 'Current classes for this learner.', tone: 'blue' },
+      { label: 'Overall score', value: score == null ? '--' : `${score}%`, helper: 'Average across all progress records.', tone: 'violet' },
+      { label: 'Assignments completed', value: String(metrics.assignments_completed), helper: 'Submitted assignment records.', tone: 'teal' },
+      { label: 'Open assignments', value: String(metrics.open_assignments), helper: 'Published work not yet submitted.', tone: 'amber' },
+      { label: 'Classes', value: String(metrics.classes), helper: 'Current classes for this learner.', tone: 'blue' },
     ],
     assignments: assignmentsWithSubjects,
     progress: progressWithSubjects,

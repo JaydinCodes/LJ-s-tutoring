@@ -70,7 +70,6 @@ function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: Assignme
   const [status, setStatus] = useState<AssignmentStatus>(normalizeAssignmentStatus(assignment.status));
   const [rubricJson, setRubricJson] = useState(JSON.stringify(assignment.rubric_json || [], null, 2));
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [memo, setMemo] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -80,9 +79,8 @@ function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: Assignme
     setMessage(null);
     setError(null);
     try {
-      await updateAssignment({ assignmentId: assignment.id, title, description, subjectName, grade, curriculum, dueDate, status: nextStatus, attachment, memo, rubricJson });
+      await updateAssignment({ assignmentId: assignment.id, title, description, subjectName, grade, curriculum, dueDate, status: nextStatus, attachment, rubricJson });
       setAttachment(null);
-      setMemo(null);
       setStatus(nextStatus);
       setMessage('Assignment updated.');
       await onSaved();
@@ -95,7 +93,6 @@ function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: Assignme
           assignment_id: assignment.id,
           status: nextStatus,
           has_attachment_replacement: Boolean(attachment),
-          has_memo_replacement: Boolean(memo),
         },
       });
       setError(err instanceof Error ? err.message : 'Could not update assignment.');
@@ -145,9 +142,6 @@ function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: Assignme
           </FormField>
           <FormField label="Replace attachment" hint={assignment.attachment_url ? `Current: ${assignment.attachment_url}` : 'Optional worksheet or supporting file.'}>
             <TextInput type="file" onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
-          </FormField>
-          <FormField label="Replace memo / model answer" hint={assignment.memo_url ? 'Memo on file -- private, used for AI-assisted marking.' : 'No memo yet -- submissions won\'t be AI-graded until one is uploaded.'}>
-            <TextInput type="file" onChange={(event) => setMemo(event.target.files?.[0] || null)} />
           </FormField>
         </div>
         <FormField label="Description">
@@ -284,7 +278,6 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
   const [dueDate, setDueDate] = useState('');
   const [rubricJson, setRubricJson] = useState('[]');
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [memo, setMemo] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -295,7 +288,7 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
     setMessage(null);
     setError(null);
     try {
-      await createAssignment({ title, description, subjectName, grade, curriculum, dueDate, attachment, memo, rubricJson });
+      await createAssignment({ title, description, subjectName, grade, curriculum, dueDate, attachment, rubricJson });
       setTitle('');
       setDescription('');
       setSubjectName('');
@@ -304,7 +297,6 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
       setDueDate('');
       setRubricJson('[]');
       setAttachment(null);
-      setMemo(null);
       setMessage('Assignment published.');
       await onCreated();
     } catch (err) {
@@ -314,7 +306,6 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
         role: 'admin',
         metadata: {
           has_attachment: Boolean(attachment),
-          has_memo: Boolean(memo),
           due_date_set: Boolean(dueDate),
         },
       });
@@ -351,9 +342,6 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
         </FormField>
         <FormField label="Attachment" hint="Optional worksheet or supporting file, visible to students.">
           <TextInput type="file" onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
-        </FormField>
-        <FormField label="Memo / model answer" hint="Private -- never shown to students. Used for AI-assisted marking; no memo means submissions won't be AI-graded.">
-          <TextInput type="file" onChange={(event) => setMemo(event.target.files?.[0] || null)} />
         </FormField>
         <div className="lg:col-span-2">
           <FormField label="Description">

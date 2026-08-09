@@ -9,12 +9,13 @@
       Partial CSP via meta: this is a best-effort mitigation only. App
       Platform's static_sites component has no way to send this as a real HTTP
       response header (see the note in .do/app.yaml above the ingress rules),
-      and CSP delivered via meta silently ignores frame-ancestors, sandbox, and
-      report-uri/report-to. X-Frame-Options, X-Content-Type-Options, and
-      Strict-Transport-Security have no meta equivalent at all and are not
-      covered by this tag.
+      and CSP delivered via meta silently ignores frame-ancestors, sandbox,
+      and report-uri/report-to. The production Cloudflare Worker supplies the
+      enforceable header and a nonce for JSON-LD; this fallback deliberately
+      allows inline scripts so it does not block schema markup when developing
+      without that edge worker.
     -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">

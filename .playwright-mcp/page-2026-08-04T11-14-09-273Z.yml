@@ -1,6 +1,0 @@
-- generic [ref=f1e2]:
-  - region "Notifications alt+T"
-  - main [ref=f1e3]:
-    - generic [ref=f1e13]:
-      - heading "Checking access" [level=2] [ref=f1e14]
-      - paragraph [ref=f1e15]: Loading your account access...

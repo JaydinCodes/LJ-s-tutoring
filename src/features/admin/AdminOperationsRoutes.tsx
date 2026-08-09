@@ -116,7 +116,7 @@ export function AdminPrivacyRequestsRoute() {
         <StatusLine loading={loading} error={error} message={message} onRetry={reload} />
         <div className="mt-5 grid gap-4 xl:grid-cols-2">
           {(data?.requests || []).map((request) => (
-            <PrivacyRequestCard key={request.id} request={request} onClosed={async () => { setMessage('Privacy request closed.'); await reload(); }} />
+            <PrivacyRequestCard key={request.id} request={request} onClosed={async () => { setMessage('Privacy request processed.'); await reload(); }} />
           ))}
           {data && !data.requests.length ? <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">No privacy requests found.</p> : null}
         </div>
@@ -322,10 +322,17 @@ function PrivacyRequestCard({ request, onClosed }: { request: PrivacyRequest; on
   const [error, setError] = useState<string | null>(null);
 
   async function process() {
+    if (request.request_type === 'deletion') {
+      const confirmed = window.confirm(
+        'Permanently delete this learner account and erase their personal data? This action cannot be undone.',
+      );
+      if (!confirmed) return;
+    }
+
     setBusy(true);
     setError(null);
     try {
-      await closePrivacyRequest(request.id);
+      await closePrivacyRequest(request.id, request.request_type);
       await onClosed();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not process privacy request.');
@@ -334,21 +341,41 @@ function PrivacyRequestCard({ request, onClosed }: { request: PrivacyRequest; on
     }
   }
 
+  const isDeletion = request.request_type === 'deletion';
+  const deletionStage = (request.processing_state || 'queued').replace(/_/g, ' ');
+
   return (
     <article className="rounded-lg border border-slate-200 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-slate-950">{request.request_type}</h3>
-          <p className="mt-1 break-all text-sm text-slate-600">{request.subject_student_name || request.subject_student_id}</p>
+          <p className="mt-1 break-all text-sm text-slate-600">{request.subject_student_name || request.subject_student_id || 'Deleted learner'}</p>
         </div>
         <StatusBadge value={request.status} />
       </div>
       <p className="mt-3 text-sm text-slate-600">Created {formatDate(request.created_at)}. {request.reason || 'No reason supplied.'}</p>
+      {isDeletion ? (
+        <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+          <p><span className="font-semibold">Deletion stage:</span> {deletionStage}</p>
+          {typeof request.storage_files_removed === 'number' && request.storage_files_removed > 0 ? (
+            <p className="mt-1">Storage files removed: {request.storage_files_removed}</p>
+          ) : null}
+          {request.last_error ? (
+            <p className="mt-1 font-semibold text-red-700">Last worker error: {request.last_error}</p>
+          ) : null}
+        </div>
+      ) : null}
       {request.status !== 'approved' ? (
         <div className="mt-4 grid gap-3">
-          <p className="text-sm text-slate-600">Processing runs the real export/correction/deletion action immediately -- there is no separate "close without action" step.</p>
+          <p className="text-sm text-slate-600">
+            {isDeletion
+              ? 'Deletion runs through the trusted worker. The request stays pending until Auth, Storage, database erasure, and the compliance receipt all complete.'
+              : 'Processing runs the export or correction action immediately.'}
+          </p>
           <button disabled={busy} className="w-fit rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" type="button" onClick={() => void process()}>
-            {busy ? 'Processing...' : 'Process request'}
+            {busy
+              ? (isDeletion ? 'Deleting learner data...' : 'Processing...')
+              : (isDeletion && request.last_error ? 'Retry deletion' : isDeletion ? 'Process deletion' : 'Process request')}
           </button>
           {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
         </div>

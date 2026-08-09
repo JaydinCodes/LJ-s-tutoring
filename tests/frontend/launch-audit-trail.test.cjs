@@ -39,19 +39,23 @@ test('LAUNCH-05 critical assignment and release RPCs write audit events', () => 
 
 test('LAUNCH-05 admin and tutor mutation surfaces record audit events', () => {
   const assignmentMutations = read('src', 'features', 'assignments', 'assignmentMutations.ts');
+  const assignmentPublication = read('supabase', 'migrations', '20260809162718_transactional_assignment_publication.sql');
   const allocationMutations = read('src', 'features', 'admin', 'allocationManagementMutations.ts');
   const guardianMutations = read('src', 'features', 'admin', 'guardianMutations.ts');
   const rosterMutations = read('src', 'features', 'admin', 'rosterMutations.ts');
   const userRoute = read('src', 'features', 'admin', 'AdminUsersRoute.tsx');
   const classMutations = read('src', 'features', 'admin', 'classManagementMutations.ts');
 
-  for (const source of [assignmentMutations, allocationMutations, guardianMutations, rosterMutations, userRoute, classMutations]) {
+  for (const source of [allocationMutations, guardianMutations, rosterMutations, userRoute, classMutations]) {
     assert.match(source, /recordAuditEvent/);
   }
 
-  assert.match(assignmentMutations, /assignment\.created/);
-  assert.match(assignmentMutations, /assignment\.updated/);
-  assert.match(assignmentMutations, /assignment\.attachment_replaced/);
+  // Assignment publishing is now a trusted database transaction; its audit
+  // records are deliberately not a later best-effort browser RPC.
+  assert.doesNotMatch(assignmentMutations, /recordAuditEvent/);
+  assert.match(assignmentPublication, /assignment\.created|assignment\.published/);
+  assert.match(assignmentPublication, /assignment\.updated/);
+  assert.match(assignmentPublication, /assignment\.attachment_replaced/);
   assert.match(allocationMutations, /tutor_student_allocation\.upserted/);
   assert.match(guardianMutations, /guardian_access\.upserted/);
   assert.match(rosterMutations, /user_profile\.created/);

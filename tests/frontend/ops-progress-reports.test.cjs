@@ -9,9 +9,10 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, ...relativePath.split('/')), 'utf8');
 }
 
-test('OPS-08 admin reports route builds parent-ready and NGO aggregate reports', () => {
+test('OPS-08 admin reports route uses the database-owned report aggregate', () => {
   const route = read('src/features/admin/AdminReportsRoute.tsx');
   const repository = read('src/features/admin/adminProgressReportsRepository.ts');
+  const performanceMigration = read('supabase/migrations/20260809185704_eliminate_unbounded_report_reads.sql');
   const app = read('src/app/App.tsx');
 
   assert.match(app, /AdminReportsRoute/);
@@ -19,16 +20,19 @@ test('OPS-08 admin reports route builds parent-ready and NGO aggregate reports',
   assert.match(route, /Guardian recipients/);
   assert.match(route, /NGO aggregate reports/);
   assert.match(route, /window\.print\(\)/);
-  assert.match(repository, /marks_released/);
-  assert.match(repository, /feedback_released/);
-  assert.match(repository, /can_receive_reports/);
+  assert.match(repository, /get_admin_progress_reports/);
+  assert.doesNotMatch(repository, /from\('assignment_submissions'\)|from\('student_progress'\)/, 'browser must not aggregate raw report tables');
+  assert.match(performanceMigration, /create or replace function public\.get_admin_progress_reports\(\)/);
+  assert.match(performanceMigration, /marks_released = true/);
+  assert.match(performanceMigration, /feedback_released/);
+  assert.match(performanceMigration, /can_receive_reports/);
   assert.match(repository, /NgoProgressReport/);
   assert.doesNotMatch(route, /guardian\.email[\s\S]*NGO aggregate reports/, 'NGO reports must not render guardian contact fields');
 });
 
 test('OPS-08 schema provides a parent-scoped report RPC using linked guardian records', () => {
   const schema = read('docs/supabase/schema.sql');
-  const databaseTypes = read('src/types/database.ts');
+  const databaseTypes = read('supabase/types/public.generated.ts');
   const docs = read('docs/supabase/PRODUCTION_RLS_REVIEW.md');
 
   assert.match(schema, /create or replace function public\.get_parent_progress_reports\(\)/);
@@ -53,8 +57,9 @@ test('launch parent and NGO report routes use protected Supabase data paths', ()
   assert.match(parentRoute, /No reports available/);
   assert.match(parentRoute, /Guardian reports unavailable/);
 
-  assert.match(ngoRepository, /from\('ngo_partners'\)/);
-  assert.match(ngoRepository, /marks_released/);
+  assert.match(ngoRepository, /from\('organization_members'\)/);
+  assert.match(ngoRepository, /rpc\('get_org_cohort_report'/);
+  assert.doesNotMatch(ngoRepository, /from\('learners'\)|from\('submissions'\)|from\('assignments'\)/);
   assert.match(ngoRoute, /NGO Cohort Reports/);
   assert.match(ngoRoute, /No cohort reports available/);
   assert.match(ngoRoute, /learner names, guardian contacts, individual feedback, and raw submission details/);

@@ -442,7 +442,7 @@ export function MatricMathsMistakesGuideRoute() {
 export function PrivacyRoute() {
   return (
     <LegalRoute title="Privacy">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Last updated: 8 June 2026</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Last updated: 9 August 2026</p>
       <p>
         This privacy notice explains how Project Odysseus handles personal information for tutoring, learner progress tracking,
         parent or guardian reporting, tutor operations, NGO partner reporting, and platform administration. It is written for
@@ -511,6 +511,13 @@ export function PrivacyRoute() {
           subjects, saved careers, and APS target) to third-party AI provider Groq. Groq may process this information on servers
           outside South Africa. We do not intentionally send guardian contact details, marks, uploaded files, or full identity
           records to the AI provider. If you would prefer that your child not use the AI assistant, please contact us.
+        </p>
+        <p>
+          Project Odysseus also uses AI-assisted assignment grading. When a learner submits work, the platform may send the
+          submitted answer sheet or uploaded file and the assignment rubric to Google Gemini so it can draft marks and feedback
+          for a human reviewer. Private legacy tutor memos are not sent to Gemini. Gemini may process this information on
+          servers outside South Africa. Draft AI marks are never released automatically; a tutor or admin still reviews and
+          saves the final mark manually.
         </p>
       </LegalSection>
 

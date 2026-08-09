@@ -7,6 +7,18 @@ const schema = fs.readFileSync(
   path.resolve(__dirname, '..', '..', 'docs', 'supabase', 'schema.sql'),
   'utf8',
 );
+const assignmentWriteMigration = fs.readFileSync(
+  path.resolve(__dirname, '..', '..', 'supabase', 'migrations', '20260809120512_harden_assignment_writes.sql'),
+  'utf8',
+);
+const assignmentPublicationMigration = fs.readFileSync(
+  path.resolve(__dirname, '..', '..', 'supabase', 'migrations', '20260809162718_transactional_assignment_publication.sql'),
+  'utf8',
+);
+const studentAssignmentAccessMigration = fs.readFileSync(
+  path.resolve(__dirname, '..', '..', 'supabase', 'migrations', '20260809164016_harden_student_assignment_access.sql'),
+  'utf8',
+);
 
 test('Supabase schema exposes current profile helpers used by RLS policies', () => {
   assert.match(schema, /create or replace function public\.current_profile_role\(\)/);
@@ -21,6 +33,21 @@ test('tutor assignment RLS is scoped to assignments created by the current profi
     /create policy "admin_tutor_manage_assignments"[\s\S]*current_profile_role\(\) in \('admin', 'tutor'\)/,
     'tutors must not receive broad all-assignment write access',
   );
+});
+
+test('AUTH-03: assignment writes are RPC-only and validate active tutor membership for the explicit organization', () => {
+  for (const policy of ['assignments_no_direct_insert', 'assignments_no_direct_update', 'assignments_no_direct_delete']) {
+    assert.match(assignmentWriteMigration, new RegExp(`create policy "${policy}"`));
+  }
+  assert.match(assignmentWriteMigration, /create policy "assignments_no_direct_insert"[\s\S]*?with check \(false\)/);
+  assert.match(assignmentWriteMigration, /create policy "assignments_no_direct_update"[\s\S]*?using \(false\)[\s\S]*?with check \(false\)/);
+  assert.match(assignmentWriteMigration, /create or replace function public\.create_assignment\(/);
+  assert.match(assignmentWriteMigration, /create or replace function public\.update_assignment\(/);
+  assert.match(assignmentWriteMigration, /p_organization_id is null[\s\S]*?array_agg[\s\S]*?cardinality\(v_org_ids\)[\s\S]*?assignment_organization_required/);
+  assert.match(assignmentWriteMigration, /om\.organization_id = p_organization_id[\s\S]*?om\.org_role = 'tutor'[\s\S]*?om\.status in \('active', 'approved'\)/);
+  assert.match(assignmentWriteMigration, /current_approved_active_tutor_id\(\) is null/);
+  assert.match(assignmentWriteMigration, /revoke all on function public\.create_assignment[\s\S]*?from public, anon, authenticated/);
+  assert.match(assignmentWriteMigration, /grant execute on function public\.create_assignment[\s\S]*?to authenticated/);
 });
 
 test('tutors can insert subjects for assignment creation without admin subject access', () => {
@@ -49,7 +76,61 @@ test('assignment submission writes use RPC for versioning and marking', () => {
   assert.match(schema, /grant execute on function public\.mark_assignment_submission/);
   assert.match(mutations, /rpc\('submit_assignment_submission'/);
   assert.match(mutations, /rpc\('mark_assignment_submission'/);
+  assert.match(mutations, /rpc\('create_assignment_draft'/);
+  assert.match(mutations, /rpc\('finalize_assignment_publication'/);
+  assert.doesNotMatch(mutations, /rpc\('create_assignment'\)/);
+  assert.doesNotMatch(mutations, /rpc\('update_assignment'\)/);
+  assert.doesNotMatch(mutations, /\.from\('assignments'\)[\s\S]*?\.insert\(/);
+  assert.doesNotMatch(mutations, /\.from\('assignments'\)[\s\S]*?\.update\(/);
   assert.doesNotMatch(mutations, /\.from\('assignment_submissions'\)[\s\S]*\.update\(\{\s*marks_awarded/);
+});
+
+test('assignment publication stays draft-first, transactional, and cleans abandoned assets', () => {
+  assert.match(assignmentPublicationMigration, /create or replace function public\.create_assignment_draft/);
+  assert.match(assignmentPublicationMigration, /created_by, status, attachment_url, memo_url, rubric_json[\s\S]*?'draft'/);
+  assert.match(assignmentPublicationMigration, /create or replace function public\.finalize_assignment_publication/);
+  assert.match(assignmentPublicationMigration, /select \* into v_assignment[\s\S]*?for update/);
+  assert.match(assignmentPublicationMigration, /delete from storage\.objects o[\s\S]*?v_previous_attachment_url/);
+  assert.match(assignmentPublicationMigration, /delete from storage\.objects o[\s\S]*?v_previous_memo_url/);
+  assert.match(assignmentPublicationMigration, /perform public\.log_audit_event/);
+  assert.match(assignmentPublicationMigration, /create or replace function public\.cleanup_orphaned_assignment_assets/);
+  assert.match(assignmentPublicationMigration, /cleanup-orphaned-assignment-assets/);
+  assert.match(assignmentPublicationMigration, /revoke all on function public\.create_assignment\([^\n]+from authenticated/);
+  assert.match(assignmentPublicationMigration, /revoke all on function public\.update_assignment\([^\n]+from authenticated/);
+});
+
+test('AUTH-04 / AUTH-05: student assignment reads are an explicit safe RPC behind one eligibility gate', () => {
+  const studentRepo = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'src', 'features', 'students', 'studentDashboardRepository.ts'),
+    'utf8',
+  );
+  const mutations = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'src', 'features', 'assignments', 'assignmentMutations.ts'),
+    'utf8',
+  );
+  const worker = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'supabase', 'functions', 'grade-submission', 'index.ts'),
+    'utf8',
+  );
+
+  assert.match(studentAssignmentAccessMigration, /create or replace function public\.can_student_access_assignment\(/);
+  assert.match(studentAssignmentAccessMigration, /available_from/);
+  assert.match(studentAssignmentAccessMigration, /v_assignment\.due_date is not null/);
+  assert.match(studentAssignmentAccessMigration, /assignment_class_targets/);
+  assert.match(studentAssignmentAccessMigration, /assignment_student_targets/);
+  assert.match(studentAssignmentAccessMigration, /create or replace function public\.get_student_accessible_assignments\(\)/);
+  assert.match(studentAssignmentAccessMigration, /where public\.can_student_access_assignment\(a\.id\)/);
+  const safeProjectionStart = studentAssignmentAccessMigration.indexOf('create or replace function public.get_student_accessible_assignments()');
+  const safeProjection = studentAssignmentAccessMigration.slice(safeProjectionStart, studentAssignmentAccessMigration.indexOf('create or replace function public.set_assignment_targets', safeProjectionStart));
+  assert.doesNotMatch(safeProjection, /memo_url|organization_id|created_by|rubric_json/);
+  assert.match(studentAssignmentAccessMigration, /drop policy if exists "assignments_student_read_published_own_org"/);
+  assert.match(studentAssignmentAccessMigration, /can_write_uncommitted_assignment_submission_storage[\s\S]*?can_student_access_assignment/);
+  assert.match(studentAssignmentAccessMigration, /confirm_assignment_submission_attempt[\s\S]*?can_student_access_assignment/);
+  assert.match(studentAssignmentAccessMigration, /submit_assignment_submission[\s\S]*?can_student_access_assignment/);
+  assert.match(worker, /rpc\('can_student_access_assignment'/);
+  assert.match(studentRepo, /rpc\('get_student_accessible_assignments'\)/);
+  assert.doesNotMatch(studentRepo, /from\('assignments'\)\.select\('\*'\)/);
+  assert.doesNotMatch(mutations, /const assignmentResult = await client\.from\('assignments'\)/);
 });
 
 test('students cannot update review fields directly through submission policies', () => {

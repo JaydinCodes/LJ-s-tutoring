@@ -32,14 +32,21 @@ test('login and onboarding surfaces do not expose environment variable names', (
   }
 });
 
-test('tracked files do not include local environment files', () => {
+test('tracked files do not include local environment or browser-agent artifacts', () => {
   const gitignore = read('.gitignore');
-  const trackedFiles = execFileSync('git', ['ls-files', '.env', '.env.local', '.env.example'], {
+  const localEnvironmentFiles = execFileSync('git', ['ls-files', '.env', '.env.local', '.env.example'], {
+    cwd: root,
+    encoding: 'utf8',
+  }).trim().split(/\r?\n/).filter(Boolean);
+  const browserAgentArtifacts = execFileSync('git', ['ls-files', '.claude/settings.local.json', '.playwright-mcp'], {
     cwd: root,
     encoding: 'utf8',
   }).trim().split(/\r?\n/).filter(Boolean);
 
   assert.ok(gitignore.includes('.env'), '.gitignore must exclude local environment files');
-  assert.deepEqual(trackedFiles, ['.env.example'], 'only .env.example may be tracked');
+  assert.ok(gitignore.includes('.claude/settings.local.json'), '.gitignore must exclude Claude local settings');
+  assert.ok(gitignore.includes('.playwright-mcp/'), '.gitignore must exclude Playwright MCP captures');
+  assert.deepEqual(localEnvironmentFiles, ['.env.example'], 'only .env.example may be tracked');
+  assert.deepEqual(browserAgentArtifacts, [], 'browser-agent captures and local settings must never be tracked');
   assert.ok(fs.existsSync(path.join(root, '.env.example')), '.env.example must remain available for setup documentation');
 });

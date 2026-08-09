@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const dist = path.join(root, 'dist');
+const routeManifest = require(path.join(root, 'src', 'app', 'route-manifest.json'));
 const buildVersion = process.env.RELEASE_VERSION || process.env.GITHUB_SHA || String(Date.now());
 const safeBuildVersion = `po-v-${buildVersion}`.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 80);
 
@@ -26,8 +27,6 @@ const copyTargets = [
   'health.json',
   'sw.js',
   'favicon.svg',
-  'robots.txt',
-  'sitemap.xml',
   'react-app-dist',
   'images',
 ];
@@ -63,7 +62,7 @@ for (const target of assetCopyTargets) {
   fs.cpSync(source, destination, { recursive: true });
 }
 
-const reactDashboardRoutes = [
+/* const reactDashboardRoutes = [
   '',
   'login',
   'about',
@@ -116,9 +115,12 @@ const reactDashboardRoutes = [
   'dashboard/tutor/submissions',
   'dashboard/tutor/reports',
   'dashboard/tutor/risk',
-];
+]; */
+const reactDashboardRoutes = routeManifest.routes
+  .filter((route) => route.shell)
+  .map((route) => route.path.replace(/^\//, ''));
 
-const routeMeta = {
+/* const routeMeta = {
   '': {
     title: 'Maths Tutoring Cape Town and South Africa',
     description: 'Project Odysseus provides focused Grade 8-12 CAPS Mathematics, Mathematical Literacy, and Physical Sciences tutoring in Cape Town.',
@@ -147,7 +149,10 @@ const routeMeta = {
     title: 'Terms',
     description: 'Project Odysseus terms for tutoring services, learning workflows, portal access, and role-based LMS features.',
   },
-};
+}; */
+const routeMeta = Object.fromEntries(routeManifest.routes
+  .filter((route) => route.title && route.description)
+  .map((route) => [route.path.replace(/^\//, ''), { title: route.title, description: route.description }]));
 
 function titleFromRoute(route) {
   const title = routeMeta[route]?.title || route
@@ -281,11 +286,12 @@ ${description}${robots}${canonical}${openGraph}    <meta name="theme-color" cont
       Partial CSP via meta: App Platform's static_sites component has no app
       spec mechanism to send this (or X-Frame-Options / X-Content-Type-Options /
       Strict-Transport-Security) as a real HTTP response header -- see the note
-      in .do/app.yaml above the ingress rules. CSP via meta also silently
-      ignores frame-ancestors/sandbox/report-uri, so this is not clickjacking
-      protection.
+      in .do/app.yaml above the ingress rules. The production Cloudflare
+      Worker supplies the enforceable header and a nonce for JSON-LD; this
+      fallback deliberately allows inline scripts so it does not block schema
+      markup when developing without that edge worker.
     -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="/react-app-dist/${reactAppCssFile}">
@@ -323,5 +329,10 @@ if (fs.existsSync(swPath)) {
     .replace('const REACT_APP_CSS_PATH = "/react-app-dist/react-app.css";', `const REACT_APP_CSS_PATH = "/react-app-dist/${reactAppCssFile}";`);
   fs.writeFileSync(swPath, sw);
 }
+
+const publicRoutes = routeManifest.routes.filter((route) => route.public);
+fs.writeFileSync(path.join(dist, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${publicRoutes.map((route) => `  <url><loc>${routeManifest.siteUrl}${route.path === '/' ? '/' : `${route.path}/`}</loc></url>`).join('\n')}\n</urlset>\n`);
+const privatePrefixes = ['/admin', '/dashboard', '/student', '/tutor', '/onboarding', '/reports', '/login', '/api'];
+fs.writeFileSync(path.join(dist, 'robots.txt'), `User-agent: *\nAllow: /\n\n${privatePrefixes.map((prefix) => `Disallow: ${prefix}`).join('\n')}\n\nSitemap: ${routeManifest.siteUrl}/sitemap.xml\n`);
 
 process.stdout.write('Static site copied to dist/.\n');

@@ -34,7 +34,7 @@ export function AdminPayrollRoute() {
     try {
       const result = await generatePayrollWeek(weekStart);
       setGeneratedInvoices(result.invoices || []);
-      setMessage(`Generated ${(result.invoices || []).length} invoice(s).`);
+      setMessage(`Refreshed ${(result.invoices || []).length} open-period invoice(s).`);
       await reload();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not generate payroll week.');
@@ -49,7 +49,7 @@ export function AdminPayrollRoute() {
     setActionError(null);
     try {
       await lockPayPeriod(weekStart);
-      setMessage(`Week ${weekStart} locked.`);
+      setMessage(`Week ${weekStart} closed and locked.`);
       await reload();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not lock pay period.');
@@ -63,11 +63,11 @@ export function AdminPayrollRoute() {
       <Card>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <FormField label="Week start">
-            <TextInput type="date" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} />
+            <TextInput type="date" value={weekStart} onChange={(event) => setWeekStart(normalizeWeekStart(event.target.value))} />
           </FormField>
           <div className="flex flex-wrap gap-3">
-            <button disabled={busy || !weekStart} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" onClick={() => void generate()}>Generate invoices</button>
-            <button disabled={busy || !weekStart} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 disabled:opacity-60" onClick={() => void lock()}>Lock week</button>
+            <button disabled={busy || !weekStart} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" onClick={() => void generate()}>Refresh open-period invoices</button>
+            <button disabled={busy || !weekStart || data?.integrity.canClose === false} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 disabled:opacity-60" onClick={() => void lock()}>Close &amp; lock week</button>
             <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800" onClick={() => void reload()}>Refresh</button>
           </div>
         </div>
@@ -85,6 +85,7 @@ export function AdminPayrollRoute() {
               <div className="mt-5 grid gap-3 md:grid-cols-3">
                 <IntegrityTile label="Status" value={data.integrity.payPeriod?.status || 'OPEN'} />
                 <IntegrityTile label="Pending submissions" value={String(data.integrity.pendingSubmissions?.reduce((sum, item) => sum + Number(item.pending || 0), 0) || 0)} />
+                <IntegrityTile label="Missing tutor rates" value={String(data.integrity.missingRates?.length || 0)} />
                 <IntegrityTile label="Missing invoice lines" value={String(data.integrity.missingInvoiceLines?.length || 0)} />
                 <IntegrityTile label="Overlaps" value={String(data.integrity.overlaps?.length || 0)} />
                 <IntegrityTile label="Duplicate sessions" value={String(data.integrity.duplicateSessions?.length || 0)} />
@@ -215,8 +216,16 @@ function IntegrityTile({ label, value }: { label: string; value: string }) {
 
 function currentWeekStart() {
   const date = new Date();
-  const day = date.getDay();
-  const diff = (day + 6) % 7;
-  date.setDate(date.getDate() - diff);
-  return date.toISOString().slice(0, 10);
+  return normalizeWeekStart([
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-'));
+}
+
+function normalizeWeekStart(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
 }

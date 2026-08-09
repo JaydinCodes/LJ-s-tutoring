@@ -223,7 +223,7 @@ select is(
 select is(
   (
     select count(*)
-    from public.assignments
+    from public.get_student_accessible_assignments()
     where id = 'fa070000-0000-4000-8000-000000000001'
   ),
   1::bigint,

@@ -63,12 +63,11 @@ envs:
 # app either gets a proxy/service layer in front of it or DO ships static-site
 # response headers.
 #
-# Decision (2026-08-03): add Cloudflare in front of this app as that proxy
-# layer rather than migrate hosting. This app spec is unaffected -- the fix is
-# a Cloudflare DNS + Transform Rule change, not a code change. See
-# docs/deployment/CLOUDFLARE_SECURITY_HEADERS.md for the exact header values
-# and setup steps; this comment stays accurate (no headers set here) until
-# that's done.
+# Decision (2026-08-09): add the committed Cloudflare Worker in front of this
+# app rather than migrate hosting. It is the response-header proxy and CSP
+# nonce issuer; this app spec remains intentionally header-free. See
+# docs/deployment/CLOUDFLARE_SECURITY_HEADERS.md for activation and the
+# production probe requirements.
 ingress:
   rules:
     - match:
@@ -376,7 +375,9 @@ static_sites:
     github:
       repo: JaydinCodes/LJ-s-tutoring
       branch: main
-      deploy_on_push: true
+      # Deployment is triggered only by deploy-production.yml after Release
+      # Gates pass for the exact current main commit.
+      deploy_on_push: false
     catchall_document: index.html
     environment_slug: html
     envs:

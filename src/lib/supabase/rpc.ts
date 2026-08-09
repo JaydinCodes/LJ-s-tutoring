@@ -2,22 +2,19 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../types/database';
 
 type Functions = Database['public']['Functions'];
+type RpcArgs<FnName extends keyof Functions> = [Functions[FnName]['Args']] extends [never]
+  ? Record<string, never>
+  : Functions[FnName]['Args'];
 
-// supabase-js 2.106.2's generic `.rpc<FnName, Args>()` overload fails to infer
-// Args for any function with a non-empty argument object (FnName resolves,
-// but the second parameter's type falls back to `undefined`) -- a known
-// inference limitation, not a defect in the Database type. src/lib/audit/
-// auditLog.ts already works around the identical issue for record_audit_event
-// with a one-off inline cast; this is that same cast, centralized so callers
-// don't repeat it, and still fully typed at the call site via `Functions`.
+// This wrapper preserves the generated database contract while allowing
+// zero-argument Postgres functions (which Supabase represents as Args: never)
+// to be called consistently with an empty object.
 export async function callRpc<FnName extends keyof Functions & string>(
   client: SupabaseClient<Database>,
   fn: FnName,
-  args: Functions[FnName]['Args'],
+  args: RpcArgs<FnName>,
 ): Promise<Functions[FnName]['Returns']> {
-  const result = await (client as unknown as {
-    rpc: (name: FnName, args: Functions[FnName]['Args']) => Promise<{ data: Functions[FnName]['Returns']; error: Error | null }>;
-  }).rpc(fn, args);
+  const result = await client.rpc(fn, args);
 
   if (result.error) {
     throw result.error;

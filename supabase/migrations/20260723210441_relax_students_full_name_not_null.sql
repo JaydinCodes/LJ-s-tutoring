@@ -8,5 +8,17 @@
 -- until admin-invite-user's functional verification (creating a real new
 -- student) surfaced it. The table has zero rows in production, so this is a
 -- pure constraint fix, not a data migration.
-alter table public.students alter column full_name drop not null;
-;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'students'
+      and column_name = 'full_name'
+      and is_nullable = 'NO'
+  ) then
+    alter table public.students alter column full_name drop not null;
+  end if;
+end
+$$;

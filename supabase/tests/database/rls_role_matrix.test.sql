@@ -152,6 +152,12 @@ values
   ('50000000-0000-0000-0000-000000000003', 'Alpha Draft', '90000000-0000-0000-0000-000000000001', 'Grade 11', '10000000-0000-0000-0000-000000000003', 'draft', 'a0000000-0000-0000-0000-000000000001'),
   ('50000000-0000-0000-0000-000000000004', 'Beta Published', '90000000-0000-0000-0000-000000000001', 'Grade 11', '10000000-0000-0000-0000-000000000007', 'published', 'a0000000-0000-0000-0000-000000000002');
 
+-- A private legacy path exists to prove the student projection does not leak
+-- it even though staff can still retain historical memo data.
+update public.assignments
+set memo_url = '50000000-0000-0000-0000-000000000001/legacy-private-memo.pdf'
+where id = '50000000-0000-0000-0000-000000000001';
+
 insert into public.classes (id, name, tutor_id, subject_id, grade, status, organization_id)
 values
   ('c0000000-0000-0000-0000-000000000001', 'Alpha Mathematics', '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001', 'Grade 11', 'active', 'a0000000-0000-0000-0000-000000000001'),
@@ -429,10 +435,34 @@ select throws_ok(
 
 reset role;
 
+-- PERF-01: exercising 1,001 records proves that headline dashboard metrics
+-- are SQL aggregates rather than an implicitly capped PostgREST response.
+insert into public.student_progress (id, student_id, subject_id, topic, score, recorded_at)
+select
+  ('7' || lpad(series::text, 31, '0'))::uuid,
+  '20000000-0000-0000-0000-000000000001'::uuid,
+  '90000000-0000-0000-0000-000000000001'::uuid,
+  'PERF-01 fixture ' || series,
+  42,
+  now() - (series || ' minutes')::interval
+from generate_series(1, 1001) as series;
+
 -- Student Alpha: published own-org learning data only; results are redacted
 -- through the RPC and notifications/storage remain owner scoped.
 select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
 set local role authenticated;
+
+select cmp_ok(
+  (select count(*) from public.student_progress where student_id = '20000000-0000-0000-0000-000000000001'),
+  '>=',
+  1001::bigint,
+  'PERF-01 fixture contains more rows than the PostgREST 1,000-row ceiling'
+);
+select is(
+  (public.get_student_dashboard_metrics() ->> 'overall_score')::numeric,
+  (select round(avg(score), 0) from public.student_progress where student_id = '20000000-0000-0000-0000-000000000001'),
+  'student dashboard overall score aggregates all 1,001+ progress rows in PostgreSQL'
+);
 
 select throws_ok(
   $$select public.run_retention_cleanup(false)$$,
@@ -447,9 +477,24 @@ select throws_ok(
   'student cannot execute the scheduler retention RPC'
 );
 
-select is((select count(*) from public.assignments), 2::bigint, 'student sees published assignments in own organization');
-select is((select count(*) from public.assignments where status = 'draft'), 0::bigint, 'student cannot see own-org drafts');
-select is((select count(*) from public.assignments where organization_id = 'a0000000-0000-0000-0000-000000000002'), 0::bigint, 'student cannot see cross-organization assignments');
+select is((select count(*) from public.assignments), 0::bigint, 'student cannot read raw assignment rows or private columns');
+select is((select count(*) from public.get_student_accessible_assignments()), 2::bigint, 'student safe assignment RPC returns only eligible published own-org work');
+select ok(
+  not ((select to_jsonb(a) from public.get_student_accessible_assignments() a where id = '50000000-0000-0000-0000-000000000001') ? 'memo_url'),
+  'student safe assignment RPC never returns the private memo path'
+);
+select ok(
+  public.can_student_access_assignment('50000000-0000-0000-0000-000000000001'),
+  'student eligibility gate permits a matching active learner, grade, organization, and published assignment'
+);
+select ok(
+  not public.can_student_access_assignment('50000000-0000-0000-0000-000000000003'),
+  'student eligibility gate denies a draft assignment'
+);
+select ok(
+  not public.can_student_access_assignment('50000000-0000-0000-0000-000000000004'),
+  'student eligibility gate denies a cross-organization assignment'
+);
 select is((select count(*) from public.assignment_submissions), 0::bigint, 'student cannot read raw submission/result rows');
 select is((select count(*) from public.get_student_assignment_submissions()), 2::bigint, 'student result RPC returns only own submissions');
 select ok((select marks_awarded is null from public.get_student_assignment_submissions() where assignment_id = '50000000-0000-0000-0000-000000000001'), 'student RPC redacts unreleased marks');
@@ -472,7 +517,7 @@ select throws_ok(
 select is((select count(*) from public.classes), 1::bigint, 'student sees only an enrolled own-organization class without recursive RLS');
 select is((select count(*) from public.class_enrollments), 1::bigint, 'student sees only their own class enrollment');
 select is((select count(*) from public.classes where organization_id = 'a0000000-0000-0000-0000-000000000002'), 0::bigint, 'student cannot see a cross-organization class');
-select is((select count(*) from storage.objects where bucket_id = 'assignment-files'), 2::bigint, 'student sees published own-org assignment files');
+select is((select count(*) from storage.objects where bucket_id = 'assignment-files'), 0::bigint, 'student cannot enumerate assignment Storage objects directly');
 select is((select count(*) from storage.objects where bucket_id = 'assignment-submissions'), 2::bigint, 'student sees only own submission files');
 
 reset role;
@@ -521,6 +566,58 @@ select is((select count(*) from public.class_enrollments), 1::bigint, 'tutor see
 select is((select count(*) from public.class_enrollments where class_id = 'c0000000-0000-0000-0000-000000000002'), 0::bigint, 'tutor cannot see cross-organization class enrollments');
 select is((select count(*) from storage.objects where bucket_id = 'assignment-files'), 3::bigint, 'tutor sees files only for assignments they created');
 select is((select count(*) from storage.objects where bucket_id = 'assignment-submissions'), 2::bigint, 'tutor sees submission files only for assignments they created');
+
+-- AUTH-03: raw assignment writes are prohibited and the only write RPC checks
+-- the requested organization against the tutor's active membership.
+select throws_ok(
+  $$
+    insert into public.assignments (title, created_by, status, organization_id)
+    values ('Cross-org raw write', '10000000-0000-0000-0000-000000000003', 'published', 'a0000000-0000-0000-0000-000000000002')
+  $$,
+  '42501',
+  'new row violates row-level security policy for table "assignments"',
+  'tutor cannot directly insert an assignment into another organization'
+);
+select throws_ok(
+  $$
+    select public.create_assignment_draft(
+      'a0000000-0000-0000-0000-000000000002',
+      'Cross-org RPC write', null, '90000000-0000-0000-0000-000000000001',
+      'Grade 11', null, '[]'::jsonb
+    )
+  $$,
+  '42501',
+  'assignment_organization_forbidden',
+  'tutor cannot create an assignment through the RPC in another organization'
+);
+select lives_ok(
+  $$
+    select public.create_assignment_draft(
+      'a0000000-0000-0000-0000-000000000001',
+      'Same-org RPC write', null, '90000000-0000-0000-0000-000000000001',
+      'Grade 11', null, '[]'::jsonb
+    )
+  $$,
+  'approved active tutor can create an assignment through the scoped RPC'
+);
+select is(
+  (select count(*) from public.assignments where title = 'Same-org RPC write' and organization_id = 'a0000000-0000-0000-0000-000000000001'),
+  1::bigint,
+  'scoped assignment RPC preserves the tutor organization'
+);
+select lives_ok(
+  $$
+    update public.assignments
+    set organization_id = 'a0000000-0000-0000-0000-000000000002'
+    where id = '50000000-0000-0000-0000-000000000001'
+  $$,
+  'direct assignment update is denied by RLS rather than changing organization'
+);
+select is(
+  (select organization_id from public.assignments where id = '50000000-0000-0000-0000-000000000001'),
+  'a0000000-0000-0000-0000-000000000001'::uuid,
+  'tutor cannot move an existing assignment to another organization'
+);
 
 reset role;
 
@@ -617,7 +714,7 @@ select is(
   false,
   'AAL2 admin can run a non-destructive retention dry run'
 );
-select is((select count(*) from public.assignments), 4::bigint, 'AAL2 admin sees assignments across organizations');
+select is((select count(*) from public.assignments), 5::bigint, 'AAL2 admin sees assignments across organizations');
 select is((select count(*) from public.assignment_submissions), 3::bigint, 'AAL2 admin sees submissions/results across organizations');
 select is((select count(*) from public.guardians), 2::bigint, 'AAL2 admin sees guardian records across organizations');
 select is((select count(*) from public.student_guardians), 2::bigint, 'AAL2 admin sees guardian links across organizations');
@@ -680,7 +777,7 @@ select lives_ok(
       'assignment-submissions',
       '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
       '00000000-0000-0000-0000-000000000002',
-      '{}'::jsonb
+      '{"mimetype":"application/pdf","size":123}'::jsonb
     )
   $$,
   'student can upload a correctly-shaped own-org submission key'
@@ -688,7 +785,7 @@ select lives_ok(
 select lives_ok(
   $$
     update storage.objects
-    set metadata = '{"retry":true}'::jsonb
+    set metadata = '{"mimetype":"application/pdf","size":123,"retry":true}'::jsonb
     where bucket_id = 'assignment-submissions'
       and name = '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
   $$,
@@ -742,7 +839,7 @@ select is(
     where bucket_id = 'assignment-submissions'
       and name = '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
   ),
-  '{"retry":true}'::jsonb,
+  '{"mimetype":"application/pdf","size":123,"retry":true}'::jsonb,
   'post-commit overwrite attempt leaves the stored evidence unchanged'
 );
 select ok(
@@ -810,9 +907,9 @@ select throws_ok(
       p_text_answer => 'Stable retry payload'
     )
   $$,
-  '23505',
-  'submission_id_conflict',
-  'same attempt UUID cannot be rebound to another assignment'
+  'P0002',
+  'submission_file_not_found',
+  'same attempt UUID cannot reference an unverified file for another assignment'
 );
 select is(
   (select count(*) from public.get_student_assignment_submissions() where id = '70000000-0000-0000-0000-000000000001'),
@@ -958,6 +1055,568 @@ select is(
   ),
   1::bigint,
   'successful invited onboarding creates exactly one student role row'
+);
+
+reset role;
+
+-- ============================================================================
+-- AUTH-01: inactive/suspended/pending student and tutor principals must lose
+-- operational authorization even while their Supabase Auth session remains
+-- valid.
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Student status denial matrix
+-- ---------------------------------------------------------------------------
+
+reset role;
+
+update public.students
+set status = 'inactive'
+where id = '20000000-0000-0000-0000-000000000001';
+
+select pg_temp.authenticate_as(
+  '00000000-0000-0000-0000-000000000002'
+);
+set local role authenticated;
+
+select is(
+  public.current_active_student_id(),
+  null::uuid,
+  'inactive student has no active operational student identity'
+);
+
+select is(
+  public.current_student_id(),
+  null::uuid,
+  'legacy current_student_id fails closed for inactive student'
+);
+
+select is(
+  public.current_student_org_id(),
+  null::uuid,
+  'inactive student has no operational organization identity'
+);
+
+select is(
+  (select count(*) from public.get_student_accessible_assignments()),
+  0::bigint,
+  'inactive student cannot read assignments'
+);
+
+select is(
+  (select count(*) from public.classes),
+  0::bigint,
+  'inactive student cannot read learner classes'
+);
+
+select is(
+  (select count(*) from storage.objects
+   where bucket_id = 'assignment-files'),
+  0::bigint,
+  'inactive student cannot read assignment files'
+);
+
+select is(
+  (select count(*) from public.get_student_assignment_submissions()),
+  0::bigint,
+  'inactive student cannot read submission results through student RPC'
+);
+
+select throws_ok(
+  $$
+    select public.submit_assignment_submission(
+      p_assignment_id =>
+        '50000000-0000-0000-0000-000000000001',
+      p_submission_id =>
+        '71000000-0000-0000-0000-000000000001',
+      p_storage_key => null,
+      p_file_url => null,
+      p_original_filename => null,
+      p_mime_type => null,
+      p_size_bytes => null,
+      p_text_answer => 'Inactive learner attempt'
+    )
+  $$,
+  '42501',
+  'only_students_can_submit',
+  'inactive student cannot submit assignment work'
+);
+
+reset role;
+
+
+-- Suspended student
+update public.students
+set status = 'suspended'
+where id = '20000000-0000-0000-0000-000000000001';
+
+select pg_temp.authenticate_as(
+  '00000000-0000-0000-0000-000000000002'
+);
+set local role authenticated;
+
+select is(
+  public.current_active_student_id(),
+  null::uuid,
+  'suspended student has no active operational student identity'
+);
+
+select is(
+  (select count(*) from public.assignments),
+  0::bigint,
+  'suspended student cannot read assignments'
+);
+
+select throws_ok(
+  $$
+    select public.submit_assignment_submission(
+      p_assignment_id =>
+        '50000000-0000-0000-0000-000000000001',
+      p_submission_id =>
+        '71000000-0000-0000-0000-000000000002',
+      p_storage_key => null,
+      p_file_url => null,
+      p_original_filename => null,
+      p_mime_type => null,
+      p_size_bytes => null,
+      p_text_answer => 'Suspended learner attempt'
+    )
+  $$,
+  '42501',
+  'only_students_can_submit',
+  'suspended student cannot submit assignment work'
+);
+
+reset role;
+
+
+-- Pending student
+update public.students
+set status = 'pending'
+where id = '20000000-0000-0000-0000-000000000001';
+
+select pg_temp.authenticate_as(
+  '00000000-0000-0000-0000-000000000002'
+);
+set local role authenticated;
+
+select is(
+  public.current_active_student_id(),
+  null::uuid,
+  'pending student has no active operational student identity'
+);
+
+select is(
+  (select count(*) from public.assignments),
+  0::bigint,
+  'pending student cannot read assignments'
+);
+
+reset role;
+
+
+-- Restore positive student state and prove access returns.
+update public.students
+set status = 'active'
+where id = '20000000-0000-0000-0000-000000000001';
+
+select pg_temp.authenticate_as(
+  '00000000-0000-0000-0000-000000000002'
+);
+set local role authenticated;
+
+select is(
+  public.current_active_student_id(),
+  '20000000-0000-0000-0000-000000000001'::uuid,
+  'active student receives operational student identity'
+);
+
+select is(
+  (select count(*) from public.get_student_accessible_assignments()),
+  2::bigint,
+  'active student regains published own-organization assignments'
+);
+
+reset role;
+
+
+-- ---------------------------------------------------------------------------
+-- Tutor status + approval denial matrix
+-- ---------------------------------------------------------------------------
+
+-- Pending tutor: onboarding remains available, operational access is denied.
+update public.tutors
+set
+  status = 'pending',
+  approval_status = 'pending'
+where id = '30000000-0000-0000-0000-000000000001';
+
+select pg_temp.authenticate_as(
+  '00000000-0000-0000-0000-000000000003'
+);
+set local role authenticated;
+
+select is(
+  public.current_approved_active_tutor_id(),
+  null::uuid,
+  'pending tutor has no approved active operational identity'
+);
+
+select is(
+  public.current_tutor_id(),
+  null::uuid,
+  'legacy current_tutor_id fails closed for pending tutor'
+);
+
+select is(
+  public.current_tutor_onboarding_id(),
+  '30000000-0000-0000-0000-000000000001'::uuid,
+  'pending tutor retains onboarding identity'
+);
+
+select is(
+  (select count(*) from public.assignments),
+  0::bigint,
+  'pending tutor cannot read operational assignments'
+);
+
+select is(
+  (select count(*) from public.classes),
+  0::bigint,
+  'pending tutor cannot read organization classes'
+);
+
+select is(
+  (select count(*) from public.assignment_submissions),
+  0::bigint,
+  'pending tutor cannot read learner submissions'
+);
+
+select throws_ok(
+  $$select * from public.get_tutor_allocated_students()$$,
+  '42501',
+  'only_tutors_can_view_allocated_students',
+  'pending tutor cannot use allocated learner directory'
+);
+
+select lives_ok(
+  $$
+    select public.upsert_tutor_application(
+      '{}'::jsonb,
+      '[]'::jsonb,
+      '[]'::jsonb,
+      '[]'::jsonb,
+      null,
+      null
+    )
+  $$,
+  'pending tutor can still update onboarding application'
+);
+
+reset role;
+
+
+-- Active tutor whose approval is still under review.
+update public.tutors
+set
+  status = 'active',
+  approval_status = 'under_review'
+where id = '30000000-0000-0000-0000-000000000001';
+
+select pg_temp.authenticate_as(
+  '00000000-0000-0000-0000-000000000003'
+);
+set local role authenticated;
+
+select is(
+  public.current_approved_active_tutor_id(),
+  null::uuid,
+  'under-review tutor has no operational tutor identity'
+);
+
+select is(
+  (select count(*) from public.assignments),
+  0::bigint,
+  'under-review tutor cannot read operational assignments'
+);
+
+select is(
+  public.current_tutor_onboarding_id(),
+  '30000000-0000-0000-0000-000000000001'::uuid,
+  'under-review active tutor retains onboarding access'
+);
+
+reset role;
+
+
+-- Rejected tutor.
+update public.tutors
+set
+  status = 'active',
+  approval_status = 'rejected'
+where id = '30000000-0000-0000-0000-000000000001';
+
+select pg_temp.authenticate_as(
+  '00000000-0000-0000-0000-000000000003'
+);
+set local role authenticated;
+
+select is(
+  public.current_approved_active_tutor_id(),
+  null::uuid,
+  'rejected tutor has no operational tutor identity'
+);
+
+select is(
+  (select count(*) from public.assignments),
+  0::bigint,
+  'rejected tutor cannot read operational assignments'
+);
+
+reset role;
+
+
+-- Inactive tutor must lose BOTH operational and onboarding access.
+update public.tutors
+set
+  status = 'inactive',
+  approval_status = 'approved'
+where id = '30000000-0000-0000-0000-000000000001';
+
+select pg_temp.authenticate_as(
+  '00000000-0000-0000-0000-000000000003'
+);
+set local role authenticated;
+
+select is(
+  public.current_approved_active_tutor_id(),
+  null::uuid,
+  'inactive tutor has no operational tutor identity'
+);
+
+select is(
+  public.current_tutor_onboarding_id(),
+  null::uuid,
+  'inactive tutor has no onboarding exception'
+);
+
+select is(
+  (select count(*) from public.assignments),
+  0::bigint,
+  'inactive tutor cannot read assignments through organization membership'
+);
+
+select is(
+  (select count(*) from public.classes),
+  0::bigint,
+  'inactive tutor cannot read classes through organization membership'
+);
+
+select is(
+  (select count(*) from public.assignment_submissions),
+  0::bigint,
+  'inactive tutor cannot read learner submissions'
+);
+
+select is(
+  (select count(*) from storage.objects
+   where bucket_id = 'assignment-files'),
+  0::bigint,
+  'inactive tutor cannot read assignment files'
+);
+
+select throws_ok(
+  $$
+    select public.upsert_tutor_application(
+      '{}'::jsonb,
+      '[]'::jsonb,
+      '[]'::jsonb,
+      '[]'::jsonb,
+      null,
+      null
+    )
+  $$,
+  '42501',
+  'forbidden',
+  'inactive tutor cannot use onboarding application RPC'
+);
+
+reset role;
+
+
+-- Suspended tutor must also lose both access classes.
+update public.tutors
+set
+  status = 'suspended',
+  approval_status = 'approved'
+where id = '30000000-0000-0000-0000-000000000001';
+
+select pg_temp.authenticate_as(
+  '00000000-0000-0000-0000-000000000003'
+);
+set local role authenticated;
+
+select is(
+  public.current_approved_active_tutor_id(),
+  null::uuid,
+  'suspended tutor has no operational tutor identity'
+);
+
+select is(
+  public.current_tutor_onboarding_id(),
+  null::uuid,
+  'suspended tutor has no onboarding exception'
+);
+
+select is(
+  (select count(*) from public.assignments),
+  0::bigint,
+  'suspended tutor cannot read assignments'
+);
+
+select throws_ok(
+  $$select * from public.get_tutor_allocated_students()$$,
+  '42501',
+  'only_tutors_can_view_allocated_students',
+  'suspended tutor cannot use allocated learner directory'
+);
+
+reset role;
+
+
+-- Restore approved active tutor and prove normal access still works.
+update public.tutors
+set
+  status = 'active',
+  approval_status = 'approved'
+where id = '30000000-0000-0000-0000-000000000001';
+
+select pg_temp.authenticate_as(
+  '00000000-0000-0000-0000-000000000003'
+);
+set local role authenticated;
+
+select is(
+  public.current_approved_active_tutor_id(),
+  '30000000-0000-0000-0000-000000000001'::uuid,
+  'approved active tutor receives operational tutor identity'
+);
+
+select is(
+  (select count(*) from public.assignments),
+  4::bigint,
+  'approved active tutor regains own-organization assignments'
+);
+
+select is(
+  (select count(*) from public.get_tutor_allocated_students()),
+  1::bigint,
+  'approved active tutor regains allocated learner directory'
+);
+
+reset role;
+
+-- TEST-01: durable AI grading jobs must execute their lease, stale-worker, and
+-- retry boundaries in PostgreSQL—not merely match migration source text.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object('role', 'service_role')::text,
+  true
+);
+set local role service_role;
+
+update public.assignment_submissions
+set ai_grading_status = 'pending',
+    ai_job_attempts = 0,
+    ai_job_available_at = now() - interval '1 second',
+    ai_job_lease_expires_at = null,
+    ai_job_claim_token = null,
+    ai_job_claimed_at = null,
+    ai_job_last_error = null
+where id = '60000000-0000-0000-0000-000000000001';
+
+select ok(
+  exists (
+    select 1
+    from public.claim_ai_grading_job('60000000-0000-0000-0000-000000000001')
+  ),
+  'service worker atomically claims a pending AI grading job'
+);
+select is(
+  (select ai_grading_status from public.assignment_submissions where id = '60000000-0000-0000-0000-000000000001'),
+  'in_progress',
+  'claimed AI job is in progress'
+);
+select is(
+  (select ai_job_attempts from public.assignment_submissions where id = '60000000-0000-0000-0000-000000000001'),
+  1,
+  'first AI lease increments the attempt counter'
+);
+select ok(
+  not public.complete_ai_grading_job(
+    '60000000-0000-0000-0000-000000000001',
+    gen_random_uuid(),
+    80,
+    'stale worker result',
+    '{}'::jsonb,
+    0.9
+  ),
+  'stale AI worker token cannot complete another worker’s lease'
+);
+select ok(
+  public.fail_ai_grading_job(
+    '60000000-0000-0000-0000-000000000001',
+    (select ai_job_claim_token from public.assignment_submissions where id = '60000000-0000-0000-0000-000000000001'),
+    'intentional pgTAP retry probe',
+    1
+  ),
+  'current AI worker can schedule a bounded retry'
+);
+select is(
+  (select ai_grading_status from public.assignment_submissions where id = '60000000-0000-0000-0000-000000000001'),
+  'failed',
+  'failed AI work is durable and visible for retry'
+);
+update public.assignment_submissions
+set ai_job_available_at = now() - interval '1 second'
+where id = '60000000-0000-0000-0000-000000000001';
+select ok(
+  exists (
+    select 1
+    from public.claim_ai_grading_job('60000000-0000-0000-0000-000000000001')
+  ),
+  'eligible failed AI job can be leased again'
+);
+select is(
+  (select ai_job_attempts from public.assignment_submissions where id = '60000000-0000-0000-0000-000000000001'),
+  2,
+  'retry lease increments the AI attempt counter exactly once'
+);
+
+reset role;
+
+-- A locked period cannot accept a new adjustment, even through its trusted RPC.
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000001', 'aal2');
+set local role authenticated;
+select lives_ok(
+  $$select public.lock_pay_period('2099-01-05'::date)$$,
+  'admin locks the test pay period through the trusted payroll RPC'
+);
+select throws_ok(
+  $$
+    select public.create_adjustment(
+      '30000000-0000-0000-0000-000000000001',
+      'bonus'::public.adjustment_type,
+      100,
+      'must not alter a locked payroll period',
+      null,
+      '2099-01-05'::date
+    )
+  $$,
+  '42501',
+  'pay_period_locked',
+  'admin cannot create an adjustment after the pay period is locked'
 );
 
 reset role;

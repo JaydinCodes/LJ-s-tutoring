@@ -105,7 +105,7 @@ export async function loadCommunityOverview() {
 
 export async function createStudyRoom(input: { subject: string; grade?: string }) {
   const client = requireSupabase();
-  const room = await callRpc(client, 'create_study_room', { p_subject: input.subject, p_grade: input.grade ?? null });
+  const room = await callRpc(client, 'create_study_room', { p_subject: input.subject, p_grade: input.grade ?? '' });
   return { room: mapRoom({ ...room, member_count: 1, is_member: true }) };
 }
 

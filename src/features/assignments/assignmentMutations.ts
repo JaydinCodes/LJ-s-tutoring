@@ -1,6 +1,5 @@
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { markE2ESubmission, submitE2EAssignment } from '../../lib/e2e/mockRoleData';
-import { recordAuditEvent } from '../../lib/audit/auditLog';
 import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { requireSupabase } from '../../lib/supabase/client';
 import type { Assignment, AssignmentStatus, AssignmentSubmission, Profile, Student, Subject } from '../../types/lms';
@@ -13,10 +12,8 @@ export interface CreateAssignmentInput {
   curriculum?: string;
   dueDate?: string;
   attachment?: File | null;
-  // Model answer for AI-assisted marking -- private assignment-memos bucket,
-  // never student-readable (unlike attachment, assignment-files).
-  memo?: File | null;
   rubricJson?: string;
+  organizationId?: string;
 }
 
 export interface SubmitAssignmentInput {
@@ -40,7 +37,6 @@ export interface UpdateAssignmentInput {
   dueDate?: string;
   status: AssignmentStatus;
   attachment?: File | null;
-  memo?: File | null;
   rubricJson?: string;
 }
 
@@ -84,15 +80,39 @@ function captureAssignmentError(action: string, error: unknown, metadata: Record
   });
 }
 
-// Fire-and-forget: AI grading is a background bonus, never a requirement for
-// a successful submit. grade-submission claims the row idempotently, so it's
-// safe to call this from every path that confirms the submission exists.
+// Queue durable background work only, then kick the worker without waiting
+// for the AI result. The submission transaction has already been confirmed,
+// so grading can finish in the background without blocking the learner.
 async function triggerAiGrading(client: ReturnType<typeof requireSupabase>, submissionId: string) {
-  try {
-    await client.functions.invoke('grade-submission', { body: { submissionId } });
-  } catch (err) {
-    captureAssignmentError('assignment_submission.ai_grading_trigger_failed', err, { submission_id: submissionId });
+  const queued = await (client as unknown as {
+    rpc: (name: 'enqueue_ai_grading', args: { p_submission_id: string }) => Promise<{ error: Error | null }>;
+  }).rpc('enqueue_ai_grading', { p_submission_id: submissionId });
+  if (queued.error) {
+    captureAssignmentError('assignment_submission.ai_grading_queue_failed', queued.error, { submission_id: submissionId });
+    return;
   }
+
+  void (client as unknown as {
+    functions: {
+      invoke: (
+        name: 'grade-submission',
+        options: { body: { submissionId: string } },
+      ) => Promise<{ error: Error | null }>;
+    };
+  }).functions.invoke('grade-submission', { body: { submissionId } }).then(
+    ({ error }) => {
+      if (error) {
+        captureAssignmentError('assignment_submission.ai_grading_invoke_failed', error, {
+          submission_id: submissionId,
+        });
+      }
+    },
+    (error) => {
+      captureAssignmentError('assignment_submission.ai_grading_invoke_failed', error, {
+        submission_id: submissionId,
+      });
+    },
+  );
 }
 
 async function confirmSubmissionAttempt(
@@ -199,6 +219,31 @@ function safeFileName(file: File) {
   return file.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 120);
 }
 
+const MAX_SUBMISSION_FILE_BYTES = 5 * 1024 * 1024;
+const SUBMISSION_FILE_TYPES: Record<string, string[]> = {
+  'application/pdf': ['pdf'],
+  'image/jpeg': ['jpg', 'jpeg'],
+  'image/png': ['png'],
+  'image/webp': ['webp'],
+  'text/plain': ['txt'],
+  'text/markdown': ['md', 'markdown'],
+  'text/csv': ['csv'],
+  'application/json': ['json'],
+  'application/xml': ['xml'],
+  'text/xml': ['xml'],
+};
+
+function validateSubmissionFile(file: File) {
+  const extension = file.name.split('.').pop()?.toLowerCase() || '';
+  const mimeType = file.type.split(';')[0].toLowerCase();
+  if (!mimeType || !SUBMISSION_FILE_TYPES[mimeType]?.includes(extension)) {
+    throw new Error('Use a PDF, JPG, PNG, WebP, TXT, Markdown, CSV, JSON, or XML file with a matching file extension.');
+  }
+  if (file.size < 1 || file.size > MAX_SUBMISSION_FILE_BYTES) {
+    throw new Error('Submission files must be between 1 byte and 5 MiB.');
+  }
+}
+
 export function createSubmissionAttemptId() {
   if (globalThis.crypto?.randomUUID) {
     return globalThis.crypto.randomUUID();
@@ -230,6 +275,88 @@ function parseJsonField(value: string | undefined, fallback: unknown, label: str
   }
 }
 
+type AssignmentFinalizePayload = {
+  p_assignment_id: string;
+  p_title: string;
+  p_description: string | null;
+  p_subject_id: string | null;
+  p_grade: string | null;
+  p_due_date: string | null;
+  p_status: AssignmentStatus;
+  p_attachment_url: string | null;
+  p_memo_url: string | null;
+  p_rubric_json: unknown;
+};
+
+type AssignmentPublishClient = {
+  rpc: (
+    name: 'create_assignment_draft' | 'finalize_assignment_publication' | 'discard_assignment_staged_assets',
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: Error | null }>;
+};
+
+function assignmentFromRpc(data: unknown, fallback: string) {
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) {
+    throw new Error(fallback);
+  }
+  return row as Assignment;
+}
+
+function assignmentAssetPath(assignmentId: string, uploadId: string, label: 'attachment', file: File) {
+  return `${assignmentId}/staging/${uploadId}/${label}-${safeFileName(file)}`;
+}
+
+async function uploadAssignmentAsset(
+  client: ReturnType<typeof requireSupabase>,
+  bucket: 'assignment-files',
+  path: string,
+  file: File,
+) {
+  const uploaded = await client.storage.from(bucket).upload(path, file, {
+    upsert: false,
+    contentType: file.type || undefined,
+  });
+  if (uploaded.error) {
+    throw uploaded.error;
+  }
+  if (uploaded.data.path !== path) {
+    throw new Error('Assignment asset upload returned an unexpected storage path.');
+  }
+  return uploaded.data.path;
+}
+
+async function discardStagedAssignmentAssets(
+  client: ReturnType<typeof requireSupabase>,
+  assignmentId: string,
+  attachmentPath: string | null,
+) {
+  const discarded = await (client as unknown as AssignmentPublishClient).rpc('discard_assignment_staged_assets', {
+    p_assignment_id: assignmentId,
+    p_attachment_url: attachmentPath,
+    p_memo_url: null,
+  });
+  if (discarded.error) {
+    captureAssignmentError('assignment.staged_asset_cleanup_failed', discarded.error, { assignment_id: assignmentId });
+  }
+}
+
+async function confirmAssignmentFinalization(
+  client: ReturnType<typeof requireSupabase>,
+  payload: AssignmentFinalizePayload,
+) {
+  const confirmed = await client.from('assignments').select('*').eq('id', payload.p_assignment_id).maybeSingle();
+  if (confirmed.error || !confirmed.data) {
+    return null;
+  }
+  const assignment = confirmed.data as Assignment;
+  return assignment.status === payload.p_status
+    && assignment.attachment_url === payload.p_attachment_url
+    && assignment.memo_url === payload.p_memo_url
+    ? assignment
+    : null;
+}
+
 export async function createAssignment(input: CreateAssignmentInput) {
   const client = requireSupabase();
   const profile = await getCurrentProfile();
@@ -251,127 +378,79 @@ export async function createAssignment(input: CreateAssignmentInput) {
     throw new Error('Grade is required.');
   }
 
+  const rubricJson = parseJsonField(input.rubricJson, [], 'Rubric');
   const subject = await findOrCreateSubject(input);
-  const inserted = await (client.from('assignments') as unknown as {
-    insert: (payload: {
-      title: string;
-      description: string | null;
-      subject_id: string;
-      grade: string;
-      due_date: string | null;
-      created_by: string;
-      status: string;
-      attachment_url: string | null;
-      memo_url: string | null;
-      rubric_json: unknown;
-    }) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
-  })
-    .insert({
-      title,
-      description: input.description?.trim() || null,
-      subject_id: subject.id,
-      grade,
-      due_date: input.dueDate ? new Date(input.dueDate).toISOString() : null,
-      created_by: profile.id,
-      status: 'published',
-      attachment_url: null,
-      memo_url: null,
-      rubric_json: parseJsonField(input.rubricJson, [], 'Rubric'),
-    })
-    .select('*')
-    .single();
+  const drafted = await (client as unknown as AssignmentPublishClient).rpc('create_assignment_draft', {
+    p_organization_id: input.organizationId ?? null,
+    p_title: title,
+    p_description: input.description?.trim() || null,
+    p_subject_id: subject.id,
+    p_grade: grade,
+    p_due_date: input.dueDate ? new Date(input.dueDate).toISOString() : null,
+    p_rubric_json: rubricJson,
+  });
 
-  if (inserted.error) {
-    captureAssignmentError('assignment.create_failed', inserted.error, {
+  if (drafted.error) {
+    captureAssignmentError('assignment.draft_create_failed', drafted.error, {
       role: profile.role,
       has_attachment: Boolean(input.attachment),
     });
-    throw inserted.error;
+    throw drafted.error;
   }
 
-  let assignment = inserted.data as Assignment;
-  if (input.attachment) {
-    const path = `${assignment.id}/${Date.now()}-${safeFileName(input.attachment)}`;
-    const uploaded = await client.storage.from('assignment-files').upload(path, input.attachment, {
-      upsert: true,
-      contentType: input.attachment.type || undefined,
+  const draft = assignmentFromRpc(drafted.data, 'Assignment draft creation did not return an assignment.');
+  const uploadId = createSubmissionAttemptId();
+  let attachmentPath: string | null = null;
+
+  try {
+    if (input.attachment) {
+      attachmentPath = await uploadAssignmentAsset(
+        client,
+        'assignment-files',
+        assignmentAssetPath(draft.id, uploadId, 'attachment', input.attachment),
+        input.attachment,
+      );
+    }
+    const finalized = await (client as unknown as AssignmentPublishClient).rpc('finalize_assignment_publication', {
+      p_assignment_id: draft.id,
+      p_title: title,
+      p_description: input.description?.trim() || null,
+      p_subject_id: subject.id,
+      p_grade: grade,
+      p_due_date: input.dueDate ? new Date(input.dueDate).toISOString() : null,
+      p_status: 'published',
+      p_attachment_url: attachmentPath,
+      p_memo_url: null,
+      p_rubric_json: rubricJson,
+    } satisfies AssignmentFinalizePayload);
+    if (!finalized.error) {
+      return assignmentFromRpc(finalized.data, 'Assignment publication did not return an assignment.');
+    }
+
+    const confirmed = await confirmAssignmentFinalization(client, {
+      p_assignment_id: draft.id,
+      p_title: title,
+      p_description: input.description?.trim() || null,
+      p_subject_id: subject.id,
+      p_grade: grade,
+      p_due_date: input.dueDate ? new Date(input.dueDate).toISOString() : null,
+      p_status: 'published',
+      p_attachment_url: attachmentPath,
+      p_memo_url: null,
+      p_rubric_json: rubricJson,
     });
-    if (uploaded.error) {
-      captureAssignmentError('assignment.attachment_upload_failed', uploaded.error, {
-        assignment_id: assignment.id,
-        upload_size_bytes: input.attachment.size,
-        mime_type: input.attachment.type || null,
-      });
-      throw uploaded.error;
+    if (confirmed) {
+      return confirmed;
     }
-
-    const updated = await (client.from('assignments') as unknown as {
-      update: (payload: { attachment_url: string }) => {
-        eq: (column: string, value: string) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
-      };
-    })
-      .update({ attachment_url: uploaded.data.path })
-      .eq('id', assignment.id)
-      .select('*')
-      .single();
-
-    if (updated.error) {
-      captureAssignmentError('assignment.attachment_update_failed', updated.error, {
-        assignment_id: assignment.id,
-      });
-      throw updated.error;
-    }
-    assignment = updated.data as Assignment;
-  }
-
-  if (input.memo) {
-    const path = `${assignment.id}/${Date.now()}-${safeFileName(input.memo)}`;
-    const uploaded = await client.storage.from('assignment-memos').upload(path, input.memo, {
-      upsert: true,
-      contentType: input.memo.type || undefined,
+    throw finalized.error;
+  } catch (error) {
+    await discardStagedAssignmentAssets(client, draft.id, attachmentPath);
+    captureAssignmentError('assignment.publish_failed', error, {
+      assignment_id: draft.id,
+      has_attachment: Boolean(input.attachment),
     });
-    if (uploaded.error) {
-      captureAssignmentError('assignment.memo_upload_failed', uploaded.error, {
-        assignment_id: assignment.id,
-        upload_size_bytes: input.memo.size,
-        mime_type: input.memo.type || null,
-      });
-      throw uploaded.error;
-    }
-
-    const updated = await (client.from('assignments') as unknown as {
-      update: (payload: { memo_url: string }) => {
-        eq: (column: string, value: string) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
-      };
-    })
-      .update({ memo_url: uploaded.data.path })
-      .eq('id', assignment.id)
-      .select('*')
-      .single();
-
-    if (updated.error) {
-      captureAssignmentError('assignment.memo_update_failed', updated.error, {
-        assignment_id: assignment.id,
-      });
-      throw updated.error;
-    }
-    assignment = updated.data as Assignment;
+    throw error;
   }
-
-  await recordAuditEvent({
-    action: 'assignment.created',
-    entityType: 'assignment',
-    entityId: assignment.id,
-    metadata: {
-      grade: assignment.grade,
-      status: assignment.status,
-      subject_id: assignment.subject_id,
-      attachment_uploaded: Boolean(input.attachment),
-      memo_uploaded: Boolean(input.memo),
-    },
-  });
-
-  return assignment;
 }
 
 export async function updateAssignment(input: UpdateAssignmentInput) {
@@ -417,112 +496,55 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
     subjectId = subject.id;
   }
 
-  const payload = {
-    title,
-    description: input.description?.trim() || null,
-    subject_id: subjectId,
-    grade: grade || null,
-    due_date: input.dueDate ? new Date(input.dueDate).toISOString() : null,
-    status: input.status,
-    attachment_url: current.attachment_url || null,
-    memo_url: current.memo_url || null,
-    rubric_json: parseJsonField(input.rubricJson, current.rubric_json || [], 'Rubric'),
-  };
+  const rubricJson = parseJsonField(input.rubricJson, current.rubric_json || [], 'Rubric');
 
-  let assignment = current;
-  if (input.attachment) {
-    const path = `${input.assignmentId}/${Date.now()}-${safeFileName(input.attachment)}`;
-    const uploaded = await client.storage.from('assignment-files').upload(path, input.attachment, {
-      upsert: true,
-      contentType: input.attachment.type || undefined,
-    });
-    if (uploaded.error) {
-      captureAssignmentError('assignment.attachment_replace_failed', uploaded.error, {
-        assignment_id: input.assignmentId,
-        upload_size_bytes: input.attachment.size,
-        mime_type: input.attachment.type || null,
-      });
-      throw uploaded.error;
+  const uploadId = createSubmissionAttemptId();
+  let attachmentPath = current.attachment_url || null;
+  // Legacy memo paths are retained but cannot be changed through this workflow.
+  let memoPath = current.memo_url || null;
+  let stagedAttachmentPath: string | null = null;
+
+  try {
+    if (input.attachment) {
+      stagedAttachmentPath = await uploadAssignmentAsset(
+        client,
+        'assignment-files',
+        assignmentAssetPath(input.assignmentId, uploadId, 'attachment', input.attachment),
+        input.attachment,
+      );
+      attachmentPath = stagedAttachmentPath;
     }
-    payload.attachment_url = uploaded.data.path;
-  }
-
-  if (input.memo) {
-    const path = `${input.assignmentId}/${Date.now()}-${safeFileName(input.memo)}`;
-    const uploaded = await client.storage.from('assignment-memos').upload(path, input.memo, {
-      upsert: true,
-      contentType: input.memo.type || undefined,
-    });
-    if (uploaded.error) {
-      captureAssignmentError('assignment.memo_replace_failed', uploaded.error, {
-        assignment_id: input.assignmentId,
-        upload_size_bytes: input.memo.size,
-        mime_type: input.memo.type || null,
-      });
-      throw uploaded.error;
-    }
-    payload.memo_url = uploaded.data.path;
-  }
-
-  const updated = await (client.from('assignments') as unknown as {
-    update: (row: typeof payload) => {
-      eq: (column: string, value: string) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
+    const payload: AssignmentFinalizePayload = {
+      p_assignment_id: input.assignmentId,
+      p_title: title,
+      p_description: input.description?.trim() || null,
+      p_subject_id: subjectId,
+      p_grade: grade || null,
+      p_due_date: input.dueDate ? new Date(input.dueDate).toISOString() : null,
+      p_status: input.status,
+      p_attachment_url: attachmentPath,
+      p_memo_url: memoPath,
+      p_rubric_json: rubricJson,
     };
-  })
-    .update(payload)
-    .eq('id', input.assignmentId)
-    .select('*')
-    .single();
+    const finalized = await (client as unknown as AssignmentPublishClient).rpc('finalize_assignment_publication', payload);
+    if (!finalized.error) {
+      return assignmentFromRpc(finalized.data, 'Assignment update did not return an assignment.');
+    }
 
-  if (updated.error) {
-    captureAssignmentError('assignment.update_failed', updated.error, {
+    const confirmed = await confirmAssignmentFinalization(client, payload);
+    if (confirmed) {
+      return confirmed;
+    }
+    throw finalized.error;
+  } catch (error) {
+    await discardStagedAssignmentAssets(client, input.assignmentId, stagedAttachmentPath);
+    captureAssignmentError('assignment.update_failed', error, {
       assignment_id: input.assignmentId,
       status: input.status,
       has_attachment: Boolean(input.attachment),
     });
-    throw updated.error;
+    throw error;
   }
-  assignment = updated.data as Assignment;
-
-  await recordAuditEvent({
-    action: 'assignment.updated',
-    entityType: 'assignment',
-    entityId: assignment.id,
-    metadata: {
-      previous_status: current.status,
-      new_status: assignment.status,
-      grade: assignment.grade,
-      subject_id: assignment.subject_id,
-      attachment_replaced: Boolean(input.attachment),
-      memo_replaced: Boolean(input.memo),
-    },
-  });
-
-  if (input.attachment) {
-    await recordAuditEvent({
-      action: 'assignment.attachment_replaced',
-      entityType: 'assignment',
-      entityId: assignment.id,
-      metadata: {
-        previous_attachment_url: current.attachment_url,
-        new_attachment_url: assignment.attachment_url,
-      },
-    });
-  }
-
-  if (input.memo) {
-    await recordAuditEvent({
-      action: 'assignment.memo_replaced',
-      entityType: 'assignment',
-      entityId: assignment.id,
-      metadata: {
-        previous_memo_url: current.memo_url,
-        new_memo_url: assignment.memo_url,
-      },
-    });
-  }
-
-  return assignment;
 }
 
 export async function submitAssignment(input: SubmitAssignmentInput): Promise<SubmitAssignmentResult> {
@@ -557,6 +579,7 @@ export async function submitAssignment(input: SubmitAssignmentInput): Promise<Su
   let sizeBytes: number | null = null;
 
   if (input.file) {
+    validateSubmissionFile(input.file);
     const ext = input.file.name.split('.').pop()?.toLowerCase() || 'bin';
     storageKey = `${student.id}/${input.assignmentId}/${submissionId}/submission.${ext}`;
     fileUrl = storageKey;
@@ -593,25 +616,11 @@ export async function submitAssignment(input: SubmitAssignmentInput): Promise<Su
     throw confirmationError;
   }
 
-  const assignmentResult = await client.from('assignments').select('*').eq('id', input.assignmentId).single();
-  if (assignmentResult.error) {
-    captureAssignmentError('assignment_submission.assignment_load_failed', assignmentResult.error, {
-      assignment_id: input.assignmentId,
-    });
-    throw assignmentResult.error;
-  }
-  const assignment = assignmentResult.data as Assignment | null;
-  if (!assignment) {
-    throw new Error('Assignment could not be found.');
-  }
-  if (assignment.status === 'closed' || assignment.status === 'archived') {
-    throw new Error('This assignment is closed and no longer accepts submissions.');
-  }
-
   if (input.file) {
     const uploaded = await client.storage.from('assignment-submissions').upload(storageKey!, input.file, {
       upsert: true,
       contentType: input.file.type || undefined,
+      metadata: { original_filename: originalFilename! },
     });
     if (uploaded.error) {
       captureAssignmentError('assignment_submission.upload_failed', uploaded.error, {

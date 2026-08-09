@@ -176,7 +176,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const { data } = supabase.auth.onAuthStateChange(() => {
-      void refresh();
+      // Supabase holds its auth lock while notifying listeners. Starting a
+      // second auth request here can deadlock getSession()/getUser() and leave
+      // protected routes permanently on their loading screen.
+      window.setTimeout(() => void refresh(), 0);
     });
 
     return () => data.subscription.unsubscribe();

@@ -27,6 +27,7 @@ web/.next/
 # storing literal secret values from commands that were run (e.g. curl with
 # an embedded token/password), never commit.
 .claude/settings.json
+.claude/settings.local.json
 .env.example
 !.env.example
 
@@ -55,3 +56,4 @@ supabase/.temp/
 # the vendored copies (same relationship as node_modules/package-lock.json).
 .agents/skills/
 .claude/skills/
+.playwright-mcp/

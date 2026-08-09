@@ -10,6 +10,8 @@ const VERSION = "po-v-dev";
 const CACHE_APP = `po-app-${VERSION}`;
 const CACHE_MEDIA = `po-media-${VERSION}`;
 const CACHE_DOCS = `po-docs-${VERSION}`;
+const NAVIGATION_TIMEOUT_MS = 8_000;
+const PRECACHE_TIMEOUT_MS = 15_000;
 
 // react-app.js/.css are content-hashed (see vite.app.config.ts), so these paths
 // already change on every build that changes their content -- no `?v=` needed.
@@ -37,33 +39,74 @@ function isMediaRequest(url) {
   return /\.(png|jpg|jpeg|webp|avif|gif|svg|mp3|wav|ogg|mp4|webm)$/.test(url.pathname);
 }
 
+function expectedContentType(request) {
+  const url = new URL(request.url);
+
+  if (isHTMLRequest(request) || url.pathname === "/" || url.pathname.endsWith(".html")) {
+    return /^text\/html\b/i;
+  }
+  if (/\.css$/i.test(url.pathname)) {
+    return /^text\/css\b/i;
+  }
+  if (/\.(?:js|mjs)$/i.test(url.pathname)) {
+    return /^(?:application|text)\/javascript\b|^application\/ecmascript\b/i;
+  }
+  if (/\.svg$/i.test(url.pathname)) {
+    return /^image\/svg\+xml\b/i;
+  }
+  return null;
+}
+
+function isCacheableResponse(request, response) {
+  if (!response || !response.ok) {
+    return false;
+  }
+
+  const expected = expectedContentType(request);
+  if (!expected) {
+    return true;
+  }
+
+  return expected.test(response.headers.get("content-type") || "");
+}
+
+async function fetchWithTimeout(request, timeoutMs) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(request, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const appCache = await caches.open(CACHE_APP);
     const docsCache = await caches.open(CACHE_DOCS);
 
-    const precache = await Promise.allSettled(
+    // These entries are the minimum viable app shell. A partial cache can
+    // permanently pair an old shell with new chunks, so reject the install if
+    // any required fetch fails or is served with the wrong MIME type.
+    await Promise.all(
       PRECACHE_URLS.map(async (u) => {
-        const req = new Request(u, { cache: "reload" });
-        const res = await fetch(req);
-        if (!res.ok) {
-          throw new Error(`Precache failed: ${u} (${res.status})`);
+        const req = new Request(new URL(u, self.location.origin), { cache: "reload" });
+        const res = await fetchWithTimeout(req, PRECACHE_TIMEOUT_MS);
+        if (!isCacheableResponse(req, res)) {
+          const contentType = res.headers.get("content-type") || "missing";
+          throw new Error(`Precache failed validation: ${u} (${res.status}, ${contentType})`);
         }
         const url = new URL(u, self.location.origin);
         if (isHTMLRequest(req) || url.pathname.endsWith("/") || url.pathname.endsWith(".html")) {
-          await docsCache.put(req, res);
+          await docsCache.put(req, res.clone());
         } else {
-          await appCache.put(req, res);
+          await appCache.put(req, res.clone());
         }
       }),
     );
 
-    const failed = precache.filter((p) => p.status === "rejected");
-    if (failed.length) {
-      console.warn("[SW] Some precache entries failed:", failed);
-    }
-
-    self.skipWaiting();
+    await self.skipWaiting();
   })());
 });
 
@@ -123,17 +166,16 @@ async function networkFirst(req) {
   const cache = await caches.open(CACHE_DOCS);
 
   try {
-    const fresh = await fetch(req);
-    if (fresh && fresh.ok) {
-      cache.put(req, fresh.clone());
+    const fresh = await fetchWithTimeout(req, NAVIGATION_TIMEOUT_MS);
+    if (isCacheableResponse(req, fresh)) {
+      await cache.put(req, fresh.clone());
       return fresh;
     }
-    const cached = await cache.match(req);
-    if (cached) {
-      return cached;
-    }
-    return fresh;
-  } catch {
+  } catch (error) {
+    console.warn("[SW] Navigation network request failed; using cached shell.", error);
+  }
+
+  {
     const cached = await cache.match(req);
     if (cached) {
       return cached;
@@ -156,8 +198,8 @@ async function cacheFirst(req, cacheName) {
   }
 
   const res = await fetch(req);
-  if (res && res.ok) {
-    cache.put(req, res.clone());
+  if (isCacheableResponse(req, res)) {
+    await cache.put(req, res.clone());
   }
   return res;
 }
@@ -167,9 +209,9 @@ async function staleWhileRevalidate(req, cacheName) {
   const cached = await cache.match(req);
 
   const fetchPromise = fetch(req)
-    .then((res) => {
-      if (res && res.ok) {
-        cache.put(req, res.clone());
+    .then(async (res) => {
+      if (isCacheableResponse(req, res)) {
+        await cache.put(req, res.clone());
       }
       return res;
     })

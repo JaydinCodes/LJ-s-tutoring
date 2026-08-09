@@ -1,7 +1,7 @@
 # POPIA Data Map — Current Supabase Platform
 
 **Status:** maintained implementation map, verified against
-`docs/supabase/schema.sql` and the active React/Edge Function code on 2026-08-03.
+`docs/supabase/schema.sql` and the active React/Edge Function code on 2026-08-09.
 The retired Fastify/Prisma stack holds no current platform data. This map still
 requires review by a South African privacy professional before production
 onboarding; it is technical evidence, not legal advice.
@@ -25,7 +25,7 @@ person-linked operational data. **Low** is reference/content data.
 | Learners and guardians | `students`, `guardians`, `student_guardians` | Grade, school, guardian contact and permissions | High; learner/guardian/allocation/admin and org-scoped policies |
 | Organisations | `organizations`, `organization_members`, `ngo_partners` | Membership, role, partner identity | Medium–High; organisation-scoped RLS |
 | Teaching operations | `tutors`, `classes`, `class_enrollments`, `tutor_student_allocations`, `sessions`, `session_history` | Tutor profile, enrolment, attendance, notes, allocations | High; role/allocation/org-scoped RLS and secured RPCs |
-| Assignments | `assignments`, `assignment_submissions`, `student_progress`; private `assignment-files` and `assignment-submissions` buckets | Instructions, learner work, marks, feedback, files | High for learner records; ownership/marker/admin policies and RPC-controlled mutations |
+| Assignments | `assignments`, `assignment_submissions`, `student_progress`; private `assignment-files`, `assignment-submissions`, and legacy `assignment-memos` buckets | Instructions, learner work, marks, feedback, files, legacy private tutor memos, AI draft outputs | High for learner records; ownership/marker/admin policies and RPC-controlled mutations |
 | Reports and outcomes | `weekly_reports`, `student_notifications`, score/career snapshots, assessments, goals, exam events | Progress payloads, notices, risk and career signals | High; owning learner, permitted guardian/tutor/admin policies as applicable |
 | Careers | `student_career_profiles` | Interests, target careers, APS context | High; owning learner/admin boundary |
 | Tutor onboarding | `tutor_applications`, `tutor_documents`, `tutor_availability_slots`; private `tutor-documents` bucket | Qualifications, application details, evidence files, availability | High; self/admin and private Storage policies |
@@ -47,6 +47,7 @@ careers, and APS target. The Edge Function forwards that payload to Groq.
 |---|---|---|
 | Supabase | Auth identities, database rows, private files, Edge Function requests | Primary platform. Confirm the actual project region and contractual transfer safeguards in the Supabase dashboard/contract; do not infer it from DigitalOcean's region. |
 | Groq | Current careers-chat question, up to eight preceding messages, and Odie careers-profile context (interests, preferred subjects, saved careers, APS target) | Edge Function AI processor. Public notice names Groq and the actual fields sent; legal/vendor review must confirm retention, sub-processors, location, and POPIA section 72 transfer basis. Avoid including names/contact details in prompts. |
+| Google Gemini | Assignment submission files or text answers and rubric JSON | AI marking processor for draft marks and feedback. Legacy private tutor memos are not sent. The tutor still reviews and saves the final mark manually; confirm retention, region, sub-processors, and transfer basis before launch. |
 | DigitalOcean | Static site assets and public browser configuration | Static frontend only; no Fastify/API service and no platform database. Region is configured as `fra` in `.do/app.yaml`. |
 | Sentry (optional) | Browser error events and deliberately limited pseudonymous context | Disabled without explicit public config; `sendDefaultPii: false` and application context scrubbing are implemented. Validate production sampling and captured breadcrumbs before enabling for learners. |
 | Auth email/SMTP provider | Recipient address and authentication/invitation email content | Confirm the configured Supabase Auth SMTP provider and contract before launch. Public enquiries are composed in the visitor's own email or WhatsApp app. |
@@ -62,6 +63,9 @@ contacts, and cross-border transfer bases outside this technical map.
   stop populating and remove these compatibility fields through a reviewed
   migration when all callers are repointed.
 - NGO-partner output must remain aggregate-only with small-cohort suppression.
+- Gemini grading drafts use the learner submission and rubric only; private
+  legacy tutor memos are not sent. The result stays a draft until a tutor or
+  admin explicitly saves it.
 - Never expose one learner's work, marks, session notes, contact details, or
   guardian data through another learner/tutor/organisation context.
 - Community remains an onboarding blocker while its safety/isolation work is
@@ -119,6 +123,8 @@ Important completion work remains:
 
 - Legal review of minors' consent, processor terms, and cross-border bases.
 - Production scheduler plus dry-run/apply evidence for approved retention jobs.
+- Vendor review for Google Gemini retention, transfer basis, and sub-processors
+  before relying on AI grading in production.
 - Named privacy request owner and service-role completion procedure.
 - Removal of duplicate inline guardian fields.
 - Explicit enable/disable enforcement and safety review for Community before any

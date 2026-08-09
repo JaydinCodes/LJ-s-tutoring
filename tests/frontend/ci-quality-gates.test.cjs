@@ -213,3 +213,80 @@ test('uptime monitoring validates the exact web and Supabase health contracts', 
   assert.match(workflow, /issues\.createComment/);
   assert.doesNotMatch(workflow, /skipping/i);
 });
+
+test('production deployment is gated by the tested main SHA and workflow actions are immutable', () => {
+  const appSpec = read('.do/app.yaml');
+  const releaseWorkflow = read('.github/workflows/release-gates.yml');
+  const deploymentWorkflow = read('.github/workflows/deploy-production.yml');
+  const workflowDirectory = path.join(root, '.github', 'workflows');
+
+  assert.match(appSpec, /deploy_on_push:\s*false/);
+  assert.match(releaseWorkflow, /pull_request:/);
+  assert.match(releaseWorkflow, /branches: \[ main \]/);
+  assert.match(deploymentWorkflow, /workflow_run:/);
+  assert.match(deploymentWorkflow, /workflows: \["Release Gates"\]/);
+  assert.match(deploymentWorkflow, /workflow_run\.conclusion == 'success'/);
+  assert.match(deploymentWorkflow, /workflow_run\.head_sha/);
+  assert.match(deploymentWorkflow, /DIGITALOCEAN_ACCESS_TOKEN/);
+  assert.match(deploymentWorkflow, /DIGITALOCEAN_APP_ID/);
+  assert.match(deploymentWorkflow, /doctl apps create-deployment/);
+
+  for (const filename of fs.readdirSync(workflowDirectory).filter((name) => name.endsWith('.yml'))) {
+    const workflow = read(path.join('.github', 'workflows', filename));
+    for (const reference of workflow.matchAll(/^\s*(?:-\s+)?uses:\s+[^@\s]+@([^\s#]+)/gm)) {
+      assert.match(reference[1], /^[a-f0-9]{40}$/i, `${filename} has an unpinned action reference`);
+    }
+  }
+});
+
+test('service worker rejects incomplete or mis-typed app shells and bounds navigation fetches', () => {
+  const worker = read('sw.js');
+
+  assert.doesNotMatch(worker, /Promise\.allSettled/);
+  assert.match(worker, /await Promise\.all\(/);
+  assert.match(worker, /PRECACHE_TIMEOUT_MS/);
+  assert.match(worker, /NAVIGATION_TIMEOUT_MS/);
+  assert.match(worker, /fetchWithTimeout\(req, NAVIGATION_TIMEOUT_MS\)/);
+  assert.match(worker, /function isCacheableResponse/);
+  assert.match(worker, /text\\\/html/);
+  assert.match(worker, /text\\\/css/);
+  assert.match(worker, /javascript/);
+  assert.match(worker, /Precache failed validation/);
+  assert.match(worker, /isCacheableResponse\(req, res\)/);
+});
+
+test('SEC-02 security headers are an executable edge policy with live production probes', () => {
+  const packageJson = JSON.parse(read('package.json'));
+  const worker = read('cloudflare/src/worker.mjs');
+  const workerConfig = read('cloudflare/wrangler.toml');
+  const probe = read('scripts/verify-production-security-headers.cjs');
+  const uptime = read('.github/workflows/uptime-check.yml');
+  const deployment = read('.github/workflows/deploy-production.yml');
+  const structuredData = read('src/components/seo/StructuredData.tsx');
+  const rootHtml = read('index.html');
+  const staticBuild = read('scripts/build-static.js');
+
+  assert.match(workerConfig, /main = "src\/worker\.mjs"/);
+  assert.match(worker, /ORIGIN_URL/);
+  assert.match(worker, /X-Frame-Options': 'DENY'/);
+  assert.match(worker, /X-Content-Type-Options': 'nosniff'/);
+  assert.match(worker, /Strict-Transport-Security/);
+  assert.match(worker, /frame-ancestors 'none'/);
+  assert.match(worker, /'nonce-\$\{nonce\}'/);
+  assert.match(worker, /HTMLRewriter/);
+  assert.match(worker, /name="csp-nonce"/);
+
+  assert.equal(packageJson.scripts['verify:production:headers'], 'node scripts/verify-production-security-headers.cjs');
+  assert.match(probe, /PRODUCTION_ORIGINS is required/);
+  assert.match(probe, /X-Frame-Options must be DENY/);
+  assert.match(probe, /X-Content-Type-Options must be nosniff/);
+  assert.match(probe, /Strict-Transport-Security must have max-age/);
+  assert.match(probe, /frame-ancestors/);
+  assert.match(uptime, /vars\.PRODUCTION_ORIGINS/);
+  assert.match(uptime, /npm run verify:production:headers/);
+  assert.match(deployment, /npm run verify:production:headers/);
+
+  assert.match(structuredData, /meta\[name="csp-nonce"\]/);
+  assert.match(structuredData, /nonce=\{cspNonce\(\)\}/);
+  assert.doesNotMatch(rootHtml + staticBuild, /frame-ancestors 'none'/);
+});

@@ -1,5 +1,7 @@
 import { requireSupabase } from '../../lib/supabase/client';
 import { callRpc } from '../../lib/supabase/rpc';
+import { weeklyReportPayload } from '../../lib/schema/json';
+import type { Database } from '../../types/database';
 import type { WeeklyReportPayload, WeeklyReportRecord } from '../../types/lms';
 
 export interface WeeklyReportListItem {
@@ -23,13 +25,15 @@ export interface WeeklyReport {
   payload?: WeeklyReportPayload;
 }
 
-function mapReport(row: WeeklyReportRecord): WeeklyReport {
+type DbWeeklyReport = Database['public']['Tables']['weekly_reports']['Row'];
+
+function mapReport(row: DbWeeklyReport): WeeklyReport {
   return {
     id: row.id,
     week_start: row.week_start,
     week_end: row.week_end,
     created_at: row.created_at,
-    payload: row.payload_json,
+    payload: weeklyReportPayload(row.payload_json),
   };
 }
 
@@ -90,7 +94,7 @@ export async function loadWeeklyReport(reportId: string): Promise<{ report: Week
   if (result.error) {
     throw result.error;
   }
-  return { report: mapReport(result.data as WeeklyReportRecord) };
+  return { report: mapReport(result.data) };
 }
 
 export async function generateWeeklyReport(): Promise<{ report: WeeklyReport }> {

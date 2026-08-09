@@ -12,11 +12,31 @@
 -- fill trigger on sessions/career_progress_snapshots/student_score_snapshots).
 -- Every real INSERT through these RPCs has been failing since inception.
 
-alter table public.adjustments alter column created_by_user_id drop not null;
-alter table public.weekly_reports alter column user_id drop not null;
-alter table public.sessions alter column assignment_id drop not null;
-alter table public.student_score_snapshots alter column user_id drop not null;
-alter table public.career_progress_snapshots alter column user_id drop not null;
+do $$
+declare
+  target record;
+begin
+  for target in
+    select * from (values
+      ('adjustments', 'created_by_user_id'),
+      ('weekly_reports', 'user_id'),
+      ('sessions', 'assignment_id'),
+      ('student_score_snapshots', 'user_id'),
+      ('career_progress_snapshots', 'user_id')
+    ) as targets(table_name, column_name)
+  loop
+    if exists (
+      select 1 from information_schema.columns
+      where table_schema = 'public'
+        and table_name = target.table_name
+        and column_name = target.column_name
+        and is_nullable = 'NO'
+    ) then
+      execute format('alter table public.%I alter column %I drop not null', target.table_name, target.column_name);
+    end if;
+  end loop;
+end
+$$;
 
 -- Fix (2026-07-25): public.student_results_class_analytics_anonymous is a
 -- SECURITY DEFINER view (bypasses RLS on baseline_assessments/students) that
@@ -24,4 +44,10 @@ alter table public.career_progress_snapshots alter column user_id drop not null;
 -- platform-wide aggregate assessment data, with no org scoping despite the
 -- multi-org model. Revoking anon; authenticated/service_role access is left
 -- intact pending a separate decision on org-scoping for logged-in staff/students.
-revoke all on public.student_results_class_analytics_anonymous from anon;;
+do $$
+begin
+  if to_regclass('public.student_results_class_analytics_anonymous') is not null then
+    revoke all on public.student_results_class_analytics_anonymous from anon;
+  end if;
+end
+$$;

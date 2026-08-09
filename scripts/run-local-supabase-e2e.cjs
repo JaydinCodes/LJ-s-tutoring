@@ -9,6 +9,9 @@ const users = {
   admin: { email: 'admin.supabase-e2e@projectodysseus.test', fullName: 'Local Supabase Admin' },
   student: { email: 'student.supabase-e2e@projectodysseus.test', fullName: 'Local Supabase Learner' },
   tutor: { email: 'tutor.supabase-e2e@projectodysseus.test', fullName: 'Local Supabase Tutor' },
+  parent: { email: 'parent.supabase-e2e@projectodysseus.test', fullName: 'Local Supabase Parent' },
+  ngo_partner: { email: 'ngo.supabase-e2e@projectodysseus.test', fullName: 'Local Supabase NGO Partner' },
+  ngo_learner: { email: 'ngo-learner.supabase-e2e@projectodysseus.test', fullName: 'Local NGO Learner' },
 };
 
 function localStatus() {
@@ -53,10 +56,60 @@ function makeRequester(status) {
   };
 }
 
-async function removePreviousFixtures(request) {
-  await request(`/rest/v1/assignments?title=eq.${encodeURIComponent(fixtureTitle)}`, { method: 'DELETE' });
+function inFilter(ids) {
+  return `in.(${ids.map((id) => encodeURIComponent(id)).join(',')})`;
+}
 
+async function selectIds(request, table, filter) {
+  const rows = await request(`/rest/v1/${table}?select=id&${filter}`);
+  return rows.map((row) => row.id);
+}
+
+async function deleteByIds(request, table, column, ids) {
+  if (ids.length) {
+    await request(`/rest/v1/${table}?${column}=${inFilter(ids)}`, { method: 'DELETE' });
+  }
+}
+
+async function removePreviousFixtures(request) {
   const fixtureEmails = new Set(Object.values(users).map((user) => user.email));
+  const profileEmailFilter = [...fixtureEmails].map((email) => encodeURIComponent(email)).join(',');
+  const profileIds = await selectIds(request, 'profiles', `email=${inFilter([...fixtureEmails])}`);
+  const studentIds = await selectIds(request, 'students', `profile_id=${inFilter(profileIds.length ? profileIds : ['00000000-0000-0000-0000-000000000000'])}`);
+  const tutorIds = await selectIds(request, 'tutors', `profile_id=${inFilter(profileIds.length ? profileIds : ['00000000-0000-0000-0000-000000000000'])}`);
+  const guardianIds = [...new Set([
+    ...await selectIds(request, 'guardians', `profile_id=${inFilter(profileIds.length ? profileIds : ['00000000-0000-0000-0000-000000000000'])}`),
+    ...await selectIds(request, 'guardians', `email=eq.${encodeURIComponent(users.parent.email)}`),
+  ])];
+  const assignmentIds = await selectIds(request, 'assignments', `title=eq.${encodeURIComponent(fixtureTitle)}`);
+  const classIds = await selectIds(request, 'classes', `name=eq.${encodeURIComponent(fixtureClassName)}`);
+
+  // Delete the fixture graph from leaves to owners. Several foreign keys use
+  // SET NULL, so deleting a profile first leaves uniquely constrained orphan
+  // records (such as guardians) that break a later E2E run.
+  await Promise.all([
+    deleteByIds(request, 'assignment_submissions', 'assignment_id', assignmentIds),
+    deleteByIds(request, 'assignment_submissions', 'student_id', studentIds),
+    deleteByIds(request, 'class_enrollments', 'class_id', classIds),
+    deleteByIds(request, 'class_enrollments', 'student_id', studentIds),
+    deleteByIds(request, 'student_guardians', 'student_id', studentIds),
+    deleteByIds(request, 'student_guardians', 'guardian_id', guardianIds),
+    deleteByIds(request, 'tutor_student_allocations', 'student_id', studentIds),
+    deleteByIds(request, 'tutor_student_allocations', 'tutor_id', tutorIds),
+  ]);
+  await Promise.all([
+    deleteByIds(request, 'assignments', 'id', assignmentIds),
+    deleteByIds(request, 'classes', 'id', classIds),
+    deleteByIds(request, 'organization_members', 'profile_id', profileIds),
+  ]);
+  await Promise.all([
+    deleteByIds(request, 'students', 'id', studentIds),
+    deleteByIds(request, 'tutors', 'id', tutorIds),
+    deleteByIds(request, 'guardians', 'id', guardianIds),
+  ]);
+  await request(`/rest/v1/ngo_partners?contact_email=eq.${encodeURIComponent(users.ngo_partner.email)}`, { method: 'DELETE' });
+  await request(`/rest/v1/profiles?email=in.(${profileEmailFilter})`, { method: 'DELETE' });
+
   for (let page = 1; ; page += 1) {
     const data = await request(`/auth/v1/admin/users?page=${page}&per_page=100`);
     const listedUsers = data?.users || [];
@@ -74,13 +127,14 @@ async function removePreviousFixtures(request) {
 async function createAuthAndProfiles(request) {
   const profiles = {};
   for (const [role, fixture] of Object.entries(users)) {
+    const profileRole = role === 'ngo_learner' ? 'student' : role;
     const authUser = await request('/auth/v1/admin/users', {
       method: 'POST',
       body: {
         email: fixture.email,
         password,
         email_confirm: true,
-        app_metadata: { onboarding_role: role },
+        app_metadata: { onboarding_role: profileRole },
         user_metadata: { full_name: fixture.fullName },
       },
     });
@@ -91,7 +145,7 @@ async function createAuthAndProfiles(request) {
         auth_user_id: authUser.id,
         full_name: fixture.fullName,
         email: fixture.email,
-        role,
+        role: profileRole,
       },
     });
     profiles[role] = profile;
@@ -114,6 +168,68 @@ async function seedAcademicJourney(request, profiles) {
       school: 'Local Supabase School',
       status: 'active',
       organization_id: directOrganization.id,
+    },
+  });
+
+  const [guardian] = await request('/rest/v1/guardians?select=*', {
+    method: 'POST',
+    prefer: 'return=representation',
+    body: {
+      profile_id: profiles.parent.id,
+      full_name: users.parent.fullName,
+      email: users.parent.email,
+      status: 'active',
+    },
+  });
+  await request('/rest/v1/student_guardians', {
+    method: 'POST',
+    body: {
+      student_id: student.id,
+      guardian_id: guardian.id,
+      relationship_type: 'parent',
+      is_primary: true,
+      can_receive_reports: true,
+      status: 'active',
+    },
+  });
+
+  const [ngoPartner] = await request('/rest/v1/ngo_partners?select=*', {
+    method: 'POST',
+    prefer: 'return=representation',
+    body: {
+      name: 'Local Supabase NGO Cohort',
+      contact_person: users.ngo_partner.fullName,
+      contact_email: users.ngo_partner.email,
+    },
+  });
+  await request(`/rest/v1/organizations?on_conflict=id`, {
+    method: 'POST',
+    prefer: 'resolution=merge-duplicates',
+    body: {
+      id: ngoPartner.id,
+      name: ngoPartner.name,
+      type: 'ngo',
+      status: 'active',
+    },
+  });
+  await request('/rest/v1/organization_members', {
+    method: 'POST',
+    body: {
+      organization_id: ngoPartner.id,
+      profile_id: profiles.ngo_partner.id,
+      org_role: 'partner_viewer',
+      status: 'active',
+    },
+  });
+  await request('/rest/v1/students', {
+    method: 'POST',
+    body: {
+      profile_id: profiles.ngo_learner.id,
+      grade: 'Grade 11',
+      school: 'Local NGO School',
+      ngo_partner_id: ngoPartner.id,
+      organization_id: ngoPartner.id,
+      status: 'active',
     },
   });
 
@@ -196,7 +312,62 @@ async function seedAcademicJourney(request, profiles) {
     },
   });
 
-  return { assignmentId: assignment.id };
+  return { assignmentId: assignment.id, studentId: student.id };
+}
+
+function asRow(value) {
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+async function verifyConcurrentAiJobClaim(request, seededJourney) {
+  const submissionId = crypto.randomUUID();
+  await request('/rest/v1/assignment_submissions', {
+    method: 'POST',
+    body: {
+      id: submissionId,
+      assignment_id: seededJourney.assignmentId,
+      student_id: seededJourney.studentId,
+      text_answer: 'Local runtime AI claim concurrency probe.',
+      status: 'submitted',
+      ai_grading_status: 'pending',
+    },
+  });
+
+  const claims = await Promise.all([
+    request('/rest/v1/rpc/claim_ai_grading_job', { method: 'POST', body: { p_submission_id: submissionId } }),
+    request('/rest/v1/rpc/claim_ai_grading_job', { method: 'POST', body: { p_submission_id: submissionId } }),
+  ]);
+  const winners = claims.map(asRow).filter((row) => row?.id === submissionId);
+  if (winners.length !== 1 || !winners[0].ai_job_claim_token) {
+    throw new Error('Concurrent AI job claims must produce exactly one leased winner.');
+  }
+
+  const firstToken = winners[0].ai_job_claim_token;
+  const failed = asRow(await request('/rest/v1/rpc/fail_ai_grading_job', {
+    method: 'POST',
+    body: {
+      p_submission_id: submissionId,
+      p_claim_token: firstToken,
+      p_error: 'intentional local runtime retry probe',
+      p_retry_after_minutes: 1,
+    },
+  }));
+  if (failed !== true) throw new Error('The winning AI claim must be able to schedule a retry.');
+
+  await request(`/rest/v1/assignment_submissions?id=eq.${submissionId}`, {
+    method: 'PATCH',
+    body: { ai_job_available_at: new Date(Date.now() - 1_000).toISOString() },
+  });
+  const retry = asRow(await request('/rest/v1/rpc/claim_ai_grading_job', {
+    method: 'POST',
+    body: { p_submission_id: submissionId },
+  }));
+  if (retry?.id !== submissionId || retry.ai_job_attempts !== 2 || retry.ai_job_claim_token === firstToken) {
+    throw new Error('AI retry must issue a new lease token and increment the attempt count.');
+  }
+  // Keep the browser academic-loop fixture singular; this probe exists only to
+  // assert the worker's concurrent lease semantics before Playwright starts.
+  await request(`/rest/v1/assignment_submissions?id=eq.${submissionId}`, { method: 'DELETE' });
 }
 
 async function main() {
@@ -211,6 +382,7 @@ async function main() {
   await removePreviousFixtures(request);
   const profiles = await createAuthAndProfiles(request);
   const seededJourney = await seedAcademicJourney(request, profiles);
+  await verifyConcurrentAiJobClaim(request, seededJourney);
 
   const env = {
     ...process.env,
