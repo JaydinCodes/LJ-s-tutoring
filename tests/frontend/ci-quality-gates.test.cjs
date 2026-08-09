@@ -199,9 +199,9 @@ test('uptime monitoring validates the exact web and Supabase health contracts', 
     service: 'project-odysseus-web',
     version: '1',
   });
-  assert.match(workflow, /vars\.HEALTHCHECK_URL/);
-  assert.match(workflow, /vars\.SUPABASE_URL/);
-  assert.match(workflow, /vars\.SUPABASE_ANON_KEY/);
+  assert.match(workflow, /secrets\.HEALTHCHECK_URL/);
+  assert.match(workflow, /secrets\.SUPABASE_URL/);
+  assert.match(workflow, /secrets\.SUPABASE_ANON_KEY/);
   assert.match(workflow, /permissions:[\s\S]*contents: read[\s\S]*issues: write/);
   assert.match(workflow, /content-type:\.\*application\/json/);
   assert.match(workflow, /keys == \["service", "status", "version"\]/);

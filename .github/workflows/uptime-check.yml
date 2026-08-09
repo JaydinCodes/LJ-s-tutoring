@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   healthcheck:
+    environment: production
     runs-on: ubuntu-latest
     steps:
       - name: Check out monitoring probes
@@ -24,9 +25,9 @@ jobs:
       - name: Check health endpoint
         id: health
         env:
-          HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL }}
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           PRODUCTION_ORIGINS: ${{ vars.PRODUCTION_ORIGINS }}
         run: |
           missing=()
