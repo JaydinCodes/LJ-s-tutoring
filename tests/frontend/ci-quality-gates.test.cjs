@@ -157,11 +157,13 @@ test('accessibility and link checks use pinned local tools and canonical routes'
 
 test('Lighthouse and release workflows use the same pinned package commands', () => {
   const packageJson = JSON.parse(read('package.json'));
+  const lighthouseConfig = read('lighthouserc.js');
   const appWorkflow = read('.github/workflows/app-ci.yml');
   const lighthouseWorkflow = read('.github/workflows/lighthouse-ci.yml');
   const releaseWorkflow = read('.github/workflows/release-gates.yml');
 
   assert.equal(packageJson.scripts['perf:lighthouse'], 'lhci autorun --config=./lighthouserc.js');
+  assert.match(lighthouseConfig, /chromePath: process\.env\.CHROME_PATH/);
   assert.doesNotMatch(lighthouseWorkflow, /npx (?:http-server|wait-on|lhci)/);
   assert.match(lighthouseWorkflow, /npm run qa:serve/);
   assert.match(lighthouseWorkflow, /npm run qa:wait/);
@@ -268,6 +270,18 @@ test('SEC-02 security headers are an executable edge policy with live production
 
   assert.match(workerConfig, /main = "src\/worker\.mjs"/);
   assert.match(worker, /ORIGIN_URL/);
+  assert.match(worker, /PORTALS/);
+  for (const [host, dashboard] of [
+    ['admin.projectodysseus.live', '/dashboard/admin/'],
+    ['tutor.projectodysseus.live', '/dashboard/tutor/'],
+    ['student.projectodysseus.live', '/dashboard/student/'],
+  ]) {
+    assert.match(worker, new RegExp(`'${host.replaceAll('.', '\\.')}'\\s*:\\s*'${dashboard.replaceAll('/', '\\/')}'`));
+  }
+  assert.match(worker, /requestedUrl\.pathname === '\/'/);
+  assert.match(worker, /Response\.redirect\(requestedUrl\.toString\(\), 302\)/);
+  assert.match(worker, /requestedUrl\.pathname\.startsWith\('\/dashboard\/'\)/);
+  assert.match(worker, /\$\{portalEntryPoint\}index\.html/);
   assert.match(worker, /X-Frame-Options': 'DENY'/);
   assert.match(worker, /X-Content-Type-Options': 'nosniff'/);
   assert.match(worker, /Strict-Transport-Security/);
