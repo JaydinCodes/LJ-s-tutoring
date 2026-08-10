@@ -36,7 +36,7 @@ supabase functions deploy admin-invite-user --project-ref <your-project-ref>
 automatically by the Edge runtime. Only one optional secret is custom:
 
 ```bash
-supabase secrets set SUPABASE_INVITE_REDIRECT_URL="https://<app>/dashboard/login"
+supabase secrets set APP_INVITE_REDIRECT_URL="https://<app>/dashboard/login"
 ```
 
 > Note: unlike the Fastify route, this function has **no dev MFA bypass** — AAL2 is
