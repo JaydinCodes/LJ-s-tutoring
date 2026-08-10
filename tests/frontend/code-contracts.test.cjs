@@ -14,7 +14,7 @@ test('CODE-01 client uses the generated Supabase schema as its only database con
   assert.match(client, /supabase\/types\/public\.generated/);
   assert.match(database, /export type \{ Database, Json \} from '..\/..\/supabase\/types\/public\.generated'/);
   assert.doesNotMatch(database, /interface Database|type Table</);
-  assert.match(driftCheck, /--linked/);
+  assert.match(driftCheck, /--local/);
 });
 
 test('CODE-02 route manifest drives static output and validates portal ingress assets', () => {

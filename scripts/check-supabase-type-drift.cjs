@@ -12,10 +12,11 @@ function normalize(value) {
 
 const generated = normalize(execFileSync(
   process.execPath,
-  // The linked project is the production schema authority. Local Docker may
-  // intentionally be a snapshot during recovery, so generating from it could
-  // bless a stale contract.
-  [supabaseCli, 'gen', 'types', '--linked', '--schema', 'public'],
+  // CI resets the local database from every committed migration immediately
+  // before this check. `--linked` depends on local credential state created by
+  // `supabase link`, which is deliberately absent from ephemeral CI runners.
+  // The local rebuilt schema is therefore the reproducible contract here.
+  [supabaseCli, 'gen', 'types', '--local', '--schema', 'public'],
   { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] },
 ));
 
