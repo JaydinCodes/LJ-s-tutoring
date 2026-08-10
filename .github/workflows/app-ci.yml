@@ -22,7 +22,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies (lockfile-enforced)
-        run: npm ci
+        run: HUSKY=0 npm ci
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
@@ -39,7 +39,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: HUSKY=0 npm ci
 
       - name: Lint
         run: npm run lint
@@ -62,7 +62,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: HUSKY=0 npm ci
 
       # Some source-contract tests generate static HTML and therefore require
       # Vite's content-hashed React assets first. They must not rely on ignored
@@ -86,7 +86,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: HUSKY=0 npm ci
 
       - name: Start local Supabase
         run: npm run supabase:start
@@ -119,7 +119,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: HUSKY=0 npm ci
 
       - name: Install Playwright Chromium
         run: npm run test:e2e:install
@@ -151,7 +151,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: HUSKY=0 npm ci
 
       - name: Build
         run: npm run build
