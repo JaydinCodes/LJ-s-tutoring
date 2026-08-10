@@ -70,12 +70,6 @@ jobs:
       - name: Build React assets for source-contract tests
         run: npm run build:react
 
-      # Some source-contract tests generate static HTML and therefore require
-      # Vite's content-hashed React assets first. They must not rely on ignored
-      # build output being present in a fresh checkout.
-      - name: Build React assets for source-contract tests
-        run: npm run build:react
-
       - name: Run unit tests (web helpers)
         run: npm test
 
