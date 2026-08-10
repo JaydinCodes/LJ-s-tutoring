@@ -90,6 +90,10 @@ npm run test:rls:runtime
 ```
 
 Neither command contacts production Supabase. `test:rls` checks source
+contracts; `test:rls:runtime` executes the same policy matrix against the
+local database rebuilt from committed migrations. The generated-type fingerprint
+check in CI also uses that rebuilt local database, so it is reproducible in a
+fresh runner and never depends on a developer's `supabase link` state.
 contracts. `test:rls:runtime` runs pgTAP against the reset local database with
 real role/session settings and verifies allow and deny paths. Browser
 Playwright tests use a mock adapter and do not replace this database gate.

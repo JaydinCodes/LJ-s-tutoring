@@ -44,7 +44,7 @@ if (
 
 const uptime = read('.github/workflows/uptime-check.yml');
 for (const variable of ['HEALTHCHECK_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY']) {
-  mustInclude(uptime, new RegExp(`vars\\.${variable}`), `${variable} repository variable`);
+  mustInclude(uptime, new RegExp(`secrets\\.${variable}`), `${variable} repository secret`);
 }
 for (const endpoint of [
   '/health.json',

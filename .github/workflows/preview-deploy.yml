@@ -1,16 +1,27 @@
 name: Preview Deploy
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  # This remains available if a free preview provider is configured later, but
+  # it does not run automatically or create noisy no-job notifications.
+  workflow_dispatch:
 
 concurrency:
   group: preview-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   preview:
-    if: github.event.pull_request.head.repo.fork == false
+    # Netlify previews are optional and this repository intentionally does not
+    # require a paid preview provider. Avoid a red build when those secrets are
+    # not configured.
+    if: >-
+      github.event.pull_request.head.repo.fork == false &&
+      secrets.NETLIFY_AUTH_TOKEN != '' &&
+      secrets.NETLIFY_SITE_ID != ''
     runs-on: ubuntu-latest
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}

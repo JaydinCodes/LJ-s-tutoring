@@ -58,6 +58,14 @@ export default {
     }
     headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
 
+    // Every HTML response contains a fresh CSP nonce. Set this on the header
+    // object before Response copies it below; mutating `headers` afterwards
+    // does not alter `securedResponse.headers`.
+    const html = isHtml(originResponse);
+    if (html) {
+      headers.set('Cache-Control', 'no-store, max-age=0');
+    }
+
     const securedResponse = new Response(originResponse.body, {
       status: originResponse.status,
       statusText: originResponse.statusText,
@@ -69,11 +77,6 @@ export default {
     if (!isHtml(securedResponse)) {
       return securedResponse;
     }
-
-    // Every HTML response contains a fresh CSP nonce. Do not let an edge cache
-    // reuse an old HTML header set (or its nonce) after a security-policy
-    // change; static JS/CSS/image caching is unaffected.
-    headers.set('Cache-Control', 'no-store, max-age=0');
 
     return new HTMLRewriter()
       .on('head', {

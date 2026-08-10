@@ -2,6 +2,10 @@ module.exports = {
   ci: {
     collect: {
       staticDistDir: './dist',
+      // CI also installs Playwright for browser journeys. Explicitly use the
+      // system Chromium selected by each workflow, otherwise LHCI can prefer
+      // Playwright's sandbox-restricted browser on Ubuntu runners.
+      chromePath: process.env.CHROME_PATH,
       url: ['http://localhost:8080/'],
       numberOfRuns: 3,
       settings: {

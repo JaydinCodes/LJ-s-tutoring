@@ -157,11 +157,13 @@ test('accessibility and link checks use pinned local tools and canonical routes'
 
 test('Lighthouse and release workflows use the same pinned package commands', () => {
   const packageJson = JSON.parse(read('package.json'));
+  const lighthouseConfig = read('lighthouserc.js');
   const appWorkflow = read('.github/workflows/app-ci.yml');
   const lighthouseWorkflow = read('.github/workflows/lighthouse-ci.yml');
   const releaseWorkflow = read('.github/workflows/release-gates.yml');
 
   assert.equal(packageJson.scripts['perf:lighthouse'], 'lhci autorun --config=./lighthouserc.js');
+  assert.match(lighthouseConfig, /chromePath: process\.env\.CHROME_PATH/);
   assert.doesNotMatch(lighthouseWorkflow, /npx (?:http-server|wait-on|lhci)/);
   assert.match(lighthouseWorkflow, /npm run qa:serve/);
   assert.match(lighthouseWorkflow, /npm run qa:wait/);
@@ -287,6 +289,8 @@ test('SEC-02 security headers are an executable edge policy with live production
   assert.match(uptime, /vars\.PRODUCTION_ORIGINS/);
   assert.match(uptime, /npm run verify:production:headers/);
   assert.match(deployment, /npm run verify:production:headers/);
+  assert.match(deployment, /source_commit_hash/);
+  assert.match(deployment, /Deployment source mismatch/);
 
   assert.match(structuredData, /meta\[name="csp-nonce"\]/);
   assert.match(structuredData, /nonce=\{cspNonce\(\)\}/);

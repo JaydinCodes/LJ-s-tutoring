@@ -6,16 +6,31 @@ const root = path.resolve(__dirname, '..');
 const snapshotPath = path.join(root, 'supabase', 'types', 'public.generated.ts');
 const supabaseCli = require.resolve('supabase/dist/supabase.js');
 
+function localDatabaseUrl() {
+  const status = execFileSync(
+    process.execPath,
+    [supabaseCli, 'status', '--output', 'env'],
+    { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] },
+  );
+  const entry = status.match(/^DB_URL=(?:"([^"]+)"|'([^']+)'|(.+))$/m);
+  const value = entry?.[1] || entry?.[2] || entry?.[3];
+  if (!value) {
+    throw new Error('Local Supabase status did not provide DB_URL. Start the local stack before checking types.');
+  }
+  return value;
+}
+
 function normalize(value) {
   return value.replace(/\r\n/g, '\n').trimEnd() + '\n';
 }
 
 const generated = normalize(execFileSync(
   process.execPath,
-  // The linked project is the production schema authority. Local Docker may
-  // intentionally be a snapshot during recovery, so generating from it could
-  // bless a stale contract.
-  [supabaseCli, 'gen', 'types', '--linked', '--schema', 'public'],
+  // CI resets the local database from every committed migration immediately
+  // before this check. Pass its explicit DB URL: current CLI releases can
+  // incorrectly use the internal container port for `--local`, while `status`
+  // returns the host-mapped, authenticated database URL.
+  [supabaseCli, 'gen', 'types', '--db-url', localDatabaseUrl(), '--schema', 'public'],
   { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] },
 ));
 

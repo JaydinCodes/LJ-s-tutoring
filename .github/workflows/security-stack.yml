@@ -45,11 +45,15 @@ jobs:
         uses: github/codeql-action/analyze@c3400c2f38909e0dcf3c3a41f2030a8217be5d3e # v3
 
   dependency-policy:
+    # The actual production dependency audit remains a blocking check in App
+    # CI and Release Gates. Keep GitHub's dependency-review report visible,
+    # but do not let GitHub's optional metadata service block a release.
+    continue-on-error: true
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
     steps:
       - name: Dependency review
         uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
