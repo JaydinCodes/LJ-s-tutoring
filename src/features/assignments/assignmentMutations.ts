@@ -501,7 +501,7 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
   const uploadId = createSubmissionAttemptId();
   let attachmentPath = current.attachment_url || null;
   // Legacy memo paths are retained but cannot be changed through this workflow.
-  let memoPath = current.memo_url || null;
+  const memoPath = current.memo_url || null;
   let stagedAttachmentPath: string | null = null;
 
   try {

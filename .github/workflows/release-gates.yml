@@ -39,6 +39,11 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      # `public-prerender.test.cjs` exercises the generated static shell and
+      # needs Vite's ignored, content-hashed React output in a clean runner.
+      - name: Build React assets for source-contract tests
+        run: npm run build:react
+
       - name: Unit and source-contract tests
         run: npm test
 
