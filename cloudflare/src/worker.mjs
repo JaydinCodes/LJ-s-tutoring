@@ -5,6 +5,17 @@ const SECURITY_HEADERS = {
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
 };
 
+// The origin is a single DigitalOcean static-site hostname. `upstreamRequest`
+// below deliberately replaces the public hostname with that origin hostname,
+// which means origin-side authority rules cannot tell an admin/tutor/student
+// request apart from a request for the public site. Handle the portal entry
+// redirects here, before that hostname is replaced.
+const PORTALS = {
+  'admin.projectodysseus.live': '/dashboard/admin/',
+  'tutor.projectodysseus.live': '/dashboard/tutor/',
+  'student.projectodysseus.live': '/dashboard/student/',
+};
+
 function createNonce() {
   const bytes = new Uint8Array(18);
   crypto.getRandomValues(bytes);
@@ -33,12 +44,13 @@ function isHtml(response) {
   return (response.headers.get('content-type') || '').toLowerCase().includes('text/html');
 }
 
-function upstreamRequest(request, originUrl) {
+function upstreamRequest(request, originUrl, pathname) {
   const upstream = new URL(request.url);
   const origin = new URL(originUrl);
   upstream.protocol = origin.protocol;
   upstream.hostname = origin.hostname;
   upstream.port = origin.port;
+  if (pathname) upstream.pathname = pathname;
 
   return new Request(upstream, request);
 }
@@ -49,7 +61,21 @@ export default {
       return new Response('Cloudflare edge origin is not configured.', { status: 503 });
     }
 
-    const originResponse = await fetch(upstreamRequest(request, env.ORIGIN_URL));
+    const requestedUrl = new URL(request.url);
+    const portalEntryPoint = PORTALS[requestedUrl.hostname];
+    if (portalEntryPoint && requestedUrl.pathname === '/') {
+      requestedUrl.pathname = portalEntryPoint;
+      return Response.redirect(requestedUrl.toString(), 302);
+    }
+
+    // DigitalOcean's ingress uses the hostname to choose its dashboard shell.
+    // The proxy must use the origin hostname, so route portal dashboard traffic
+    // to the corresponding real static file here instead. The browser URL is
+    // unchanged, allowing React Router to render nested dashboard routes.
+    const portalShellPath = portalEntryPoint && requestedUrl.pathname.startsWith('/dashboard/')
+      ? `${portalEntryPoint}index.html`
+      : undefined;
+    const originResponse = await fetch(upstreamRequest(request, env.ORIGIN_URL, portalShellPath));
     const nonce = createNonce();
     const headers = new Headers(originResponse.headers);
 

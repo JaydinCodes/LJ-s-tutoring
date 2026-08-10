@@ -36,6 +36,7 @@ const protectedRoutes = [
   '/dashboard/admin/ops-runbook',
   '/dashboard/tutor',
   '/dashboard/tutor/classes',
+  '/dashboard/tutor/assignments',
   '/dashboard/tutor/sessions',
   '/dashboard/tutor/submissions',
   '/dashboard/tutor/reports',
@@ -76,16 +77,19 @@ test('unified React app registers migrated public and protected routes', () => {
 
 test('build-static generates direct shell files for every nested React route', () => {
   const buildStatic = fs.readFileSync(path.join(root, 'scripts', 'build-static.js'), 'utf8');
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'src', 'app', 'route-manifest.json'), 'utf8'));
   const shellRoutes = [...publicRoutes, ...protectedRoutes]
     .filter((route) => route !== '/')
     .map((route) => route.replace(/^\//, ''));
 
   for (const route of shellRoutes) {
     assert.ok(
-      buildStatic.includes(`'${route}'`),
-      `${route} must be listed in reactDashboardRoutes for direct static loads`,
+      manifest.routes.some((entry) => entry.path === `/${route}` && entry.shell),
+      `${route} must be a shell route in the route manifest for direct static loads`,
     );
   }
+
+  assert.match(buildStatic, /routeManifest\.routes/, 'static shell generation must read the route manifest');
 
   assert.ok(buildStatic.includes('/react-app-dist/${reactAppJsFile}'), 'React shell must load the content-hashed unified React bundle');
   assert.ok(buildStatic.includes('/react-app-dist/${reactAppCssFile}'), 'React shell must load the content-hashed unified React stylesheet');

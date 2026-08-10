@@ -60,7 +60,7 @@ export function AdminAssignmentsRoute() {
   );
 }
 
-function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: Assignment; onSaved: () => Promise<void> }) {
+export function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: Assignment; onSaved: () => Promise<void> }) {
   const [title, setTitle] = useState(assignment.title || '');
   const [description, setDescription] = useState(assignment.description || '');
   const [subjectName, setSubjectName] = useState('');
@@ -269,7 +269,7 @@ function SubmissionReviewCard({
   );
 }
 
-function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> }) {
+export function CreateAssignmentForm({ onCreated, role = 'admin' }: { onCreated: () => Promise<void>; role?: 'admin' | 'tutor' }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [subjectName, setSubjectName] = useState('');
@@ -301,9 +301,9 @@ function CreateAssignmentForm({ onCreated }: { onCreated: () => Promise<void> })
       await onCreated();
     } catch (err) {
       captureAppError(err, {
-        featureArea: 'admin',
-        action: 'admin_assignment.create_failed',
-        role: 'admin',
+        featureArea: role === 'tutor' ? 'tutors' : 'admin',
+        action: `${role}_assignment.create_failed`,
+        role,
         metadata: {
           has_attachment: Boolean(attachment),
           due_date_set: Boolean(dueDate),
