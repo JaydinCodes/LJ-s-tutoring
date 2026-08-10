@@ -1,8 +1,9 @@
 name: Preview Deploy
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  # This remains available if a free preview provider is configured later, but
+  # it does not run automatically or create noisy no-job notifications.
+  workflow_dispatch:
 
 concurrency:
   group: preview-${{ github.workflow }}-${{ github.ref }}
