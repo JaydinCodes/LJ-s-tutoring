@@ -8,9 +8,19 @@ concurrency:
   group: preview-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   preview:
-    if: github.event.pull_request.head.repo.fork == false
+    # Netlify previews are optional and this repository intentionally does not
+    # require a paid preview provider. Avoid a red build when those secrets are
+    # not configured.
+    if: >-
+      github.event.pull_request.head.repo.fork == false &&
+      secrets.NETLIFY_AUTH_TOKEN != '' &&
+      secrets.NETLIFY_SITE_ID != ''
     runs-on: ubuntu-latest
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}

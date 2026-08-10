@@ -35,6 +35,10 @@ concurrency:
   group: qa-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   qa:
     runs-on: ubuntu-latest
