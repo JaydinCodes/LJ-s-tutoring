@@ -287,6 +287,8 @@ test('SEC-02 security headers are an executable edge policy with live production
   assert.match(uptime, /vars\.PRODUCTION_ORIGINS/);
   assert.match(uptime, /npm run verify:production:headers/);
   assert.match(deployment, /npm run verify:production:headers/);
+  assert.match(deployment, /source_commit_hash/);
+  assert.match(deployment, /Deployment source mismatch/);
 
   assert.match(structuredData, /meta\[name="csp-nonce"\]/);
   assert.match(structuredData, /nonce=\{cspNonce\(\)\}/);

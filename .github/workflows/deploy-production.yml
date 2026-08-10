@@ -61,9 +61,26 @@ jobs:
       - name: Deploy the tested main commit
         env:
           DIGITALOCEAN_APP_ID: ${{ secrets.DIGITALOCEAN_APP_ID }}
+          TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           test -n "$DIGITALOCEAN_APP_ID" || { echo "DIGITALOCEAN_APP_ID is required"; exit 1; }
-          doctl apps create-deployment "$DIGITALOCEAN_APP_ID" --wait
+          deployment_json="$(doctl apps create-deployment "$DIGITALOCEAN_APP_ID" --wait --output json)"
+          deployment_id="$(jq -r 'if type == "array" then .[0].id else .id end' <<<"$deployment_json")"
+          test -n "$deployment_id" && test "$deployment_id" != "null" || {
+            echo 'DigitalOcean did not return a deployment ID.' >&2
+            exit 1
+          }
+
+          deployed_sha="$(doctl apps get-deployment "$DIGITALOCEAN_APP_ID" "$deployment_id" --output json \
+            | jq -r '.static_sites[]? | select(.name == "website") | .source_commit_hash // empty')"
+          test -n "$deployed_sha" || {
+            echo 'DigitalOcean did not report the website source commit.' >&2
+            exit 1
+          }
+          test "$deployed_sha" = "$TESTED_SHA" || {
+            echo "Deployment source mismatch: expected $TESTED_SHA, got $deployed_sha." >&2
+            exit 1
+          }
 
       - name: Verify live production security headers
         env:
