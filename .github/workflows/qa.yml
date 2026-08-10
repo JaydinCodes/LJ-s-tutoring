@@ -57,7 +57,7 @@ jobs:
       - name: Install dependencies
         env:
           PUPPETEER_SKIP_DOWNLOAD: "true"
-        run: npm ci
+        run: HUSKY=0 npm ci
 
       - name: Install Chromium
 
