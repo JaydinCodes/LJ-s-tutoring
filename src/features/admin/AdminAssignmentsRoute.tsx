@@ -302,7 +302,7 @@ export function CreateAssignmentForm({ onCreated, role = 'admin' }: { onCreated:
     } catch (err) {
       captureAppError(err, {
         featureArea: role === 'tutor' ? 'tutors' : 'admin',
-        action: `${role}_assignment.create_failed`,
+        action: role === 'tutor' ? 'tutor_assignment.create_failed' : 'admin_assignment.create_failed',
         role,
         metadata: {
           has_attachment: Boolean(attachment),
