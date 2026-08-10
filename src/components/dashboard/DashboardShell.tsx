@@ -67,6 +67,7 @@ const nav = {
   tutor: [
     { to: '/dashboard/tutor', label: 'Overview', icon: LayoutDashboard },
     { to: '/dashboard/tutor/classes', label: 'Classes', icon: BookOpen },
+    { to: '/dashboard/tutor/assignments', label: 'Assignments', icon: ScrollText },
     { to: '/dashboard/tutor/sessions', label: 'Sessions', icon: Clock },
     { to: '/dashboard/tutor/submissions', label: 'Submissions', icon: ScrollText },
     { to: '/dashboard/tutor/reports', label: 'Reports', icon: TrendingUp },

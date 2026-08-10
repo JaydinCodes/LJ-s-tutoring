@@ -37,6 +37,7 @@ const StudentCommunityRoute = lazy(() => import('../features/students/StudentSup
 const StudentReportsRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentReportsRoute })));
 const StudentSettingsRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentSettingsRoute })));
 const TutorClassesRoute = lazy(() => import('../features/tutors/TutorClassesRoute').then((module) => ({ default: module.TutorClassesRoute })));
+const TutorAssignmentsRoute = lazy(() => import('../features/tutors/TutorAssignmentsRoute').then((module) => ({ default: module.TutorAssignmentsRoute })));
 const TutorDashboardRoute = lazy(() => import('../features/tutors/TutorDashboardRoute').then((module) => ({ default: module.TutorDashboardRoute })));
 const TutorReportsRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorReportsRoute })));
 const TutorRiskRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorRiskRoute })));
@@ -113,6 +114,7 @@ export function App() {
         <Route path="/dashboard/admin/reports" element={<ProtectedRoute roles={['admin']}><AdminReportsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor" element={<ProtectedRoute roles={['tutor']}><TutorDashboardRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/classes" element={<ProtectedRoute roles={['tutor']}><TutorClassesRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/tutor/assignments" element={<ProtectedRoute roles={['tutor']}><TutorAssignmentsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/sessions" element={<ProtectedRoute roles={['tutor']}><TutorSessionsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/submissions" element={<ProtectedRoute roles={['tutor']}><TutorSubmissionsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/reports" element={<ProtectedRoute roles={['tutor']}><TutorReportsRoute /></ProtectedRoute>} />

@@ -187,7 +187,10 @@ Deno.serve(async (req) => {
     if (input.mode === 'invite') {
       const { data, error } = await admin.auth.admin.inviteUserByEmail(input.email, {
         data: userMetadata,
-        redirectTo: Deno.env.get('SUPABASE_INVITE_REDIRECT_URL') || undefined,
+        // `SUPABASE_*` is reserved by the Edge Functions runtime and cannot
+        // be configured as a project secret. Use an app-owned variable in
+        // production, while retaining the legacy name for local environments.
+        redirectTo: Deno.env.get('APP_INVITE_REDIRECT_URL') || Deno.env.get('SUPABASE_INVITE_REDIRECT_URL') || undefined,
       });
       if (error) throw new Error(error.message);
       userId = data.user?.id;

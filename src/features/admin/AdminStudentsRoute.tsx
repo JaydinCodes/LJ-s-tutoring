@@ -9,6 +9,8 @@ import { FormField, TextInput } from '../../components/ui/FormField';
 import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
+import { recordAuditEvent } from '../../lib/audit/auditLog';
+import { requireSupabase } from '../../lib/supabase/client';
 import { formatDate } from '../../lib/utils/format';
 import type { Guardian, NgoPartner, RecordStatus, Student, StudentGuardian, Tutor } from '../../types/lms';
 import { assignTutorToStudent, type AllocationInput } from './allocationManagementMutations';
@@ -16,9 +18,10 @@ import { loadAdminDashboard } from './adminDashboardRepository';
 import type { AdminStudentSubmission } from './adminStudentDetailRepository';
 import { loadAdminStudentDetail } from './adminStudentDetailRepository';
 import { createGuardianRecord, deactivateGuardianLink, linkGuardianToStudent, updateGuardianRecord } from './guardianMutations';
-import { createStudentRecord, updateStudentRecord } from './rosterMutations';
+import { updateStudentRecord } from './rosterMutations';
 
 type AdminStudentRow = Student & { full_name?: string; email?: string; phone?: string | null; ngo_partner?: string };
+const gradeOptions = ['Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
 
 export function AdminStudentsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminDashboard, []);
@@ -237,7 +240,6 @@ function CreateGuardianForm({ onCreated }: { onCreated: () => Promise<void> }) {
 }
 
 function CreateStudentForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartner[]; onCreated: () => Promise<void> }) {
-  const [authUserId, setAuthUserId] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -257,8 +259,31 @@ function CreateStudentForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartner
     setMessage(null);
     setError(null);
     try {
-      await createStudentRecord({ authUserId, fullName, email, phone, grade, school, parentName, parentContact, ngoPartnerId, status });
-      setAuthUserId('');
+      const client = requireSupabase();
+      const result = await client.functions.invoke<{ ok: boolean; profileId: string; userId: string }>('admin-invite-user', {
+        body: {
+          mode: 'invite',
+          role: 'student',
+          fullName,
+          email,
+          phone: phone.trim() || undefined,
+          student: {
+            grade,
+            school: school.trim() || undefined,
+            parentName: parentName.trim() || undefined,
+            parentContact: parentContact.trim() || undefined,
+            ngoPartnerId: ngoPartnerId || undefined,
+            status,
+          },
+        },
+      });
+      if (result.error || !result.data?.ok) throw result.error || new Error('Could not invite student.');
+      await recordAuditEvent({
+        action: 'user.invited',
+        entityType: 'profile',
+        entityId: result.data.profileId,
+        metadata: { role: 'student', auth_user_id: result.data.userId },
+      });
       setFullName('');
       setEmail('');
       setPhone('');
@@ -268,7 +293,7 @@ function CreateStudentForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartner
       setParentContact('');
       setNgoPartnerId('');
       setStatus('pending');
-      setMessage('Student added to the roster.');
+      setMessage('Student invited and added to the roster.');
       await onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create student record.');
@@ -281,17 +306,21 @@ function CreateStudentForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartner
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-950">Link student</h2>
-          <p className="mt-1 text-sm text-slate-600">Create a learner profile for an existing account.</p>
+          <h2 className="text-xl font-semibold text-slate-950">Invite student</h2>
+          <p className="mt-1 text-sm text-slate-600">Create the learner account and roster profile together. No account ID is needed.</p>
         </div>
         <StatusBadge value="admin_only" />
       </div>
       <form className="mt-5 grid gap-4 lg:grid-cols-2" onSubmit={(event) => void submit(event)}>
-        <FormField label="Account user ID"><TextInput required value={authUserId} onChange={(event) => setAuthUserId(event.target.value)} placeholder="Account user ID" /></FormField>
         <FormField label="Full name"><TextInput required value={fullName} onChange={(event) => setFullName(event.target.value)} /></FormField>
         <FormField label="Email"><TextInput required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></FormField>
         <FormField label="Phone"><TextInput value={phone} onChange={(event) => setPhone(event.target.value)} /></FormField>
-        <FormField label="Grade"><TextInput value={grade} onChange={(event) => setGrade(event.target.value)} placeholder="Grade 11" /></FormField>
+        <FormField label="Grade">
+          <select required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={grade} onChange={(event) => setGrade(event.target.value)}>
+            <option value="">Choose grade</option>
+            {gradeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </FormField>
         <FormField label="School"><TextInput value={school} onChange={(event) => setSchool(event.target.value)} /></FormField>
         <FormField label="Parent name"><TextInput value={parentName} onChange={(event) => setParentName(event.target.value)} /></FormField>
         <FormField label="Parent contact"><TextInput value={parentContact} onChange={(event) => setParentContact(event.target.value)} /></FormField>
@@ -302,7 +331,7 @@ function CreateStudentForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartner
           </select>
         </FormField>
         <FormField label="Status"><StatusSelect value={status} onChange={setStatus} /></FormField>
-        <SubmitRow busy={busy} label="Create student" message={message} error={error} />
+        <SubmitRow busy={busy} label="Send student invite" message={message} error={error} />
       </form>
     </Card>
   );
@@ -556,4 +585,3 @@ function SubmitRow({ busy, label, message, error }: { busy: boolean; label: stri
 function normalizeStatus(value: string): RecordStatus {
   return value === 'active' || value === 'inactive' || value === 'approved' || value === 'suspended' ? value : 'pending';
 }
-

@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { FormField, TextInput } from '../../components/ui/FormField';
@@ -23,6 +23,8 @@ type AdminUserCreateResponse = {
 };
 
 const roleOptions: ManagedRole[] = ['student', 'tutor', 'admin'];
+const tutorSubjects = ['Mathematics', 'Mathematical Literacy', 'Physical Sciences'];
+const tutorGrades = ['Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
 
 export function AdminUsersRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminDashboard, []);
@@ -70,16 +72,13 @@ function AdminInviteUserForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartn
   const [parentName, setParentName] = useState('');
   const [parentContact, setParentContact] = useState('');
   const [ngoPartnerId, setNgoPartnerId] = useState('');
-  const [subjects, setSubjects] = useState('');
-  const [grades, setGrades] = useState('');
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [grades, setGrades] = useState<string[]>([]);
   const [hourlyRate, setHourlyRate] = useState('');
   const [status, setStatus] = useState<RecordStatus>('pending');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const parsedSubjects = useMemo(() => csvList(subjects), [subjects]);
-  const parsedGrades = useMemo(() => csvList(grades), [grades]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -106,8 +105,8 @@ function AdminInviteUserForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartn
             status,
           } : undefined,
           tutor: role === 'tutor' ? {
-            subjects: parsedSubjects,
-            grades: parsedGrades,
+            subjects,
+            grades,
             hourlyRate: hourlyRate.trim() ? Number(hourlyRate) : undefined,
             status,
           } : undefined,
@@ -149,8 +148,8 @@ function AdminInviteUserForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartn
     setParentName('');
     setParentContact('');
     setNgoPartnerId('');
-    setSubjects('');
-    setGrades('');
+    setSubjects([]);
+    setGrades([]);
     setHourlyRate('');
     setStatus('pending');
   }
@@ -190,7 +189,12 @@ function AdminInviteUserForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartn
 
         {role === 'student' ? (
           <>
-            <FormField label="Grade"><TextInput value={grade} onChange={(event) => setGrade(event.target.value)} placeholder="Grade 11" /></FormField>
+            <FormField label="Grade">
+              <select required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={grade} onChange={(event) => setGrade(event.target.value)}>
+                <option value="">Choose grade</option>
+                {tutorGrades.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </FormField>
             <FormField label="School"><TextInput value={school} onChange={(event) => setSchool(event.target.value)} /></FormField>
             <FormField label="Parent name"><TextInput value={parentName} onChange={(event) => setParentName(event.target.value)} /></FormField>
             <FormField label="Parent contact"><TextInput value={parentContact} onChange={(event) => setParentContact(event.target.value)} /></FormField>
@@ -205,8 +209,8 @@ function AdminInviteUserForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartn
 
         {role === 'tutor' ? (
           <>
-            <FormField label="Subjects" hint="Comma separated."><TextInput value={subjects} onChange={(event) => setSubjects(event.target.value)} placeholder="Mathematics, Physical Sciences" /></FormField>
-            <FormField label="Grades" hint="Comma separated."><TextInput value={grades} onChange={(event) => setGrades(event.target.value)} placeholder="Grade 10, Grade 11" /></FormField>
+            <MultiSelect label="Subjects" options={tutorSubjects} value={subjects} onChange={setSubjects} />
+            <MultiSelect label="Grades" options={tutorGrades} value={grades} onChange={setGrades} />
             <FormField label="Hourly rate"><TextInput min="0" step="0.01" type="number" value={hourlyRate} onChange={(event) => setHourlyRate(event.target.value)} /></FormField>
           </>
         ) : null}
@@ -224,6 +228,16 @@ function AdminInviteUserForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartn
         </div>
       </form>
     </Card>
+  );
+}
+
+function MultiSelect({ label, options, value, onChange }: { label: string; options: string[]; value: string[]; onChange: (value: string[]) => void }) {
+  return (
+    <FormField label={label} hint="Select one or more.">
+      <select multiple required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={value} onChange={(event) => onChange(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </FormField>
   );
 }
 
@@ -246,10 +260,6 @@ function SummaryTile({ label, value }: { label: string; value: number }) {
       <p className="mt-2 text-2xl font-semibold text-slate-950">{value}</p>
     </div>
   );
-}
-
-function csvList(value: string) {
-  return value.split(',').map((item) => item.trim()).filter(Boolean);
 }
 
 // supabase-js's functions.invoke() wraps a non-2xx response in a generic

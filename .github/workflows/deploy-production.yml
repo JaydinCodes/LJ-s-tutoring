@@ -82,6 +82,17 @@ jobs:
             exit 1
           }
 
+      - name: Deploy Cloudflare security edge
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ORIGIN_URL: ${{ vars.CLOUDFLARE_ORIGIN_URL }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 1; }
+          test -n "$ORIGIN_URL" || { echo "CLOUDFLARE_ORIGIN_URL is required"; exit 1; }
+          npx --yes wrangler@4 deploy --config cloudflare/wrangler.toml --var "ORIGIN_URL:$ORIGIN_URL"
+
       - name: Verify live production security headers
         env:
           PRODUCTION_ORIGINS: ${{ vars.PRODUCTION_ORIGINS }}

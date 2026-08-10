@@ -16,6 +16,8 @@ test('admin user invite workflow is routed through a backend-only Supabase admin
   // security properties the old route did.
   const edgeFunction = read('supabase/functions/admin-invite-user/index.ts');
   const adminUsersRoute = read('src/features/admin/AdminUsersRoute.tsx');
+  const adminTutorsRoute = read('src/features/admin/AdminTutorsRoute.tsx');
+  const adminStudentsRoute = read('src/features/admin/AdminStudentsRoute.tsx');
 
   assert.match(edgeFunction, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(edgeFunction, /role !== 'admin'/);
@@ -28,6 +30,19 @@ test('admin user invite workflow is routed through a backend-only Supabase admin
   assert.match(edgeFunction, /duplicate_email/);
 
   assert.match(adminUsersRoute, /functions\.invoke<AdminUserCreateResponse>\('admin-invite-user'/);
+  assert.match(adminTutorsRoute, /functions\.invoke<\{ ok: boolean; profileId: string; userId: string \}>\('admin-invite-user'/);
+  assert.doesNotMatch(adminTutorsRoute, /Account user ID/);
+  assert.match(adminStudentsRoute, /functions\.invoke<\{ ok: boolean; profileId: string; userId: string \}>\('admin-invite-user'/);
+  assert.doesNotMatch(adminStudentsRoute, /Account user ID/);
+  for (const route of [adminUsersRoute, adminStudentsRoute]) {
+    assert.match(route, /Choose grade/);
+    assert.match(route, /Grade 12/);
+  }
+  for (const route of [adminUsersRoute, adminTutorsRoute]) {
+    assert.match(route, /<select multiple required/);
+    assert.match(route, /Mathematical Literacy/);
+    assert.match(route, /Grade 12/);
+  }
   assert.doesNotMatch(adminUsersRoute, /apiPost/);
 });
 

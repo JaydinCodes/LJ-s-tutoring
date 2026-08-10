@@ -58,6 +58,19 @@ production origin.
    as complete. It will continue to check hourly and after every production
    deployment.
 
+## Continuous deployment
+
+After the initial setup, `deploy-production.yml` publishes the Worker for
+every tested commit merged to `main`; manual `wrangler deploy` is not part of
+normal releases. Configure these one-time values in the GitHub `production`
+environment before merging that workflow change:
+
+| Name | Type | Value |
+|---|---|---|
+| `CLOUDFLARE_API_TOKEN` | Secret | A scoped Cloudflare API token with Workers script deployment permission. |
+| `CLOUDFLARE_ACCOUNT_ID` | Secret | The account that owns `project-odysseus-security-edge`. |
+| `CLOUDFLARE_ORIGIN_URL` | Variable | The non-proxied DigitalOcean origin, e.g. `https://YOUR-DO-APP.ondigitalocean.app`. |
+
 Only activate HSTS after every listed host works over HTTPS. Because the policy
 uses `includeSubDomains`, an HTTP-only subdomain would otherwise become
 unreachable for browsers that have received the header.

@@ -7,10 +7,15 @@ import { FormField, TextInput } from '../../components/ui/FormField';
 import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
+import { recordAuditEvent } from '../../lib/audit/auditLog';
+import { requireSupabase } from '../../lib/supabase/client';
 import { formatCurrency } from '../../lib/utils/format';
 import type { RecordStatus, Tutor } from '../../types/lms';
 import { loadAdminDashboard } from './adminDashboardRepository';
-import { createTutorRecord, updateTutorRecord } from './rosterMutations';
+import { updateTutorRecord } from './rosterMutations';
+
+const tutorSubjects = ['Mathematics', 'Mathematical Literacy', 'Physical Sciences'];
+const tutorGrades = ['Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
 
 export function AdminTutorsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminDashboard, []);
@@ -48,12 +53,11 @@ export function AdminTutorsRoute() {
 }
 
 function CreateTutorForm({ onCreated }: { onCreated: () => Promise<void> }) {
-  const [authUserId, setAuthUserId] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [subjects, setSubjects] = useState('');
-  const [grades, setGrades] = useState('');
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [grades, setGrades] = useState<string[]>([]);
   const [hourlyRate, setHourlyRate] = useState('');
   const [status, setStatus] = useState<RecordStatus>('pending');
   const [busy, setBusy] = useState(false);
@@ -66,16 +70,37 @@ function CreateTutorForm({ onCreated }: { onCreated: () => Promise<void> }) {
     setMessage(null);
     setError(null);
     try {
-      await createTutorRecord({ authUserId, fullName, email, phone, subjects, grades, hourlyRate, status });
-      setAuthUserId('');
+      const client = requireSupabase();
+      const result = await client.functions.invoke<{ ok: boolean; profileId: string; userId: string }>('admin-invite-user', {
+        body: {
+          mode: 'invite',
+          role: 'tutor',
+          fullName,
+          email,
+          phone: phone.trim() || undefined,
+          tutor: {
+            subjects,
+            grades,
+            hourlyRate: hourlyRate.trim() ? Number(hourlyRate) : undefined,
+            status,
+          },
+        },
+      });
+      if (result.error || !result.data?.ok) throw result.error || new Error('Could not invite tutor.');
+      await recordAuditEvent({
+        action: 'user.invited',
+        entityType: 'profile',
+        entityId: result.data.profileId,
+        metadata: { role: 'tutor', auth_user_id: result.data.userId },
+      });
       setFullName('');
       setEmail('');
       setPhone('');
-      setSubjects('');
-      setGrades('');
+      setSubjects([]);
+      setGrades([]);
       setHourlyRate('');
       setStatus('pending');
-      setMessage('Tutor added to the roster.');
+      setMessage('Tutor invited and added to the roster.');
       await onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create tutor record.');
@@ -88,23 +113,32 @@ function CreateTutorForm({ onCreated }: { onCreated: () => Promise<void> }) {
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-950">Link tutor</h2>
-          <p className="mt-1 text-sm text-slate-600">Create a tutor profile for an existing account.</p>
+          <h2 className="text-xl font-semibold text-slate-950">Invite tutor</h2>
+          <p className="mt-1 text-sm text-slate-600">Create the tutor account and roster profile together. No account ID is needed.</p>
         </div>
         <StatusBadge value="admin_only" />
       </div>
       <form className="mt-5 grid gap-4 lg:grid-cols-2" onSubmit={(event) => void submit(event)}>
-        <FormField label="Account user ID"><TextInput required value={authUserId} onChange={(event) => setAuthUserId(event.target.value)} placeholder="Account user ID" /></FormField>
         <FormField label="Full name"><TextInput required value={fullName} onChange={(event) => setFullName(event.target.value)} /></FormField>
         <FormField label="Email"><TextInput required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></FormField>
         <FormField label="Phone"><TextInput value={phone} onChange={(event) => setPhone(event.target.value)} /></FormField>
-        <FormField label="Subjects" hint="Comma separated."><TextInput value={subjects} onChange={(event) => setSubjects(event.target.value)} placeholder="Mathematics, Physical Sciences" /></FormField>
-        <FormField label="Grades" hint="Comma separated."><TextInput value={grades} onChange={(event) => setGrades(event.target.value)} placeholder="Grade 10, Grade 11" /></FormField>
+        <MultiSelect label="Subjects" options={tutorSubjects} value={subjects} onChange={setSubjects} />
+        <MultiSelect label="Grades" options={tutorGrades} value={grades} onChange={setGrades} />
         <FormField label="Hourly rate"><TextInput type="number" min="0" step="0.01" value={hourlyRate} onChange={(event) => setHourlyRate(event.target.value)} /></FormField>
         <FormField label="Status"><StatusSelect value={status} onChange={setStatus} /></FormField>
-        <SubmitRow busy={busy} label="Create tutor" message={message} error={error} />
+        <SubmitRow busy={busy} label="Send tutor invite" message={message} error={error} />
       </form>
     </Card>
+  );
+}
+
+function MultiSelect({ label, options, value, onChange }: { label: string; options: string[]; value: string[]; onChange: (value: string[]) => void }) {
+  return (
+    <FormField label={label} hint="Select one or more.">
+      <select multiple required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={value} onChange={(event) => onChange(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </FormField>
   );
 }
 
