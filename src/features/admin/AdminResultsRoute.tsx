@@ -141,7 +141,7 @@ function MarkEditPanel({ row, onSaved }: { row: AdminMarkbookRow | null; onSaved
     setMessage(null);
     setError(null);
     try {
-      await markSubmission({ submissionId: selectedRow.id, marksAwarded, feedback, status, rubricScoresJson, marksReleased, feedbackReleased });
+      await markSubmission({ submissionId: selectedRow.id, expectedRevision: selectedRow.revision, marksAwarded, feedback, status, rubricScoresJson, marksReleased, feedbackReleased });
       setMessage('Markbook row updated.');
       await onSaved();
     } catch (err) {

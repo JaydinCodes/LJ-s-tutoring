@@ -12,6 +12,9 @@ export interface WeeklyReportListItem {
   weekEnd?: string;
   created_at?: string;
   createdAt?: string;
+  is_stale?: boolean;
+  stale_since?: string | null;
+  source_watermark?: string;
 }
 
 export interface WeeklyReport {
@@ -22,6 +25,9 @@ export interface WeeklyReport {
   week_end?: string;
   createdAt?: string;
   created_at?: string;
+  is_stale?: boolean;
+  stale_since?: string | null;
+  source_watermark?: string;
   payload?: WeeklyReportPayload;
 }
 
@@ -33,6 +39,9 @@ function mapReport(row: DbWeeklyReport): WeeklyReport {
     week_start: row.week_start,
     week_end: row.week_end,
     created_at: row.created_at,
+    is_stale: row.is_stale,
+    stale_since: row.stale_since,
+    source_watermark: row.source_watermark,
     payload: weeklyReportPayload(row.payload_json),
   };
 }
@@ -78,7 +87,7 @@ export async function loadWeeklyReports(): Promise<{ items: WeeklyReportListItem
 
   const result = await client
     .from('weekly_reports')
-    .select('id, week_start, week_end, created_at')
+    .select('id, week_start, week_end, created_at, is_stale, stale_since, source_watermark')
     .eq('student_id', studentId)
     .order('week_start', { ascending: false });
   if (result.error) {

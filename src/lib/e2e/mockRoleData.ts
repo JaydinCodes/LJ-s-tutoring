@@ -78,6 +78,7 @@ const e2eAssignment: Assignment = {
     { id: 'method', label: 'Method', maxMarks: 60 },
     { id: 'accuracy', label: 'Accuracy', maxMarks: 40 },
   ],
+  revision: 1,
   created_at: now,
 };
 
@@ -101,6 +102,7 @@ const e2eSubmission: AssignmentSubmission & { assignment_title?: string; student
   marks_released: false,
   feedback_released: false,
   released_at: null,
+  revision: 1,
   // Pre-graded so the AI-draft prefill/badge (aiGradingPrefill.ts) is
   // exercisable in every review surface without a real Gemini call.
   ai_marks_awarded: 78,

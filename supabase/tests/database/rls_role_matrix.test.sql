@@ -583,7 +583,8 @@ select throws_ok(
     select public.create_assignment_draft(
       'a0000000-0000-0000-0000-000000000002',
       'Cross-org RPC write', null, '90000000-0000-0000-0000-000000000001',
-      'Grade 11', null, '[]'::jsonb
+      'Grade 11', null, '[]'::jsonb,
+      'd1111111-1111-4111-8111-111111111111'
     )
   $$,
   '42501',
@@ -595,7 +596,8 @@ select lives_ok(
     select public.create_assignment_draft(
       'a0000000-0000-0000-0000-000000000001',
       'Same-org RPC write', null, '90000000-0000-0000-0000-000000000001',
-      'Grade 11', null, '[]'::jsonb
+      'Grade 11', null, '[]'::jsonb,
+      'd2222222-2222-4222-8222-222222222222'
     )
   $$,
   'approved active tutor can create an assignment through the scoped RPC'
@@ -604,6 +606,40 @@ select is(
   (select count(*) from public.assignments where title = 'Same-org RPC write' and organization_id = 'a0000000-0000-0000-0000-000000000001'),
   1::bigint,
   'scoped assignment RPC preserves the tutor organization'
+);
+select lives_ok(
+  $$
+    select public.create_assignment_draft(
+      'a0000000-0000-0000-0000-000000000001',
+      'Same-org RPC write', null, '90000000-0000-0000-0000-000000000001',
+      'Grade 11', null, '[]'::jsonb,
+      'd2222222-2222-4222-8222-222222222222'
+    )
+  $$,
+  'an unchanged assignment-draft retry succeeds'
+);
+select is(
+  (
+    select count(*)
+    from public.assignments
+    where created_by = '10000000-0000-0000-0000-000000000003'
+      and client_request_id = 'd2222222-2222-4222-8222-222222222222'
+  ),
+  1::bigint,
+  'an unchanged assignment-draft retry creates one row'
+);
+select throws_ok(
+  $$
+    select public.create_assignment_draft(
+      'a0000000-0000-0000-0000-000000000001',
+      'Changed same request', null, '90000000-0000-0000-0000-000000000001',
+      'Grade 11', null, '[]'::jsonb,
+      'd2222222-2222-4222-8222-222222222222'
+    )
+  $$,
+  '23505',
+  'assignment_create_retry_payload_mismatch',
+  'an assignment request UUID cannot be reused for changed content'
 );
 select lives_ok(
   $$
@@ -617,6 +653,68 @@ select is(
   (select organization_id from public.assignments where id = '50000000-0000-0000-0000-000000000001'),
   'a0000000-0000-0000-0000-000000000001'::uuid,
   'tutor cannot move an existing assignment to another organization'
+);
+select throws_ok(
+  $$
+    select public.finalize_assignment_publication(
+      '50000000-0000-0000-0000-000000000003',
+      'Legacy stale assignment client',
+      null,
+      '90000000-0000-0000-0000-000000000001',
+      'Grade 11',
+      null,
+      'draft',
+      null,
+      null,
+      '[]'::jsonb
+    )
+  $$,
+  '40001',
+  'assignment_revision_required',
+  'a retired assignment client fails closed when it omits the revision'
+);
+select lives_ok(
+  $$
+    select public.finalize_assignment_publication(
+      p_assignment_id => '50000000-0000-0000-0000-000000000003',
+      p_title => 'Alpha Draft CAS winner',
+      p_description => null,
+      p_subject_id => '90000000-0000-0000-0000-000000000001',
+      p_grade => 'Grade 11',
+      p_due_date => null,
+      p_status => 'draft',
+      p_attachment_url => null,
+      p_memo_url => null,
+      p_expected_revision => 1,
+      p_rubric_json => '[]'::jsonb
+    )
+  $$,
+  'the first assignment edit using a current revision succeeds'
+);
+select throws_ok(
+  $$
+    select public.finalize_assignment_publication(
+      p_assignment_id => '50000000-0000-0000-0000-000000000003',
+      p_title => 'Alpha Draft stale loser',
+      p_description => null,
+      p_subject_id => '90000000-0000-0000-0000-000000000001',
+      p_grade => 'Grade 11',
+      p_due_date => null,
+      p_status => 'draft',
+      p_attachment_url => null,
+      p_memo_url => null,
+      p_expected_revision => 1,
+      p_rubric_json => '[]'::jsonb
+    )
+  $$,
+  '40001',
+  'assignment_revision_conflict',
+  'a stale assignment revision cannot overwrite the winning edit'
+);
+select is(
+  (select title from public.assignments where id = '50000000-0000-0000-0000-000000000003'),
+  'Alpha Draft CAS winner',
+  'the stale assignment edit leaves the winner intact'
 );
 
 reset role;
@@ -696,6 +794,18 @@ select throws_ok(
   'not_authorized',
   'AAL1 admin cannot run retention cleanup'
 );
+select throws_ok(
+  $$select * from public.get_admin_ai_grading_queue(10)$$,
+  '42501',
+  'admin_mfa_required',
+  'AAL1 admin cannot inspect AI operations'
+);
+select throws_ok(
+  $$select public.requeue_admin_ai_grading_job('60000000-0000-0000-0000-000000000001', 'must be blocked')$$,
+  '42501',
+  'admin_mfa_required',
+  'AAL1 admin cannot requeue AI work'
+);
 select is((select count(*) from public.profiles), 1::bigint, 'AAL1 admin sees only their ordinary self profile');
 select is((select count(*) from public.assignments), 0::bigint, 'AAL1 admin cannot use admin assignment access');
 select is((select count(*) from public.assignment_submissions), 0::bigint, 'AAL1 admin cannot use admin result access');
@@ -730,7 +840,7 @@ select is((select count(*) from public.student_notifications), 0::bigint, 'even 
 reset role;
 
 -- Storage write checks run last so the successful insert cannot affect the
--- read-count assertions above. The allowed key has 3 folders because
+-- read-count assertions above. The allowed key has 4 folders because
 -- storage.foldername() excludes submission.pdf.
 select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
 set local role authenticated;
@@ -752,10 +862,50 @@ select ok(
   'Storage write guard takes the submission attempt advisory lock'
 );
 select ok(
-  public.can_write_uncommitted_assignment_submission_storage(
-    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
+  not public.can_write_uncommitted_assignment_submission_storage(
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf'
   ),
-  'locked Storage guard allows an own uncommitted attempt'
+  'Storage guard rejects an attempt before its payload is reserved'
+);
+select lives_ok(
+  $$
+    select public.begin_assignment_submission_attempt(
+      p_assignment_id => '50000000-0000-0000-0000-000000000001',
+      p_submission_id => '70000000-0000-0000-0000-000000000001',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+      p_original_filename => 'retry.pdf',
+      p_mime_type => 'application/pdf',
+      p_size_bytes => 123,
+      p_content_sha256 => repeat('a', 64),
+      p_text_answer => 'Stable retry payload',
+      p_text_answer_sha256 => '289500b9823eeccb6b55c65091f6c1b66d1d13661a3160455d44b49648ff7262'
+    )
+  $$,
+  'student reserves one immutable payload before upload'
+);
+select ok(
+  public.can_write_uncommitted_assignment_submission_storage(
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf'
+  ),
+  'locked Storage guard allows the matching reserved attempt'
+);
+select throws_ok(
+  $$
+    select public.begin_assignment_submission_attempt(
+      p_assignment_id => '50000000-0000-0000-0000-000000000001',
+      p_submission_id => '70000000-0000-0000-0000-000000000001',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/submission.pdf',
+      p_original_filename => 'retry.pdf',
+      p_mime_type => 'application/pdf',
+      p_size_bytes => 123,
+      p_content_sha256 => repeat('b', 64),
+      p_text_answer => 'Stable retry payload',
+      p_text_answer_sha256 => '289500b9823eeccb6b55c65091f6c1b66d1d13661a3160455d44b49648ff7262'
+    )
+  $$,
+  '23505',
+  'submission_retry_payload_mismatch',
+  'same UUID and metadata cannot be rebound to different file bytes'
 );
 select ok(
   not public.can_write_uncommitted_assignment_submission_storage(
@@ -772,24 +922,24 @@ select ok(
 
 select lives_ok(
   $$
-    insert into storage.objects (bucket_id, name, owner, metadata)
+    insert into storage.objects (bucket_id, name, owner, metadata, user_metadata)
     values (
       'assignment-submissions',
-      '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
       '00000000-0000-0000-0000-000000000002',
-      '{"mimetype":"application/pdf","size":123}'::jsonb
+      '{"mimetype":"application/pdf","size":123}'::jsonb,
+      '{"sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'::jsonb
     )
   $$,
   'student can upload a correctly-shaped own-org submission key'
 );
-select lives_ok(
-  $$
-    update storage.objects
-    set metadata = '{"mimetype":"application/pdf","size":123,"retry":true}'::jsonb
-    where bucket_id = 'assignment-submissions'
-      and name = '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
-  $$,
-  'student can update the same Storage object during upload retry'
+select is(
+  pg_temp.update_storage_object_metadata(
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+    '{"retry":true}'::jsonb
+  ),
+  0::bigint,
+  'student cannot overwrite immutable submission evidence'
 );
 
 select lives_ok(
@@ -797,8 +947,8 @@ select lives_ok(
     select public.submit_assignment_submission(
       p_assignment_id => '50000000-0000-0000-0000-000000000001',
       p_submission_id => '70000000-0000-0000-0000-000000000001',
-      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
-      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
       p_original_filename => 'retry.pdf',
       p_mime_type => 'application/pdf',
       p_size_bytes => 123,
@@ -813,8 +963,8 @@ select is(
     from public.confirm_assignment_submission_attempt(
       p_assignment_id => '50000000-0000-0000-0000-000000000001',
       p_submission_id => '70000000-0000-0000-0000-000000000001',
-      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
-      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
       p_original_filename => 'retry.pdf',
       p_mime_type => 'application/pdf',
       p_size_bytes => 123,
@@ -825,8 +975,21 @@ select is(
   'confirmed attempt returns before a retry upload'
 );
 select is(
+  (
+    select submission_id
+    from public.confirm_assignment_submission_attempt_digest(
+      p_assignment_id => '50000000-0000-0000-0000-000000000001',
+      p_submission_id => '70000000-0000-0000-0000-000000000001',
+      p_content_sha256 => repeat('a', 64),
+      p_text_answer_sha256 => '289500b9823eeccb6b55c65091f6c1b66d1d13661a3160455d44b49648ff7262'
+    )
+  ),
+  '70000000-0000-0000-0000-000000000001'::uuid,
+  'reload recovery confirms a commit using fingerprints without persisted answer text'
+);
+select is(
   pg_temp.update_storage_object_metadata(
-    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
     '{"tampered":true}'::jsonb
   ),
   0::bigint,
@@ -837,14 +1000,14 @@ select is(
     select metadata
     from storage.objects
     where bucket_id = 'assignment-submissions'
-      and name = '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
+      and name = '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf'
   ),
-  '{"mimetype":"application/pdf","size":123,"retry":true}'::jsonb,
+  '{"mimetype":"application/pdf","size":123}'::jsonb,
   'post-commit overwrite attempt leaves the stored evidence unchanged'
 );
 select ok(
   not public.can_write_uncommitted_assignment_submission_storage(
-    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf'
   ),
   'locked Storage guard rejects the caller-owned key after commit'
 );
@@ -853,7 +1016,7 @@ select throws_ok(
     insert into storage.objects (bucket_id, name, owner, metadata)
     values (
       'assignment-submissions',
-      '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.png',
+      '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/submission.png',
       '00000000-0000-0000-0000-000000000002',
       '{}'::jsonb
     )
@@ -867,8 +1030,8 @@ select lives_ok(
     select public.submit_assignment_submission(
       p_assignment_id => '50000000-0000-0000-0000-000000000001',
       p_submission_id => '70000000-0000-0000-0000-000000000001',
-      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
-      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
       p_original_filename => 'retry.pdf',
       p_mime_type => 'application/pdf',
       p_size_bytes => 123,
@@ -882,8 +1045,8 @@ select throws_ok(
     select public.submit_assignment_submission(
       p_assignment_id => '50000000-0000-0000-0000-000000000001',
       p_submission_id => '70000000-0000-0000-0000-000000000001',
-      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
-      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
       p_original_filename => 'retry.pdf',
       p_mime_type => 'application/pdf',
       p_size_bytes => 123,
@@ -899,17 +1062,17 @@ select throws_ok(
     select public.submit_assignment_submission(
       p_assignment_id => '50000000-0000-0000-0000-000000000002',
       p_submission_id => '70000000-0000-0000-0000-000000000001',
-      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000002/70000000-0000-0000-0000-000000000001/submission.pdf',
-      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000002/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000002/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000002/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
       p_original_filename => 'retry.pdf',
       p_mime_type => 'application/pdf',
       p_size_bytes => 123,
       p_text_answer => 'Stable retry payload'
     )
   $$,
-  'P0002',
-  'submission_file_not_found',
-  'same attempt UUID cannot reference an unverified file for another assignment'
+  '23505',
+  'submission_id_conflict',
+  'same attempt UUID cannot be replayed for another assignment'
 );
 select is(
   (select count(*) from public.get_student_assignment_submissions() where id = '70000000-0000-0000-0000-000000000001'),
@@ -1578,6 +1741,12 @@ select is(
   'failed',
   'failed AI work is durable and visible for retry'
 );
+select ok(
+  (select ai_job_available_at > now() + interval '4 minutes'
+   from public.assignment_submissions
+   where id = '60000000-0000-0000-0000-000000000001'),
+  'AI retry uses server-owned backoff instead of the caller delay'
+);
 update public.assignment_submissions
 set ai_job_available_at = now() - interval '1 second'
 where id = '60000000-0000-0000-0000-000000000001';
@@ -1594,9 +1763,170 @@ select is(
   'retry lease increments the AI attempt counter exactly once'
 );
 
+update public.assignment_submissions
+set ai_grading_status = 'in_progress',
+    ai_job_attempts = 8,
+    ai_job_claim_token = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid,
+    ai_job_claimed_at = now(),
+    ai_job_lease_expires_at = now() + interval '20 minutes',
+    ai_job_last_error = null
+where id = '60000000-0000-0000-0000-000000000001';
+select ok(
+  public.fail_ai_grading_job(
+    '60000000-0000-0000-0000-000000000001',
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid,
+    'permanent provider failure',
+    1
+  ),
+  'the maximum AI attempt is dead-lettered atomically'
+);
+select is(
+  (select ai_grading_status from public.assignment_submissions where id = '60000000-0000-0000-0000-000000000001'),
+  'dead_lettered',
+  'dead-lettered AI work is no longer automatically claimable'
+);
+select ok(
+  exists (
+    select 1 from public.audit_log
+    where action = 'ai_grading.dead_lettered'
+      and entity_id = '60000000-0000-0000-0000-000000000001'
+  ),
+  'dead-lettering writes one operational audit event'
+);
+reset role;
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000001', 'aal2');
+set local role authenticated;
+select lives_ok(
+  $$select * from public.get_admin_ai_grading_queue(100)$$,
+  'AAL2 admin can inspect the bounded AI operations queue'
+);
+select ok(
+  public.requeue_admin_ai_grading_job('60000000-0000-0000-0000-000000000001', 'operator retry after provider recovery'),
+  'AAL2 admin can manually requeue a dead-lettered AI job'
+);
+select is(
+  (select ai_job_attempts from public.assignment_submissions where id = '60000000-0000-0000-0000-000000000001'),
+  0,
+  'admin AI requeue resets the bounded attempt budget'
+);
+select ok(
+  exists (
+    select 1 from public.get_admin_ai_grading_queue(100)
+    where submission_id = '60000000-0000-0000-0000-000000000001'
+      and status = 'pending'
+      and attempts = 0
+  ),
+  'admin queue exposes the requeued pending job'
+);
+select ok(
+  exists (
+    select 1 from public.audit_log
+    where action = 'ai_grading.requeued_by_admin'
+      and entity_id = '60000000-0000-0000-0000-000000000001'
+  ),
+  'admin AI requeue writes an operational audit event'
+);
+
+reset role;
+
+set local role service_role;
+select public.create_student_notification(
+  '20000000-0000-0000-0000-000000000001'::uuid,
+  'retry_probe',
+  'Retry probe',
+  'One notification despite a replay.',
+  '/dashboard/',
+  'assignment',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid,
+  '{}'::jsonb
+);
+select public.create_student_notification(
+  '20000000-0000-0000-0000-000000000001'::uuid,
+  'retry_probe',
+  'Retry probe',
+  'One notification despite a replay.',
+  '/dashboard/',
+  'assignment',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid,
+  '{}'::jsonb
+);
+select is(
+  (
+    select count(*)
+    from public.notification_outbox_events
+    where event_key = 'retry_probe:assignment:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+      and status = 'pending'
+  ),
+  1::bigint,
+  'notification replay leaves one pending transactional outbox event'
+);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"service_role"}',
+  true
+);
+select lives_ok(
+  $$
+    with claimed as (
+      select * from public.claim_next_notification_outbox_event()
+    )
+    select public.dispatch_notification_outbox_event(claimed.id, claimed.claim_token)
+    from claimed
+  $$,
+  'a trusted worker dispatches the claimed notification event'
+);
+select is(
+  (
+    select count(*)
+    from public.student_notifications
+    where dedupe_key = 'retry_probe:assignment:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  ),
+  1::bigint,
+  'notification replay returns one deterministic event'
+);
+reset role;
+
+set local role service_role;
+insert into public.weekly_reports (
+  id, student_id, week_start, week_end, payload_json, created_by
+) values (
+  '73000000-0000-0000-0000-000000000001',
+  '20000000-0000-0000-0000-000000000001',
+  '2026-08-10', '2026-08-16', '{"stale":true}'::jsonb, null
+);
+update public.weekly_reports
+set is_stale = true, stale_since = now() - interval '1 minute'
+where id = '73000000-0000-0000-0000-000000000001';
+select set_config('request.jwt.claims', '{"role":"service_role"}', true);
+select ok(
+  public.refresh_stale_weekly_reports(10) >= 1,
+  'trusted report worker refreshes a bounded batch of stale snapshots'
+);
+select is(
+  (select is_stale from public.weekly_reports where id = '73000000-0000-0000-0000-000000000001'),
+  false,
+  'refreshing a report clears its stale marker'
+);
+select ok(
+  (select payload_json ? 'student' from public.weekly_reports where id = '73000000-0000-0000-0000-000000000001'),
+  'refreshed report has the canonical computed payload'
+);
+
 reset role;
 
 -- A locked period cannot accept a new adjustment, even through its trusted RPC.
+insert into public.sessions (
+  id, organization_id, tutor_id, student_id, tutor_student_allocation_id,
+  date, start_time, end_time, duration_minutes, mode, status
+)
+values (
+  '71000000-0000-0000-0000-000000000001',
+  'a0000000-0000-0000-0000-000000000001',
+  '30000000-0000-0000-0000-000000000001',
+  '20000000-0000-0000-0000-000000000001',
+  'e0000000-0000-0000-0000-000000000001',
+  '2099-01-05', '15:00', '16:00', 60, 'online', 'draft'
+);
 select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000001', 'aal2');
 set local role authenticated;
 select lives_ok(
@@ -1617,6 +1947,17 @@ select throws_ok(
   '42501',
   'pay_period_locked',
   'admin cannot create an adjustment after the pay period is locked'
+);
+
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000003');
+set local role authenticated;
+select throws_ok(
+  $$select public.submit_session('71000000-0000-0000-0000-000000000001')$$,
+  '42501',
+  'pay_period_locked',
+  'a tutor cannot submit a draft session after payroll wins the week lock'
 );
 
 reset role;

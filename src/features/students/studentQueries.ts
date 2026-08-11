@@ -1,7 +1,11 @@
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthProvider';
-import { submitAssignment, type SubmitAssignmentInput } from '../assignments/assignmentMutations';
+import {
+  recoverPendingAssignmentSubmission,
+  submitAssignment,
+  type SubmitAssignmentInput,
+} from '../assignments/assignmentMutations';
 import { loadCareersOverview } from './studentCareersRepository';
 import { loadStudentDashboard } from './studentDashboardRepository';
 import { loadStudentResultsAnalytics } from './studentResultsRepository';
@@ -69,6 +73,23 @@ export function useSubmitStudentAssignmentMutation() {
         queryKey: studentQueryKeys.dashboard(studentScope),
         exact: true,
       });
+    },
+  });
+}
+
+export function useRecoverPendingStudentAssignmentMutation() {
+  const queryClient = useQueryClient();
+  const studentScope = useStudentScope();
+
+  return useMutation({
+    mutationFn: (assignmentId: string) => recoverPendingAssignmentSubmission(assignmentId),
+    onSuccess: async (result) => {
+      if (result.status === 'confirmed') {
+        await queryClient.invalidateQueries({
+          queryKey: studentQueryKeys.dashboard(studentScope),
+          exact: true,
+        });
+      }
     },
   });
 }

@@ -35,26 +35,30 @@ SUPABASE_PRODUCTION_PROJECT_REF=
 
 `SUPABASE_PRODUCTION_PROJECT_REF` is intentionally blank in local files. Production project refs and service-role keys belong only in the deployment secret manager. `SUPABASE_SERVICE_ROLE_KEY` is Edge-Function-only for trusted work such as admin user invitations; never expose it through Vite or `portal-config.js`.
 
-## Desired State And Migration History
+Production release prerequisites are checked by `.github/workflows/deploy-production.yml`:
+`SUPABASE_ACCESS_TOKEN`, `SUPABASE_PRODUCTION_PROJECT_REF`, and
+`SUPABASE_DB_PASSWORD` must be configured as environment secrets. The workflow
+applies migrations, deploys all Edge Functions, then calls the idempotent
+recovery-schedule bootstrap. The Vault secret
+`ai_grading_service_role_key` must exist before that bootstrap; it installs the
+AI worker, submission-orphan cleanup, and privacy-deletion resumer cron jobs.
 
-Keep the clean-install desired state current in:
+## Canonical Schema And Migration History
 
-```text
-docs/supabase/schema.sql
-```
-
-The deployable history is the ordered, committed SQL in `supabase/migrations/`.
-The baseline is frozen. Normal changes are forward-only:
+The ordered, committed SQL in `supabase/migrations/` is the canonical database
+and policy source. `docs/supabase/SCHEMA_AND_POLICY_INVENTORY.md` is generated
+from that immutable history and records the exact manifest. The baseline is
+frozen. Normal changes are forward-only:
 
 ```bash
 npx supabase migration --help
 npx supabase migration new <descriptive-name>
 ```
 
-Put only the forward delta in the new migration, update
-`docs/supabase/schema.sql` to the same final state, and commit both. Never amend
-an applied migration. `npm run supabase:legacy-baseline:overwrite` is a
-historical bootstrap escape hatch, not a normal development command.
+Put only the forward delta in the new migration, run
+`npm run supabase:docs:update`, and commit both. Never amend an applied
+migration. `docs/supabase/schema.sql` is retained as historical clean-install
+reference material; it cannot override a later migration.
 
 ## Start And Reset
 

@@ -39,6 +39,9 @@ export interface TutorWeeklyReport {
   weekEnd?: string;
   created_at?: string;
   createdAt?: string;
+  is_stale?: boolean;
+  stale_since?: string | null;
+  source_watermark?: string;
   payload?: WeeklyReportPayload;
 }
 
@@ -198,6 +201,9 @@ function mapReport(row: DbWeeklyReport, studentName?: string): TutorWeeklyReport
     week_start: row.week_start,
     week_end: row.week_end,
     created_at: row.created_at,
+    is_stale: row.is_stale,
+    stale_since: row.stale_since,
+    source_watermark: row.source_watermark,
     payload: weeklyReportPayload(row.payload_json),
   };
 }

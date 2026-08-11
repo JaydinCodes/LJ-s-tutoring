@@ -9,9 +9,11 @@ talks to Gemini, and writes only to the separate `ai_*` columns on
 reviews and saves through the existing `mark_submission()` RPC before
 anything releases to the student.
 
-The worker drafts from the rubric, assignment context, and submission
-evidence. Assignment memos are retired: any legacy private memo is retained
-in Storage but is never downloaded or sent to Gemini.
+The worker drafts from the immutable rubric/instructions snapshot captured when
+the learner submitted, plus submission evidence. Assignment memos are retired:
+any legacy private memo is retained in Storage but is never downloaded or sent
+to Gemini. The draft records the snapshot capture time so a later assignment
+edit cannot silently change the grading context.
 
 Idempotent: claims the row (`ai_grading_status = 'in_progress'`) before the
 Gemini call; a submission already `in_progress`/`completed` short-circuits

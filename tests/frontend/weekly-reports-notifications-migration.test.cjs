@@ -20,6 +20,30 @@ const schema = fs.readFileSync(
   path.join(repoRoot, 'docs', 'supabase', 'schema.sql'),
   'utf8',
 );
+const dedupeMigration = fs.readFileSync(
+  path.join(repoRoot, 'supabase', 'migrations', '20260811143000_dedupe_student_notifications.sql'),
+  'utf8',
+);
+const staleReportMigration = fs.readFileSync(
+  path.join(repoRoot, 'supabase', 'migrations', '20260811150000_mark_reports_stale_on_source_change.sql'),
+  'utf8',
+);
+const staleReportRefreshMigration = fs.readFileSync(
+  path.join(repoRoot, 'supabase', 'migrations', '20260811170000_auto_refresh_stale_weekly_reports.sql'),
+  'utf8',
+);
+const studentReportsRepository = fs.readFileSync(
+  path.join(repoRoot, 'src', 'features', 'students', 'studentReportsRepository.ts'),
+  'utf8',
+);
+const studentReportsRoute = fs.readFileSync(
+  path.join(repoRoot, 'src', 'features', 'students', 'StudentSupportRoutes.tsx'),
+  'utf8',
+);
+const tutorReportsRoute = fs.readFileSync(
+  path.join(repoRoot, 'src', 'features', 'tutors', 'TutorOperationsRoutes.tsx'),
+  'utf8',
+);
 
 const statements = schema.split(/\n\s*\n/);
 
@@ -88,6 +112,39 @@ test('student_notifications table: faithful port of the raw migration, created_b
   assert.doesNotMatch(block, /organization_id/);
   assert.match(schema, /create index if not exists idx_student_notifications_student_created on public\.student_notifications\(student_id, created_at desc\)/);
   assert.match(schema, /create index if not exists idx_student_notifications_student_read on public\.student_notifications\(student_id, is_read, created_at desc\)/);
+});
+
+test('notification retries use a deterministic event key', () => {
+  assert.match(dedupeMigration, /add column if not exists dedupe_key text/);
+  assert.match(dedupeMigration, /idx_student_notifications_dedupe_key/);
+  assert.match(dedupeMigration, /on conflict \(dedupe_key\) where dedupe_key is not null do nothing/);
+  assert.match(dedupeMigration, /p_type/);
+  assert.match(dedupeMigration, /p_entity_id::text/);
+});
+
+test('weekly report snapshots are marked stale when source rows change', () => {
+  assert.match(staleReportMigration, /is_stale boolean not null default false/);
+  assert.match(staleReportMigration, /stale_since timestamptz/);
+  assert.match(staleReportMigration, /source_watermark timestamptz/);
+  assert.match(staleReportMigration, /mark_weekly_reports_stale_from_submission/);
+  assert.match(staleReportMigration, /mark_weekly_reports_stale_from_session/);
+  assert.match(staleReportMigration, /trg_clear_weekly_report_stale_marker/);
+});
+
+test('report views label persisted snapshots and surface stale source data', () => {
+  assert.match(studentReportsRepository, /is_stale, stale_since, source_watermark/);
+  assert.match(studentReportsRoute, /Update pending/);
+  assert.match(studentReportsRoute, /Snapshot as of/);
+  assert.match(tutorReportsRoute, /regenerate to reflect changed source data/i);
+  assert.match(tutorReportsRoute, /This saved snapshot is stale/);
+});
+
+test('a service-only worker automatically refreshes stale report snapshots in bounded locked batches', () => {
+  assert.match(staleReportRefreshMigration, /refresh_stale_weekly_reports\(p_limit integer default 10\)/);
+  assert.match(staleReportRefreshMigration, /for update skip locked/);
+  assert.match(staleReportRefreshMigration, /least\(greatest\(coalesce\(p_limit, 10\), 1\), 25\)/);
+  assert.match(staleReportRefreshMigration, /service_role_required/);
+  assert.match(staleReportRefreshMigration, /refresh-stale-weekly-reports/);
 });
 
 test('both new tables have RLS enabled', () => {

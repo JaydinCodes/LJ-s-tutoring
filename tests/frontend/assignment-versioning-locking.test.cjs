@@ -27,32 +27,47 @@ test('submission storage path uses stable ids and not raw uploaded filenames', (
   const uploadPanel = read('src', 'features', 'students', 'StudentDashboardComponents.tsx');
 
   assert.match(source, /interface SubmitAssignmentInput[\s\S]*submissionId: string/);
-  assert.ok(source.includes('const submissionId = input.submissionId.trim().toLowerCase()'), 'the mutation must consume the caller-owned attempt id');
-  assert.ok(source.includes('`${student.id}/${input.assignmentId}/${submissionId}/submission.${ext}`'), 'frontend path must use stable ids plus normalized extension');
-  assert.match(source, /upload\(storageKey!, input\.file, \{[\s\S]*upsert: true/);
+  assert.ok(source.includes('const proposedSubmissionId = input.submissionId.trim().toLowerCase()'), 'the mutation must consume the caller-owned attempt id');
+  assert.ok(source.includes('`${student.id}/${input.assignmentId}/${submissionId}/${contentSha256}/submission.${ext}`'), 'frontend path must bind stable ids to the content digest');
+  assert.match(source, /upload\(rpcArgs\.p_storage_key!, input\.file, \{[\s\S]*upsert: false/);
+  assert.match(source, /metadata: \{ original_filename: originalFilename!, sha256: entry\.contentSha256! \}/);
   assert.ok(!source.includes('${Date.now()}-${safeFileName(input.file)}'), 'frontend submission path must not include raw filenames');
   assert.doesNotMatch(source, /storage\.from\('assignment-submissions'\)\.remove|\.remove\(\[path\]\)/, 'ambiguous failures must never delete a possibly committed upload');
 
-  assert.match(uploadPanel, /submissionAttemptIdRef = useRef<string \| null>\(null\)/);
-  assert.match(uploadPanel, /submissionAttemptIdRef\.current \?\? createSubmissionAttemptId\(\)/);
+  assert.match(uploadPanel, /submissionAttemptId \?\? createSubmissionAttemptId\(\)/);
+  assert.match(source, /SUBMISSION_ATTEMPT_LEDGER_PREFIX/);
+  assert.match(source, /globalThis\.localStorage/);
   assert.match(uploadPanel, /mutateAsync\(\{ assignmentId: assignment\.id, submissionId, textAnswer, file \}\)/);
 });
 
-test('upload retry state survives failures, resets on edited payload, and clears after confirmation', () => {
+test('upload retry state survives reloads and clears only after confirmation', () => {
+  const source = read('src', 'features', 'assignments', 'assignmentMutations.ts');
   const uploadPanel = read('src', 'features', 'students', 'StudentDashboardComponents.tsx');
-  const submitStart = uploadPanel.indexOf('async function submit(event: FormEvent<HTMLFormElement>)');
-  const submitEnd = uploadPanel.indexOf('\n  return (', submitStart);
-  const submitBlock = uploadPanel.slice(submitStart, submitEnd);
-  const awaitIndex = submitBlock.indexOf('await submitAssignmentMutation.mutateAsync');
-  const clearIndex = submitBlock.indexOf('submissionAttemptIdRef.current = null', awaitIndex);
-  const catchIndex = submitBlock.indexOf('} catch (err) {');
 
-  assert.ok(awaitIndex >= 0 && clearIndex > awaitIndex, 'attempt id must clear only after mutation confirmation');
-  assert.ok(catchIndex > clearIndex, 'confirmed-success cleanup must occur before the error path');
-  assert.doesNotMatch(submitBlock.slice(catchIndex), /submissionAttemptIdRef\.current = null/, 'failure must retain the same retry id');
-  assert.match(uploadPanel, /const setSubmissionText[\s\S]*submissionAttemptIdRef\.current = null/);
-  assert.match(uploadPanel, /const setSelectedFile[\s\S]*submissionAttemptIdRef\.current = null/);
-  assert.match(uploadPanel, /const onDropRejected[\s\S]*submissionAttemptIdRef\.current = null/);
+  assert.match(source, /writeSubmissionAttemptLedger\(entry\)[\s\S]*await beginSubmissionAttempt\(client, entry, textAnswer\)/);
+  assert.match(source, /recoverPendingAssignmentSubmission[\s\S]*confirmSubmissionAttempt\(client, entry\)/);
+  assert.match(source, /if \(await confirmSubmissionAttempt\(client, entry\)\) \{[\s\S]*clearSubmissionAttemptLedger\(entry\)/);
+  assert.doesNotMatch(source, /rpcArgs:\s*SubmissionAttemptRpcArgs/, 'the durable ledger must not persist the written answer');
+  assert.match(source, /return \{[\s\S]*status: 'pending',[\s\S]*submissionId: entry\.submissionId/);
+  assert.match(uploadPanel, /recoverSubmissionMutation\.mutateAsync\(assignment\.id\)/);
+  assert.match(uploadPanel, /Your previous submission completed successfully/);
+});
+
+test('assignment draft creation persists a request identity and binds retries server-side', () => {
+  const source = read('src', 'features', 'assignments', 'assignmentMutations.ts');
+  const migration = read('supabase', 'migrations', '20260811153000_add_assignment_creation_idempotency.sql');
+  const runtime = read('supabase', 'tests', 'database', 'rls_role_matrix.test.sql');
+
+  assert.match(source, /ASSIGNMENT_CREATE_ATTEMPT_LEDGER_PREFIX/);
+  assert.match(source, /getAssignmentCreateAttempt\(profile\.id/);
+  assert.match(source, /p_client_request_id: createAttempt\.requestId/);
+  assert.match(source, /draft\.status === 'published'[\s\S]*clearAssignmentCreateAttemptLedger/);
+  assert.match(migration, /client_request_id uuid/);
+  assert.match(migration, /assignments_created_by_client_request_id_key/);
+  assert.match(migration, /pg_advisory_xact_lock[\s\S]*assignment-create:/);
+  assert.match(migration, /assignment_create_retry_payload_mismatch/);
+  assert.match(runtime, /an unchanged assignment-draft retry creates one row/);
+  assert.match(runtime, /assignment request UUID cannot be reused for changed content/);
 });
 
 test('submit RPC replays an unchanged UUID exactly once and rejects changed payloads', () => {
@@ -86,44 +101,44 @@ test('submit RPC replays an unchanged UUID exactly once and rejects changed payl
 test('client treats the submission RPC response as confirmation without a forbidden raw-row reload', () => {
   const source = read('src', 'features', 'assignments', 'assignmentMutations.ts');
   const submitStart = source.indexOf('export async function submitAssignment');
-  const confirmIndex = source.indexOf('await confirmSubmissionAttempt(client, rpcArgs)', submitStart);
+  const confirmIndex = source.indexOf('await confirmSubmissionAttempt(client, entry)', submitStart);
   const uploadIndex = source.indexOf("storage.from('assignment-submissions').upload", submitStart);
 
   assert.doesNotMatch(source, /from\('assignment_submissions'\)\.select/);
-  assert.ok(confirmIndex > submitStart && confirmIndex < uploadIndex, 'a retry must confirm the stable attempt before any Storage upsert');
+  assert.ok(confirmIndex > submitStart && confirmIndex < uploadIndex, 'a retry must confirm the stable attempt before any Storage upload');
   assert.match(source, /confirm_assignment_submission_attempt/);
-  assert.match(source, /row\.submission_id\.toLowerCase\(\) !== submissionId/);
-  assert.match(source, /return \{ submissionId \}/);
+  assert.match(source, /row\.submission_id\.toLowerCase\(\) !== entry\.submissionId/);
+  assert.match(source, /return \{ submissionId: entry\.submissionId \}/);
 });
 
-test('committed submission evidence is immutable while pre-commit retry upserts remain allowed', () => {
-  const schema = read('docs', 'supabase', 'schema.sql');
-  const policyStart = schema.lastIndexOf('create policy "students_update_own_submission_files"');
-  const policy = schema.slice(policyStart, schema.indexOf('\n);', policyStart) + 3);
-  const confirmStart = schema.lastIndexOf('create or replace function public.confirm_assignment_submission_attempt(');
-  const confirmBody = schema.slice(confirmStart, schema.indexOf('$$;', confirmStart) + 3);
-  const guardStart = schema.lastIndexOf('create or replace function public.can_write_uncommitted_assignment_submission_storage(');
-  const guardBody = schema.slice(guardStart, schema.indexOf('$$;', guardStart) + 3);
+test('submission reservation binds one immutable content digest', () => {
+  const migration = read('supabase', 'migrations', '20260811115426_bind_submission_content_digest.sql');
+  const confirmStart = migration.lastIndexOf('create or replace function public.confirm_assignment_submission_attempt(');
+  const confirmBody = migration.slice(confirmStart, migration.indexOf('$$;', confirmStart) + 3);
+  const guardStart = migration.lastIndexOf('create or replace function public.can_write_uncommitted_assignment_submission_storage(');
+  const guardBody = migration.slice(guardStart, migration.indexOf('$$;', guardStart) + 3);
 
-  assert.match(policy, /public\.can_write_uncommitted_assignment_submission_storage\(name\)/);
+  assert.match(migration, /create table if not exists public\.assignment_submission_attempts/);
+  assert.match(migration, /begin_assignment_submission_attempt/);
+  assert.match(migration, /drop policy if exists "students_update_own_submission_files"/);
   assert.match(guardBody, /language plpgsql[\s\S]*volatile[\s\S]*security definer[\s\S]*set search_path = ''/);
   assert.match(guardBody, /v_submission_id := v_path_parts\[3\]::uuid/);
-  assert.match(guardBody, /v_path_parts\[4\] !~ '\^submission\\\.\[A-Za-z0-9\]\+\$'/);
+  assert.match(guardBody, /v_path_parts\[4\] !~ '\^\[0-9a-f\]\{64\}\$'/);
   assert.match(guardBody, /pg_advisory_xact_lock[\s\S]*assignment-submission-id:/);
-  assert.match(guardBody, /return not exists[\s\S]*s\.id = v_submission_id[\s\S]*s\.student_id = v_student_id/);
+  assert.match(guardBody, /return exists[\s\S]*assignment_submission_attempts[\s\S]*a\.content_sha256 = v_content_sha256/);
   assert.match(confirmBody, /pg_advisory_xact_lock[\s\S]*assignment-submission-id:/);
   assert.match(confirmBody, /submission_retry_payload_mismatch/);
-  assert.match(schema, /revoke execute on function public\.confirm_assignment_submission_attempt[\s\S]*from public/);
+  assert.match(migration, /submission_file_digest_mismatch/);
 });
 
-test('runtime pgTAP covers exact replay, payload mismatch, and Storage upsert permissions', () => {
+test('runtime pgTAP covers exact replay, payload mismatch, and immutable Storage permissions', () => {
   const runtime = read('supabase', 'tests', 'database', 'rls_role_matrix.test.sql');
 
   assert.match(runtime, /unchanged submission retry returns the committed attempt/);
   assert.match(runtime, /submission_retry_payload_mismatch/);
   assert.match(runtime, /idempotent replay creates one submission row/);
   assert.match(runtime, /idempotent replay creates one audit event/);
-  assert.match(runtime, /student can update the same Storage object during upload retry/);
+  assert.match(runtime, /student cannot overwrite immutable submission evidence/);
   assert.match(runtime, /committed submission evidence cannot be overwritten/);
   assert.match(runtime, /confirmed attempt returns before a retry upload/);
 });

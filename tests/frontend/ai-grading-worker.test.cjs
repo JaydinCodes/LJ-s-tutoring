@@ -16,6 +16,8 @@ test('AI grading queues work, fires the worker without waiting, and never uses l
   const config = read('supabase/config.toml');
   const privacy = read('docs/compliance/POPIA_DATA_MAP.md');
   const adminAssignments = read('src/features/admin/AdminAssignmentsRoute.tsx');
+  const retryMigration = read('supabase/migrations/20260811124013_bound_ai_grading_retries.sql');
+  const snapshotMigration = read('supabase/migrations/20260811140000_snapshot_assignment_for_ai_grading.sql');
 
   assert.match(mutations, /enqueue_ai_grading/);
   assert.match(mutations, /void\s+\(client as unknown as/);
@@ -26,6 +28,16 @@ test('AI grading queues work, fires the worker without waiting, and never uses l
   assert.match(worker, /claim_next_ai_grading_job/);
   assert.match(worker, /complete_ai_grading_job/);
   assert.match(worker, /fail_ai_grading_job/);
+  assert.match(worker, /ai_assignment_snapshot_json/);
+  assert.match(worker, /Rubric snapshot captured at/);
+  assert.match(snapshotMigration, /capture_assignment_snapshot/);
+  assert.match(snapshotMigration, /ai_assignment_snapshot_json jsonb/);
+  assert.match(retryMigration, /ai_grading_max_attempts/);
+  assert.match(retryMigration, /dead_lettered/);
+  assert.match(retryMigration, /ai_grading_retry_delay_minutes/);
+  assert.match(retryMigration, /requeue_ai_grading_job/);
+  assert.match(retryMigration, /get_ai_grading_queue_metrics/);
+  assert.match(retryMigration, /ai_grading\.dead_lettered/);
   assert.match(worker, /AbortSignal\.timeout/);
   assert.match(worker, /GeminiResponseSchema/);
   assert.match(worker, /private legacy memo data is never/);

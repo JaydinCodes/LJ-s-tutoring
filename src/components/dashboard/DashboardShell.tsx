@@ -63,6 +63,7 @@ const nav = {
     { to: '/dashboard/admin/reconciliation', label: 'Reconciliation', icon: Clock },
     { to: '/dashboard/admin/reports', label: 'Reports', icon: BookOpen },
     { to: '/dashboard/admin/audit', label: 'Audit', icon: Sparkles },
+    { to: '/dashboard/admin/ai-grading', label: 'AI grading', icon: Brain },
     { to: '/dashboard/admin/privacy-requests', label: 'Privacy', icon: Target },
     { to: '/dashboard/admin/retention', label: 'Retention', icon: Clock },
     { to: '/dashboard/admin/ops-runbook', label: 'Runbook', icon: Compass },

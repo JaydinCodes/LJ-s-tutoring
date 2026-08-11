@@ -84,7 +84,7 @@ export function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: A
     setMessage(null);
     setError(null);
     try {
-      await updateAssignment({ assignmentId: assignment.id, title, description, subjectName, grade, curriculum, dueDate, status: nextStatus, attachment, rubricJson });
+      await updateAssignment({ assignmentId: assignment.id, expectedRevision: assignment.revision, title, description, subjectName, grade, curriculum, dueDate, status: nextStatus, attachment, rubricJson });
       setAttachment(null);
       setStatus(nextStatus);
       setMessage('Assignment updated.');
@@ -197,7 +197,7 @@ function SubmissionReviewCard({
     setMessage(null);
     setError(null);
     try {
-      await markSubmission({ submissionId: submission.id, marksAwarded, feedback, status, rubricScoresJson, marksReleased, feedbackReleased });
+      await markSubmission({ submissionId: submission.id, expectedRevision: submission.revision, marksAwarded, feedback, status, rubricScoresJson, marksReleased, feedbackReleased });
       setMessage('Submission updated.');
       await onSaved();
     } catch (err) {

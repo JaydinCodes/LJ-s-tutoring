@@ -22,7 +22,7 @@ Start with `docs/architecture/ARCHITECTURE.md` for the current implementation ma
 ## What this repo now contains
 
 - A unified Vite + React + TypeScript LMS migration app in `src/`.
-- `supabase/` for the Postgres schema/RLS/RPC source of truth (`docs/supabase/schema.sql`) and Edge Functions requiring trusted server execution.
+- `supabase/` for immutable Postgres schema/RLS/RPC migrations and Edge Functions requiring trusted server execution. The generated [schema/policy inventory](docs/supabase/SCHEMA_AND_POLICY_INVENTORY.md) records the canonical migration manifest.
 - Build scripts that compile the unified React bundle, generate React route
   shells, serve the React public root from `dist/index.html`, and validate the
   generated public configuration/assets.
@@ -86,7 +86,7 @@ Migration tracking:
 
 - Historical audit and slice snapshot: `docs/MIGRATION_AUDIT.md`
 - Documentation map: `docs/README.md`
-- Supabase schema source: `docs/supabase/schema.sql`
+- Canonical Supabase schema/policy manifest: `docs/supabase/SCHEMA_AND_POLICY_INVENTORY.md`
 - Supabase auth seed notes: `docs/supabase/auth-seed-notes.md`
 - Supabase production RLS review: `docs/supabase/PRODUCTION_RLS_REVIEW.md`
 - Local Supabase setup: `docs/supabase/LOCAL_DEVELOPMENT.md`
@@ -94,7 +94,7 @@ Migration tracking:
 
 Supabase-first migration rules:
 
-- Keep `docs/supabase/schema.sql` current as the desired-state / clean-install reference.
+- Treat committed forward migrations as the database source of truth; regenerate `docs/supabase/SCHEMA_AND_POLICY_INVENTORY.md` after each migration.
 - Create a new immutable forward migration under `supabase/migrations/` for every database change; never amend an applied migration.
 - Run `npm run supabase:reset`, `npm run test:rls`, and `npm run test:rls:runtime` before sharing a migration.
 - Use direct browser Supabase writes only when RLS fully protects ownership and allowed fields.

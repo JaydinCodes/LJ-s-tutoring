@@ -56,7 +56,7 @@ export function TutorSubmissionReviewCard({
         if (!Number.isFinite(numeric) || numeric < 0 || numeric > criterion.maxMarks) throw new Error(`${criterion.label} must be between 0 and ${criterion.maxMarks}.`);
         scores[criterion.id] = numeric;
       }
-      await markSubmission({ submissionId: submission.id, marksAwarded, feedback, status, rubricScoresJson: JSON.stringify(addLearningAction(scores, { strengths, fixNext, actionType, actionDetail, dueDate: actionDueDate || undefined, allowResubmission })), marksReleased, feedbackReleased });
+      await markSubmission({ submissionId: submission.id, expectedRevision: submission.revision, marksAwarded, feedback, status, rubricScoresJson: JSON.stringify(addLearningAction(scores, { strengths, fixNext, actionType, actionDetail, dueDate: actionDueDate || undefined, allowResubmission })), marksReleased, feedbackReleased });
       setMessage('Submission review saved.');
       await onSaved();
     } catch (err) {

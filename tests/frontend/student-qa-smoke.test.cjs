@@ -29,7 +29,7 @@ test('assignment upload validation covers client type, size, preview, and API fa
 
   assert.ok(upload.includes("allowedMime = ['application/pdf', 'image/jpeg', 'image/png']"), 'upload must allow only PDF/JPG/PNG MIME types');
   assert.ok(upload.includes("allowedExt = ['pdf', 'jpg', 'jpeg', 'png']"), 'upload must validate file extensions before API calls');
-  assert.ok(upload.includes('maxUploadBytes = 10 * 1024 * 1024'), 'upload must enforce the 10 MB client limit');
+  assert.ok(upload.includes('maxUploadBytes = 5 * 1024 * 1024'), 'upload must enforce the 5 MiB backend limit');
   assert.ok(upload.includes('getClientFileError(file)'), 'upload must validate the selected file before submitting');
   assert.ok(upload.includes('toast.error(nextError)'), 'upload failures must surface through toast feedback');
   assert.ok(upload.includes('URL.createObjectURL(file)'), 'image previews must be created before upload');

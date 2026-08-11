@@ -13,7 +13,7 @@
 // Fastify exactly) -- nothing is persisted server-side, so no new tables.
 //
 // Security: caller must be an authenticated Supabase user whose profile has
-// role='student' and a linked students row (mirrors Fastify's
+// role='student' and an active linked students row (mirrors Fastify's
 // authenticateCareersStudent). The GROQ_API_KEY never reaches the browser --
 // it's read from an Edge Function secret.
 //
@@ -107,16 +107,13 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !serviceRoleKey) {
     return json({ error: 'supabase_admin_not_configured' }, 501);
   }
-  if (!groqApiKey) {
-    return json({ error: 'groq_not_configured' }, 503);
-  }
-
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
   if (!token) {
     return json({ error: 'assistant_auth_required' }, 401);
   }
 
-  // 1) Validate the caller: must be a student profile with a linked students row.
+  // 1) Validate the caller: operational student access requires an active
+  // linked learner record, not merely a still-valid Auth JWT.
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
   const { data: userData, error: userErr } = await admin.auth.getUser(token);
   if (userErr || !userData.user) {
@@ -134,9 +131,17 @@ Deno.serve(async (req) => {
     .from('students')
     .select('id')
     .eq('profile_id', (profileRow as { id: string }).id)
+    .eq('status', 'active')
     .maybeSingle();
   if (!studentRow) {
     return json({ error: 'student_record_missing' }, 403);
+  }
+
+  // A caller's role must be rejected before an optional provider outage is
+  // reported. This keeps the authorization boundary fail-closed even when
+  // Groq is unavailable or a deployment secret is temporarily missing.
+  if (!groqApiKey) {
+    return json({ error: 'groq_not_configured' }, 503);
   }
 
   // 1b) Rate limit (security fix, 2026-07-24): nothing previously stopped a
