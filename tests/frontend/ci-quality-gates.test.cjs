@@ -232,8 +232,8 @@ test('production deployment is gated by the tested main SHA and workflow actions
   assert.match(deploymentWorkflow, /workflows: \["Release Gates"\]/);
   assert.match(deploymentWorkflow, /workflow_run\.conclusion == 'success'/);
   assert.match(deploymentWorkflow, /workflow_run\.head_sha/);
-  assert.match(deploymentWorkflow, /DIGITALOCEAN_ACCESS_TOKEN/);
-  assert.match(deploymentWorkflow, /DIGITALOCEAN_APP_ID/);
+  assert.match(deploymentWorkflow, /secrets\.DIGITAL_ACCESS_TOKEN/);
+  assert.match(deploymentWorkflow, /secrets\.DIGITAL_APP_ID/);
   assert.match(deploymentWorkflow, /doctl apps create-deployment/);
   assert.match(deploymentWorkflow, /Apply Supabase migrations and Edge Functions/);
   assert.match(deploymentWorkflow, /SUPABASE_ACCESS_TOKEN/);

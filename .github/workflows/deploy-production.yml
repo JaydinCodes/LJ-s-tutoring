@@ -94,11 +94,11 @@ jobs:
       - name: Install pinned DigitalOcean CLI action
         uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
         with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          token: ${{ secrets.DIGITAL_ACCESS_TOKEN }}
 
       - name: Deploy the tested main commit
         env:
-          DIGITALOCEAN_APP_ID: ${{ secrets.DIGITALOCEAN_APP_ID }}
+          DIGITALOCEAN_APP_ID: ${{ secrets.DIGITAL_APP_ID }}
           TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           test -n "$DIGITALOCEAN_APP_ID" || { echo "DIGITALOCEAN_APP_ID is required"; exit 1; }
