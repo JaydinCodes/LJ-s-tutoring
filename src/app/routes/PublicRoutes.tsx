@@ -45,6 +45,15 @@ const tutors = [
     imageWidth: 960,
     imageHeight: 1280,
   },
+  {
+    name: 'Aaliyah Parker',
+    subject: 'Mathematical Literacy',
+    role: 'Mathematical Literacy Tutor',
+    bio: 'Aaliyah helps learners see the logic behind everyday Mathematics, using relatable examples, guided practice, and supportive explanations to build accuracy and independence.',
+    image: '/images/aaliyah.jpeg',
+    imageWidth: 960,
+    imageHeight: 1280,
+  },
 ];
 
 const faqs = [
