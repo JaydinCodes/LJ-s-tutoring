@@ -7,6 +7,13 @@ const test = require('node:test');
 const root = path.resolve(__dirname, '..', '..');
 const read = (relativePath) => fs.readFileSync(path.join(root, ...relativePath.split('/')), 'utf8');
 
+function functionConfigSection(config, name) {
+  const start = config.indexOf(`[functions.${name}]`);
+  if (start === -1) return null;
+  const next = config.indexOf('\n[', start + 1);
+  return config.slice(start, next === -1 ? undefined : next);
+}
+
 test('learner-facing Edge Functions require an active student record, not merely a valid JWT', () => {
   const odie = read('supabase/functions/odie-careers-chat-stream/index.ts');
   const grading = read('supabase/functions/grade-submission/index.ts');
@@ -37,9 +44,9 @@ test('privileged workers require the actual service-role secret and do not trust
 test('all non-public Edge Functions explicitly retain gateway JWT verification', () => {
   const config = read('supabase/config.toml');
   for (const name of ['admin-invite-user', 'cleanup-submission-assets', 'grade-submission', 'odie-careers-chat-stream', 'refresh-stale-weekly-reports']) {
-    const section = new RegExp(`\\[functions\\.${name.replace(/-/g, '\\-')}\\]([\\s\\S]*?)(?=\\n\\[|$)`);
-    assert.match(config, section);
-    assert.match(config.match(section)[1], /^verify_jwt\s*=\s*true\s*$/m);
+    const section = functionConfigSection(config, name);
+    assert.ok(section, `expected a config section for ${name}`);
+    assert.match(section, /^verify_jwt\s*=\s*true\s*$/m);
   }
 
   execFileSync(process.execPath, ['scripts/verify-edge-function-policy.cjs'], { cwd: root, stdio: 'pipe' });

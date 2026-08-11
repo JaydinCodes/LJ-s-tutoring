@@ -12,11 +12,17 @@ const protectedFunctions = [
   'refresh-stale-weekly-reports',
 ];
 
+function functionConfigSection(config, name) {
+  const start = config.indexOf(`[functions.${name}]`);
+  if (start === -1) return null;
+  const next = config.indexOf('\n[', start + 1);
+  return config.slice(start, next === -1 ? undefined : next);
+}
+
 function requireVerifiedGatewayConfig(config) {
   for (const name of protectedFunctions) {
-    const section = new RegExp(`\\[functions\\.${name.replace(/-/g, '\\-')}\\]([\\s\\S]*?)(?=\\n\\[|$)`);
-    const match = config.match(section);
-    if (!match || !/^verify_jwt\s*=\s*true\s*$/m.test(match[1])) {
+    const section = functionConfigSection(config, name);
+    if (!section || !/^verify_jwt\s*=\s*true\s*$/m.test(section)) {
       throw new Error(`${name} must explicitly set verify_jwt = true in supabase/config.toml`);
     }
   }
