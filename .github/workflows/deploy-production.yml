@@ -66,7 +66,11 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN" || { echo "SUPABASE_ACCESS_TOKEN is required"; exit 1; }
           test -n "$SUPABASE_PRODUCTION_PROJECT_REF" || { echo "SUPABASE_PRODUCTION_PROJECT_REF is required"; exit 1; }
           test -n "$SUPABASE_DB_PASSWORD" || { echo "SUPABASE_DB_PASSWORD is required"; exit 1; }
-          npx supabase db push --project-ref "$SUPABASE_PRODUCTION_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD" --include-all
+          # db push targets the linked project; unlike functions deploy it does
+          # not accept --project-ref. Link explicitly so the target is visible
+          # and the ensuing migration push cannot fall back to another project.
+          npx supabase link --project-ref "$SUPABASE_PRODUCTION_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          npx supabase db push --linked --password "$SUPABASE_DB_PASSWORD" --include-all
           for function_name in admin-invite-user cleanup-submission-assets dispatch-notification-outbox grade-submission odie-careers-chat-stream process-privacy-deletion refresh-stale-weekly-reports; do
             npx supabase functions deploy "$function_name" --project-ref "$SUPABASE_PRODUCTION_PROJECT_REF"
           done
