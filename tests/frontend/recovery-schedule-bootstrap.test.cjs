@@ -17,5 +17,6 @@ test('recovery schedules bootstrap independently of migration-time Vault state',
   assert.match(migration, /cleanup-orphaned-assignment-submission-assets/);
   assert.match(workflow, /private\.ensure_recovery_schedules/);
   assert.match(workflow, /private\.assert_recovery_schedules_ready/);
-  assert.match(workflow, /PGSSLMODE=require/);
+  assert.match(workflow, /SUPABASE_ACCESS_TOKEN/);
+  assert.match(workflow, /supabase db query --linked/);
 });
