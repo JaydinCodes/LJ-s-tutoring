@@ -7,6 +7,7 @@
     "npm": "11.x"
   },
   "dependencies": {
+    "@emotion/is-prop-valid": "1.4.0",
     "@gsap/react": "^2.1.2",
     "@sentry/react": "^10.56.0",
     "@supabase/supabase-js": "^2.106.2",
