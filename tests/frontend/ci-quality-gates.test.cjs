@@ -55,6 +55,7 @@ test('active TypeScript and React sources are covered by the canonical lint gate
 
 test('production dependency audit is a required app CI gate', () => {
   const packageJson = JSON.parse(read('package.json'));
+  const packageLock = JSON.parse(read('package-lock.json'));
   const workflow = read('.github/workflows/app-ci.yml');
   const auditJob = workflow.slice(
     workflow.indexOf('  dependency-security:'),
@@ -63,6 +64,8 @@ test('production dependency audit is a required app CI gate', () => {
 
   assert.ok(packageJson.devDependencies['@vitejs/plugin-react']);
   assert.ok(packageJson.devDependencies['@tailwindcss/typography']);
+  assert.equal(packageJson.dependencies['@emotion/is-prop-valid'], '1.4.0');
+  assert.equal(packageLock.packages[''].dependencies['@emotion/is-prop-valid'], '1.4.0');
   assert.equal(packageJson.dependencies?.['@vitejs/plugin-react'], undefined);
   assert.equal(packageJson.dependencies?.['@tailwindcss/typography'], undefined);
   assert.match(auditJob, /npm audit --omit=dev --audit-level=high/);
