@@ -77,6 +77,19 @@ async function edge(baseUrl, anonKey, name, token, body) {
   return { status: response.status, body: await response.text() };
 }
 
+async function expectEdgeStatus(baseUrl, anonKey, name, token, body, expectedStatus, description, functionOutput) {
+  const deadline = Date.now() + 10_000;
+  let result;
+  do {
+    result = await edge(baseUrl, anonKey, name, token, body);
+    if (result.status === expectedStatus) return;
+    if (result.status < 500) break;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  } while (Date.now() < deadline);
+
+  throw new Error(`${name} ${description}; received ${result.status}: ${result.body}\nEdge runtime output:\n${functionOutput() || '(no output captured)'}`);
+}
+
 async function waitForEdge(baseUrl, anonKey, processRef) {
   const deadline = Date.now() + 45_000;
   while (Date.now() < deadline) {
@@ -147,10 +160,16 @@ async function main() {
     for (const learnerStatus of ['inactive', 'suspended', 'pending']) {
       await setStudentStatus(local.API_URL, local.SERVICE_ROLE_KEY, student.id, learnerStatus);
       for (const name of ['grade-submission', 'odie-careers-chat-stream']) {
-        const result = await edge(local.API_URL, local.ANON_KEY, name, studentToken, {});
-        if (result.status !== 403) {
-          throw new Error(`${name} must reject ${learnerStatus} learner JWTs; received ${result.status}: ${result.body}\nEdge runtime output:\n${functionOutput || '(no output captured)'}`);
-        }
+        await expectEdgeStatus(
+          local.API_URL,
+          local.ANON_KEY,
+          name,
+          studentToken,
+          {},
+          403,
+          `must reject ${learnerStatus} learner JWTs`,
+          () => functionOutput,
+        );
       }
     }
 
