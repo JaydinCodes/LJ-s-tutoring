@@ -95,6 +95,29 @@ export interface AuditList {
   pageSize: number;
 }
 
+export interface AiGradingQueueItem {
+  submission_id: string;
+  assignment_id: string;
+  status: 'pending' | 'in_progress' | 'failed' | 'dead_lettered';
+  attempts: number;
+  available_at: string | null;
+  lease_expires_at: string | null;
+  last_error: string | null;
+}
+
+export async function loadAdminAiGradingQueue(): Promise<AiGradingQueueItem[]> {
+  const client = requireSupabase();
+  return callRpc(client, 'get_admin_ai_grading_queue', { p_limit: 100 }) as Promise<AiGradingQueueItem[]>;
+}
+
+export async function requeueAdminAiGradingJob(submissionId: string, reason?: string): Promise<boolean> {
+  const client = requireSupabase();
+  return callRpc(client, 'requeue_admin_ai_grading_job', {
+    p_submission_id: submissionId,
+    p_reason: reason?.trim() || 'manual operator requeue',
+  }) as Promise<boolean>;
+}
+
 export async function loadApprovalQueue(params: URLSearchParams): Promise<AdminSessionList> {
   const client = requireSupabase();
 

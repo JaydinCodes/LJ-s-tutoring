@@ -15,7 +15,10 @@ const corsHeaders = {
 };
 
 const RequestSchema = z.object({
-  requestId: z.string().uuid(),
+  requestId: z.string().uuid().optional(),
+  resume: z.boolean().optional(),
+}).refine((value) => Boolean(value.requestId || value.resume), {
+  message: 'requestId_or_resume_required',
 });
 
 type ProcessingState =
@@ -35,6 +38,8 @@ interface BeginResult {
   auth_user_id?: string | null;
   financial_hold?: boolean;
   processing_state: ProcessingState;
+  claim_token?: string;
+  lease_expires_at?: string;
 }
 
 interface StorageManifestRow {
@@ -99,6 +104,7 @@ function statusForError(message: string): number {
   if (message === 'rate_limited') return 429;
   if (message === 'privacy_request_not_found') return 404;
   if (message === 'privacy_request_is_not_deletion') return 409;
+  if (message === 'privacy_deletion_busy') return 409;
   return 500;
 }
 
@@ -152,41 +158,47 @@ Deno.serve(async (req) => {
   let stage = 'authorize';
 
   try {
-    // Validate caller identity with Auth, then require platform admin + AAL2.
-    const { data: userData, error: userError } = await admin.auth.getUser(token);
-    if (userError || !userData.user) {
-      throw new Error('supabase_bearer_invalid');
-    }
+    const isTrustedWorker = token === serviceRoleKey;
+    let authenticatedUserId: string | null = null;
 
-    const { data: callerProfile, error: callerProfileError } = await admin
-      .from('profiles')
-      .select('role')
-      .eq('auth_user_id', userData.user.id)
-      .maybeSingle();
+    if (!isTrustedWorker) {
+      // Validate caller identity with Auth, then require platform admin + AAL2.
+      const { data: userData, error: userError } = await admin.auth.getUser(token);
+      if (userError || !userData.user) {
+        throw new Error('supabase_bearer_invalid');
+      }
+      authenticatedUserId = userData.user.id;
 
-    if (callerProfileError) throw callerProfileError;
-    if ((callerProfile as { role?: string } | null)?.role !== 'admin') {
-      throw new Error('admin_required');
-    }
-    if (decodeAal(token) !== 'aal2') {
-      throw new Error('admin_mfa_required');
-    }
+      const { data: callerProfile, error: callerProfileError } = await admin
+        .from('profiles')
+        .select('role')
+        .eq('auth_user_id', authenticatedUserId)
+        .maybeSingle();
 
-    const { data: rateLimitAllowed, error: rateLimitError } = await admin.rpc(
-      'check_and_record_edge_function_rate_limit',
-      {
-        p_subject_id: userData.user.id,
-        p_function_name: 'process-privacy-deletion',
-        p_limit: 5,
-        p_window_seconds: 10 * 60,
-      },
-    );
+      if (callerProfileError) throw callerProfileError;
+      if ((callerProfile as { role?: string } | null)?.role !== 'admin') {
+        throw new Error('admin_required');
+      }
+      if (decodeAal(token) !== 'aal2') {
+        throw new Error('admin_mfa_required');
+      }
 
-    if (rateLimitError) {
-      throw new Error('rate_limiter_unavailable');
-    }
-    if (rateLimitAllowed !== true) {
-      throw new Error('rate_limited');
+      const { data: rateLimitAllowed, error: rateLimitError } = await admin.rpc(
+        'check_and_record_edge_function_rate_limit',
+        {
+          p_subject_id: authenticatedUserId,
+          p_function_name: 'process-privacy-deletion',
+          p_limit: 5,
+          p_window_seconds: 10 * 60,
+        },
+      );
+
+      if (rateLimitError) {
+        throw new Error('rate_limiter_unavailable');
+      }
+      if (rateLimitAllowed !== true) {
+        throw new Error('rate_limited');
+      }
     }
 
     const parsed = RequestSchema.safeParse(await req.json());
@@ -194,14 +206,28 @@ Deno.serve(async (req) => {
       return json({ error: 'invalid_request', details: parsed.error.flatten() }, 400);
     }
 
-    requestId = parsed.data.requestId;
+    const claimToken = crypto.randomUUID();
+
+    if (isTrustedWorker && parsed.data.resume && !parsed.data.requestId) {
+      const { data: nextRequestId, error: nextRequestError } = await admin.rpc(
+        'claim_next_student_privacy_deletion',
+        { p_claim_token: claimToken },
+      );
+      if (nextRequestError) throw nextRequestError;
+      if (!nextRequestId) return json({ completed: false, processed: false });
+      requestId = nextRequestId as string;
+    } else {
+      requestId = parsed.data.requestId ?? null;
+    }
+
+    if (!requestId) throw new Error('requestId_or_resume_required');
 
     // Stage 1: DB privacy lock. This immediately removes the Auth -> profile
     // authorization mapping and makes the student operationally inactive.
     stage = 'locked';
     const { data: beginData, error: beginError } = await admin.rpc(
-      'begin_student_privacy_deletion',
-      { p_request_id: requestId },
+      'claim_student_privacy_deletion',
+      { p_request_id: requestId, p_claim_token: claimToken },
     );
     if (beginError) throw beginError;
 
@@ -213,11 +239,20 @@ Deno.serve(async (req) => {
     const authUserId = context.auth_user_id ?? null;
     let processingState = context.processing_state;
 
+    const renewLease = async () => {
+      const { error } = await admin.rpc('renew_student_privacy_deletion_lease', {
+        p_request_id: requestId,
+        p_claim_token: claimToken,
+      });
+      if (error) throw error;
+    };
+
     // Stage 2: ban the Auth identity before destructive application cleanup.
     // The ban prevents fresh sign-in/refresh while the DB identity lock makes
     // any already-issued JWT useless for application authorization.
     if (processingState === 'locked') {
       stage = 'auth_banned';
+      await renewLease();
 
       if (authUserId) {
         const { error: banError } = await admin.auth.admin.updateUserById(authUserId, {
@@ -241,6 +276,7 @@ Deno.serve(async (req) => {
     // Stage 3: delete every known/owned Storage object through the Storage API.
     if (processingState === 'auth_banned') {
       stage = 'storage_deleted';
+      await renewLease();
 
       const { data: manifestData, error: manifestError } = await admin.rpc(
         'get_student_privacy_storage_manifest',
@@ -249,6 +285,11 @@ Deno.serve(async (req) => {
       if (manifestError) throw manifestError;
 
       const manifest = (manifestData ?? []) as StorageManifestRow[];
+      const { error: manifestReceiptError } = await admin.rpc(
+        'record_student_privacy_storage_manifest',
+        { p_request_id: requestId, p_files_expected: manifest.length },
+      );
+      if (manifestReceiptError) throw manifestReceiptError;
       const byBucket = new Map<string, string[]>();
 
       for (const row of manifest) {
@@ -282,6 +323,7 @@ Deno.serve(async (req) => {
     // Stage 4: erase/anonymize the explicit application-data manifest.
     if (processingState === 'storage_deleted') {
       stage = 'db_erased';
+      await renewLease();
 
       const { error: eraseError } = await admin.rpc('erase_student_privacy_data', {
         p_request_id: requestId,
@@ -295,6 +337,7 @@ Deno.serve(async (req) => {
     // deletion treats user-not-found as success.
     if (processingState === 'db_erased') {
       stage = 'auth_deleted';
+      await renewLease();
 
       if (authUserId) {
         const { error: deleteError } = await admin.auth.admin.deleteUser(authUserId, false);
@@ -315,6 +358,7 @@ Deno.serve(async (req) => {
     // Stage 6: immutable, PII-free receipt + final request completion.
     if (processingState === 'auth_deleted') {
       stage = 'completed';
+      await renewLease();
 
       const { data: finalData, error: finalError } = await admin.rpc(
         'finalize_student_privacy_deletion',

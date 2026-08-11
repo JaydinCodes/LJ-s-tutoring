@@ -10,6 +10,7 @@ const AdminClassesRoute = lazy(() => import('../features/admin/AdminClassesRoute
 const AdminDashboardRoute = lazy(() => import('../features/admin/AdminDashboardRoute').then((module) => ({ default: module.AdminDashboardRoute })));
 const AdminApprovalsRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminApprovalsRoute })));
 const AdminAuditRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminAuditRoute })));
+const AdminAiGradingRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminAiGradingRoute })));
 const AdminOpsRunbookRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminOpsRunbookRoute })));
 const AdminPrivacyRequestsRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminPrivacyRequestsRoute })));
 const AdminReconciliationRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminReconciliationRoute })));
@@ -110,6 +111,7 @@ export function App() {
         <Route path="/dashboard/admin/payroll" element={<ProtectedRoute roles={['admin']}><AdminPayrollRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/reconciliation" element={<ProtectedRoute roles={['admin']}><AdminReconciliationRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/audit" element={<ProtectedRoute roles={['admin']}><AdminAuditRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/admin/ai-grading" element={<ProtectedRoute roles={['admin']}><AdminAiGradingRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/privacy-requests" element={<ProtectedRoute roles={['admin']}><AdminPrivacyRequestsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/retention" element={<ProtectedRoute roles={['admin']}><AdminRetentionRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/results" element={<ProtectedRoute roles={['admin']}><AdminResultsRoute /></ProtectedRoute>} />

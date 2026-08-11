@@ -38,6 +38,8 @@ test('action metric cards link to the correct student pages', () => {
   assert.ok(app.includes('path="/dashboard/student/assignments/:assignmentId"'), 'assignment detail route must exist');
   assert.ok(detail.includes('useParams()'), 'assignment detail route must read the selected assignment id');
   assert.ok(detail.includes('Back to assignment list'), 'detail route must let students return to the list');
+  assert.ok(detail.includes('Maximum file size: 5 MiB.'), 'assignment detail must advertise the enforced 5 MiB upload limit');
+  assert.ok(!detail.includes('Maximum file size: 10 MB.'), 'assignment detail must not advertise an obsolete 10 MB upload limit');
 });
 
 test('exam readiness is conditional on real exam data', () => {

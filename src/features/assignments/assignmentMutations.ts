@@ -25,10 +25,17 @@ export interface SubmitAssignmentInput {
 
 export interface SubmitAssignmentResult {
   submissionId: string;
+  recovered?: boolean;
 }
+
+export type SubmissionRecoveryResult =
+  | { status: 'none' }
+  | { status: 'pending'; submissionId: string; originalFilename: string | null }
+  | { status: 'confirmed'; submissionId: string };
 
 export interface UpdateAssignmentInput {
   assignmentId: string;
+  expectedRevision: number;
   title: string;
   description?: string;
   subjectName?: string;
@@ -42,6 +49,7 @@ export interface UpdateAssignmentInput {
 
 export interface MarkSubmissionInput {
   submissionId: string;
+  expectedRevision: number;
   marksAwarded?: string;
   feedback?: string;
   status: 'submitted' | 'marked' | 'returned';
@@ -65,9 +73,225 @@ type SubmissionAttemptRpcArgs = {
   p_text_answer: string | null;
 };
 
+type SubmissionAttemptLedgerEntry = {
+  version: 1;
+  assignmentId: string;
+  studentId: string;
+  submissionId: string;
+  storageKey: string | null;
+  originalFilename: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  contentSha256: string | null;
+  textAnswerSha256: string | null;
+  createdAt: string;
+};
+
+type AssignmentCreateAttemptLedgerEntry = {
+  version: 1;
+  profileId: string;
+  requestId: string;
+  payloadFingerprint: string;
+  createdAt: string;
+};
+
+type ConfirmSubmissionAttemptDigestRpcArgs = {
+  p_assignment_id: string;
+  p_submission_id: string;
+  p_content_sha256: string | null;
+  p_text_answer_sha256: string | null;
+};
+
+type BeginSubmissionAttemptRpcArgs = {
+  p_assignment_id: string;
+  p_submission_id: string;
+  p_storage_key: string | null;
+  p_original_filename: string | null;
+  p_mime_type: string | null;
+  p_size_bytes: number | null;
+  p_content_sha256: string | null;
+  p_text_answer: string | null;
+  p_text_answer_sha256: string | null;
+};
+
+const SUBMISSION_ATTEMPT_LEDGER_PREFIX = 'odysseus:submission-attempt:v1';
+const ASSIGNMENT_CREATE_ATTEMPT_LEDGER_PREFIX = 'odysseus:assignment-create-attempt:v1';
+
+function submissionAttemptLedgerKey(studentId: string, assignmentId: string) {
+  return `${SUBMISSION_ATTEMPT_LEDGER_PREFIX}:${studentId}:${assignmentId}`;
+}
+
+function assignmentCreateAttemptLedgerKey(profileId: string) {
+  return `${ASSIGNMENT_CREATE_ATTEMPT_LEDGER_PREFIX}:${profileId}`;
+}
+
+function browserStorage() {
+  try {
+    return typeof globalThis.localStorage === 'undefined' ? null : globalThis.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function readSubmissionAttemptLedger(studentId: string, assignmentId: string): SubmissionAttemptLedgerEntry | null {
+  const storage = browserStorage();
+  if (!storage) return null;
+  const key = submissionAttemptLedgerKey(studentId, assignmentId);
+  try {
+    const raw = storage.getItem(key);
+    if (!raw) return null;
+    const entry = JSON.parse(raw) as Partial<SubmissionAttemptLedgerEntry>;
+    if (
+      entry.version !== 1
+      || entry.assignmentId !== assignmentId
+      || entry.studentId !== studentId
+      || typeof entry.submissionId !== 'string'
+      || typeof entry.createdAt !== 'string'
+    ) {
+      storage.removeItem(key);
+      return null;
+    }
+    return entry as SubmissionAttemptLedgerEntry;
+  } catch {
+    storage.removeItem(key);
+    return null;
+  }
+}
+
+function writeSubmissionAttemptLedger(entry: SubmissionAttemptLedgerEntry) {
+  const storage = browserStorage();
+  if (!storage) {
+    throw new Error('This browser cannot safely remember a submission retry. Enable site storage and try again.');
+  }
+  storage.setItem(submissionAttemptLedgerKey(entry.studentId, entry.assignmentId), JSON.stringify(entry));
+}
+
+function clearSubmissionAttemptLedger(entry: SubmissionAttemptLedgerEntry) {
+  const storage = browserStorage();
+  if (!storage) return;
+  const key = submissionAttemptLedgerKey(entry.studentId, entry.assignmentId);
+  const current = readSubmissionAttemptLedger(entry.studentId, entry.assignmentId);
+  if (current?.submissionId === entry.submissionId) {
+    storage.removeItem(key);
+  }
+}
+
+function readAssignmentCreateAttemptLedger(profileId: string): AssignmentCreateAttemptLedgerEntry | null {
+  const storage = browserStorage();
+  if (!storage) return null;
+  const key = assignmentCreateAttemptLedgerKey(profileId);
+  try {
+    const raw = storage.getItem(key);
+    if (!raw) return null;
+    const entry = JSON.parse(raw) as Partial<AssignmentCreateAttemptLedgerEntry>;
+    if (
+      entry.version !== 1
+      || entry.profileId !== profileId
+      || typeof entry.requestId !== 'string'
+      || typeof entry.payloadFingerprint !== 'string'
+      || typeof entry.createdAt !== 'string'
+    ) {
+      storage.removeItem(key);
+      return null;
+    }
+    return entry as AssignmentCreateAttemptLedgerEntry;
+  } catch {
+    storage.removeItem(key);
+    return null;
+  }
+}
+
+function writeAssignmentCreateAttemptLedger(entry: AssignmentCreateAttemptLedgerEntry) {
+  const storage = browserStorage();
+  if (!storage) {
+    throw new Error('This browser cannot safely remember an assignment creation retry. Enable site storage and try again.');
+  }
+  storage.setItem(assignmentCreateAttemptLedgerKey(entry.profileId), JSON.stringify(entry));
+}
+
+function clearAssignmentCreateAttemptLedger(entry: AssignmentCreateAttemptLedgerEntry) {
+  const storage = browserStorage();
+  if (!storage) return;
+  const key = assignmentCreateAttemptLedgerKey(entry.profileId);
+  const current = readAssignmentCreateAttemptLedger(entry.profileId);
+  if (current?.requestId === entry.requestId) {
+    storage.removeItem(key);
+  }
+}
+
+async function sha256Hex(value: Blob | string) {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error('This browser cannot verify submission integrity. Update your browser and try again.');
+  }
+  const bytes = typeof value === 'string'
+    ? new TextEncoder().encode(value)
+    : new Uint8Array(await value.arrayBuffer());
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function getAssignmentCreateAttempt(
+  profileId: string,
+  payload: Record<string, unknown>,
+): Promise<AssignmentCreateAttemptLedgerEntry> {
+  const payloadFingerprint = await sha256Hex(canonicalJson(payload));
+  const existing = readAssignmentCreateAttemptLedger(profileId);
+  if (existing?.payloadFingerprint === payloadFingerprint) {
+    return existing;
+  }
+
+  const entry: AssignmentCreateAttemptLedgerEntry = {
+    version: 1,
+    profileId,
+    requestId: createSubmissionAttemptId(),
+    payloadFingerprint,
+    createdAt: new Date().toISOString(),
+  };
+  writeAssignmentCreateAttemptLedger(entry);
+  return entry;
+}
+
+function sameSubmissionPayload(left: SubmissionAttemptLedgerEntry, right: SubmissionAttemptLedgerEntry) {
+  return left.contentSha256 === right.contentSha256
+    && left.textAnswerSha256 === right.textAnswerSha256
+    && left.originalFilename === right.originalFilename
+    && left.mimeType === right.mimeType
+    && left.sizeBytes === right.sizeBytes;
+}
+
+function submissionAttemptRpcArgs(entry: SubmissionAttemptLedgerEntry, textAnswer: string | null): SubmissionAttemptRpcArgs {
+  return {
+    p_assignment_id: entry.assignmentId,
+    p_submission_id: entry.submissionId,
+    p_storage_key: entry.storageKey,
+    p_file_url: entry.storageKey,
+    p_original_filename: entry.originalFilename,
+    p_mime_type: entry.mimeType,
+    p_size_bytes: entry.sizeBytes,
+    p_text_answer: textAnswer,
+  };
+}
+
 function mutationError(error: unknown, fallback: string) {
-  if (error instanceof Error && error.message) {
-    return error;
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error !== null && 'message' in error
+      ? String(error.message)
+      : '';
+  if (message.includes('submission_revision_conflict') || message.includes('submission_revision_required')) {
+    return new Error('This submission changed while you were editing. Reload it before saving your review.');
+  }
+  if (message.includes('assignment_revision_conflict') || message.includes('assignment_revision_required')) {
+    return new Error('This assignment changed while you were editing. Reload it before saving again.');
+  }
+  if (message.includes('assignment_create_retry_payload_mismatch')) {
+    return new Error('This retry does not match the original assignment creation. Start a new assignment instead.');
+  }
+  if (message.includes('assignment_create_request_id_required')) {
+    return new Error('Assignment creation needs the latest app version. Reload and try again.');
+  }
+  if (message) {
+    return error instanceof Error ? error : new Error(message);
   }
   return new Error(fallback);
 }
@@ -117,14 +341,20 @@ async function triggerAiGrading(client: ReturnType<typeof requireSupabase>, subm
 
 async function confirmSubmissionAttempt(
   client: ReturnType<typeof requireSupabase>,
-  args: SubmissionAttemptRpcArgs,
+  entry: SubmissionAttemptLedgerEntry,
 ): Promise<boolean> {
+  const args: ConfirmSubmissionAttemptDigestRpcArgs = {
+    p_assignment_id: entry.assignmentId,
+    p_submission_id: entry.submissionId,
+    p_content_sha256: entry.contentSha256,
+    p_text_answer_sha256: entry.textAnswerSha256,
+  };
   const confirmed = await (client as unknown as {
     rpc: (
-      name: 'confirm_assignment_submission_attempt',
-      rpcArgs: SubmissionAttemptRpcArgs,
+      name: 'confirm_assignment_submission_attempt_digest',
+      rpcArgs: ConfirmSubmissionAttemptDigestRpcArgs,
     ) => Promise<{ data: SubmitAssignmentRpcResult[] | SubmitAssignmentRpcResult | null; error: Error | null }>;
-  }).rpc('confirm_assignment_submission_attempt', args);
+  }).rpc('confirm_assignment_submission_attempt_digest', args);
 
   if (confirmed.error) {
     throw mutationError(confirmed.error, 'Could not confirm the previous submission attempt.');
@@ -134,10 +364,63 @@ async function confirmSubmissionAttempt(
   if (!row) {
     return false;
   }
-  if (!row.submission_id || row.submission_id.toLowerCase() !== args.p_submission_id) {
+  if (!row.submission_id || row.submission_id.toLowerCase() !== entry.submissionId) {
     throw new Error('Submission confirmation did not match this attempt.');
   }
   return true;
+}
+
+async function beginSubmissionAttempt(
+  client: ReturnType<typeof requireSupabase>,
+  entry: SubmissionAttemptLedgerEntry,
+  textAnswer: string | null,
+) {
+  const args: BeginSubmissionAttemptRpcArgs = {
+    p_assignment_id: entry.assignmentId,
+    p_submission_id: entry.submissionId,
+    p_storage_key: entry.storageKey,
+    p_original_filename: entry.originalFilename,
+    p_mime_type: entry.mimeType,
+    p_size_bytes: entry.sizeBytes,
+    p_content_sha256: entry.contentSha256,
+    p_text_answer: textAnswer,
+    p_text_answer_sha256: entry.textAnswerSha256,
+  };
+  const begun = await (client as unknown as {
+    rpc: (
+      name: 'begin_assignment_submission_attempt',
+      rpcArgs: BeginSubmissionAttemptRpcArgs,
+    ) => Promise<{ data: SubmitAssignmentRpcResult[] | SubmitAssignmentRpcResult | null; error: Error | null }>;
+  }).rpc('begin_assignment_submission_attempt', args);
+  if (begun.error) {
+    throw mutationError(begun.error, 'Could not reserve this submission attempt.');
+  }
+  const row = Array.isArray(begun.data) ? begun.data[0] : begun.data;
+  if (!row?.submission_id || row.submission_id.toLowerCase() !== entry.submissionId) {
+    throw new Error('Submission reservation did not match this attempt.');
+  }
+}
+
+export async function recoverPendingAssignmentSubmission(assignmentId: string): Promise<SubmissionRecoveryResult> {
+  if (isE2EAuthMockEnabled()) return { status: 'none' };
+
+  const client = requireSupabase();
+  const profile = await getCurrentProfile();
+  if (profile.role !== 'student') return { status: 'none' };
+  const student = await getCurrentStudent(profile.id);
+  const entry = readSubmissionAttemptLedger(student.id, assignmentId);
+  if (!entry) return { status: 'none' };
+
+  if (await confirmSubmissionAttempt(client, entry)) {
+    clearSubmissionAttemptLedger(entry);
+    await triggerAiGrading(client, entry.submissionId);
+    return { status: 'confirmed', submissionId: entry.submissionId };
+  }
+  return {
+    status: 'pending',
+    submissionId: entry.submissionId,
+    originalFilename: entry.originalFilename,
+  };
 }
 
 async function getCurrentProfile() {
@@ -285,6 +568,7 @@ type AssignmentFinalizePayload = {
   p_status: AssignmentStatus;
   p_attachment_url: string | null;
   p_memo_url: string | null;
+  p_expected_revision: number;
   p_rubric_json: unknown;
 };
 
@@ -301,6 +585,29 @@ function assignmentFromRpc(data: unknown, fallback: string) {
     throw new Error(fallback);
   }
   return row as Assignment;
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).join(',')}]`;
+  }
+  if (value && typeof value === 'object') {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function sameTimestamp(left: string | null | undefined, right: string | null): boolean {
+  if (!left && !right) {
+    return true;
+  }
+  if (!left || !right) {
+    return false;
+  }
+  return Date.parse(left) === Date.parse(right);
 }
 
 function assignmentAssetPath(assignmentId: string, uploadId: string, label: 'attachment', file: File) {
@@ -353,6 +660,13 @@ async function confirmAssignmentFinalization(
   return assignment.status === payload.p_status
     && assignment.attachment_url === payload.p_attachment_url
     && assignment.memo_url === payload.p_memo_url
+    && assignment.title === payload.p_title
+    && (assignment.description || null) === payload.p_description
+    && (assignment.subject_id || null) === payload.p_subject_id
+    && (assignment.grade || null) === payload.p_grade
+    && sameTimestamp(assignment.due_date, payload.p_due_date)
+    && canonicalJson(assignment.rubric_json || []) === canonicalJson(payload.p_rubric_json)
+    && assignment.revision === payload.p_expected_revision + 1
     ? assignment
     : null;
 }
@@ -380,6 +694,15 @@ export async function createAssignment(input: CreateAssignmentInput) {
 
   const rubricJson = parseJsonField(input.rubricJson, [], 'Rubric');
   const subject = await findOrCreateSubject(input);
+  const createAttempt = await getAssignmentCreateAttempt(profile.id, {
+    organizationId: input.organizationId ?? null,
+    title,
+    description: input.description?.trim() || null,
+    subjectId: subject.id,
+    grade,
+    dueDate: input.dueDate ? new Date(input.dueDate).toISOString() : null,
+    rubricJson,
+  });
   const drafted = await (client as unknown as AssignmentPublishClient).rpc('create_assignment_draft', {
     p_organization_id: input.organizationId ?? null,
     p_title: title,
@@ -388,6 +711,7 @@ export async function createAssignment(input: CreateAssignmentInput) {
     p_grade: grade,
     p_due_date: input.dueDate ? new Date(input.dueDate).toISOString() : null,
     p_rubric_json: rubricJson,
+    p_client_request_id: createAttempt.requestId,
   });
 
   if (drafted.error) {
@@ -399,6 +723,18 @@ export async function createAssignment(input: CreateAssignmentInput) {
   }
 
   const draft = assignmentFromRpc(drafted.data, 'Assignment draft creation did not return an assignment.');
+  // A refreshed page can replay a request whose publish committed just before
+  // its response was lost. Do not upload or finalize that assignment again.
+  if (draft.status === 'published') {
+    clearAssignmentCreateAttemptLedger(createAttempt);
+    return draft;
+  }
+  if (draft.status !== 'draft') {
+    throw new Error('This assignment creation is no longer a draft. Reload the assignments list before retrying.');
+  }
+  if (!Number.isInteger(draft.revision) || draft.revision < 1) {
+    throw new Error('Assignment revision is unavailable. Reload after maintenance before publishing.');
+  }
   const uploadId = createSubmissionAttemptId();
   let attachmentPath: string | null = null;
 
@@ -421,10 +757,13 @@ export async function createAssignment(input: CreateAssignmentInput) {
       p_status: 'published',
       p_attachment_url: attachmentPath,
       p_memo_url: null,
+      p_expected_revision: draft.revision,
       p_rubric_json: rubricJson,
     } satisfies AssignmentFinalizePayload);
     if (!finalized.error) {
-      return assignmentFromRpc(finalized.data, 'Assignment publication did not return an assignment.');
+      const assignment = assignmentFromRpc(finalized.data, 'Assignment publication did not return an assignment.');
+      clearAssignmentCreateAttemptLedger(createAttempt);
+      return assignment;
     }
 
     const confirmed = await confirmAssignmentFinalization(client, {
@@ -437,9 +776,11 @@ export async function createAssignment(input: CreateAssignmentInput) {
       p_status: 'published',
       p_attachment_url: attachmentPath,
       p_memo_url: null,
+      p_expected_revision: draft.revision,
       p_rubric_json: rubricJson,
     });
     if (confirmed) {
+      clearAssignmentCreateAttemptLedger(createAttempt);
       return confirmed;
     }
     throw finalized.error;
@@ -449,7 +790,7 @@ export async function createAssignment(input: CreateAssignmentInput) {
       assignment_id: draft.id,
       has_attachment: Boolean(input.attachment),
     });
-    throw error;
+    throw mutationError(error, 'Could not publish assignment.');
   }
 }
 
@@ -466,6 +807,9 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
   if (!title) {
     throw new Error('Assignment title is required.');
   }
+  if (!Number.isInteger(input.expectedRevision) || input.expectedRevision < 1) {
+    throw new Error('Assignment revision is unavailable. Reload before saving.');
+  }
 
   const existing = await client.from('assignments').select('*').eq('id', input.assignmentId).single();
   if (existing.error) {
@@ -477,6 +821,9 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
   const current = existing.data as Assignment | null;
   if (!current) {
     throw new Error('Assignment could not be found.');
+  }
+  if (current.revision !== input.expectedRevision) {
+    throw new Error('This assignment changed while you were editing. Reload it before saving again.');
   }
 
   if (profile.role === 'tutor' && current.created_by !== profile.id) {
@@ -524,6 +871,7 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
       p_status: input.status,
       p_attachment_url: attachmentPath,
       p_memo_url: memoPath,
+      p_expected_revision: input.expectedRevision,
       p_rubric_json: rubricJson,
     };
     const finalized = await (client as unknown as AssignmentPublishClient).rpc('finalize_assignment_publication', payload);
@@ -543,18 +891,18 @@ export async function updateAssignment(input: UpdateAssignmentInput) {
       status: input.status,
       has_attachment: Boolean(input.attachment),
     });
-    throw error;
+    throw mutationError(error, 'Could not update assignment.');
   }
 }
 
 export async function submitAssignment(input: SubmitAssignmentInput): Promise<SubmitAssignmentResult> {
-  const submissionId = input.submissionId.trim().toLowerCase();
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(submissionId)) {
+  const proposedSubmissionId = input.submissionId.trim().toLowerCase();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(proposedSubmissionId)) {
     throw new Error('A valid submission attempt ID is required.');
   }
 
   if (isE2EAuthMockEnabled()) {
-    return submitE2EAssignment({ ...input, submissionId });
+    return submitE2EAssignment({ ...input, submissionId: proposedSubmissionId });
   }
 
   const client = requireSupabase();
@@ -572,40 +920,75 @@ export async function submitAssignment(input: SubmitAssignmentInput): Promise<Su
 
   const student = await getCurrentStudent(profile.id);
 
-  let fileUrl: string | null = null;
-  let storageKey: string | null = null;
+  let contentSha256: string | null = null;
   let originalFilename: string | null = null;
   let mimeType: string | null = null;
   let sizeBytes: number | null = null;
 
   if (input.file) {
     validateSubmissionFile(input.file);
-    const ext = input.file.name.split('.').pop()?.toLowerCase() || 'bin';
-    storageKey = `${student.id}/${input.assignmentId}/${submissionId}/submission.${ext}`;
-    fileUrl = storageKey;
+    contentSha256 = await sha256Hex(input.file);
     originalFilename = safeFileName(input.file);
     mimeType = input.file.type || null;
     sizeBytes = input.file.size;
   }
+  const textAnswerSha256 = textAnswer ? await sha256Hex(textAnswer) : null;
 
-  const rpcArgs: SubmissionAttemptRpcArgs = {
-    p_assignment_id: input.assignmentId,
-    p_submission_id: submissionId,
-    p_storage_key: storageKey,
-    p_file_url: fileUrl,
-    p_original_filename: originalFilename,
-    p_mime_type: mimeType,
-    p_size_bytes: sizeBytes,
-    p_text_answer: textAnswer,
+  const buildEntry = (submissionId: string): SubmissionAttemptLedgerEntry => {
+    const ext = input.file?.name.split('.').pop()?.toLowerCase() || null;
+    const storageKey = input.file && contentSha256 && ext
+      ? `${student.id}/${input.assignmentId}/${submissionId}/${contentSha256}/submission.${ext}`
+      : null;
+    return {
+      version: 1,
+      assignmentId: input.assignmentId,
+      studentId: student.id,
+      submissionId,
+      storageKey,
+      originalFilename,
+      mimeType,
+      sizeBytes,
+      contentSha256,
+      textAnswerSha256,
+      createdAt: new Date().toISOString(),
+    };
   };
 
+  let entry = buildEntry(proposedSubmissionId);
+  const pendingEntry = readSubmissionAttemptLedger(student.id, input.assignmentId);
+  if (pendingEntry) {
+    try {
+      if (await confirmSubmissionAttempt(client, pendingEntry)) {
+        clearSubmissionAttemptLedger(pendingEntry);
+        await triggerAiGrading(client, pendingEntry.submissionId);
+        return { submissionId: pendingEntry.submissionId, recovered: true };
+      }
+    } catch (confirmationError) {
+      captureAssignmentError('assignment_submission.previous_attempt_confirm_failed', confirmationError, {
+        assignment_id: input.assignmentId,
+        submission_id: pendingEntry.submissionId,
+      });
+      throw confirmationError;
+    }
+    if (sameSubmissionPayload(pendingEntry, entry)) {
+      entry = pendingEntry;
+    } else {
+      clearSubmissionAttemptLedger(pendingEntry);
+    }
+  }
+
+  writeSubmissionAttemptLedger(entry);
+  await beginSubmissionAttempt(client, entry, textAnswer);
+  const rpcArgs = submissionAttemptRpcArgs(entry, textAnswer);
+
   // A previous submit may have committed even though its response was lost.
-  // Confirm the stable attempt before any upsert so committed evidence is
-  // never uploaded over. An absent attempt is the only state that proceeds.
+  // Confirm the durable attempt before any immutable upload. An absent commit
+  // is the only state that proceeds.
   try {
-    if (await confirmSubmissionAttempt(client, rpcArgs)) {
-      await triggerAiGrading(client, submissionId);
-      return { submissionId };
+    if (await confirmSubmissionAttempt(client, entry)) {
+      clearSubmissionAttemptLedger(entry);
+      await triggerAiGrading(client, entry.submissionId);
+      return { submissionId: entry.submissionId, recovered: true };
     }
   } catch (confirmationError) {
     captureAssignmentError('assignment_submission.confirm_failed', confirmationError, {
@@ -617,10 +1000,10 @@ export async function submitAssignment(input: SubmitAssignmentInput): Promise<Su
   }
 
   if (input.file) {
-    const uploaded = await client.storage.from('assignment-submissions').upload(storageKey!, input.file, {
-      upsert: true,
+    const uploaded = await client.storage.from('assignment-submissions').upload(rpcArgs.p_storage_key!, input.file, {
+      upsert: false,
       contentType: input.file.type || undefined,
-      metadata: { original_filename: originalFilename! },
+      metadata: { original_filename: originalFilename!, sha256: entry.contentSha256! },
     });
     if (uploaded.error) {
       captureAssignmentError('assignment_submission.upload_failed', uploaded.error, {
@@ -628,14 +1011,14 @@ export async function submitAssignment(input: SubmitAssignmentInput): Promise<Su
         upload_size_bytes: input.file.size,
         mime_type: input.file.type || null,
       });
-      throw uploaded.error;
-    }
-    if (uploaded.data.path !== storageKey) {
+      // The immutable object may already exist because a prior upload response
+      // was lost. Continue to the RPC, which verifies its metadata and digest.
+    } else if (uploaded.data.path !== rpcArgs.p_storage_key) {
       throw new Error('Submission upload returned an unexpected storage path.');
     }
   }
 
-  if (!textAnswer && !fileUrl) {
+  if (!textAnswer && !rpcArgs.p_file_url) {
     throw new Error('Add a file or a written answer before submitting.');
   }
 
@@ -657,9 +1040,10 @@ export async function submitAssignment(input: SubmitAssignmentInput): Promise<Su
     // confirmation also fails, the UI retains the same UUID for the next
     // click; no Storage object is removed or overwritten here.
     try {
-      if (await confirmSubmissionAttempt(client, rpcArgs)) {
-        await triggerAiGrading(client, submissionId);
-        return { submissionId };
+      if (await confirmSubmissionAttempt(client, entry)) {
+        clearSubmissionAttemptLedger(entry);
+        await triggerAiGrading(client, entry.submissionId);
+        return { submissionId: entry.submissionId, recovered: true };
       }
     } catch (confirmationError) {
       captureAssignmentError('assignment_submission.confirm_after_rpc_failed', confirmationError, {
@@ -670,12 +1054,13 @@ export async function submitAssignment(input: SubmitAssignmentInput): Promise<Su
   }
 
   const row = Array.isArray(submitted.data) ? submitted.data[0] : submitted.data;
-  if (!row?.submission_id || row.submission_id.toLowerCase() !== submissionId) {
+  if (!row?.submission_id || row.submission_id.toLowerCase() !== entry.submissionId) {
     throw new Error('Submission confirmation was incomplete. Retry safely with the same work.');
   }
 
-  await triggerAiGrading(client, submissionId);
-  return { submissionId };
+  clearSubmissionAttemptLedger(entry);
+  await triggerAiGrading(client, entry.submissionId);
+  return { submissionId: entry.submissionId };
 }
 
 export async function markSubmission(input: MarkSubmissionInput) {
@@ -690,6 +1075,9 @@ export async function markSubmission(input: MarkSubmissionInput) {
     captureAssignmentError('submission_marking.permission_denied', error, { role: profile.role });
     throw error;
   }
+  if (!Number.isInteger(input.expectedRevision) || input.expectedRevision < 1) {
+    throw new Error('Submission revision is unavailable. Reload before saving your review.');
+  }
 
   const marks = input.marksAwarded?.trim() ? Number(input.marksAwarded) : null;
   if (marks !== null && (!Number.isFinite(marks) || marks < 0 || marks > 100)) {
@@ -701,6 +1089,7 @@ export async function markSubmission(input: MarkSubmissionInput) {
       name: 'mark_assignment_submission',
       args: {
         p_submission_id: string;
+        p_expected_revision: number;
         p_marks_awarded: number | null;
         p_feedback: string | null;
         p_status: 'submitted' | 'marked' | 'returned';
@@ -711,6 +1100,7 @@ export async function markSubmission(input: MarkSubmissionInput) {
     ) => Promise<{ data: AssignmentSubmission[] | AssignmentSubmission | null; error: Error | null }>;
   }).rpc('mark_assignment_submission', {
     p_submission_id: input.submissionId,
+    p_expected_revision: input.expectedRevision,
     p_marks_awarded: marks,
     p_feedback: input.feedback?.trim() || null,
     p_status: input.status,

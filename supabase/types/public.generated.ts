@@ -172,8 +172,66 @@ export type Database = {
           },
         ]
       }
+      assignment_submission_attempts: {
+        Row: {
+          assignment_id: string
+          committed_at: string | null
+          content_sha256: string | null
+          created_at: string
+          id: string
+          mime_type: string | null
+          original_filename: string | null
+          size_bytes: number | null
+          storage_key: string | null
+          student_id: string
+          text_answer_sha256: string | null
+        }
+        Insert: {
+          assignment_id: string
+          committed_at?: string | null
+          content_sha256?: string | null
+          created_at?: string
+          id: string
+          mime_type?: string | null
+          original_filename?: string | null
+          size_bytes?: number | null
+          storage_key?: string | null
+          student_id: string
+          text_answer_sha256?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          committed_at?: string | null
+          content_sha256?: string | null
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          original_filename?: string | null
+          size_bytes?: number | null
+          storage_key?: string | null
+          student_id?: string
+          text_answer_sha256?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_submission_attempts_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_submission_attempts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignment_submissions: {
         Row: {
+          ai_assignment_snapshot_json: Json
           ai_confidence: number | null
           ai_feedback: string | null
           ai_graded_at: string | null
@@ -187,6 +245,7 @@ export type Database = {
           ai_marks_awarded: number | null
           ai_rubric_scores_json: Json
           assignment_id: string
+          content_sha256: string | null
           feedback: string | null
           feedback_released: boolean
           file_url: string | null
@@ -197,6 +256,7 @@ export type Database = {
           mime_type: string | null
           original_filename: string | null
           released_at: string | null
+          revision: number
           rubric_scores_json: Json
           size_bytes: number | null
           status: Database["public"]["Enums"]["submission_status"]
@@ -204,9 +264,11 @@ export type Database = {
           student_id: string
           submitted_at: string
           text_answer: string | null
+          text_answer_sha256: string | null
           version_number: number
         }
         Insert: {
+          ai_assignment_snapshot_json?: Json
           ai_confidence?: number | null
           ai_feedback?: string | null
           ai_graded_at?: string | null
@@ -220,6 +282,7 @@ export type Database = {
           ai_marks_awarded?: number | null
           ai_rubric_scores_json?: Json
           assignment_id: string
+          content_sha256?: string | null
           feedback?: string | null
           feedback_released?: boolean
           file_url?: string | null
@@ -230,6 +293,7 @@ export type Database = {
           mime_type?: string | null
           original_filename?: string | null
           released_at?: string | null
+          revision?: number
           rubric_scores_json?: Json
           size_bytes?: number | null
           status?: Database["public"]["Enums"]["submission_status"]
@@ -237,9 +301,11 @@ export type Database = {
           student_id: string
           submitted_at?: string
           text_answer?: string | null
+          text_answer_sha256?: string | null
           version_number?: number
         }
         Update: {
+          ai_assignment_snapshot_json?: Json
           ai_confidence?: number | null
           ai_feedback?: string | null
           ai_graded_at?: string | null
@@ -253,6 +319,7 @@ export type Database = {
           ai_marks_awarded?: number | null
           ai_rubric_scores_json?: Json
           assignment_id?: string
+          content_sha256?: string | null
           feedback?: string | null
           feedback_released?: boolean
           file_url?: string | null
@@ -263,6 +330,7 @@ export type Database = {
           mime_type?: string | null
           original_filename?: string | null
           released_at?: string | null
+          revision?: number
           rubric_scores_json?: Json
           size_bytes?: number | null
           status?: Database["public"]["Enums"]["submission_status"]
@@ -270,6 +338,7 @@ export type Database = {
           student_id?: string
           submitted_at?: string
           text_answer?: string | null
+          text_answer_sha256?: string | null
           version_number?: number
         }
         Relationships: [
@@ -293,6 +362,8 @@ export type Database = {
         Row: {
           attachment_url: string | null
           available_from: string | null
+          client_request_id: string | null
+          create_request_fingerprint: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -301,6 +372,7 @@ export type Database = {
           id: string
           memo_url: string | null
           organization_id: string
+          revision: number
           rubric_json: Json
           status: Database["public"]["Enums"]["assignment_status"]
           subject_id: string | null
@@ -309,6 +381,8 @@ export type Database = {
         Insert: {
           attachment_url?: string | null
           available_from?: string | null
+          client_request_id?: string | null
+          create_request_fingerprint?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -317,6 +391,7 @@ export type Database = {
           id?: string
           memo_url?: string | null
           organization_id: string
+          revision?: number
           rubric_json?: Json
           status?: Database["public"]["Enums"]["assignment_status"]
           subject_id?: string | null
@@ -325,6 +400,8 @@ export type Database = {
         Update: {
           attachment_url?: string | null
           available_from?: string | null
+          client_request_id?: string | null
+          create_request_fingerprint?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -333,6 +410,7 @@ export type Database = {
           id?: string
           memo_url?: string | null
           organization_id?: string
+          revision?: number
           rubric_json?: Json
           status?: Database["public"]["Enums"]["assignment_status"]
           subject_id?: string | null
@@ -1266,6 +1344,62 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_outbox_events: {
+        Row: {
+          attempt_count: number
+          available_at: string
+          claim_token: string | null
+          created_at: string
+          dispatched_at: string | null
+          event_key: string
+          id: string
+          last_error: string | null
+          lease_expires_at: string | null
+          payload_json: Json
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          available_at?: string
+          claim_token?: string | null
+          created_at?: string
+          dispatched_at?: string | null
+          event_key: string
+          id?: string
+          last_error?: string | null
+          lease_expires_at?: string | null
+          payload_json: Json
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          available_at?: string
+          claim_token?: string | null
+          created_at?: string
+          dispatched_at?: string | null
+          event_key?: string
+          id?: string
+          last_error?: string | null
+          lease_expires_at?: string | null
+          payload_json?: Json
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_outbox_events_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           created_at: string
@@ -1479,7 +1613,9 @@ export type Database = {
           id: string
           last_error: string | null
           notes: string | null
+          processing_claim_token: string | null
           processing_completed_at: string | null
+          processing_lease_expires_at: string | null
           processing_started_at: string | null
           processing_state: string
           processing_subject_auth_user_id: string | null
@@ -1487,6 +1623,7 @@ export type Database = {
           requested_by: string | null
           result: Json
           status: Database["public"]["Enums"]["record_status"]
+          storage_files_expected: number
           storage_files_removed: number
           subject_profile_id: string | null
           subject_student_id: string | null
@@ -1497,7 +1634,9 @@ export type Database = {
           id?: string
           last_error?: string | null
           notes?: string | null
+          processing_claim_token?: string | null
           processing_completed_at?: string | null
+          processing_lease_expires_at?: string | null
           processing_started_at?: string | null
           processing_state?: string
           processing_subject_auth_user_id?: string | null
@@ -1505,6 +1644,7 @@ export type Database = {
           requested_by?: string | null
           result?: Json
           status?: Database["public"]["Enums"]["record_status"]
+          storage_files_expected?: number
           storage_files_removed?: number
           subject_profile_id?: string | null
           subject_student_id?: string | null
@@ -1515,7 +1655,9 @@ export type Database = {
           id?: string
           last_error?: string | null
           notes?: string | null
+          processing_claim_token?: string | null
           processing_completed_at?: string | null
+          processing_lease_expires_at?: string | null
           processing_started_at?: string | null
           processing_state?: string
           processing_subject_auth_user_id?: string | null
@@ -1523,6 +1665,7 @@ export type Database = {
           requested_by?: string | null
           result?: Json
           status?: Database["public"]["Enums"]["record_status"]
+          storage_files_expected?: number
           storage_files_removed?: number
           subject_profile_id?: string | null
           subject_student_id?: string | null
@@ -1937,12 +2080,14 @@ export type Database = {
           body: string
           created_at: string
           created_by: string | null
+          dedupe_key: string | null
           entity_id: string | null
           entity_type: string | null
           id: string
           is_read: boolean
           link: string | null
           metadata_json: Json
+          outbox_event_id: string | null
           read_at: string | null
           student_id: string
           title: string
@@ -1953,12 +2098,14 @@ export type Database = {
           body: string
           created_at?: string
           created_by?: string | null
+          dedupe_key?: string | null
           entity_id?: string | null
           entity_type?: string | null
           id?: string
           is_read?: boolean
           link?: string | null
           metadata_json?: Json
+          outbox_event_id?: string | null
           read_at?: string | null
           student_id: string
           title: string
@@ -1969,12 +2116,14 @@ export type Database = {
           body?: string
           created_at?: string
           created_by?: string | null
+          dedupe_key?: string | null
           entity_id?: string | null
           entity_type?: string | null
           id?: string
           is_read?: boolean
           link?: string | null
           metadata_json?: Json
+          outbox_event_id?: string | null
           read_at?: string | null
           student_id?: string
           title?: string
@@ -2687,7 +2836,10 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          is_stale: boolean
           payload_json: Json
+          source_watermark: string
+          stale_since: string | null
           student_id: string
           week_end: string
           week_start: string
@@ -2696,7 +2848,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_stale?: boolean
           payload_json: Json
+          source_watermark?: string
+          stale_since?: string | null
           student_id: string
           week_end: string
           week_start: string
@@ -2705,7 +2860,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_stale?: boolean
           payload_json?: Json
+          source_watermark?: string
+          stale_since?: string | null
           student_id?: string
           week_end?: string
           week_start?: string
@@ -2770,6 +2928,22 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      begin_assignment_submission_attempt: {
+        Args: {
+          p_assignment_id: string
+          p_content_sha256: string
+          p_mime_type: string
+          p_original_filename: string
+          p_size_bytes: number
+          p_storage_key: string
+          p_submission_id: string
+          p_text_answer: string
+          p_text_answer_sha256: string
+        }
+        Returns: {
+          submission_id: string
+        }[]
+      }
       begin_student_privacy_deletion: {
         Args: { p_request_id: string }
         Returns: Json
@@ -2802,6 +2976,7 @@ export type Database = {
       claim_ai_grading_job: {
         Args: { p_submission_id: string }
         Returns: {
+          ai_assignment_snapshot_json: Json
           ai_confidence: number | null
           ai_feedback: string | null
           ai_graded_at: string | null
@@ -2815,6 +2990,7 @@ export type Database = {
           ai_marks_awarded: number | null
           ai_rubric_scores_json: Json
           assignment_id: string
+          content_sha256: string | null
           feedback: string | null
           feedback_released: boolean
           file_url: string | null
@@ -2825,6 +3001,7 @@ export type Database = {
           mime_type: string | null
           original_filename: string | null
           released_at: string | null
+          revision: number
           rubric_scores_json: Json
           size_bytes: number | null
           status: Database["public"]["Enums"]["submission_status"]
@@ -2832,6 +3009,7 @@ export type Database = {
           student_id: string
           submitted_at: string
           text_answer: string | null
+          text_answer_sha256: string | null
           version_number: number
         }
         SetofOptions: {
@@ -2844,6 +3022,7 @@ export type Database = {
       claim_next_ai_grading_job: {
         Args: never
         Returns: {
+          ai_assignment_snapshot_json: Json
           ai_confidence: number | null
           ai_feedback: string | null
           ai_graded_at: string | null
@@ -2857,6 +3036,7 @@ export type Database = {
           ai_marks_awarded: number | null
           ai_rubric_scores_json: Json
           assignment_id: string
+          content_sha256: string | null
           feedback: string | null
           feedback_released: boolean
           file_url: string | null
@@ -2867,6 +3047,7 @@ export type Database = {
           mime_type: string | null
           original_filename: string | null
           released_at: string | null
+          revision: number
           rubric_scores_json: Json
           size_bytes: number | null
           status: Database["public"]["Enums"]["submission_status"]
@@ -2874,6 +3055,7 @@ export type Database = {
           student_id: string
           submitted_at: string
           text_answer: string | null
+          text_answer_sha256: string | null
           version_number: number
         }
         SetofOptions: {
@@ -2882,6 +3064,22 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      claim_next_notification_outbox_event: {
+        Args: never
+        Returns: {
+          claim_token: string
+          id: string
+          payload_json: Json
+        }[]
+      }
+      claim_next_student_privacy_deletion: {
+        Args: { p_claim_token: string }
+        Returns: string
+      }
+      claim_student_privacy_deletion: {
+        Args: { p_claim_token: string; p_request_id: string }
+        Returns: Json
       }
       cleanup_orphaned_assignment_assets: { Args: never; Returns: number }
       complete_ai_grading_job: {
@@ -2906,6 +3104,17 @@ export type Database = {
           p_storage_key: string
           p_submission_id: string
           p_text_answer: string
+        }
+        Returns: {
+          submission_id: string
+        }[]
+      }
+      confirm_assignment_submission_attempt_digest: {
+        Args: {
+          p_assignment_id: string
+          p_content_sha256: string
+          p_submission_id: string
+          p_text_answer_sha256: string
         }
         Returns: {
           submission_id: string
@@ -2960,6 +3169,8 @@ export type Database = {
         Returns: {
           attachment_url: string | null
           available_from: string | null
+          client_request_id: string | null
+          create_request_fingerprint: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -2968,6 +3179,7 @@ export type Database = {
           id: string
           memo_url: string | null
           organization_id: string
+          revision: number
           rubric_json: Json
           status: Database["public"]["Enums"]["assignment_status"]
           subject_id: string | null
@@ -2982,17 +3194,20 @@ export type Database = {
       }
       create_assignment_draft: {
         Args: {
+          p_client_request_id: string
           p_description: string
           p_due_date: string
           p_grade: string
           p_organization_id: string
-          p_rubric_json?: Json
+          p_rubric_json: Json
           p_subject_id: string
           p_title: string
         }
         Returns: {
           attachment_url: string | null
           available_from: string | null
+          client_request_id: string | null
+          create_request_fingerprint: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -3001,6 +3216,7 @@ export type Database = {
           id: string
           memo_url: string | null
           organization_id: string
+          revision: number
           rubric_json: Json
           status: Database["public"]["Enums"]["assignment_status"]
           subject_id: string | null
@@ -3270,6 +3486,10 @@ export type Database = {
         }
         Returns: number
       }
+      dispatch_notification_outbox_event: {
+        Args: { p_claim_token: string; p_event_id: string }
+        Returns: string
+      }
       enqueue_ai_grading: {
         Args: { p_submission_id: string }
         Returns: boolean
@@ -3288,12 +3508,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      fail_notification_outbox_event: {
+        Args: {
+          p_claim_token: string
+          p_error_code: string
+          p_event_id: string
+        }
+        Returns: undefined
+      }
       finalize_assignment_publication: {
         Args: {
           p_assignment_id: string
           p_attachment_url: string
           p_description: string
           p_due_date: string
+          p_expected_revision?: number
           p_grade: string
           p_memo_url: string
           p_rubric_json?: Json
@@ -3304,6 +3533,8 @@ export type Database = {
         Returns: {
           attachment_url: string | null
           available_from: string | null
+          client_request_id: string | null
+          create_request_fingerprint: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -3312,6 +3543,7 @@ export type Database = {
           id: string
           memo_url: string | null
           organization_id: string
+          revision: number
           rubric_json: Json
           status: Database["public"]["Enums"]["assignment_status"]
           subject_id: string | null
@@ -3353,7 +3585,10 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          is_stale: boolean
           payload_json: Json
+          source_watermark: string
+          stale_since: string | null
           student_id: string
           week_end: string
           week_start: string
@@ -3365,8 +3600,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_admin_ai_grading_queue: {
+        Args: { p_limit?: number }
+        Returns: {
+          assignment_id: string
+          attempts: number
+          available_at: string
+          last_error: string
+          lease_expires_at: string
+          status: string
+          submission_id: string
+        }[]
+      }
       get_admin_payroll_view: { Args: { p_week_start: string }; Returns: Json }
       get_admin_progress_reports: { Args: never; Returns: Json }
+      get_ai_grading_queue_metrics: {
+        Args: never
+        Returns: {
+          job_count: number
+          oldest_available_at: string
+          ready_count: number
+          status: string
+        }[]
+      }
       get_community_challenges: {
         Args: never
         Returns: {
@@ -3607,6 +3863,7 @@ export type Database = {
       mark_all_notifications_read: { Args: never; Returns: number }
       mark_assignment_submission: {
         Args: {
+          p_expected_revision?: number
           p_feedback: string
           p_feedback_released?: boolean
           p_marks_awarded: number
@@ -3616,6 +3873,7 @@ export type Database = {
           p_submission_id: string
         }
         Returns: {
+          ai_assignment_snapshot_json: Json
           ai_confidence: number | null
           ai_feedback: string | null
           ai_graded_at: string | null
@@ -3629,6 +3887,7 @@ export type Database = {
           ai_marks_awarded: number | null
           ai_rubric_scores_json: Json
           assignment_id: string
+          content_sha256: string | null
           feedback: string | null
           feedback_released: boolean
           file_url: string | null
@@ -3639,6 +3898,7 @@ export type Database = {
           mime_type: string | null
           original_filename: string | null
           released_at: string | null
+          revision: number
           rubric_scores_json: Json
           size_bytes: number | null
           status: Database["public"]["Enums"]["submission_status"]
@@ -3646,6 +3906,7 @@ export type Database = {
           student_id: string
           submitted_at: string
           text_answer: string | null
+          text_answer_sha256: string | null
           version_number: number
         }[]
         SetofOptions: {
@@ -3661,12 +3922,14 @@ export type Database = {
           body: string
           created_at: string
           created_by: string | null
+          dedupe_key: string | null
           entity_id: string | null
           entity_type: string | null
           id: string
           is_read: boolean
           link: string | null
           metadata_json: Json
+          outbox_event_id: string | null
           read_at: string | null
           student_id: string
           title: string
@@ -3833,6 +4096,10 @@ export type Database = {
         Args: { p_error: string; p_request_id: string; p_stage: string }
         Returns: undefined
       }
+      record_student_privacy_storage_manifest: {
+        Args: { p_files_expected: number; p_request_id: string }
+        Returns: undefined
+      }
       record_tutor_document: {
         Args: {
           p_document_type: string
@@ -3861,6 +4128,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      refresh_stale_weekly_reports: {
+        Args: { p_limit?: number }
+        Returns: number
       }
       reject_session: {
         Args: { p_reason: string; p_session_id: string }
@@ -3899,6 +4170,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      renew_student_privacy_deletion_lease: {
+        Args: { p_claim_token: string; p_request_id: string }
+        Returns: boolean
+      }
       replace_tutor_availability: {
         Args: { p_slots: Json }
         Returns: {
@@ -3919,6 +4194,14 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      requeue_admin_ai_grading_job: {
+        Args: { p_reason: string; p_submission_id: string }
+        Returns: boolean
+      }
+      requeue_ai_grading_job: {
+        Args: { p_reason?: string; p_submission_id: string }
+        Returns: boolean
       }
       run_retention_cleanup: { Args: { p_apply?: boolean }; Returns: Json }
       run_retention_cleanup_scheduled: { Args: never; Returns: Json }
@@ -4085,6 +4368,8 @@ export type Database = {
         Returns: {
           attachment_url: string | null
           available_from: string | null
+          client_request_id: string | null
+          create_request_fingerprint: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -4093,6 +4378,7 @@ export type Database = {
           id: string
           memo_url: string | null
           organization_id: string
+          revision: number
           rubric_json: Json
           status: Database["public"]["Enums"]["assignment_status"]
           subject_id: string | null

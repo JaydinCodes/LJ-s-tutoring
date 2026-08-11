@@ -8,6 +8,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
+import { isTrustedServiceWorkerToken } from '../_shared/trusted-worker.ts';
 
 const STORAGE_FETCH_TIMEOUT_MS = 20_000;
 const GEMINI_TIMEOUT_MS = 90_000;
@@ -74,6 +75,7 @@ type AiJobRow = {
   ai_job_claim_token: string | null;
   ai_job_claimed_at: string | null;
   ai_job_last_error: string | null;
+  ai_assignment_snapshot_json: Record<string, unknown> | null;
 };
 
 type StoredAsset =
@@ -89,20 +91,6 @@ function timeoutSignal(timeoutMs: number) {
   const controller = new AbortController();
   setTimeout(() => controller.abort(new Error('request_timeout')), timeoutMs);
   return controller.signal;
-}
-
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) {
-      return null;
-    }
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
-    return JSON.parse(atob(padded)) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
 }
 
 function normalizeMimeType(value: string | null) {
@@ -270,7 +258,7 @@ function buildSystemPrompt(rubric: RubricCriterion[], hasFile: boolean, hasText:
 }
 
 function buildUserParts(args: {
-  assignment: { title: string; description: string | null; grade: string | null; status: string };
+  assignment: { title: string; description: string | null; grade: string | null; status: string; snapshotAt?: string | null };
   rubric: RubricCriterion[];
   submission: AiJobRow;
   submissionAsset: StoredAsset | null;
@@ -281,6 +269,7 @@ function buildUserParts(args: {
         `Assignment title: ${args.assignment.title}`,
         `Assignment grade: ${args.assignment.grade || 'not provided'}`,
         `Assignment status: ${args.assignment.status}`,
+        `Rubric snapshot captured at: ${args.assignment.snapshotAt || 'submission time'}`,
         `Assignment description: ${args.assignment.description || 'not provided'}`,
         `Student text answer: ${args.submission.text_answer || 'not provided'}`,
         `Student file metadata: ${JSON.stringify({
@@ -400,11 +389,6 @@ function isHttpOrigin(value: string | null) {
   }
 }
 
-function safeJwtRole(token: string) {
-  const payload = decodeJwtPayload(token);
-  return typeof payload?.role === 'string' ? payload.role : null;
-}
-
 export default {
   fetch: async (req: Request) => {
     const origin = isHttpOrigin(req.headers.get('Origin')) ? req.headers.get('Origin') : null;
@@ -441,7 +425,10 @@ export default {
       return jsonResponse({ error: 'assistant_auth_required' }, 401, origin);
     }
 
-    const jwtRole = safeJwtRole(token);
+    // The platform gateway verifies this function's JWT, but keep an
+    // independent in-handler trust boundary for the queue worker. Never
+    // promote a caller based on an unverified decoded JWT payload.
+    const isTrustedWorker = isTrustedServiceWorkerToken(token, serviceRoleKey);
     const parsedRequest = RequestSchema.safeParse(await req.json().catch(() => null));
     if (!parsedRequest.success) {
       return jsonResponse({ error: 'invalid_request', details: parsedRequest.error.flatten() }, 400, origin);
@@ -454,7 +441,7 @@ export default {
     // the queue without that restriction.
     let studentId: string | null = null;
     let profileId: string | null = null;
-    if (jwtRole !== 'service_role') {
+    if (!isTrustedWorker) {
       const { data: userData, error: userErr } = await admin.auth.getUser(token);
       if (userErr || !userData.user) {
         return jsonResponse({ error: 'supabase_bearer_invalid' }, 401, origin);
@@ -474,6 +461,7 @@ export default {
         .from('students')
         .select('id')
         .eq('profile_id', profileId)
+        .eq('status', 'active')
         .maybeSingle();
       if (studentErr || !studentRow) {
         return jsonResponse({ error: 'forbidden' }, 403, origin);
@@ -513,31 +501,48 @@ export default {
           return jsonResponse({ error: 'assignment_not_eligible_for_grading' }, 403, origin);
         }
 
-        const assignmentResult = await admin
-          .from('assignments')
-          .select('id, title, description, grade, status, rubric_json')
-          .eq('id', claimed.assignment_id)
-          .maybeSingle();
-        if (assignmentResult.error || !assignmentResult.data) {
-          await markFailure(admin, claimed, 'assignment_not_found', 60);
-          return jsonResponse({ error: 'assignment_not_found' }, 404, origin);
-        }
+        const snapshot = claimed.ai_assignment_snapshot_json;
+        let assignmentRow = snapshot && typeof snapshot.title === 'string' && 'rubric_json' in snapshot
+          ? snapshot as {
+            id?: string;
+            assignment_id?: string;
+            title: string;
+            description: string | null;
+            grade: string | null;
+            status?: string;
+            rubric_json: unknown;
+            captured_at?: string;
+          }
+          : null;
 
-        const assignmentRow = assignmentResult.data as {
-          id: string;
-          title: string;
-          description: string | null;
-          grade: string | null;
-          status: string;
-          rubric_json: unknown;
-        };
+        if (!assignmentRow) {
+          const assignmentResult = await admin
+            .from('assignments')
+            .select('id, title, description, grade, status, rubric_json')
+            .eq('id', claimed.assignment_id)
+            .maybeSingle();
+          if (assignmentResult.error || !assignmentResult.data) {
+            await markFailure(admin, claimed, 'assignment_not_found', 60);
+            return jsonResponse({ error: 'assignment_not_found' }, 404, origin);
+          }
+          assignmentRow = assignmentResult.data as {
+            id: string;
+            title: string;
+            description: string | null;
+            grade: string | null;
+            status: string;
+            rubric_json: unknown;
+            captured_at?: string;
+          };
+        }
 
         const rubric = parseRubric(assignmentRow.rubric_json);
         const assignmentContext = {
           title: assignmentRow.title,
           description: assignmentRow.description,
           grade: assignmentRow.grade,
-          status: assignmentRow.status,
+          status: assignmentRow.status || 'snapshot',
+          snapshotAt: assignmentRow.captured_at || null,
         };
 
         let submissionAsset: StoredAsset | null = null;
@@ -719,7 +724,7 @@ export default {
       }
     };
 
-    if (jwtRole === 'service_role') {
+    if (isTrustedWorker) {
       let processed = 0;
       const requestedRuns = submissionId ? 1 : maxJobs;
       while (processed < requestedRuns) {
@@ -765,7 +770,7 @@ export default {
 
     const { data: submissionRow, error: submissionError } = await admin
       .from('assignment_submissions')
-      .select('id, assignment_id, student_id, storage_key, file_url, original_filename, mime_type, size_bytes, text_answer, ai_grading_status, ai_job_claim_token, ai_job_attempts, ai_job_available_at, ai_job_lease_expires_at, ai_job_claimed_at, ai_job_last_error')
+      .select('id, assignment_id, student_id, storage_key, file_url, original_filename, mime_type, size_bytes, text_answer, ai_grading_status, ai_job_claim_token, ai_job_attempts, ai_job_available_at, ai_job_lease_expires_at, ai_job_claimed_at, ai_job_last_error, ai_assignment_snapshot_json')
       .eq('id', submissionId)
       .maybeSingle();
 

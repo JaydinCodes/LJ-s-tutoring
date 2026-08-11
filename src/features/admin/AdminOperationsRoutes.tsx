@@ -18,9 +18,12 @@ import {
   loadPrivacyRequests,
   loadRetentionSummary,
   rejectSession,
+  loadAdminAiGradingQueue,
   type AdminSession,
+  type AiGradingQueueItem,
   type AuditEntry,
   type PrivacyRequest,
+  requeueAdminAiGradingJob,
 } from './adminOperationsRepository';
 
 export function AdminApprovalsRoute() {
@@ -253,6 +256,66 @@ export function AdminResultsRoute() {
           <Summary label="Data source" value="student_progress" />
           <Summary label="Cutover status" value="Pending charts" />
         </div>
+      </Card>
+    </DashboardShell>
+  );
+}
+
+export function AdminAiGradingRoute() {
+  const [message, setMessage] = useState<string | null>(null);
+  const { data, loading, error, reload } = useAsyncResource(loadAdminAiGradingQueue, []);
+
+  async function requeue(item: AiGradingQueueItem) {
+    const reason = window.prompt('Why is this job safe to retry?', 'Provider recovered') ?? '';
+    if (!reason.trim()) return;
+
+    setMessage(null);
+    try {
+      const requeued = await requeueAdminAiGradingJob(item.submission_id, reason);
+      setMessage(requeued ? 'Job requeued for a fresh, bounded retry cycle.' : 'This job is no longer dead-lettered. The queue was refreshed.');
+      await reload();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Could not requeue the AI grading job.');
+    }
+  }
+
+  const counts = (data || []).reduce<Record<string, number>>((result, item) => {
+    result[item.status] = (result[item.status] || 0) + 1;
+    return result;
+  }, {});
+
+  return (
+    <DashboardShell title="AI grading operations" subtitle="Optional AI drafts only. Human marking remains available while jobs recover. Admin MFA is required." section="admin">
+      <Card>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {['pending', 'in_progress', 'failed', 'dead_lettered'].map((status) => <Summary key={status} label={status.replace(/_/g, ' ')} value={String(counts[status] || 0)} />)}
+          </div>
+          <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" type="button" onClick={() => void reload()}>Refresh</button>
+        </div>
+        <StatusLine loading={loading} error={error} message={message} onRetry={reload} />
+        {data ? (
+          <div className="mt-5">
+            <DataTable<AiGradingQueueItem>
+              rows={data}
+              empty="No AI grading jobs need operator attention."
+              columns={[
+                { key: 'submission', label: 'Submission', render: (row) => <span className="font-mono text-xs text-slate-800">{row.submission_id}</span> },
+                { key: 'status', label: 'Status', render: (row) => <StatusBadge value={row.status} /> },
+                { key: 'attempts', label: 'Attempts', render: (row) => row.attempts },
+                { key: 'available', label: 'Next eligible', render: (row) => row.available_at ? formatDate(row.available_at) : '--' },
+                { key: 'error', label: 'Last error', render: (row) => <span className="block max-w-sm truncate text-xs text-slate-700" title={row.last_error || undefined}>{row.last_error || '--'}</span> },
+                {
+                  key: 'action',
+                  label: 'Action',
+                  render: (row) => row.status === 'dead_lettered' ? (
+                    <button className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-800" type="button" onClick={() => void requeue(row)}>Requeue</button>
+                  ) : 'Automatic recovery',
+                },
+              ]}
+            />
+          </div>
+        ) : null}
       </Card>
     </DashboardShell>
   );

@@ -418,6 +418,22 @@ select pg_temp.authenticate_as(
 );
 set local role authenticated;
 
+select throws_ok(
+  $$
+    select public.mark_assignment_submission(
+      'fd080000-0000-4000-8000-000000000002'::uuid,
+      67,
+      'Legacy stale client',
+      'marked'::public.submission_status,
+      '{}'::jsonb,
+      false,
+      false
+    )
+  $$,
+  '40001',
+  'submission_revision_required',
+  'a retired marking client fails closed when it omits the revision'
+);
 select lives_ok(
   $$
     select public.mark_assignment_submission(
@@ -427,10 +443,34 @@ select lives_ok(
       'marked'::public.submission_status,
       '{}'::jsonb,
       false,
-      false
+      false,
+      1
     )
   $$,
   'tutor can mark a submission without releasing it'
+);
+select throws_ok(
+  $$
+    select public.mark_assignment_submission(
+      'fd080000-0000-4000-8000-000000000002'::uuid,
+      99,
+      'Stale overwrite must fail',
+      'marked'::public.submission_status,
+      '{}'::jsonb,
+      true,
+      true,
+      1
+    )
+  $$,
+  '40001',
+  'submission_revision_conflict',
+  'a stale marking revision cannot overwrite the winning review'
+);
+reset role;
+select is(
+  (select revision from public.assignment_submissions where id = 'fd080000-0000-4000-8000-000000000002'),
+  2,
+  'the winning mark increments the submission revision exactly once'
 );
 
 reset role;
@@ -501,7 +541,8 @@ select lives_ok(
       'marked'::public.submission_status,
       '{}'::jsonb,
       true,
-      true
+      true,
+      2
     )
   $$,
   'tutor can release marked result'
@@ -585,7 +626,8 @@ select lives_ok(
       'marked'::public.submission_status,
       '{}'::jsonb,
       true,
-      true
+      true,
+      3
     )
   $$,
   'editing a released mark succeeds'
@@ -632,7 +674,8 @@ select lives_ok(
       'marked'::public.submission_status,
       '{}'::jsonb,
       false,
-      false
+      false,
+      4
     )
   $$,
   'tutor can unrelease result'

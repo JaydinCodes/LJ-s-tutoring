@@ -1456,7 +1456,7 @@ select is((select count(*) from public.student_notifications), 0::bigint, 'even 
 reset role;
 
 -- Storage write checks run last so the successful insert cannot affect the
--- read-count assertions above. The allowed key has 3 folders because
+-- read-count assertions above. The allowed key has 4 folders because
 -- storage.foldername() excludes submission.pdf.
 select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
 set local role authenticated;
@@ -1478,10 +1478,50 @@ select ok(
   'Storage write guard takes the submission attempt advisory lock'
 );
 select ok(
-  public.can_write_uncommitted_assignment_submission_storage(
-    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
+  not public.can_write_uncommitted_assignment_submission_storage(
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf'
   ),
-  'locked Storage guard allows an own uncommitted attempt'
+  'Storage guard rejects an attempt before its payload is reserved'
+);
+select lives_ok(
+  $$
+    select public.begin_assignment_submission_attempt(
+      p_assignment_id => '50000000-0000-0000-0000-000000000001',
+      p_submission_id => '70000000-0000-0000-0000-000000000001',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+      p_original_filename => 'retry.pdf',
+      p_mime_type => 'application/pdf',
+      p_size_bytes => 123,
+      p_content_sha256 => repeat('a', 64),
+      p_text_answer => 'Stable retry payload',
+      p_text_answer_sha256 => '289500b9823eeccb6b55c65091f6c1b66d1d13661a3160455d44b49648ff7262'
+    )
+  $$,
+  'student reserves one immutable payload before upload'
+);
+select ok(
+  public.can_write_uncommitted_assignment_submission_storage(
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf'
+  ),
+  'locked Storage guard allows the matching reserved attempt'
+);
+select throws_ok(
+  $$
+    select public.begin_assignment_submission_attempt(
+      p_assignment_id => '50000000-0000-0000-0000-000000000001',
+      p_submission_id => '70000000-0000-0000-0000-000000000001',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/submission.pdf',
+      p_original_filename => 'retry.pdf',
+      p_mime_type => 'application/pdf',
+      p_size_bytes => 123,
+      p_content_sha256 => repeat('b', 64),
+      p_text_answer => 'Stable retry payload',
+      p_text_answer_sha256 => '289500b9823eeccb6b55c65091f6c1b66d1d13661a3160455d44b49648ff7262'
+    )
+  $$,
+  '23505',
+  'submission_retry_payload_mismatch',
+  'same UUID and metadata cannot be rebound to different file bytes'
 );
 select ok(
   not public.can_write_uncommitted_assignment_submission_storage(
@@ -1498,24 +1538,24 @@ select ok(
 
 select lives_ok(
   $$
-    insert into storage.objects (bucket_id, name, owner, metadata)
+    insert into storage.objects (bucket_id, name, owner, metadata, user_metadata)
     values (
       'assignment-submissions',
-      '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
       '00000000-0000-0000-0000-000000000002',
-      '{"mimetype":"application/pdf","size":123}'::jsonb
+      '{"mimetype":"application/pdf","size":123}'::jsonb,
+      '{"sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'::jsonb
     )
   $$,
   'student can upload a correctly-shaped own-org submission key'
 );
-select lives_ok(
-  $$
-    update storage.objects
-    set metadata = '{"mimetype":"application/pdf","size":123,"retry":true}'::jsonb
-    where bucket_id = 'assignment-submissions'
-      and name = '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
-  $$,
-  'student can update the same Storage object during upload retry'
+select is(
+  pg_temp.update_storage_object_metadata(
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+    '{"retry":true}'::jsonb
+  ),
+  0::bigint,
+  'student cannot overwrite immutable submission evidence'
 );
 
 select lives_ok(
@@ -1523,8 +1563,8 @@ select lives_ok(
     select public.submit_assignment_submission(
       p_assignment_id => '50000000-0000-0000-0000-000000000001',
       p_submission_id => '70000000-0000-0000-0000-000000000001',
-      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
-      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
       p_original_filename => 'retry.pdf',
       p_mime_type => 'application/pdf',
       p_size_bytes => 123,
@@ -1539,8 +1579,8 @@ select is(
     from public.confirm_assignment_submission_attempt(
       p_assignment_id => '50000000-0000-0000-0000-000000000001',
       p_submission_id => '70000000-0000-0000-0000-000000000001',
-      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
-      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
       p_original_filename => 'retry.pdf',
       p_mime_type => 'application/pdf',
       p_size_bytes => 123,
@@ -1551,8 +1591,21 @@ select is(
   'confirmed attempt returns before a retry upload'
 );
 select is(
+  (
+    select submission_id
+    from public.confirm_assignment_submission_attempt_digest(
+      p_assignment_id => '50000000-0000-0000-0000-000000000001',
+      p_submission_id => '70000000-0000-0000-0000-000000000001',
+      p_content_sha256 => repeat('a', 64),
+      p_text_answer_sha256 => '289500b9823eeccb6b55c65091f6c1b66d1d13661a3160455d44b49648ff7262'
+    )
+  ),
+  '70000000-0000-0000-0000-000000000001'::uuid,
+  'reload recovery confirms a commit using fingerprints without persisted answer text'
+);
+select is(
   pg_temp.update_storage_object_metadata(
-    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
     '{"tampered":true}'::jsonb
   ),
   0::bigint,
@@ -1563,14 +1616,14 @@ select is(
     select metadata
     from storage.objects
     where bucket_id = 'assignment-submissions'
-      and name = '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
+      and name = '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf'
   ),
-  '{"mimetype":"application/pdf","size":123,"retry":true}'::jsonb,
+  '{"mimetype":"application/pdf","size":123}'::jsonb,
   'post-commit overwrite attempt leaves the stored evidence unchanged'
 );
 select ok(
   not public.can_write_uncommitted_assignment_submission_storage(
-    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf'
+    '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf'
   ),
   'locked Storage guard rejects the caller-owned key after commit'
 );
@@ -1579,7 +1632,7 @@ select throws_ok(
     insert into storage.objects (bucket_id, name, owner, metadata)
     values (
       'assignment-submissions',
-      '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.png',
+      '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/submission.png',
       '00000000-0000-0000-0000-000000000002',
       '{}'::jsonb
     )
@@ -1593,8 +1646,8 @@ select lives_ok(
     select public.submit_assignment_submission(
       p_assignment_id => '50000000-0000-0000-0000-000000000001',
       p_submission_id => '70000000-0000-0000-0000-000000000001',
-      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
-      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
       p_original_filename => 'retry.pdf',
       p_mime_type => 'application/pdf',
       p_size_bytes => 123,
@@ -1608,8 +1661,8 @@ select throws_ok(
     select public.submit_assignment_submission(
       p_assignment_id => '50000000-0000-0000-0000-000000000001',
       p_submission_id => '70000000-0000-0000-0000-000000000001',
-      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
-      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000001/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
       p_original_filename => 'retry.pdf',
       p_mime_type => 'application/pdf',
       p_size_bytes => 123,
@@ -1625,17 +1678,17 @@ select throws_ok(
     select public.submit_assignment_submission(
       p_assignment_id => '50000000-0000-0000-0000-000000000002',
       p_submission_id => '70000000-0000-0000-0000-000000000001',
-      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000002/70000000-0000-0000-0000-000000000001/submission.pdf',
-      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000002/70000000-0000-0000-0000-000000000001/submission.pdf',
+      p_storage_key => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000002/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
+      p_file_url => '20000000-0000-0000-0000-000000000001/50000000-0000-0000-0000-000000000002/70000000-0000-0000-0000-000000000001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/submission.pdf',
       p_original_filename => 'retry.pdf',
       p_mime_type => 'application/pdf',
       p_size_bytes => 123,
       p_text_answer => 'Stable retry payload'
     )
   $$,
-  'P0002',
-  'submission_file_not_found',
-  'same attempt UUID cannot reference an unverified file for another assignment'
+  '23505',
+  'submission_id_conflict',
+  'same attempt UUID cannot be replayed for another assignment'
 );
 select is(
   (select count(*) from public.get_student_assignment_submissions() where id = '70000000-0000-0000-0000-000000000001'),

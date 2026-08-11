@@ -64,6 +64,10 @@ select ok(
   has_function_privilege('service_role', 'public.begin_student_privacy_deletion(uuid)', 'execute'),
   'service_role can execute trusted deletion stage RPCs'
 );
+select ok(
+  has_function_privilege('service_role', 'public.claim_student_privacy_deletion(uuid,uuid)', 'execute'),
+  'service_role can claim a deletion lease'
+);
 
 select ok(
   has_function_privilege('authenticated', 'public.process_privacy_request(uuid)', 'execute'),
@@ -256,8 +260,29 @@ reset role;
 set local role service_role;
 
 select lives_ok(
-  $$select public.begin_student_privacy_deletion('fb060000-0000-4000-8000-000000000001'::uuid)$$,
-  'trusted worker can lock deletion request'
+  $$select public.claim_student_privacy_deletion(
+    'fb060000-0000-4000-8000-000000000001'::uuid,
+    'fb070000-0000-4000-8000-000000000001'::uuid
+  )$$,
+  'trusted worker can claim and lock deletion request'
+);
+
+select throws_ok(
+  $$select public.claim_student_privacy_deletion(
+    'fb060000-0000-4000-8000-000000000001'::uuid,
+    'fb070000-0000-4000-8000-000000000002'::uuid
+  )$$,
+  '55P03',
+  'privacy_deletion_busy',
+  'a second privacy worker cannot steal an active lease'
+);
+
+select lives_ok(
+  $$select public.renew_student_privacy_deletion_lease(
+    'fb060000-0000-4000-8000-000000000001'::uuid,
+    'fb070000-0000-4000-8000-000000000001'::uuid
+  )$$,
+  'lease holder can renew privacy work before the next external stage'
 );
 
 reset role;
@@ -342,8 +367,26 @@ select lives_ok(
 );
 
 select lives_ok(
+  $$select public.record_student_privacy_storage_manifest(
+    'fb060000-0000-4000-8000-000000000001'::uuid,
+    7
+  )$$,
+  'worker persists the Storage manifest count before external deletion'
+);
+
+select lives_ok(
   $$select public.mark_student_privacy_storage_deleted('fb060000-0000-4000-8000-000000000001'::uuid, 0)$$,
-  'worker records Storage deletion stage'
+  'worker records Storage deletion stage after an external-delete response loss'
+);
+
+select is(
+  (
+    select storage_files_removed
+    from public.privacy_requests
+    where id = 'fb060000-0000-4000-8000-000000000001'
+  ),
+  7,
+  'Storage receipt count survives a crash before the stage write'
 );
 
 select lives_ok(

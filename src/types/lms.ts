@@ -80,6 +80,7 @@ export interface Assignment {
   // Private legacy tutor memo path. New memo upload/replacement is retired,
   // and the grading worker never reads or sends this data to Gemini.
   memo_url?: string | null;
+  revision: number;
   created_at: string;
 }
 
@@ -137,6 +138,7 @@ export interface AssignmentSubmission {
   marks_released?: boolean | null;
   feedback_released?: boolean | null;
   released_at?: string | null;
+  revision: number;
   // Written by the grade-submission Edge Function only -- a draft the tutor
   // review UI prefills from, never auto-copied into the real marks_awarded/
   // feedback/rubric_scores_json fields above (a human must explicitly save).
@@ -358,6 +360,9 @@ export interface WeeklyReportRecord {
   payload_json: WeeklyReportPayload;
   created_by?: string | null;
   created_at: string;
+  is_stale: boolean;
+  stale_since?: string | null;
+  source_watermark: string;
 }
 
 // Supabase public.student_score_snapshots row (see docs/supabase/schema.sql).

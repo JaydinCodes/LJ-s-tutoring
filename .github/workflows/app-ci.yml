@@ -94,6 +94,12 @@ jobs:
       - name: Rebuild database from committed migrations
         run: npm run supabase:reset
 
+      - name: Verify canonical schema and SECURITY DEFINER guardrails
+        run: |
+          npm run supabase:docs:check
+          npm run check:security-definer-search-path
+          npm run verify:edge-function-policy
+
       - name: Run runtime RLS allow-and-deny matrix
         run: npm run test:rls:runtime
 
@@ -105,6 +111,9 @@ jobs:
 
       - name: Run seeded local-Supabase role journeys
         run: npm run test:e2e:supabase
+
+      - name: Run local Edge Function authorization matrix
+        run: npm run test:edge:auth:runtime
 
   frontend-smoke:
     runs-on: ubuntu-latest

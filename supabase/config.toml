@@ -69,3 +69,25 @@ entrypoint = "./functions/grade-submission/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/cleanup-submission-assets/index.ts"
+
+[functions.dispatch-notification-outbox]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/dispatch-notification-outbox/index.ts"
+
+[functions.refresh-stale-weekly-reports]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/refresh-stale-weekly-reports/index.ts"
+
+# Authentication is explicit for every non-public function. The handlers also
+# validate role/status and, for internal workers, the exact service-role key.
+[functions.odie-careers-chat-stream]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/odie-careers-chat-stream/index.ts"
+
+[functions.admin-invite-user]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/admin-invite-user/index.ts"

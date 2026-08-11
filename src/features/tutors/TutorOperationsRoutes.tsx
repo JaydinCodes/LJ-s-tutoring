@@ -133,6 +133,7 @@ export function TutorReportsRoute() {
                     <p className="font-semibold text-slate-950">{report.student_name || 'Student report'}</p>
                     <p className="mt-1 text-sm text-slate-600">{formatDate(report.week_start || report.weekStart)} - {formatDate(report.week_end || report.weekEnd)}</p>
                     <p className="mt-1 text-xs text-slate-500">Created {formatDate(report.created_at || report.createdAt)}</p>
+                    {report.is_stale ? <p className="mt-2 text-xs font-semibold text-amber-700">Update pending — regenerate to reflect changed source data.</p> : null}
                   </div>
                   <div className="flex gap-2">
                     <button disabled={busy} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 disabled:opacity-60" onClick={() => void openReport(report.id)}>View</button>
@@ -282,9 +283,15 @@ function ReportDetail({ report }: { report: TutorWeeklyReport }) {
   const payload = report.payload;
   return (
     <div className="mt-4 space-y-4">
+      {report.is_stale ? (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          This saved snapshot is stale. Regenerate it before relying on it for a current review.
+        </p>
+      ) : null}
       <dl className="grid gap-3 text-sm">
         <DetailLine label="Week" value={`${formatDate(report.weekStart || report.week_start)} - ${formatDate(report.weekEnd || report.week_end)}`} />
         <DetailLine label="Generated" value={formatDate(report.createdAt || report.created_at)} />
+        <DetailLine label="Snapshot as of" value={formatDate(report.source_watermark || report.createdAt || report.created_at)} />
         <DetailLine label="Sessions" value={String(payload?.metrics.sessionsAttended ?? 0)} />
         <DetailLine label="Minutes" value={String(payload?.metrics.timeStudiedMinutes ?? 0)} />
       </dl>

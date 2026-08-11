@@ -168,6 +168,9 @@ test('Lighthouse and release workflows use the same pinned package commands', ()
   assert.match(lighthouseWorkflow, /npm run qa:serve/);
   assert.match(lighthouseWorkflow, /npm run qa:wait/);
   assert.match(lighthouseWorkflow, /npm run perf:lighthouse/);
+  assert.match(releaseWorkflow, /Install system Chromium for Lighthouse/);
+  assert.match(releaseWorkflow, /SYSTEM_CHROME_PATH=/);
+  assert.match(releaseWorkflow, /CHROME_PATH: \$\{\{ env\.SYSTEM_CHROME_PATH \}\}/);
 
   for (const command of ['lint', 'typecheck', 'test', 'build', 'perf:budget', 'validate:monitoring']) {
     const invocation = command === 'test' ? 'npm test' : `npm run ${command}`;
@@ -232,6 +235,15 @@ test('production deployment is gated by the tested main SHA and workflow actions
   assert.match(deploymentWorkflow, /DIGITALOCEAN_ACCESS_TOKEN/);
   assert.match(deploymentWorkflow, /DIGITALOCEAN_APP_ID/);
   assert.match(deploymentWorkflow, /doctl apps create-deployment/);
+  assert.match(deploymentWorkflow, /Apply Supabase migrations and Edge Functions/);
+  assert.match(deploymentWorkflow, /SUPABASE_ACCESS_TOKEN/);
+  assert.match(deploymentWorkflow, /SUPABASE_PRODUCTION_PROJECT_REF/);
+  assert.match(deploymentWorkflow, /SUPABASE_DB_PASSWORD/);
+  assert.match(deploymentWorkflow, /supabase db push/);
+  assert.match(deploymentWorkflow, /supabase functions deploy/);
+  assert.match(deploymentWorkflow, /Bootstrap and verify recovery schedules/);
+  assert.match(deploymentWorkflow, /private\.ensure_recovery_schedules/);
+  assert.match(deploymentWorkflow, /private\.assert_recovery_schedules_ready/);
 
   for (const filename of fs.readdirSync(workflowDirectory).filter((name) => name.endsWith('.yml'))) {
     const workflow = read(path.join('.github', 'workflows', filename));

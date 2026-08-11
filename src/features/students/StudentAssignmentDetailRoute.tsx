@@ -108,7 +108,7 @@ function AssignmentDetailWorkspace({
           <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Submission Rules</h2>
           <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">
             <li>Accepted files: PDF, JPG, or PNG.</li>
-            <li>Maximum file size: 10 MB.</li>
+            <li>Maximum file size: 5 MiB.</li>
             <li>Add a note when the file needs context or when submitting a correction.</li>
           </ul>
           {uploadDisabled ? (

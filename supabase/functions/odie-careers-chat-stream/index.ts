@@ -13,7 +13,7 @@
 // Fastify exactly) -- nothing is persisted server-side, so no new tables.
 //
 // Security: caller must be an authenticated Supabase user whose profile has
-// role='student' and a linked students row (mirrors Fastify's
+// role='student' and an active linked students row (mirrors Fastify's
 // authenticateCareersStudent). The GROQ_API_KEY never reaches the browser --
 // it's read from an Edge Function secret.
 //
@@ -116,7 +116,8 @@ Deno.serve(async (req) => {
     return json({ error: 'assistant_auth_required' }, 401);
   }
 
-  // 1) Validate the caller: must be a student profile with a linked students row.
+  // 1) Validate the caller: operational student access requires an active
+  // linked learner record, not merely a still-valid Auth JWT.
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
   const { data: userData, error: userErr } = await admin.auth.getUser(token);
   if (userErr || !userData.user) {
@@ -134,6 +135,7 @@ Deno.serve(async (req) => {
     .from('students')
     .select('id')
     .eq('profile_id', (profileRow as { id: string }).id)
+    .eq('status', 'active')
     .maybeSingle();
   if (!studentRow) {
     return json({ error: 'student_record_missing' }, 403);

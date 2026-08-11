@@ -21,7 +21,7 @@ test('OPS-05 admin results route is a Supabase-backed markbook', () => {
   assert.match(route, /Class or cohort/);
   assert.match(route, /Assignment/);
   assert.match(route, /Markbook table/);
-  assert.match(route, /markSubmission\(\{ submissionId: selectedRow\.id, marksAwarded, feedback, status, rubricScoresJson, marksReleased, feedbackReleased \}\)/);
+  assert.match(route, /markSubmission\(\{ submissionId: selectedRow\.id, expectedRevision: selectedRow\.revision, marksAwarded, feedback, status, rubricScoresJson, marksReleased, feedbackReleased \}\)/);
 
   assert.match(repository, /from\('assignment_submissions'\)\.select\('\*'\)/);
   assert.match(repository, /from\('class_enrollments'\)\.select\('\*'\)\.eq\('status', 'active'\)/);

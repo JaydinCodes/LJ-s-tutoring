@@ -1,24 +1,12 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
+import { isTrustedServiceWorkerToken } from '../_shared/trusted-worker.ts';
 
 const RequestSchema = z.object({
   limit: z.number().int().min(1).max(1000).optional(),
 }).strict();
 
 type OrphanObject = { bucket_id: string; object_name: string };
-
-function decodeRole(token: string) {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
-    const value = JSON.parse(atob(padded)) as { role?: unknown };
-    return typeof value.role === 'string' ? value.role : null;
-  } catch {
-    return null;
-  }
-}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -34,7 +22,7 @@ Deno.serve(async (request) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const token = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
   if (!url || !serviceRoleKey) return json({ error: 'supabase_admin_not_configured' }, 501);
-  if (!token || decodeRole(token) !== 'service_role') return json({ error: 'service_role_required' }, 401);
+  if (!isTrustedServiceWorkerToken(token, serviceRoleKey)) return json({ error: 'service_role_required' }, 401);
 
   const parsed = RequestSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return json({ error: 'invalid_request' }, 400);

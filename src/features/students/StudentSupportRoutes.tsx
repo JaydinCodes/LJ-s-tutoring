@@ -188,7 +188,7 @@ export function StudentReportsRoute() {
                 rows: (reports.data?.items || []).map((report) => ({
                   icon: FileText,
                   title: 'Weekly learning report',
-                  meta: `${formatDate(report.week_start || report.weekStart)} - ${formatDate(report.week_end || report.weekEnd)}`,
+                  meta: `${formatDate(report.week_start || report.weekStart)} - ${formatDate(report.week_end || report.weekEnd)}${report.is_stale ? ' · Update pending' : ''}`,
                   actionLabel: 'View',
                   onAction: () => void openReport(report.id),
                 })),
@@ -352,9 +352,15 @@ function WeeklyReportDetail({ report }: { report: WeeklyReport }) {
   );
   return (
     <div className="mt-4 space-y-4">
+      {report.is_stale ? (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          This is a saved snapshot. Updated marks or sessions may not be reflected yet.
+        </p>
+      ) : null}
       <dl className="grid gap-3 text-sm">
         <DetailLine label="Week" value={`${formatDate(report.weekStart || report.week_start)} - ${formatDate(report.weekEnd || report.week_end)}`} />
         <DetailLine label="Generated" value={formatDate(report.createdAt || report.created_at)} />
+        <DetailLine label="Snapshot as of" value={formatDate(report.source_watermark || report.createdAt || report.created_at)} />
         <DetailLine label="Sessions attended" value={String(payload?.metrics.sessionsAttended ?? 0)} />
         <DetailLine label="Minutes studied" value={String(payload?.metrics.timeStudiedMinutes ?? 0)} />
       </dl>

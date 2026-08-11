@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDropzone, type FileRejection } from 'react-dropzone';
 import { BookOpen, Brain, CheckCircle2, Clock, ScrollText, Sparkles, Target, TrendingUp, Trophy, UploadCloud, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -23,7 +23,7 @@ import { createSubmissionAttemptId } from '../assignments/assignmentMutations';
 import { selectDueTasks, type NormalizedStudentData } from './studentData';
 import { sortBattlePlanForDisplay, type BattlePlanItem } from './studentBattlePlan';
 import type { DailyInsight } from './studentDailyInsight';
-import { useSubmitStudentAssignmentMutation } from './studentQueries';
+import { useRecoverPendingStudentAssignmentMutation, useSubmitStudentAssignmentMutation } from './studentQueries';
 
 export function TodayOdyssey({
   data,
@@ -647,18 +647,42 @@ export function AssignmentUploadPanel({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resubmissionConfirmed, setResubmissionConfirmed] = useState(false);
-  const submissionAttemptIdRef = useRef<string | null>(null);
+  const [submissionAttemptId, setSubmissionAttemptId] = useState<string | null>(null);
   const submitAssignmentMutation = useSubmitStudentAssignmentMutation();
-  const busy = submitAssignmentMutation.isPending;
+  const recoverSubmissionMutation = useRecoverPendingStudentAssignmentMutation();
+  const busy = submitAssignmentMutation.isPending || recoverSubmissionMutation.isPending;
   const needsConfirmation = Boolean(submission);
   const isImagePreview = file ? ['image/jpeg', 'image/png'].includes(file.type) : false;
 
   useEffect(() => {
-    submissionAttemptIdRef.current = null;
+    let active = true;
+    setSubmissionAttemptId(null);
+    setMessage(null);
+    setError(null);
+    void recoverSubmissionMutation.mutateAsync(assignment.id).then((result) => {
+      if (!active) return;
+      if (result.status === 'confirmed') {
+        setMessage('Your previous submission completed successfully.');
+        toast.success('Your previous submission was confirmed.');
+      } else if (result.status === 'pending') {
+        setSubmissionAttemptId(result.submissionId);
+        setMessage(result.originalFilename
+          ? `Your previous attempt is pending. Re-select ${result.originalFilename} to retry the same evidence safely.`
+          : 'Your previous attempt is pending. Re-enter the same written answer to retry it safely.');
+      }
+    }).catch((recoveryError) => {
+      if (!active) return;
+      setError(toUserFacingError(recoveryError));
+    });
+    return () => {
+      active = false;
+    };
+    // Recovery must run once for each assignment identity, not after local text edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignment.id]);
 
   const setSelectedFile = useCallback((nextFile: File | null) => {
-    submissionAttemptIdRef.current = null;
+    setSubmissionAttemptId(null);
     setFile(nextFile);
     setFileError(nextFile ? getClientFileError(nextFile) : null);
     setMessage(null);
@@ -670,7 +694,7 @@ export function AssignmentUploadPanel({
   }, [setSelectedFile]);
 
   const onDropRejected = useCallback((rejections: FileRejection[]) => {
-    submissionAttemptIdRef.current = null;
+    setSubmissionAttemptId(null);
     const rejectedFile = rejections[0]?.file || null;
     setFile(null);
     setFileError(formatDropzoneError(rejections[0]) || (rejectedFile ? getClientFileError(rejectedFile) : 'Upload PDF, JPG, or PNG files only.'));
@@ -679,7 +703,7 @@ export function AssignmentUploadPanel({
   }, []);
 
   const setSubmissionText = useCallback((value: string) => {
-    submissionAttemptIdRef.current = null;
+    setSubmissionAttemptId(null);
     setTextAnswer(value);
     setMessage(null);
     setError(null);
@@ -722,17 +746,15 @@ export function AssignmentUploadPanel({
     }
 
     try {
-      const submissionId = submissionAttemptIdRef.current ?? createSubmissionAttemptId();
-      submissionAttemptIdRef.current = submissionId;
+      const submissionId = submissionAttemptId ?? createSubmissionAttemptId();
+      setSubmissionAttemptId(submissionId);
       const confirmed = await submitAssignmentMutation.mutateAsync({ assignmentId: assignment.id, submissionId, textAnswer, file });
-      if (confirmed.submissionId === submissionId) {
-        submissionAttemptIdRef.current = null;
-      }
+      setSubmissionAttemptId(null);
       setFile(null);
       setFileError(null);
       setResubmissionConfirmed(false);
-      setMessage(submission ? 'Resubmission saved.' : 'Submission saved.');
-      toast.success(submission ? 'Resubmission saved.' : 'Submission uploaded.');
+      setMessage(confirmed.recovered ? 'Your previous submission was confirmed.' : submission ? 'Resubmission saved.' : 'Submission saved.');
+      toast.success(confirmed.recovered ? 'Previous submission confirmed.' : submission ? 'Resubmission saved.' : 'Submission uploaded.');
     } catch (err) {
       captureAppError(err, {
         featureArea: 'assignments',
@@ -765,7 +787,7 @@ export function AssignmentUploadPanel({
           placeholder="Type a note or answer..."
         />
       </FormField>
-      <FormField label="Upload file" hint="Drag PDF, JPG, or PNG files here. Maximum file size is 10 MB.">
+      <FormField label="Upload file" hint="Drag PDF, JPG, or PNG files here. Maximum file size is 5 MiB.">
         <div
           {...getRootProps()}
           className={`rounded-[1.5rem] border p-5 backdrop-blur-xl transition ${isDragActive ? 'border-brand-gold/70 bg-brand-gold/10' : 'border-white/70 bg-white/50'} ${disabled || busy ? 'cursor-not-allowed opacity-60' : 'cursor-default hover:border-brand-aegean/[0.45] hover:bg-white/70'}`}
@@ -826,7 +848,7 @@ export function AssignmentUploadPanel({
   );
 }
 
-const maxUploadBytes = 10 * 1024 * 1024;
+const maxUploadBytes = 5 * 1024 * 1024;
 const allowedMime = ['application/pdf', 'image/jpeg', 'image/png'];
 const allowedExt = ['pdf', 'jpg', 'jpeg', 'png'];
 const acceptedUploadTypes = {
@@ -871,7 +893,7 @@ function FilePreview({
 function formatDropzoneError(rejection?: FileRejection) {
   const code = rejection?.errors[0]?.code;
   if (code === 'file-too-large') {
-    return 'File must be 10 MB or smaller.';
+    return 'File must be 5 MiB or smaller.';
   }
   if (code === 'file-invalid-type') {
     return 'Upload PDF, JPG, or PNG files only.';
@@ -892,7 +914,7 @@ function getClientFileError(file: File) {
     return 'Upload PDF, JPG, or PNG files only.';
   }
   if (file.size > maxUploadBytes) {
-    return 'File must be 10 MB or smaller.';
+    return 'File must be 5 MiB or smaller.';
   }
   return '';
 }
@@ -938,7 +960,7 @@ export function SubmittedAssignmentsList({
       <StaggerGrid className="mt-5 space-y-3">
         {submissions.slice(0, 6).map((submission) => {
           const assignment = assignmentsById.get(submission.assignment_id);
-          const status = calculateAssignmentStatus({ assignment: assignment || { status: 'published', due_date: null, id: '', title: '', created_at: '' }, submission });
+          const status = calculateAssignmentStatus({ assignment: assignment || { status: 'published', due_date: null }, submission });
           return (
             <StaggerItem key={submission.id}>
               <TimelineCard title={assignment?.title || submission.assignment_id} meta={`Submitted ${formatDate(submission.submitted_at)}`}>

@@ -23,7 +23,7 @@ test('assignment upload uses premium drag-and-drop instead of a basic file input
 test('assignment upload validates file type and size before the API call', () => {
   const source = read('src', 'features', 'students', 'StudentDashboardComponents.tsx');
 
-  assert.ok(source.includes('const maxUploadBytes = 10 * 1024 * 1024'), 'max file size must be enforced client-side');
+  assert.ok(source.includes('const maxUploadBytes = 5 * 1024 * 1024'), 'the client limit must match the 5 MiB Storage policy');
   assert.ok(source.includes("'application/pdf': ['.pdf']"), 'PDF files must be accepted');
   assert.ok(source.includes("'image/jpeg': ['.jpg', '.jpeg']"), 'JPG files must be accepted');
   assert.ok(source.includes("'image/png': ['.png']"), 'PNG files must be accepted');
