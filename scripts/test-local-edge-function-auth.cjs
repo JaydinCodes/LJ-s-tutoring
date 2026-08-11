@@ -73,21 +73,26 @@ async function edge(baseUrl, anonKey, name, token, body) {
     method: 'POST',
     headers: { apikey: anonKey, Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(5_000),
   });
   return { status: response.status, body: await response.text() };
 }
 
-async function expectEdgeStatus(baseUrl, anonKey, name, token, body, expectedStatus, description, functionOutput) {
+async function expectEdgeStatus(baseUrl, anonKey, name, token, body, expectedStatus, description) {
   const deadline = Date.now() + 10_000;
   let result;
   do {
-    result = await edge(baseUrl, anonKey, name, token, body);
-    if (result.status === expectedStatus) return;
-    if (result.status < 500) break;
+    try {
+      result = await edge(baseUrl, anonKey, name, token, body);
+      if (result.status === expectedStatus) return;
+      if (result.status < 500) break;
+    } catch (error) {
+      result = { status: 'network error', body: error instanceof Error ? error.message : String(error) };
+    }
     await new Promise((resolve) => setTimeout(resolve, 250));
   } while (Date.now() < deadline);
 
-  throw new Error(`${name} ${description}; received ${result.status}: ${result.body}\nEdge runtime output:\n${functionOutput() || '(no output captured)'}`);
+  throw new Error(`${name} ${description}; received ${result.status}: ${result.body}`);
 }
 
 async function waitForEdge(baseUrl, anonKey, processRef) {
@@ -127,21 +132,13 @@ async function main() {
     'GROQ_API_KEY=local-test-key-not-sent-upstream',
     'GEMINI_API_KEY=local-test-key-not-sent-upstream',
   ].join('\n'));
-  let functionOutput = '';
-  const captureFunctionOutput = (chunk) => {
-    functionOutput = `${functionOutput}${chunk.toString()}`.slice(-8_000);
-  };
   const functions = spawn(process.execPath, [supabaseCli, 'functions', 'serve', '--env-file', envFile], {
     cwd: root,
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: 'ignore',
   });
-  functions.stdout.on('data', captureFunctionOutput);
-  functions.stderr.on('data', captureFunctionOutput);
 
   try {
-    await waitForEdge(local.API_URL, local.ANON_KEY, functions).catch((error) => {
-      throw new Error(`${error.message}\nEdge runtime output:\n${functionOutput || '(no output captured)'}`);
-    });
+    await waitForEdge(local.API_URL, local.ANON_KEY, functions);
     const forgedServiceRole = forgedJwt({ role: 'service_role', exp: Math.floor(Date.now() / 1000) + 3600 });
     const expiredToken = forgedJwt({ sub: 'stale-user', role: 'authenticated', exp: 1 });
 
@@ -168,7 +165,6 @@ async function main() {
           {},
           403,
           `must reject ${learnerStatus} learner JWTs`,
-          () => functionOutput,
         );
       }
     }
