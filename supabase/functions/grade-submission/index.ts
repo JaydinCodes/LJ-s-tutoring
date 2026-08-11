@@ -408,10 +408,6 @@ export default {
     if (!supabaseUrl || !serviceRoleKey) {
       return jsonResponse({ error: 'supabase_admin_not_configured' }, 501, origin);
     }
-    if (!geminiApiKey) {
-      return jsonResponse({ error: 'gemini_not_configured' }, 501, origin);
-    }
-
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
@@ -487,6 +483,13 @@ export default {
       if (rateLimitAllowed !== true) {
         return jsonResponse({ error: 'rate_limited' }, 429, origin);
       }
+    }
+
+    // Reject browser callers before inspecting optional provider configuration.
+    // A tutor/admin must always receive a fail-closed authorization result,
+    // even during a Gemini outage or a misconfigured worker deployment.
+    if (!geminiApiKey) {
+      return jsonResponse({ error: 'gemini_not_configured' }, 501, origin);
     }
 
     const processClaim = async (claimed: AiJobRow) => {

@@ -107,10 +107,6 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !serviceRoleKey) {
     return json({ error: 'supabase_admin_not_configured' }, 501);
   }
-  if (!groqApiKey) {
-    return json({ error: 'groq_not_configured' }, 503);
-  }
-
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
   if (!token) {
     return json({ error: 'assistant_auth_required' }, 401);
@@ -139,6 +135,13 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!studentRow) {
     return json({ error: 'student_record_missing' }, 403);
+  }
+
+  // A caller's role must be rejected before an optional provider outage is
+  // reported. This keeps the authorization boundary fail-closed even when
+  // Groq is unavailable or a deployment secret is temporarily missing.
+  if (!groqApiKey) {
+    return json({ error: 'groq_not_configured' }, 503);
   }
 
   // 1b) Rate limit (security fix, 2026-07-24): nothing previously stopped a

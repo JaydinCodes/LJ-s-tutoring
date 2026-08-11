@@ -23,6 +23,14 @@ test('learner-facing Edge Functions require an active student record, not merely
     assert.match(source, /\.from\('students'\)[\s\S]{0,240}\.eq\('status', 'active'\)/);
   }
   assert.match(odie, /operational student access requires an active/);
+  assert.ok(
+    grading.indexOf(".eq('status', 'active')") < grading.indexOf("error: 'gemini_not_configured'"),
+    'grade-submission must reject inactive or wrong-role users before checking optional Gemini configuration',
+  );
+  assert.ok(
+    odie.indexOf(".eq('status', 'active')") < odie.indexOf("error: 'groq_not_configured'"),
+    'careers chat must reject inactive or wrong-role users before checking optional Groq configuration',
+  );
 });
 
 test('privileged workers require the actual service-role secret and do not trust decoded JWT role claims', () => {
