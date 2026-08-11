@@ -13,12 +13,12 @@ const users: Record<SmokeRole, { email: string; dashboard: string; heading: stri
   ngo_partner: {
     email: 'ngo.e2e@projectodysseus.test',
     dashboard: '/dashboard/ngo/reports',
-    heading: 'NGO Cohort Reports',
+    heading: 'Cohort impact',
   },
   parent: {
     email: 'parent.e2e@projectodysseus.test',
     dashboard: '/dashboard/parent/reports',
-    heading: 'Guardian Reports',
+    heading: 'My child',
   },
   student: {
     email: 'student.e2e@projectodysseus.test',
@@ -134,14 +134,14 @@ test('admin can review a markbook row and release results', async ({ page }) => 
 
 test('parent can view permitted learner reports', async ({ page }) => {
   await loginAs(page, 'parent');
-  await expect(page.getByRole('heading', { name: 'Guardian Reports' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'My child' })).toBeVisible();
   await expect(page.getByText('Student E2E').first()).toBeVisible();
   await expect(page.getByText('Quadratic Functions Launch Smoke').first()).toBeVisible();
 });
 
 test('NGO partner can view permitted cohort reports', async ({ page }) => {
   await loginAs(page, 'ngo_partner');
-  await expect(page.getByRole('heading', { name: 'NGO Cohort Reports' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Cohort impact' })).toBeVisible();
   await expect(page.getByText('ProVision Launch Partner').first()).toBeVisible();
   await expect(page.getByText('Learners').first()).toBeVisible();
 });

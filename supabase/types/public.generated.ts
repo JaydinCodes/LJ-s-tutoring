@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
       adjustments: {
@@ -14,8 +19,10 @@ export type Database = {
           amount: number
           approved_at: string | null
           approved_by: string | null
+          approved_by_user_id: string | null
           created_at: string
           created_by: string
+          created_by_user_id: string | null
           id: string
           pay_period_id: string
           reason: string
@@ -26,13 +33,16 @@ export type Database = {
           void_reason: string | null
           voided_at: string | null
           voided_by: string | null
+          voided_by_user_id: string | null
         }
         Insert: {
           amount: number
           approved_at?: string | null
           approved_by?: string | null
+          approved_by_user_id?: string | null
           created_at?: string
           created_by: string
+          created_by_user_id?: string | null
           id?: string
           pay_period_id: string
           reason: string
@@ -43,13 +53,16 @@ export type Database = {
           void_reason?: string | null
           voided_at?: string | null
           voided_by?: string | null
+          voided_by_user_id?: string | null
         }
         Update: {
           amount?: number
           approved_at?: string | null
           approved_by?: string | null
+          approved_by_user_id?: string | null
           created_at?: string
           created_by?: string
+          created_by_user_id?: string | null
           id?: string
           pay_period_id?: string
           reason?: string
@@ -60,6 +73,7 @@ export type Database = {
           void_reason?: string | null
           voided_at?: string | null
           voided_by?: string | null
+          voided_by_user_id?: string | null
         }
         Relationships: [
           {
@@ -192,6 +206,7 @@ export type Database = {
           file_url: string | null
           id: string
           is_latest: boolean
+          marked_at: string | null
           marks_awarded: number | null
           marks_released: boolean
           mime_type: string | null
@@ -202,7 +217,7 @@ export type Database = {
           status: Database["public"]["Enums"]["submission_status"]
           storage_key: string | null
           student_id: string
-          submitted_at: string
+          submitted_at: string | null
           text_answer: string | null
           version_number: number
         }
@@ -225,6 +240,7 @@ export type Database = {
           file_url?: string | null
           id?: string
           is_latest?: boolean
+          marked_at?: string | null
           marks_awarded?: number | null
           marks_released?: boolean
           mime_type?: string | null
@@ -235,7 +251,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["submission_status"]
           storage_key?: string | null
           student_id: string
-          submitted_at?: string
+          submitted_at?: string | null
           text_answer?: string | null
           version_number?: number
         }
@@ -258,6 +274,7 @@ export type Database = {
           file_url?: string | null
           id?: string
           is_latest?: boolean
+          marked_at?: string | null
           marks_awarded?: number | null
           marks_released?: boolean
           mime_type?: string | null
@@ -268,7 +285,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["submission_status"]
           storage_key?: string | null
           student_id?: string
-          submitted_at?: string
+          submitted_at?: string | null
           text_answer?: string | null
           version_number?: number
         }
@@ -365,33 +382,45 @@ export type Database = {
       audit_log: {
         Row: {
           action: string
-          actor_role: Database["public"]["Enums"]["user_role"] | null
+          actor_role: string | null
           actor_user_id: string | null
+          correlation_id: string | null
           created_at: string
           entity_id: string | null
-          entity_type: string
+          entity_type: string | null
           id: string
+          ip: string | null
+          meta_json: Json | null
           metadata: Json
+          user_agent: string | null
         }
         Insert: {
           action: string
-          actor_role?: Database["public"]["Enums"]["user_role"] | null
+          actor_role?: string | null
           actor_user_id?: string | null
+          correlation_id?: string | null
           created_at?: string
           entity_id?: string | null
-          entity_type: string
+          entity_type?: string | null
           id?: string
+          ip?: string | null
+          meta_json?: Json | null
           metadata?: Json
+          user_agent?: string | null
         }
         Update: {
           action?: string
-          actor_role?: Database["public"]["Enums"]["user_role"] | null
+          actor_role?: string | null
           actor_user_id?: string | null
+          correlation_id?: string | null
           created_at?: string
           entity_id?: string | null
-          entity_type?: string
+          entity_type?: string | null
           id?: string
+          ip?: string | null
+          meta_json?: Json | null
           metadata?: Json
+          user_agent?: string | null
         }
         Relationships: []
       }
@@ -401,6 +430,7 @@ export type Database = {
           completed_at: string
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           grade: string | null
           id: string
           level_band: string | null
@@ -408,7 +438,7 @@ export type Database = {
           percentage: number
           recommended_next_steps_json: Json
           score: number
-          source_type: Database["public"]["Enums"]["baseline_source_type"]
+          source_type: string
           student_id: string
           subject: string
           topic_breakdown_json: Json
@@ -419,6 +449,7 @@ export type Database = {
           completed_at: string
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           grade?: string | null
           id?: string
           level_band?: string | null
@@ -426,7 +457,7 @@ export type Database = {
           percentage: number
           recommended_next_steps_json?: Json
           score: number
-          source_type?: Database["public"]["Enums"]["baseline_source_type"]
+          source_type?: string
           student_id: string
           subject: string
           topic_breakdown_json?: Json
@@ -437,6 +468,7 @@ export type Database = {
           completed_at?: string
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           grade?: string | null
           id?: string
           level_band?: string | null
@@ -444,7 +476,7 @@ export type Database = {
           percentage?: number
           recommended_next_steps_json?: Json
           score?: number
-          source_type?: Database["public"]["Enums"]["baseline_source_type"]
+          source_type?: string
           student_id?: string
           subject?: string
           topic_breakdown_json?: Json
@@ -484,6 +516,7 @@ export type Database = {
           organization_id: string
           reasons_json: Json
           student_id: string
+          user_id: string | null
         }
         Insert: {
           alignment_score: number
@@ -494,6 +527,7 @@ export type Database = {
           organization_id: string
           reasons_json?: Json
           student_id: string
+          user_id?: string | null
         }
         Update: {
           alignment_score?: number
@@ -504,6 +538,7 @@ export type Database = {
           organization_id?: string
           reasons_json?: Json
           student_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -929,6 +964,64 @@ export type Database = {
           },
         ]
       }
+      competency_evidence: {
+        Row: {
+          cognitive_level: string | null
+          competency: string
+          id: string
+          recorded_at: string
+          rubric_criterion_id: string
+          score: number
+          source_submission_id: string
+          student_id: string
+          subject_id: string | null
+        }
+        Insert: {
+          cognitive_level?: string | null
+          competency: string
+          id?: string
+          recorded_at?: string
+          rubric_criterion_id: string
+          score: number
+          source_submission_id: string
+          student_id: string
+          subject_id?: string | null
+        }
+        Update: {
+          cognitive_level?: string | null
+          competency?: string
+          id?: string
+          recorded_at?: string
+          rubric_criterion_id?: string
+          score?: number
+          source_submission_id?: string
+          student_id?: string
+          subject_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competency_evidence_source_submission_id_fkey"
+            columns: ["source_submission_id"]
+            isOneToOne: false
+            referencedRelation: "assignment_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competency_evidence_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competency_evidence_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       edge_function_rate_limit_events: {
         Row: {
           created_at: string
@@ -1098,15 +1191,16 @@ export type Database = {
       }
       learning_goals: {
         Row: {
-          category: Database["public"]["Enums"]["learning_goal_category"]
+          category: string
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           current_value: number | null
           description: string | null
           due_date: string | null
           id: string
           organization_id: string
-          status: Database["public"]["Enums"]["learning_goal_status"]
+          status: string
           student_id: string
           subject: string | null
           target_value: number | null
@@ -1116,15 +1210,16 @@ export type Database = {
           visible_to_tutor: boolean
         }
         Insert: {
-          category?: Database["public"]["Enums"]["learning_goal_category"]
+          category?: string
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           current_value?: number | null
           description?: string | null
           due_date?: string | null
           id?: string
           organization_id: string
-          status?: Database["public"]["Enums"]["learning_goal_status"]
+          status?: string
           student_id: string
           subject?: string | null
           target_value?: number | null
@@ -1134,15 +1229,16 @@ export type Database = {
           visible_to_tutor?: boolean
         }
         Update: {
-          category?: Database["public"]["Enums"]["learning_goal_category"]
+          category?: string
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           current_value?: number | null
           description?: string | null
           due_date?: string | null
           id?: string
           organization_id?: string
-          status?: Database["public"]["Enums"]["learning_goal_status"]
+          status?: string
           student_id?: string
           subject?: string | null
           target_value?: number | null
@@ -1298,6 +1394,7 @@ export type Database = {
           id: string
           locked_at: string | null
           locked_by: string | null
+          locked_by_user_id: string | null
           notes: string | null
           period_end_date: string
           period_start_date: string
@@ -1308,6 +1405,7 @@ export type Database = {
           id?: string
           locked_at?: string | null
           locked_by?: string | null
+          locked_by_user_id?: string | null
           notes?: string | null
           period_end_date: string
           period_start_date: string
@@ -1318,6 +1416,7 @@ export type Database = {
           id?: string
           locked_at?: string | null
           locked_by?: string | null
+          locked_by_user_id?: string | null
           notes?: string | null
           period_end_date?: string
           period_start_date?: string
@@ -1417,57 +1516,91 @@ export type Database = {
       }
       privacy_requests: {
         Row: {
+          close_note: string | null
+          closed_at: string | null
+          closed_by_user_id: string | null
           created_at: string
+          created_by_user_id: string | null
           id: string
           last_error: string | null
           notes: string | null
+          outcome: Database["public"]["Enums"]["privacy_request_outcome"] | null
           processing_completed_at: string | null
           processing_started_at: string | null
           processing_state: string
           processing_subject_auth_user_id: string | null
+          reason: string | null
           request_type: Database["public"]["Enums"]["privacy_request_type"]
           requested_by: string | null
           result: Json
           status: Database["public"]["Enums"]["record_status"]
           storage_files_removed: number
+          subject_id: string | null
           subject_profile_id: string | null
           subject_student_id: string | null
+          subject_type:
+            | Database["public"]["Enums"]["privacy_subject_type"]
+            | null
           updated_at: string
         }
         Insert: {
+          close_note?: string | null
+          closed_at?: string | null
+          closed_by_user_id?: string | null
           created_at?: string
+          created_by_user_id?: string | null
           id?: string
           last_error?: string | null
           notes?: string | null
+          outcome?:
+            | Database["public"]["Enums"]["privacy_request_outcome"]
+            | null
           processing_completed_at?: string | null
           processing_started_at?: string | null
           processing_state?: string
           processing_subject_auth_user_id?: string | null
+          reason?: string | null
           request_type: Database["public"]["Enums"]["privacy_request_type"]
           requested_by?: string | null
           result?: Json
           status?: Database["public"]["Enums"]["record_status"]
           storage_files_removed?: number
+          subject_id?: string | null
           subject_profile_id?: string | null
           subject_student_id?: string | null
+          subject_type?:
+            | Database["public"]["Enums"]["privacy_subject_type"]
+            | null
           updated_at?: string
         }
         Update: {
+          close_note?: string | null
+          closed_at?: string | null
+          closed_by_user_id?: string | null
           created_at?: string
+          created_by_user_id?: string | null
           id?: string
           last_error?: string | null
           notes?: string | null
+          outcome?:
+            | Database["public"]["Enums"]["privacy_request_outcome"]
+            | null
           processing_completed_at?: string | null
           processing_started_at?: string | null
           processing_state?: string
           processing_subject_auth_user_id?: string | null
+          reason?: string | null
           request_type?: Database["public"]["Enums"]["privacy_request_type"]
           requested_by?: string | null
           result?: Json
           status?: Database["public"]["Enums"]["record_status"]
           storage_files_removed?: number
+          subject_id?: string | null
           subject_profile_id?: string | null
           subject_student_id?: string | null
+          subject_type?:
+            | Database["public"]["Enums"]["privacy_subject_type"]
+            | null
           updated_at?: string
         }
         Relationships: [
@@ -1559,6 +1692,7 @@ export type Database = {
           before_json: Json | null
           change_type: string
           changed_by_profile_id: string | null
+          changed_by_user_id: string | null
           created_at: string
           id: string
           session_id: string
@@ -1568,6 +1702,7 @@ export type Database = {
           before_json?: Json | null
           change_type: string
           changed_by_profile_id?: string | null
+          changed_by_user_id?: string | null
           created_at?: string
           id?: string
           session_id: string
@@ -1577,6 +1712,7 @@ export type Database = {
           before_json?: Json | null
           change_type?: string
           changed_by_profile_id?: string | null
+          changed_by_user_id?: string | null
           created_at?: string
           id?: string
           session_id?: string
@@ -1602,6 +1738,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          assignment_id: string | null
           attendance_status: string | null
           created_at: string
           date: string
@@ -1630,6 +1767,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          assignment_id?: string | null
           attendance_status?: string | null
           created_at?: string
           date: string
@@ -1658,6 +1796,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          assignment_id?: string | null
           attendance_status?: string | null
           created_at?: string
           date?: string
@@ -1689,6 +1828,13 @@ export type Database = {
             columns: ["approved_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
             referencedColumns: ["id"]
           },
           {
@@ -1769,6 +1915,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           exam_date: string
           id: string
           organization_id: string
@@ -1780,6 +1927,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           exam_date: string
           id?: string
           organization_id: string
@@ -1791,6 +1939,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           exam_date?: string
           id?: string
           organization_id?: string
@@ -1879,6 +2028,7 @@ export type Database = {
           body: string
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           entity_id: string | null
           entity_type: string | null
           id: string
@@ -1895,6 +2045,7 @@ export type Database = {
           body: string
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           entity_id?: string | null
           entity_type?: string | null
           id?: string
@@ -1911,6 +2062,7 @@ export type Database = {
           body?: string
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           entity_id?: string | null
           entity_type?: string | null
           id?: string
@@ -2017,6 +2169,7 @@ export type Database = {
           risk_score: number
           score_date: string
           student_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -2029,6 +2182,7 @@ export type Database = {
           risk_score: number
           score_date: string
           student_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -2041,6 +2195,7 @@ export type Database = {
           risk_score?: number
           score_date?: string
           student_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -2062,39 +2217,66 @@ export type Database = {
       students: {
         Row: {
           created_at: string
+          full_name: string | null
           grade: string | null
+          guardian_address: string | null
+          guardian_email: string | null
+          guardian_name: string | null
+          guardian_phone: string | null
+          guardian_relationship: string | null
           id: string
           ngo_partner_id: string | null
+          notes: string | null
           organization_id: string
           parent_contact: string | null
           parent_name: string | null
+          partner_affiliation: string | null
           profile_id: string
           school: string | null
           status: Database["public"]["Enums"]["record_status"]
+          subjects_json: Json
         }
         Insert: {
           created_at?: string
+          full_name?: string | null
           grade?: string | null
+          guardian_address?: string | null
+          guardian_email?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
+          guardian_relationship?: string | null
           id?: string
           ngo_partner_id?: string | null
+          notes?: string | null
           organization_id: string
           parent_contact?: string | null
           parent_name?: string | null
+          partner_affiliation?: string | null
           profile_id: string
           school?: string | null
           status?: Database["public"]["Enums"]["record_status"]
+          subjects_json?: Json
         }
         Update: {
           created_at?: string
+          full_name?: string | null
           grade?: string | null
+          guardian_address?: string | null
+          guardian_email?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
+          guardian_relationship?: string | null
           id?: string
           ngo_partner_id?: string | null
+          notes?: string | null
           organization_id?: string
           parent_contact?: string | null
           parent_name?: string | null
+          partner_affiliation?: string | null
           profile_id?: string
           school?: string | null
           status?: Database["public"]["Enums"]["record_status"]
+          subjects_json?: Json
         }
         Relationships: [
           {
@@ -2495,6 +2677,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           description: string | null
           end_time: string | null
           event_date: string | null
@@ -2502,13 +2685,14 @@ export type Database = {
           location: string | null
           mode: string
           start_time: string | null
-          status: Database["public"]["Enums"]["volunteer_event_status"]
+          status: string
           title: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           description?: string | null
           end_time?: string | null
           event_date?: string | null
@@ -2516,13 +2700,14 @@ export type Database = {
           location?: string | null
           mode?: string
           start_time?: string | null
-          status?: Database["public"]["Enums"]["volunteer_event_status"]
+          status?: string
           title: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           description?: string | null
           end_time?: string | null
           event_date?: string | null
@@ -2530,7 +2715,7 @@ export type Database = {
           location?: string | null
           mode?: string
           start_time?: string | null
-          status?: Database["public"]["Enums"]["volunteer_event_status"]
+          status?: string
           title?: string
           updated_at?: string
         }
@@ -2553,7 +2738,7 @@ export type Database = {
           hours: number | null
           id: string
           notes: string | null
-          status: Database["public"]["Enums"]["volunteer_log_status"]
+          status: string
           submitted_at: string | null
           tutor_id: string
           updated_at: string
@@ -2569,7 +2754,7 @@ export type Database = {
           hours?: number | null
           id?: string
           notes?: string | null
-          status?: Database["public"]["Enums"]["volunteer_log_status"]
+          status?: string
           submitted_at?: string | null
           tutor_id: string
           updated_at?: string
@@ -2585,7 +2770,7 @@ export type Database = {
           hours?: number | null
           id?: string
           notes?: string | null
-          status?: Database["public"]["Enums"]["volunteer_log_status"]
+          status?: string
           submitted_at?: string | null
           tutor_id?: string
           updated_at?: string
@@ -2628,27 +2813,33 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           id: string
           payload_json: Json
           student_id: string
+          user_id: string | null
           week_end: string
           week_start: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           id?: string
           payload_json: Json
           student_id: string
+          user_id?: string | null
           week_end: string
           week_start: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           id?: string
           payload_json?: Json
           student_id?: string
+          user_id?: string | null
           week_end?: string
           week_start?: string
         }
@@ -2671,7 +2862,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      student_results_class_analytics_anonymous: {
+        Row: {
+          assessment_count: number | null
+          class_average: number | null
+          grade: string | null
+          highest_score: number | null
+          lowest_score: number | null
+          number_of_learners: number | null
+          pass_rate: number | null
+          subject: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       anonymize_student: { Args: { p_student_id: string }; Returns: Json }
@@ -2680,6 +2883,7 @@ export type Database = {
         Returns: {
           approved_at: string | null
           approved_by: string | null
+          assignment_id: string | null
           attendance_status: string | null
           created_at: string
           date: string
@@ -2762,6 +2966,7 @@ export type Database = {
           file_url: string | null
           id: string
           is_latest: boolean
+          marked_at: string | null
           marks_awarded: number | null
           marks_released: boolean
           mime_type: string | null
@@ -2772,7 +2977,7 @@ export type Database = {
           status: Database["public"]["Enums"]["submission_status"]
           storage_key: string | null
           student_id: string
-          submitted_at: string
+          submitted_at: string | null
           text_answer: string | null
           version_number: number
         }
@@ -2804,6 +3009,7 @@ export type Database = {
           file_url: string | null
           id: string
           is_latest: boolean
+          marked_at: string | null
           marks_awarded: number | null
           marks_released: boolean
           mime_type: string | null
@@ -2814,7 +3020,7 @@ export type Database = {
           status: Database["public"]["Enums"]["submission_status"]
           storage_key: string | null
           student_id: string
-          submitted_at: string
+          submitted_at: string | null
           text_answer: string | null
           version_number: number
         }
@@ -2866,8 +3072,10 @@ export type Database = {
           amount: number
           approved_at: string | null
           approved_by: string | null
+          approved_by_user_id: string | null
           created_at: string
           created_by: string
+          created_by_user_id: string | null
           id: string
           pay_period_id: string
           reason: string
@@ -2878,6 +3086,7 @@ export type Database = {
           void_reason: string | null
           voided_at: string | null
           voided_by: string | null
+          voided_by_user_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -2965,6 +3174,7 @@ export type Database = {
         Returns: {
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           exam_date: string
           id: string
           organization_id: string
@@ -2995,15 +3205,16 @@ export type Database = {
           p_visible_to_tutor?: boolean
         }
         Returns: {
-          category: Database["public"]["Enums"]["learning_goal_category"]
+          category: string
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           current_value: number | null
           description: string | null
           due_date: string | null
           id: string
           organization_id: string
-          status: Database["public"]["Enums"]["learning_goal_status"]
+          status: string
           student_id: string
           subject: string | null
           target_value: number | null
@@ -3034,6 +3245,7 @@ export type Database = {
         Returns: {
           approved_at: string | null
           approved_by: string | null
+          assignment_id: string | null
           attendance_status: string | null
           created_at: string
           date: string
@@ -3109,6 +3321,7 @@ export type Database = {
         Returns: {
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           description: string | null
           end_time: string | null
           event_date: string | null
@@ -3116,7 +3329,7 @@ export type Database = {
           location: string | null
           mode: string
           start_time: string | null
-          status: Database["public"]["Enums"]["volunteer_event_status"]
+          status: string
           title: string
           updated_at: string
         }
@@ -3143,7 +3356,7 @@ export type Database = {
           hours: number | null
           id: string
           notes: string | null
-          status: Database["public"]["Enums"]["volunteer_log_status"]
+          status: string
           submitted_at: string | null
           tutor_id: string
           updated_at: string
@@ -3294,9 +3507,11 @@ export type Database = {
         Returns: {
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           id: string
           payload_json: Json
           student_id: string
+          user_id: string | null
           week_end: string
           week_start: string
         }
@@ -3360,6 +3575,7 @@ export type Database = {
           id: string
           locked_at: string | null
           locked_by: string | null
+          locked_by_user_id: string | null
           notes: string | null
           period_end_date: string
           period_start_date: string
@@ -3378,6 +3594,17 @@ export type Database = {
         Returns: {
           bucket_id: string
           object_name: string
+        }[]
+      }
+      get_parent_learning_updates: {
+        Args: never
+        Returns: {
+          attendance_rate: number
+          completed_work_count: number
+          latest_student_summary: string
+          next_session_date: string
+          session_count: number
+          student_id: string
         }[]
       }
       get_parent_progress_reports: {
@@ -3510,6 +3737,7 @@ export type Database = {
           id: string
           locked_at: string | null
           locked_by: string | null
+          locked_by_user_id: string | null
           notes: string | null
           period_end_date: string
           period_start_date: string
@@ -3565,6 +3793,7 @@ export type Database = {
           file_url: string | null
           id: string
           is_latest: boolean
+          marked_at: string | null
           marks_awarded: number | null
           marks_released: boolean
           mime_type: string | null
@@ -3575,7 +3804,7 @@ export type Database = {
           status: Database["public"]["Enums"]["submission_status"]
           storage_key: string | null
           student_id: string
-          submitted_at: string
+          submitted_at: string | null
           text_answer: string | null
           version_number: number
         }[]
@@ -3592,6 +3821,7 @@ export type Database = {
           body: string
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           entity_id: string | null
           entity_type: string | null
           id: string
@@ -3679,6 +3909,7 @@ export type Database = {
           organization_id: string
           reasons_json: Json
           student_id: string
+          user_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -3700,6 +3931,7 @@ export type Database = {
           risk_score: number
           score_date: string
           student_id: string
+          user_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -3736,6 +3968,7 @@ export type Database = {
           completed_at: string
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           grade: string | null
           id: string
           level_band: string | null
@@ -3743,7 +3976,7 @@ export type Database = {
           percentage: number
           recommended_next_steps_json: Json
           score: number
-          source_type: Database["public"]["Enums"]["baseline_source_type"]
+          source_type: string
           student_id: string
           subject: string
           topic_breakdown_json: Json
@@ -3798,6 +4031,7 @@ export type Database = {
         Returns: {
           approved_at: string | null
           approved_by: string | null
+          assignment_id: string | null
           attendance_status: string | null
           created_at: string
           date: string
@@ -3897,6 +4131,7 @@ export type Database = {
         Returns: {
           approved_at: string | null
           approved_by: string | null
+          assignment_id: string | null
           attendance_status: string | null
           created_at: string
           date: string
@@ -3942,6 +4177,7 @@ export type Database = {
         Returns: {
           approved_at: string | null
           approved_by: string | null
+          assignment_id: string | null
           attendance_status: string | null
           created_at: string
           date: string
@@ -4051,15 +4287,16 @@ export type Database = {
           p_visible_to_tutor?: boolean
         }
         Returns: {
-          category: Database["public"]["Enums"]["learning_goal_category"]
+          category: string
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           current_value: number | null
           description: string | null
           due_date: string | null
           id: string
           organization_id: string
-          status: Database["public"]["Enums"]["learning_goal_status"]
+          status: string
           student_id: string
           subject: string | null
           target_value: number | null
@@ -4088,6 +4325,7 @@ export type Database = {
         Returns: {
           approved_at: string | null
           approved_by: string | null
+          assignment_id: string | null
           attendance_status: string | null
           created_at: string
           date: string
@@ -4190,7 +4428,7 @@ export type Database = {
           hours: number | null
           id: string
           notes: string | null
-          status: Database["public"]["Enums"]["volunteer_log_status"]
+          status: string
           submitted_at: string | null
           tutor_id: string
           updated_at: string
@@ -4211,8 +4449,10 @@ export type Database = {
           amount: number
           approved_at: string | null
           approved_by: string | null
+          approved_by_user_id: string | null
           created_at: string
           created_by: string
+          created_by_user_id: string | null
           id: string
           pay_period_id: string
           reason: string
@@ -4223,6 +4463,7 @@ export type Database = {
           void_reason: string | null
           voided_at: string | null
           voided_by: string | null
+          voided_by_user_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -4257,7 +4498,14 @@ export type Database = {
       organization_type: "direct" | "ngo" | "school" | "community"
       pay_period_status: "open" | "locked"
       payment_status: "pending" | "paid" | "overdue" | "voided"
+      privacy_request_outcome:
+        | "FULFILLED"
+        | "REJECTED"
+        | "ANONYMIZED"
+        | "DELETED"
+        | "CORRECTED"
       privacy_request_type: "access" | "correction" | "deletion"
+      privacy_subject_type: "TUTOR" | "STUDENT"
       record_status:
         | "active"
         | "inactive"
@@ -4422,7 +4670,15 @@ export const Constants = {
       organization_type: ["direct", "ngo", "school", "community"],
       pay_period_status: ["open", "locked"],
       payment_status: ["pending", "paid", "overdue", "voided"],
+      privacy_request_outcome: [
+        "FULFILLED",
+        "REJECTED",
+        "ANONYMIZED",
+        "DELETED",
+        "CORRECTED",
+      ],
       privacy_request_type: ["access", "correction", "deletion"],
+      privacy_subject_type: ["TUTOR", "STUDENT"],
       record_status: ["active", "inactive", "pending", "approved", "suspended"],
       session_status: ["draft", "submitted", "approved", "rejected"],
       submission_status: ["not_submitted", "submitted", "marked", "returned"],
