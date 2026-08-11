@@ -44,6 +44,25 @@ async function passwordToken(baseUrl, anonKey, email) {
   return data.access_token;
 }
 
+async function setStudentStatus(baseUrl, serviceKey, studentId, status) {
+  await api(baseUrl, serviceKey, `/rest/v1/students?id=eq.${studentId}`, {
+    method: 'PATCH',
+    body: { status },
+  });
+
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const [student] = await api(
+      baseUrl,
+      serviceKey,
+      `/rest/v1/students?select=status&id=eq.${studentId}`,
+    );
+    if (student?.status === status) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Timed out waiting for local student status ${status}`);
+}
+
 function forgedJwt(payload) {
   const encode = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
   return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode(payload)}.forged-signature`;
@@ -95,13 +114,21 @@ async function main() {
     'GROQ_API_KEY=local-test-key-not-sent-upstream',
     'GEMINI_API_KEY=local-test-key-not-sent-upstream',
   ].join('\n'));
+  let functionOutput = '';
+  const captureFunctionOutput = (chunk) => {
+    functionOutput = `${functionOutput}${chunk.toString()}`.slice(-8_000);
+  };
   const functions = spawn(process.execPath, [supabaseCli, 'functions', 'serve', '--env-file', envFile], {
     cwd: root,
-    stdio: 'ignore',
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
+  functions.stdout.on('data', captureFunctionOutput);
+  functions.stderr.on('data', captureFunctionOutput);
 
   try {
-    await waitForEdge(local.API_URL, local.ANON_KEY, functions);
+    await waitForEdge(local.API_URL, local.ANON_KEY, functions).catch((error) => {
+      throw new Error(`${error.message}\nEdge runtime output:\n${functionOutput || '(no output captured)'}`);
+    });
     const forgedServiceRole = forgedJwt({ role: 'service_role', exp: Math.floor(Date.now() / 1000) + 3600 });
     const expiredToken = forgedJwt({ sub: 'stale-user', role: 'authenticated', exp: 1 });
 
@@ -118,14 +145,16 @@ async function main() {
     }
 
     for (const learnerStatus of ['inactive', 'suspended', 'pending']) {
-      await api(local.API_URL, local.SERVICE_ROLE_KEY, `/rest/v1/students?id=eq.${student.id}`, { method: 'PATCH', body: { status: learnerStatus } });
+      await setStudentStatus(local.API_URL, local.SERVICE_ROLE_KEY, student.id, learnerStatus);
       for (const name of ['grade-submission', 'odie-careers-chat-stream']) {
         const result = await edge(local.API_URL, local.ANON_KEY, name, studentToken, {});
-        if (result.status !== 403) throw new Error(`${name} must reject ${learnerStatus} learner JWTs; received ${result.status}`);
+        if (result.status !== 403) {
+          throw new Error(`${name} must reject ${learnerStatus} learner JWTs; received ${result.status}: ${result.body}\nEdge runtime output:\n${functionOutput || '(no output captured)'}`);
+        }
       }
     }
 
-    await api(local.API_URL, local.SERVICE_ROLE_KEY, `/rest/v1/students?id=eq.${student.id}`, { method: 'PATCH', body: { status: 'active' } });
+    await setStudentStatus(local.API_URL, local.SERVICE_ROLE_KEY, student.id, 'active');
     for (const name of ['grade-submission', 'odie-careers-chat-stream']) {
       const result = await edge(local.API_URL, local.ANON_KEY, name, studentToken, {});
       if ([401, 403].includes(result.status)) throw new Error(`${name} must admit an active learner before processing the request; received ${result.status}: ${result.body}`);
@@ -141,7 +170,7 @@ async function main() {
     if (reportRefreshWorker.status !== 200) throw new Error(`Weekly-report refresh worker token must be accepted; received ${reportRefreshWorker.status}: ${reportRefreshWorker.body}`);
     console.log('Local Edge authorization matrix passed.');
   } finally {
-    await api(local.API_URL, local.SERVICE_ROLE_KEY, `/rest/v1/students?id=eq.${student.id}`, { method: 'PATCH', body: { status: 'active' } }).catch(() => {});
+    await setStudentStatus(local.API_URL, local.SERVICE_ROLE_KEY, student.id, 'active').catch(() => {});
     functions.kill();
     fs.rmSync(temporaryDir, { recursive: true, force: true });
   }
