@@ -100,7 +100,20 @@ jobs:
           TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           test -n "$DIGITALOCEAN_APP_ID" || { echo "DIGITALOCEAN_APP_ID is required"; exit 1; }
-          deployment_json="$(doctl apps create-deployment "$DIGITALOCEAN_APP_ID" --wait --output json)"
+          # `--wait` returns a non-zero status when App Platform's build fails.
+          # Preserve and print its diagnostics instead of letting `bash -e` hide
+          # the actual deployment error inside a command substitution.
+          set +e
+          deployment_json="$(doctl apps create-deployment "$DIGITALOCEAN_APP_ID" --wait --output json 2>&1)"
+          deployment_status=$?
+          set -e
+          if [ "$deployment_status" -ne 0 ]; then
+            echo 'DigitalOcean deployment request failed:' >&2
+            echo "$deployment_json" >&2
+            echo 'Most recent DigitalOcean deployments:' >&2
+            doctl apps list-deployments "$DIGITALOCEAN_APP_ID" --output json >&2 || true
+            exit "$deployment_status"
+          fi
           deployment_id="$(jq -r 'if type == "array" then .[0].id else .id end' <<<"$deployment_json")"
           test -n "$deployment_id" && test "$deployment_id" != "null" || {
             echo 'DigitalOcean did not return a deployment ID.' >&2
