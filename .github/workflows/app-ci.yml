@@ -92,7 +92,17 @@ jobs:
         run: npm run supabase:start
 
       - name: Rebuild database from committed migrations
-        run: npm run supabase:reset
+        run: |
+          for attempt in 1 2 3; do
+            if npm run supabase:reset; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Local Supabase reset failed; retrying after a short delay (attempt $attempt of 3)."
+              sleep 10
+            fi
+          done
+          exit 1
 
       - name: Verify canonical schema and SECURITY DEFINER guardrails
         run: |
