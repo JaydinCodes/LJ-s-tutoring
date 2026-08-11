@@ -245,7 +245,7 @@ test('production deployment is gated by the tested main SHA and workflow actions
   assert.match(deploymentWorkflow, /supabase link --project-ref/);
   assert.match(deploymentWorkflow, /supabase db push --linked/);
   assert.match(deploymentWorkflow, /supabase db push/);
-  assert.match(deploymentWorkflow, /supabase functions deploy/);
+  assert.match(deploymentWorkflow, /supabase functions deploy .*--use-api/);
   assert.match(deploymentWorkflow, /Bootstrap and verify recovery schedules/);
   assert.match(deploymentWorkflow, /private\.ensure_recovery_schedules/);
   assert.match(deploymentWorkflow, /private\.assert_recovery_schedules_ready/);
