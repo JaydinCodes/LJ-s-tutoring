@@ -13,7 +13,12 @@ import { formatDate } from '../../lib/utils/format';
 import type { Assignment, AssignmentStatus, AssignmentSubmission } from '../../types/lms';
 import { getAiGradingPrefill } from '../assignments/aiGradingPrefill';
 import { createAssignment, markSubmission, updateAssignment } from '../assignments/assignmentMutations';
+import { RubricBuilder } from '../assignments/RubricBuilder';
+import { TutorSubmissionReviewCard } from '../tutors/TutorSubmissionReviewCard';
 import { loadAdminDashboard } from './adminDashboardRepository';
+
+// Rubric JSON remains the backwards-compatible storage representation; the
+// interface below deliberately presents a teaching-first criterion builder.
 
 export function AdminAssignmentsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminDashboard, []);
@@ -52,7 +57,7 @@ export function AdminAssignmentsRoute() {
         <p className="mt-1 text-sm text-slate-600">Mark submitted work, return it for revision, and write feedback visible to learners.</p>
         <div className="mt-5 grid gap-4 xl:grid-cols-2">
           {data?.submissions.length ? data.submissions.map((submission) => (
-            <SubmissionReviewCard key={submission.id} submission={submission} onSaved={reload} />
+            <TutorSubmissionReviewCard key={submission.id} submission={{ ...submission, student_label: submission.student_name }} onSaved={reload} />
           )) : <EmptyState title="No submissions yet" description="Learner submissions will appear here after students submit published assignments." />}
         </div>
       </Card>
@@ -147,9 +152,7 @@ export function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: A
         <FormField label="Description">
           <TextArea value={description} onChange={(event) => setDescription(event.target.value)} />
         </FormField>
-        <FormField label="Rubric JSON">
-          <TextArea value={rubricJson} onChange={(event) => setRubricJson(event.target.value)} placeholder='[{"id":"method","label":"Method","maxMarks":40}]' />
-        </FormField>
+        <RubricBuilder value={rubricJson} onChange={setRubricJson} />
         <div className="flex flex-wrap items-center gap-3">
           <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
             {busy ? 'Saving...' : 'Save assignment'}
@@ -250,7 +253,7 @@ function SubmissionReviewCard({
         <FormField label="Feedback">
           <TextArea value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="Feedback for the learner..." />
         </FormField>
-        <FormField label="Rubric scores JSON">
+        <FormField label="Rubric scores JSON" hint="Legacy storage fields can still be reviewed here.">
           <TextArea value={rubricScoresJson} onChange={(event) => setRubricScoresJson(event.target.value)} placeholder='{"method": 32, "accuracy": 18}' />
         </FormField>
         <div className="grid gap-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
@@ -348,11 +351,7 @@ export function CreateAssignmentForm({ onCreated, role = 'admin' }: { onCreated:
             <TextArea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Instructions, expected work, submission notes..." />
           </FormField>
         </div>
-        <div className="lg:col-span-2">
-          <FormField label="Rubric JSON" hint="Define criteria as an array; keep IDs stable for marking.">
-            <TextArea value={rubricJson} onChange={(event) => setRubricJson(event.target.value)} placeholder='[{"id":"method","label":"Method","maxMarks":40}]' />
-          </FormField>
-        </div>
+        <div className="lg:col-span-2"><RubricBuilder value={rubricJson} onChange={setRubricJson} /></div>
         <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
           <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
             {busy ? 'Publishing...' : 'Publish assignment'}

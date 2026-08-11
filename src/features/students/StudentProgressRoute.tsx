@@ -14,12 +14,12 @@ export function StudentProgressRoute() {
   const aggregatedProgress = useMemo(() => aggregateProgressBySubjectTopic(data?.progress || []), [data?.progress]);
   const subjects = useMemo(() => getProgressSubjects(aggregatedProgress), [aggregatedProgress]);
   const rows = useMemo(() => filterProgressBySubject(aggregatedProgress, activeSubject), [aggregatedProgress, activeSubject]);
-  const summary = useMemo(() => getProgressSummary(aggregatedProgress), [aggregatedProgress]);
+  const summary = useMemo(() => ({ ...getProgressSummary(aggregatedProgress), evidenceCount: data?.competencyEvidence?.length || 0 }), [aggregatedProgress, data?.competencyEvidence?.length]);
 
   return (
     <PageShell
       title="Progress"
-      subtitle="Topic mastery, cognitive level, and recorded learning signals in one clean list."
+      subtitle="Competency evidence and tutor-recorded learning signals, kept separate from your assessment results."
       section="student"
     >
       {refetching ? <p className="academy-chip w-fit text-academy-aegean dark:text-academy-gold">Refreshing progress...</p> : null}
@@ -42,7 +42,7 @@ export function StudentProgressRoute() {
   );
 }
 
-function ProgressHeader({ summary }: { summary: { average: number | null; topicCount: number; weakestTopic?: string } }) {
+function ProgressHeader({ summary }: { summary: { average: number | null; topicCount: number; weakestTopic?: string; evidenceCount: number } }) {
   return (
     <section className="academy-major-surface relative overflow-hidden">
       <div className="absolute inset-x-6 top-0 h-px greek-keyline" aria-hidden="true" />
@@ -55,13 +55,13 @@ function ProgressHeader({ summary }: { summary: { average: number | null; topicC
           <p className="mt-3 max-w-2xl text-sm leading-7 text-academy-parchment">
             {summary.weakestTopic
               ? `Start with ${summary.weakestTopic}. It is the clearest topic to strengthen next.`
-              : 'Progress rows appear when marks, quizzes, or tutor updates create topic records.'}
+              : 'Competency evidence appears after released rubric feedback; tutor-recorded progress can also appear here.'}
           </p>
         </div>
         <div className="rounded-ios-lg border border-white/[0.15] bg-white/10 p-4 shadow-academy-inset backdrop-blur-xl">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-gold">Recorded topics</p>
           <p className="mt-2 text-4xl font-semibold text-white">{summary.topicCount}</p>
-          <p className="mt-2 text-sm leading-6 text-academy-parchment">Topic signals currently available</p>
+          <p className="mt-2 text-sm leading-6 text-academy-parchment">{summary.evidenceCount ? `${summary.evidenceCount} released criterion${summary.evidenceCount === 1 ? '' : 's'} supporting this view` : 'Topic signals currently available'}</p>
         </div>
       </div>
     </section>
@@ -159,6 +159,7 @@ export function TopicProgressRow({ progress }: { progress: StudentProgress }) {
           <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />
           {getMasteryLabel(score)}
         </span>
+        {progress.source_submission_id ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-emerald-800 dark:text-emerald-200">Released rubric evidence</span> : <span className="inline-flex items-center gap-1 rounded-full bg-slate-950/[0.04] px-3 py-1 dark:bg-white/[0.06]">Tutor progress signal</span>}
       </div>
     </article>
   );

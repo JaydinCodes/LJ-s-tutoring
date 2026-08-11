@@ -143,7 +143,7 @@ test('a fresh student session sees the tutor-released result and feedback', asyn
 test('parent authenticates through local Supabase and sees only linked released results', async ({ page }) => {
   const runtimeFailures = observeRuntimeFailures(page);
   await signIn(page, 'parent.supabase-e2e@projectodysseus.test', /\/dashboard\/parent\/reports\/?$/);
-  await expect(page.getByRole('heading', { name: 'Guardian Reports', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'My child', exact: true })).toBeVisible();
   await expect(page.getByText('Local Supabase Learner', { exact: true })).toBeVisible();
   await expect(page.getByRole('table').filter({ hasText: 'Local Supabase Algebra Check' })).toBeVisible();
   expectNoUnexpectedRuntimeFailures(runtimeFailures);
@@ -152,7 +152,7 @@ test('parent authenticates through local Supabase and sees only linked released 
 test('NGO partner authenticates through local Supabase and sees a cohort aggregate without learner names', async ({ page }) => {
   const runtimeFailures = observeRuntimeFailures(page);
   await signIn(page, 'ngo.supabase-e2e@projectodysseus.test', /\/dashboard\/ngo\/reports\/?$/);
-  await expect(page.getByRole('heading', { name: 'NGO Cohort Reports', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Cohort impact', exact: true })).toBeVisible();
   await expect(page.getByRole('table').filter({ hasText: 'Local Supabase NGO Cohort' })).toBeVisible();
   await expect(page.getByText('Local NGO Learner', { exact: true })).toHaveCount(0);
   expectNoUnexpectedRuntimeFailures(runtimeFailures);

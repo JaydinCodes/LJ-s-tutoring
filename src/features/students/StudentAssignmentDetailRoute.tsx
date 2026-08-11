@@ -14,6 +14,7 @@ import {
 import { AssignmentUploadPanel } from './StudentDashboardComponents';
 import { normalizeStudentData } from './studentData';
 import { useStudentDashboardQuery } from './studentQueries';
+import { parseLearningAction } from '../assignments/learningEvidence';
 
 export function StudentAssignmentDetailRoute() {
   const { assignmentId } = useParams();
@@ -69,6 +70,7 @@ function AssignmentDetailWorkspace({
   const status = calculateAssignmentStatus({ assignment, submission });
   const dueDelta = daysUntil(assignment.due_date);
   const uploadDisabled = status === 'archived' || status === 'closed' || assignment.status === 'archived' || assignment.status === 'closed';
+  const learningAction = parseLearningAction(submission?.rubric_scores_json);
 
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -135,6 +137,16 @@ function AssignmentDetailWorkspace({
             icon={Trophy}
           />
         )}
+        {learningAction ? (
+          <section className="mt-4 rounded-2xl border border-brand-gold/30 bg-amber-50/70 p-4 text-sm text-slate-800 dark:border-brand-gold/30 dark:bg-brand-gold/10 dark:text-brand-parchment">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">Your next learning action</p>
+            {learningAction.strengths ? <p className="mt-3"><span className="font-semibold">What went well:</span> {learningAction.strengths}</p> : null}
+            {learningAction.fixNext ? <p className="mt-2"><span className="font-semibold">Fix next:</span> {learningAction.fixNext}</p> : null}
+            <p className="mt-2"><span className="font-semibold">{learningAction.actionType === 'retry' ? 'Retry' : learningAction.actionType === 'practice' ? 'Practice' : learningAction.actionType === 'discuss' ? 'Discuss' : 'Revise'}:</span> {learningAction.actionDetail || 'Use the tutor feedback to plan one focused study block.'}</p>
+            {learningAction.dueDate ? <p className="mt-2 font-semibold">Aim to complete this by {formatDate(learningAction.dueDate)}.</p> : null}
+            {learningAction.allowResubmission && !uploadDisabled ? <p className="mt-2 font-semibold">You can submit a correction using the upload panel above.</p> : null}
+          </section>
+        ) : null}
       </Card>
 
       <Card>

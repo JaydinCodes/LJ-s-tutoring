@@ -57,11 +57,8 @@ export interface StudentResultsAnalyticsView {
     totalMarksObtained: number | null;
     totalMarksAvailable: number | null;
     averageAcrossAssessments: number | null;
-    // Count of actually marked/released assignment submissions -- distinct from
-    // items.length, which also folds in progress-record signals so the Results
-    // page can show topic/cognitive-level breakdowns even before any submission
-    // is marked. Use this for any "released marks" style stat so it stays
-    // consistent with Resources' "marked submissions" count.
+    // Count of marks deliberately released to this learner. Progress evidence
+    // is intentionally excluded from Results and stays in the Progress area.
     releasedMarksCount: number;
     currentAcademicStatus: string;
     classAverage: number | null;
@@ -153,25 +150,12 @@ export function normalizeCognitiveBreakdown(value: unknown): StudentResultCognit
 }
 
 function buildFallbackFromDashboard(data: StudentDashboardView): StudentResultsAnalyticsView {
-  const marked = data.submissions.filter((submission) => submission.marks_awarded != null);
-  const progressItems = data.progress.map<StudentResultItem>((item) => ({
-    id: item.id,
-    title: item.topic,
-    subject: item.subject || 'General',
-    score: Number(item.score),
-    total: 100,
-    percentage: Number(item.score),
-    completedAt: item.recorded_at,
-    markedAt: item.recorded_at,
-    feedbackSummary: item.cognitive_level ? `Cognitive level: ${item.cognitive_level}` : 'Progress record captured.',
-    topicBreakdown: [{ topic: item.topic, subject: item.subject || 'General', score: Number(item.score) }],
-    cognitiveBreakdown: item.cognitive_level ? [{ level: toTitleCase(item.cognitive_level) as CognitiveLevelName, score: Number(item.score) }] : [],
-    recommendedNextSteps: [],
-  }));
+  const marked = data.submissions.filter((submission) => submission.marks_awarded != null && submission.marks_released);
+  const assignmentById = new Map(data.assignments.map((assignment) => [assignment.id, assignment]));
   const submissionItems = marked.map<StudentResultItem>((item) => ({
     id: item.id,
-    title: item.assignment_id,
-    subject: 'Assignment',
+    title: assignmentById.get(item.assignment_id)?.title || 'Assignment',
+    subject: assignmentById.get(item.assignment_id)?.subject || 'Assignment',
     score: Number(item.marks_awarded),
     total: 100,
     percentage: Number(item.marks_awarded),
@@ -183,7 +167,7 @@ function buildFallbackFromDashboard(data: StudentDashboardView): StudentResultsA
     cognitiveBreakdown: [],
     recommendedNextSteps: [],
   }));
-  const items = [...submissionItems, ...progressItems];
+  const items = submissionItems;
   const overallPercentage = average(items.map((item) => item.percentage));
   const subjectMap = new Map<string, StudentResultItem[]>();
   for (const item of items) subjectMap.set(item.subject, [...(subjectMap.get(item.subject) || []), item]);

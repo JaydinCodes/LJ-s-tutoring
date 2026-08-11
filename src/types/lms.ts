@@ -113,6 +113,8 @@ export interface RubricCriterion {
   label: string;
   maxMarks: number;
   description?: string;
+  topic?: string;
+  cognitiveLevel?: string;
 }
 
 export interface AssignmentSubmission {
@@ -131,7 +133,7 @@ export interface AssignmentSubmission {
   is_latest?: boolean | null;
   marks_awarded?: number | null;
   feedback?: string | null;
-  rubric_scores_json?: Record<string, number | string | null> | null;
+  rubric_scores_json?: Record<string, unknown> | null;
   marks_released?: boolean | null;
   feedback_released?: boolean | null;
   released_at?: string | null;
@@ -140,7 +142,7 @@ export interface AssignmentSubmission {
   // feedback/rubric_scores_json fields above (a human must explicitly save).
   ai_marks_awarded?: number | null;
   ai_feedback?: string | null;
-  ai_rubric_scores_json?: Record<string, number | string | null> | null;
+  ai_rubric_scores_json?: Record<string, unknown> | null;
   ai_confidence?: number | null;
   ai_graded_at?: string | null;
   ai_grading_status?: 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped' | string;
@@ -165,6 +167,20 @@ export interface StudentProgress {
   topic: string;
   score: number;
   cognitive_level?: string | null;
+  recorded_at: string;
+  source_submission_id?: string | null;
+}
+
+export interface CompetencyEvidence {
+  id: string;
+  student_id: string;
+  subject_id?: string | null;
+  subject?: string | null;
+  competency: string;
+  cognitive_level?: string | null;
+  score: number;
+  source_submission_id: string;
+  rubric_criterion_id: string;
   recorded_at: string;
 }
 
@@ -578,8 +594,12 @@ export interface StudentDashboardView {
   metrics: DashboardMetric[];
   assignments: Assignment[];
   progress: StudentProgress[];
+  competencyEvidence?: CompetencyEvidence[];
   classes: ClassRecord[];
   assignedTutors?: StudentAssignedTutor[];
+  // Student-safe session projection returned by get_student_sessions().
+  // It deliberately omits private tutor notes and finance/internal fields.
+  sessions: StudentSessionRow[];
   submissions: AssignmentSubmission[];
   recommendedNext?: {
     title: string;
@@ -634,7 +654,7 @@ export interface AdminDashboardView {
   guardians: Array<Guardian & { linked_students?: Array<StudentGuardian & { student_name?: string }> }>;
   tutors: Array<Tutor & { full_name?: string; email?: string; phone?: string | null }>;
   assignments: Assignment[];
-  submissions: Array<AssignmentSubmission & { assignment_title?: string; student_name?: string }>;
+  submissions: Array<AssignmentSubmission & { assignment_title?: string; student_name?: string; assignment_rubric?: RubricCriterion[] | null }>;
   payments: Array<Payment & { student_label?: string }>;
   tutorPayments: Array<TutorPayment & { tutor_label?: string }>;
   ngoPartners: NgoPartner[];
@@ -656,10 +676,11 @@ export interface TutorDashboardView {
   classes: ClassRecord[];
   allocatedStudents: Array<TutorAllocatedStudentSummary & { allocation_status?: RecordStatus; focus_notes?: string | null }>;
   assignments: Assignment[];
-  submissions: Array<AssignmentSubmission & { assignment_title?: string; student_label?: string }>;
-  markingQueue: Array<AssignmentSubmission & { assignment_title?: string; student_label?: string }>;
+  submissions: Array<AssignmentSubmission & { assignment_title?: string; student_label?: string; assignment_rubric?: RubricCriterion[] | null }>;
+  markingQueue: Array<AssignmentSubmission & { assignment_title?: string; student_label?: string; assignment_rubric?: RubricCriterion[] | null }>;
   sessions: Array<{
     id: string;
+    student_id?: string;
     student_name: string;
     date?: string;
     start_time?: string;

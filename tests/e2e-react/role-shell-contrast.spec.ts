@@ -16,13 +16,13 @@ const roles: Record<SmokeRole, { email: string; dashboard: string; heading: stri
   ngo_partner: {
     email: 'ngo.e2e@projectodysseus.test',
     dashboard: '/dashboard/ngo/reports',
-    heading: 'NGO Cohort Reports',
+    heading: 'Cohort impact',
     section: 'ngo',
   },
   parent: {
     email: 'parent.e2e@projectodysseus.test',
     dashboard: '/dashboard/parent/reports',
-    heading: 'Guardian Reports',
+    heading: 'My child',
     section: 'parent',
   },
   student: {

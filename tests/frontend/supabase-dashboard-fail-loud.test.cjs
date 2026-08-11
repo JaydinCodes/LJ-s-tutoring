@@ -14,7 +14,7 @@ test('core Supabase dashboards throw query errors instead of rendering plausible
   const storage = read('src/lib/supabase/storage.ts');
 
   assert.match(student, /authError[\s\S]*throw authError/);
-  assert.match(student, /\[assignmentsResult, progressResult, enrollmentsResult, submissionsResult, assignedTutorsResult\][\s\S]*throw result\.error/);
+  assert.match(student, /\[assignmentsResult, progressResult, competencyEvidenceResult, enrollmentsResult, submissionsResult, assignedTutorsResult, sessionsResult\][\s\S]*throw result\.error/);
   for (const result of ['profileResult', 'studentResult', 'classesResult', 'subjectsResult']) {
     assert.match(student, new RegExp(`if \\(${result}\\.error\\) \\{[\\s\\S]*?throw ${result}\\.error`));
   }

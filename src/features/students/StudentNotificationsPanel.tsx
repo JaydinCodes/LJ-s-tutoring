@@ -1,6 +1,7 @@
 // src/features/students/StudentNotificationsPanel.tsx
 import { Bell, Check, X } from 'lucide-react';
 import { useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useModalDialog } from '../../hooks/useModalDialog';
 import { useStudentNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from './useStudentNotifications';
 import type { StudentNotification } from '../../types/lms';
@@ -77,26 +78,48 @@ function NotificationPanel({ onClose }: NotificationSurfaceProps) {
           </div>
         ) : null}
         {notifications?.map((notification) => (
-          <NotificationRow key={notification.id} notification={notification} onMarkRead={() => markRead.mutate(notification.id)} />
+          <NotificationRow key={notification.id} notification={notification} onClose={onClose} onMarkRead={() => markRead.mutate(notification.id)} />
         ))}
       </div>
     </div>
   );
 }
 
-function NotificationRow({ notification, onMarkRead }: { notification: StudentNotification; onMarkRead: () => void }) {
+function NotificationRow({ notification, onMarkRead, onClose }: { notification: StudentNotification; onMarkRead: () => void; onClose: () => void }) {
+  const actionHref = notification.link || actionHrefFor(notification);
+  const urgency = urgencyFor(notification);
+  const markRead = () => { if (!notification.is_read) onMarkRead(); };
   return (
-    <button
+    <article
       className={`w-full rounded-ios border px-4 py-3 text-left text-sm leading-6 shadow-sm transition ${
         notification.is_read
           ? 'border-white/70 bg-white/[0.5] text-slate-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-academy-muted'
           : 'border-academy-gold/50 bg-academy-gold/10 text-academy-ink dark:text-academy-parchment'
       }`}
-      type="button"
-      onClick={() => !notification.is_read && onMarkRead()}
     >
-      <p className="font-semibold">{notification.title}</p>
+      <div className="flex items-start justify-between gap-3"><p className="font-semibold">{notification.title}</p><span className="shrink-0 rounded-full bg-slate-950/[0.06] px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-wide dark:bg-white/[0.08]">{urgency}</span></div>
       <p className="mt-1 text-academy-muted">{notification.body}</p>
-    </button>
+      <div className="mt-3 flex items-center gap-2"><Link className="academy-btn academy-btn-outline min-h-9 px-3 text-xs" to={actionHref} onClick={() => { markRead(); onClose(); }}>{actionLabelFor(notification)}</Link>{!notification.is_read ? <button className="text-xs font-semibold text-academy-aegean dark:text-academy-gold" type="button" onClick={markRead}>Mark read</button> : null}</div>
+    </article>
   );
+}
+
+function actionHrefFor(notification: StudentNotification) {
+  if (notification.entity_type === 'assignment' && notification.entity_id) return `/dashboard/student/assignments/${notification.entity_id}`;
+  if (notification.type === 'GRADE_RELEASED') return '/dashboard/student/results';
+  if (notification.type === 'ASSIGNMENT_DUE' || notification.type === 'ASSIGNMENT_RELEASED' || notification.type === 'ASSIGNMENT_UPDATED') return '/dashboard/student/assignments';
+  return '/dashboard/student';
+}
+
+function actionLabelFor(notification: StudentNotification) {
+  if (notification.type === 'GRADE_RELEASED') return 'View feedback';
+  if (notification.type === 'ASSIGNMENT_DUE') return 'Open task';
+  return 'Open';
+}
+
+function urgencyFor(notification: StudentNotification) {
+  if (notification.type === 'ASSIGNMENT_DUE') return 'Action needed';
+  if (notification.type === 'GRADE_RELEASED') return 'Feedback ready';
+  if (notification.type === 'SYSTEM_ALERT') return 'Important';
+  return notification.is_read ? 'Read' : 'New';
 }

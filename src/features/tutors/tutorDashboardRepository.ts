@@ -95,6 +95,7 @@ export async function loadTutorDashboard(): Promise<TutorDashboardView> {
   const enrichedSubmissions = submissions.map((submission) => ({
     ...submission,
     assignment_title: assignmentTitleById.get(submission.assignment_id),
+    assignment_rubric: assignments.find((assignment) => assignment.id === submission.assignment_id)?.rubric_json || null,
     student_label: studentLabelById.get(submission.student_id),
     file_url: (submission.file_url && submissionUrlByPath.get(submission.file_url)) || submission.file_url,
   }));
@@ -162,6 +163,7 @@ function normalizeTutorSessions(sessions: TutorSession[]): TutorDashboardView['s
     .slice(0, 5)
     .map((session) => ({
       id: session.id,
+      student_id: session.student_id,
       student_name: session.student_name || session.studentName || 'Student',
       date: session.date,
       start_time: session.start_time || session.startTime,

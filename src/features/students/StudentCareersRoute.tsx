@@ -1,11 +1,12 @@
 import type { FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bookmark, Compass, GraduationCap, MapPinned, MessageCircle, Send, Sparkles, Target, X ,Bell, Check} from 'lucide-react';
 import { EmptyState, ErrorState, PageShell, SkeletonCard } from '../../components/dashboard/DashboardDesignSystem';
 import { FormField, TextArea, TextInput, inputClassName } from '../../components/ui/FormField';
 import { streamSupabaseFunctionText } from '../../lib/supabase/edgeFunctions';
 import { saveCareerProfile, type CareerSummary, type StudentCareerProfile } from './studentCareersRepository';
-import { useStudentCareersQuery } from './studentQueries';
+import { useStudentCareersQuery, useStudentDashboardQuery } from './studentQueries';
 
 const MAX_CHAT_MESSAGES = 12;
 const INTEREST_OPTIONS = ['Technology', 'Business', 'Engineering', 'Creative', 'Healthcare', 'Education', 'Data', 'Finance'];
@@ -90,6 +91,7 @@ function FilterChip({ active, children, onClick }: { active: boolean; children: 
 
 export function StudentCareersRoute() {
   const { data, loading, error, refetching, reload } = useStudentCareersQuery();
+  const { data: learningData } = useStudentDashboardQuery();
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [odieOpen, setOdieOpen] = useState(false);
@@ -131,6 +133,25 @@ export function StudentCareersRoute() {
       return true;
     });
   }, [data?.careers, filters]);
+  const selectedLearningSignals = useMemo(() => {
+    const selectedSubjects = profile.preferredSubjects.map((subject) => subject.trim().toLowerCase()).filter(Boolean);
+    if (!selectedSubjects.length) return [];
+
+    const bySubject = new Map<string, { total: number; count: number; topics: string[] }>();
+    for (const item of learningData?.progress || []) {
+      const subject = item.subject?.trim();
+      if (!subject || !selectedSubjects.some((selected) => subject.toLowerCase().includes(selected) || selected.includes(subject.toLowerCase()))) continue;
+      const current = bySubject.get(subject) || { total: 0, count: 0, topics: [] };
+      current.total += Number(item.score) || 0;
+      current.count += 1;
+      if (item.topic && !current.topics.includes(item.topic)) current.topics.push(item.topic);
+      bySubject.set(subject, current);
+    }
+
+    return [...bySubject.entries()]
+      .map(([subject, signal]) => ({ subject, average: Math.round(signal.total / signal.count), topics: signal.topics.slice(0, 2) }))
+      .sort((left, right) => right.average - left.average || left.subject.localeCompare(right.subject));
+  }, [learningData?.progress, profile.preferredSubjects]);
 
   async function persistProfile(nextProfile: StudentCareerProfile) {
     setProfile(nextProfile);
@@ -237,6 +258,7 @@ export function StudentCareersRoute() {
             profileBusy={profileBusy}
             onChange={(apsTarget) => updateProfile({ apsTarget })}
           />
+          <CareerLearningContext selectedSubjects={profile.preferredSubjects} signals={selectedLearningSignals} />
           <SavedCareers careers={savedCareers} />
         </div>
         <OpportunityMap institutions={data?.institutions || []} />
@@ -450,6 +472,44 @@ export function APSPlanner({ apsTarget, profileBusy, onChange }: { apsTarget: nu
         </FormField>
       </div>
       <p className="mt-3 text-xs text-academy-muted">{profileBusy ? 'Saving profile...' : 'Saved profile context is used by Odie on Careers.'}</p>
+    </section>
+  );
+}
+
+function CareerLearningContext({
+  selectedSubjects,
+  signals,
+}: {
+  selectedSubjects: string[];
+  signals: Array<{ subject: string; average: number; topics: string[] }>;
+}) {
+  return (
+    <section className="rounded-ios-lg border border-white/70 bg-white/[0.48] p-5 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.035]">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Learning connection</p>
+      <h2 className="mt-1 text-xl font-semibold text-academy-ink dark:text-academy-parchment">Your subject evidence, by choice</h2>
+      {!selectedSubjects.length ? (
+        <p className="mt-3 text-sm leading-6 text-academy-muted">
+          Pick subjects above when you want Careers to connect them with your own learning evidence. This never represents an admission requirement.
+        </p>
+      ) : signals.length ? (
+        <>
+          <p className="mt-3 text-sm leading-6 text-academy-muted">Based only on the subjects you chose to include in your career profile.</p>
+          <div className="mt-4 space-y-3">
+            {signals.slice(0, 3).map((signal) => (
+              <div className="academy-row" key={signal.subject}>
+                <Target className="h-4 w-4 shrink-0 text-academy-aegean dark:text-academy-gold" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-academy-ink dark:text-academy-parchment">{signal.subject} · {signal.average}%</p>
+                  <p className="truncate text-xs text-academy-muted">{signal.topics.length ? signal.topics.join(' · ') : 'Learning evidence available'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Link className="academy-btn academy-btn-outline mt-4" to="/dashboard/student/progress">Review learning evidence</Link>
+        </>
+      ) : (
+        <p className="mt-3 text-sm leading-6 text-academy-muted">Your saved subjects are ready. Released results and progress will appear here as learning evidence becomes available.</p>
+      )}
     </section>
   );
 }

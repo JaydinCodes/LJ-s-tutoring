@@ -929,6 +929,64 @@ export type Database = {
           },
         ]
       }
+      competency_evidence: {
+        Row: {
+          cognitive_level: string | null
+          competency: string
+          id: string
+          recorded_at: string
+          rubric_criterion_id: string
+          score: number
+          source_submission_id: string
+          student_id: string
+          subject_id: string | null
+        }
+        Insert: {
+          cognitive_level?: string | null
+          competency: string
+          id?: string
+          recorded_at?: string
+          rubric_criterion_id: string
+          score: number
+          source_submission_id: string
+          student_id: string
+          subject_id?: string | null
+        }
+        Update: {
+          cognitive_level?: string | null
+          competency?: string
+          id?: string
+          recorded_at?: string
+          rubric_criterion_id?: string
+          score?: number
+          source_submission_id?: string
+          student_id?: string
+          subject_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competency_evidence_source_submission_id_fkey"
+            columns: ["source_submission_id"]
+            isOneToOne: false
+            referencedRelation: "assignment_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competency_evidence_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competency_evidence_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       edge_function_rate_limit_events: {
         Row: {
           created_at: string
@@ -3378,6 +3436,17 @@ export type Database = {
         Returns: {
           bucket_id: string
           object_name: string
+        }[]
+      }
+      get_parent_learning_updates: {
+        Args: never
+        Returns: {
+          attendance_rate: number
+          completed_work_count: number
+          latest_student_summary: string
+          next_session_date: string
+          session_count: number
+          student_id: string
         }[]
       }
       get_parent_progress_reports: {

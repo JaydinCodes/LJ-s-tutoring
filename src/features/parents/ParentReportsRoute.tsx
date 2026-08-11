@@ -20,7 +20,7 @@ export function ParentReportsRoute() {
   ];
 
   return (
-    <DashboardShell title="Guardian Reports" subtitle="Released learner progress available through your linked guardian record." section="parent">
+    <DashboardShell title="My child" subtitle="Guardian Reports: a parent-safe learning update with recent evidence and a clear way to support the next step." section="parent">
       {data ? <section className="grid gap-4 md:grid-cols-3">{metrics.map((metric) => <StatCard key={metric.label} metric={metric} />)}</section> : null}
       {loading ? <LoadingState title="Loading guardian reports" description="Checking linked learners and released results..." /> : null}
       {error ? <ErrorState title="Guardian reports unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/parent/reports" /> : null}
@@ -49,10 +49,15 @@ function ParentStudentReport({ student }: { student: ParentReportStudent }) {
         </div>
       </div>
       {student.latest_topic ? (
-        <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
-          Latest progress signal: <span className="font-semibold">{student.latest_topic.topic}</span> at {student.latest_topic.score}%.
-        </p>
+        <section className="mt-4 rounded-lg bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+          <p className="font-semibold text-slate-950">What to focus on now</p>
+          <p className="mt-1"><span className="font-semibold">{student.latest_topic.topic}</span> is the current focus area ({student.latest_topic.score}%). Ask your child to explain one worked example, then encourage a short independent practice block.</p>
+        </section>
       ) : null}
+      <section className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-slate-200 p-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Recent engagement</p><p className="mt-2 font-semibold text-slate-950">{student.session_count} session{student.session_count === 1 ? '' : 's'} · {student.attendance_rate == null ? 'attendance pending' : `${student.attendance_rate}% attendance`}</p><p className="mt-1 text-sm text-slate-600">{student.completed_work_count} task{student.completed_work_count === 1 ? '' : 's'} submitted in the past two weeks.</p></div>
+        <div className="rounded-lg border border-slate-200 p-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Next tutoring session</p><p className="mt-2 font-semibold text-slate-950">{student.next_session_date ? formatDate(student.next_session_date) : 'Not scheduled yet'}</p><p className="mt-1 text-sm text-slate-600">{student.latest_student_summary || 'Ask your child: “What is the one thing you are fixing next?”'}</p></div>
+      </section>
       <div className="mt-5">
         <DataTable
           rows={student.released_results}

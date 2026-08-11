@@ -11,6 +11,13 @@ export interface NgoAggregateReport {
   average_mark: number | null;
   active_classes: number;
   progress_topic_count: number;
+  active_learner_count?: number;
+  session_count?: number;
+  attended_session_count?: number;
+  attendance_rate?: number | null;
+  competency_evidence_count?: number;
+  average_competency_score?: number | null;
+  intervention_count?: number;
   suppressed?: boolean;
   suppression_reason?: string;
 }
@@ -22,6 +29,13 @@ type CohortRpcReport = {
   suppression_reason?: string;
   average_progress_score?: number;
   marked_submission_count?: number;
+  active_learner_count?: number;
+  session_count?: number;
+  attended_session_count?: number;
+  attendance_rate?: number | null;
+  competency_evidence_count?: number;
+  average_competency_score?: number | null;
+  intervention_count?: number;
 };
 type NgoMembership = { organization_id: string; organizations: { name?: string } | null };
 type CohortRpcClient = { rpc: (name: 'get_org_cohort_report', args: { p_org_id: string }) => Promise<{ data: unknown; error: Error | null }> };
@@ -79,6 +93,13 @@ export async function loadNgoReports(): Promise<{ reports: NgoAggregateReport[] 
       progress_topic_count: 0,
       suppressed: aggregate.suppressed,
       suppression_reason: aggregate.suppression_reason,
+      active_learner_count: aggregate.active_learner_count,
+      session_count: aggregate.session_count,
+      attended_session_count: aggregate.attended_session_count,
+      attendance_rate: aggregate.attendance_rate ?? null,
+      competency_evidence_count: aggregate.competency_evidence_count,
+      average_competency_score: aggregate.average_competency_score ?? null,
+      intervention_count: aggregate.intervention_count,
     } satisfies NgoAggregateReport;
   }));
 
