@@ -255,6 +255,8 @@ test('production deployment is gated by the tested main SHA and workflow actions
 
 test('service worker rejects incomplete or mis-typed app shells and bounds navigation fetches', () => {
   const worker = read('sw.js');
+  const workerRegistration = read('assets/sw-register.js');
+  const staticBuild = read('scripts/build-static.js');
 
   assert.doesNotMatch(worker, /Promise\.allSettled/);
   assert.match(worker, /await Promise\.all\(/);
@@ -267,6 +269,13 @@ test('service worker rejects incomplete or mis-typed app shells and bounds navig
   assert.match(worker, /javascript/);
   assert.match(worker, /Precache failed validation/);
   assert.match(worker, /isCacheableResponse\(req, res\)/);
+  assert.match(worker, /fresh\.redirected/);
+  assert.match(worker, /Response\.redirect\(redirectedUrl\.toString\(\), 302\)/);
+  assert.match(workerRegistration, /PORTAL_DASHBOARDS/);
+  assert.match(workerRegistration, /navigator\.serviceWorker\.getRegistrations\(\)/);
+  assert.match(workerRegistration, /registration\.unregister\(\)/);
+  assert.match(workerRegistration, /location\.replace\(portalDashboard\)/);
+  assert.match(staticBuild, /<script defer src="\/assets\/sw-register\.js"><\/script>/);
 });
 
 test('SEC-02 security headers are an executable edge policy with live production probes', () => {

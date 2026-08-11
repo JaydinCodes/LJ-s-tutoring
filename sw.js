@@ -167,6 +167,17 @@ async function networkFirst(req) {
 
   try {
     const fresh = await fetchWithTimeout(req, NAVIGATION_TIMEOUT_MS);
+    // fetch() follows redirects by default. Returning the final HTML response
+    // for the original request leaves the browser URL unchanged, which made a
+    // portal request for "/" render the marketing React route even though the
+    // origin had redirected it to /dashboard/<role>/. Re-emit a same-origin
+    // redirect so the browser updates its URL before React starts.
+    if (fresh.redirected) {
+      const redirectedUrl = new URL(fresh.url);
+      if (redirectedUrl.origin === self.location.origin) {
+        return Response.redirect(redirectedUrl.toString(), 302);
+      }
+    }
     if (isCacheableResponse(req, fresh)) {
       await cache.put(req, fresh.clone());
       return fresh;

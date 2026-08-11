@@ -259,6 +259,7 @@ function reactShell(route) {
   const configScript = '    <script defer src="/assets/portal-config.js"></script>';
   const publicScripts = isProtected
     ? `${configScript}
+    <script defer src="/assets/sw-register.js"></script>
 `
     : `${configScript}
     <script defer src="/assets/analytics.js"></script>

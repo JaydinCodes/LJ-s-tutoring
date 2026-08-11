@@ -8,6 +8,11 @@
   if (!location.hostname.endsWith('projectodysseus.live')) {return;}
 
   const SW_URL = '/sw.js';
+  const PORTAL_DASHBOARDS = {
+    'admin.projectodysseus.live': '/dashboard/admin/',
+    'tutor.projectodysseus.live': '/dashboard/tutor/',
+    'student.projectodysseus.live': '/dashboard/student/',
+  };
   let didPrompt = false;
 
   function el(tag, attrs = {}, children = []) {
@@ -129,5 +134,31 @@
     }
   }
 
-  window.addEventListener('load', registerSW, { once: true });
+  async function recoverPortalServiceWorker(portalDashboard) {
+    try {
+      // Portal pages must not be controlled by a document-cache Service
+      // Worker. Older deployments registered one on these origins; remove it
+      // and its per-origin caches so a learner cannot remain trapped on the
+      // marketing route after a redirect is followed internally by fetch().
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.filter((name) => name.startsWith('po-')).map((name) => caches.delete(name)));
+    } catch (error) {
+      console.warn('[SW] portal service-worker recovery failed:', error);
+    }
+
+    if (location.pathname === '/' || location.pathname === '/index.html') {
+      location.replace(portalDashboard);
+    }
+  }
+
+  window.addEventListener('load', () => {
+    const portalDashboard = PORTAL_DASHBOARDS[location.hostname];
+    if (portalDashboard) {
+      void recoverPortalServiceWorker(portalDashboard);
+      return;
+    }
+    void registerSW();
+  }, { once: true });
 })();
