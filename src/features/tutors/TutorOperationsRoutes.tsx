@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
@@ -23,19 +24,27 @@ import {
   type TutorWeeklyReport,
 } from './tutorOperationsRepository';
 
+const emptySessions: TutorSession[] = [];
+
 export function TutorSessionsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadTutorSessions, []);
-  const sessions = data?.sessions || [];
+  const sessions = data?.sessions ?? emptySessions;
   const [selected, setSelected] = useState<TutorSession | null>(null);
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const studentId = searchParams.get('studentId');
+    if (studentId && !selected) setSelected(sessions.find((session) => session.student_id === studentId) || null);
+  }, [searchParams, selected, sessions]);
 
   return (
-    <DashboardShell title="Tutor Sessions" subtitle="Session delivery notes and report submission workflow." section="tutor">
+    <DashboardShell title="Teach" subtitle="Record session evidence, set a specific follow-up, and prepare the learner’s next step." section="tutor">
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_460px]">
         <Card>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold text-slate-950">Sessions</h2>
-              <p className="mt-1 text-sm text-slate-600">Open a draft session to save report notes or submit for admin review.</p>
+              <p className="mt-1 text-sm text-slate-600">Open a draft session to capture the objective, misconception, evidence, follow-up, and parent-safe summary.</p>
             </div>
             <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" onClick={() => void reload()}>Refresh</button>
           </div>
@@ -249,10 +258,10 @@ function SessionReportPanel({ session, onSaved }: { session: TutorSession | null
             <option value="excused">Excused</option>
           </select>
         </FormField>
-        <FormField label="Topics covered"><TextArea value={topicsCovered} onChange={(event) => setTopicsCovered(event.target.value)} /></FormField>
-        <FormField label="Learner struggles"><TextArea value={learnerStruggles} onChange={(event) => setLearnerStruggles(event.target.value)} /></FormField>
-        <FormField label="Homework assigned"><TextArea value={homeworkAssigned} onChange={(event) => setHomeworkAssigned(event.target.value)} /></FormField>
-        <FormField label="Student summary"><TextArea value={studentSummary} onChange={(event) => setStudentSummary(event.target.value)} /></FormField>
+        <FormField label="Topics and objective" hint="What did you teach, and what should the learner be able to do next?"><TextArea value={topicsCovered} onChange={(event) => setTopicsCovered(event.target.value)} placeholder="Factorisation: expand and simplify two binomials independently." /></FormField>
+        <FormField label="Misconception or struggle" hint="Capture one specific issue that should shape the next lesson."><TextArea value={learnerStruggles} onChange={(event) => setLearnerStruggles(event.target.value)} placeholder="Confuses a negative coefficient when expanding brackets." /></FormField>
+        <FormField label="Follow-up action" hint="Homework, targeted practice, correction, or discussion to check next time."><TextArea value={homeworkAssigned} onChange={(event) => setHomeworkAssigned(event.target.value)} placeholder="Redo worksheet questions 4–6 without notes; bring one question to discuss." /></FormField>
+        <FormField label="Parent-safe summary" hint="Plain, encouraging wording that can appear in the learner’s report."><TextArea value={studentSummary} onChange={(event) => setStudentSummary(event.target.value)} placeholder="We practised factorisation. The next step is a short revision block on signs when expanding brackets." /></FormField>
         <FormField label="Private tutor notes"><TextArea value={tutorPrivateNotes} onChange={(event) => setTutorPrivateNotes(event.target.value)} /></FormField>
         <div className="flex flex-wrap items-center gap-3">
           <button disabled={busy || !session || session.status !== 'DRAFT'} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">

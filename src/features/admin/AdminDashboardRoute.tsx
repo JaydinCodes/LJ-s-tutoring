@@ -7,6 +7,7 @@ import { ErrorState, LoadingState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatCurrency, formatDate } from '../../lib/utils/format';
+import { Link } from 'react-router-dom';
 import type { Assignment, Payment, Student, Tutor } from '../../types/lms';
 import { loadAdminDashboard } from './adminDashboardRepository';
 
@@ -23,6 +24,11 @@ export function AdminDashboardRoute() {
       {error ? <ErrorState title="Admin dashboard unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
       {data ? (
         <>
+          <section className="grid gap-4 xl:grid-cols-3">
+            <ActionQueue title="Work waiting for review" count={data.submissions.filter((item) => item.status === 'submitted' || item.marks_awarded == null).length} description="Submitted learner work that still needs a tutor or admin decision." action="Open marking" to="/dashboard/admin/assignments" />
+            <ActionQueue title="Published work nearing its due date" count={data.assignments.filter((item) => item.status === 'published' && item.due_date && new Date(item.due_date).getTime() <= Date.now() + 7 * 86400000).length} description="Check due dates and follow up before learner momentum is lost." action="Open assignments" to="/dashboard/admin/assignments" />
+            <ActionQueue title="Learner records to review" count={data.students.length} description="Review learner records and make sure each active learner has a tutor and cohort context." action="Review people" to="/dashboard/admin/students" />
+          </section>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {data.metrics.map((metric) => <StatCard key={metric.label} metric={metric} />)}
           </section>
@@ -112,4 +118,14 @@ export function AdminDashboardRoute() {
       ) : null}
     </DashboardShell>
   );
+}
+
+function ActionQueue({ title, count, description, action, to }: { title: string; count: number; description: string; action: string; to: string }) {
+  return <Card>
+    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean">Today</p>
+    <p className="mt-2 text-3xl font-semibold text-slate-950">{count}</p>
+    <h2 className="mt-1 font-semibold text-slate-950">{title}</h2>
+    <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+    <Link className="mt-4 inline-flex rounded-lg bg-slate-950 px-3 py-2 text-sm font-semibold text-white" to={to}>{action}</Link>
+  </Card>;
 }

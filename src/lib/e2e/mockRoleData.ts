@@ -165,6 +165,19 @@ export function getE2EStudentDashboard(): StudentDashboardView {
     assignments: [e2eAssignment],
     progress: e2eProgress,
     classes: [e2eClass],
+    sessions: [{
+      id: 'e2e-session-1',
+      date: '2030-06-10',
+      start_time: '16:00',
+      end_time: '17:00',
+      mode: 'online',
+      location: 'Online',
+      attendance_status: null,
+      topics_covered: null,
+      homework_assigned: 'Complete the quadratic functions launch worksheet before the session.',
+      student_summary: 'Bring one question about factorisation or graph interpretation.',
+      status: 'submitted',
+    }],
     assignedTutors: [
       {
         id: 'e2e-tutor-1',
@@ -368,6 +381,11 @@ export function getE2EParentReports(): { students: ParentReportStudent[] } {
       }],
       latest_topic: { topic: 'Quadratic functions', score: 72 },
       average_mark: 78,
+      session_count: 3,
+      attendance_rate: 100,
+      completed_work_count: 2,
+      latest_student_summary: 'We practised quadratic functions and set a short revision task for this week.',
+      next_session_date: '2030-01-18',
     }],
   };
 }

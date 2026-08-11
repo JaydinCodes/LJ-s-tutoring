@@ -1,6 +1,7 @@
 import type { FormEvent, ReactNode } from 'react';
 import { useState } from 'react';
-import { Bell, BookOpen, ChevronRight, FileText, GraduationCap, Lock, Moon, Shield, UserRound, UsersRound, type LucideIcon } from 'lucide-react';
+import { Bell, BookOpen, CalendarDays, ChevronRight, Clock, FileText, GraduationCap, Lock, Moon, Shield, UserRound, UsersRound, type LucideIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { ErrorState, PageShell, PremiumButton } from '../../components/dashboard/DashboardDesignSystem';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -9,6 +10,7 @@ import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatDate } from '../../lib/utils/format';
 import { useAuth } from '../auth/AuthProvider';
 import { loadStudentDashboard } from './studentDashboardRepository';
+import { useStudentDashboardQuery } from './studentQueries';
 import { generateWeeklyReport, loadWeeklyReport, loadWeeklyReports, type WeeklyReport, type WeeklyReportListItem } from './studentReportsRepository';
 
 // Community is temporarily disabled: organization scoping, role restrictions,
@@ -32,6 +34,70 @@ export function StudentCommunityRoute() {
         />
       </Card>
     </PageShell>
+  );
+}
+
+export function StudentTutorSessionsRoute() {
+  const { data, loading, error, refetching, reload } = useStudentDashboardQuery();
+  const today = new Date().toISOString().slice(0, 10);
+  const sessions = data?.sessions || [];
+  const upcoming = [...sessions].filter((session) => session.date >= today).sort((left, right) => `${left.date}${left.start_time}`.localeCompare(`${right.date}${right.start_time}`));
+  const previous = [...sessions].filter((session) => session.date < today).sort((left, right) => `${right.date}${right.start_time}`.localeCompare(`${left.date}${left.start_time}`));
+
+  return (
+    <PageShell title="My tutor & sessions" subtitle="See your next learning session, what to prepare, and the student-safe summary from recent sessions." section="student">
+      <section className="space-y-5">
+        <div className="academy-major-surface">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-academy-gold">Learning routine</p>
+          <h2 className="mt-3 font-display text-4xl font-semibold leading-tight tracking-normal text-white sm:text-5xl">Prepare with the right context</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-academy-parchment">Session details and follow-up are shown here without exposing private tutor notes or internal reporting.</p>
+        </div>
+        {loading ? <Card><p className="text-sm text-slate-600">Loading your session plan...</p></Card> : null}
+        {error ? <ErrorState title="Sessions unavailable" description={error} onRetry={() => void reload()} /> : null}
+        {data ? (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.6fr)]">
+            <section className="space-y-4">
+              <SessionList title="Next session" empty="No future session is scheduled yet. Check your class schedule or contact your tutor/admin for the next time." sessions={upcoming} />
+              <SessionList title="Recent sessions" empty="Student-safe session summaries will appear here after a session is reported." sessions={previous.slice(0, 4)} />
+            </section>
+            <aside className="space-y-4">
+              <section className="rounded-ios-lg border border-white/70 bg-white/[0.48] p-5 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.035]">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Your tutor</p>
+                <div className="mt-3 space-y-3">
+                  {(data.assignedTutors || []).map((tutor) => <div className="academy-row" key={tutor.id}><UserRound className="h-4 w-4 shrink-0 text-academy-aegean dark:text-academy-gold" aria-hidden="true" /><div><p className="text-sm font-semibold text-academy-ink dark:text-academy-parchment">{tutor.full_name}</p><p className="text-xs text-academy-muted">Allocated tutor</p></div></div>)}
+                  {!data.assignedTutors?.length ? <p className="text-sm leading-6 text-academy-muted">Your allocated tutor will appear here once confirmed.</p> : null}
+                </div>
+              </section>
+              <section className="rounded-ios-lg border border-white/70 bg-white/[0.48] p-5 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.035]">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Before your session</p>
+                <p className="mt-2 text-sm leading-6 text-academy-muted">Open your current work, bring one question, and complete any homework listed in the next session card.</p>
+                <Link className="academy-btn academy-btn-outline mt-4" to="/dashboard/student/assignments">Open my work</Link>
+              </section>
+              <button className="academy-btn academy-btn-outline" disabled={refetching} type="button" onClick={() => void reload()}>{refetching ? 'Refreshing...' : 'Refresh sessions'}</button>
+            </aside>
+          </div>
+        ) : null}
+      </section>
+    </PageShell>
+  );
+}
+
+function SessionList({ title, empty, sessions }: { title: string; empty: string; sessions: NonNullable<ReturnType<typeof useStudentDashboardQuery>['data']>['sessions'] }) {
+  return (
+    <section className="rounded-ios-lg border border-white/70 bg-white/[0.48] p-5 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.035]">
+      <h2 className="text-xl font-semibold text-academy-ink dark:text-academy-parchment">{title}</h2>
+      <div className="mt-3 divide-y divide-slate-950/5 dark:divide-white/10">
+        {sessions.map((session) => (
+          <article className="py-4 first:pt-0" key={session.id}>
+            <div className="flex items-start gap-3"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-academy-aegean dark:text-academy-gold" aria-hidden="true" /><div className="min-w-0"><p className="text-sm font-semibold text-academy-ink dark:text-academy-parchment">{formatDate(session.date)} · {session.mode || 'Session'}</p><p className="mt-1 flex items-center gap-1 text-xs text-academy-muted"><Clock className="h-3.5 w-3.5" aria-hidden="true" />{session.start_time}–{session.end_time}{session.location ? ` · ${session.location}` : ''}</p></div></div>
+            {session.topics_covered ? <p className="mt-3 text-sm leading-6 text-academy-muted"><span className="font-semibold text-academy-ink dark:text-academy-parchment">Focus:</span> {session.topics_covered}</p> : null}
+            {session.homework_assigned ? <p className="mt-2 text-sm leading-6 text-academy-muted"><span className="font-semibold text-academy-ink dark:text-academy-parchment">Follow-up:</span> {session.homework_assigned}</p> : null}
+            {session.student_summary ? <p className="mt-2 rounded-ios bg-slate-950/[0.04] px-3 py-2 text-sm leading-6 text-academy-muted dark:bg-white/[0.06]">{session.student_summary}</p> : null}
+          </article>
+        ))}
+        {!sessions.length ? <p className="py-4 text-sm leading-6 text-academy-muted">{empty}</p> : null}
+      </div>
+    </section>
   );
 }
 

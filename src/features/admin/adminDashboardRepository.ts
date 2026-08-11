@@ -120,6 +120,7 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
     submissions: submissions.map((submission) => ({
       ...submission,
       assignment_title: assignmentTitleById.get(submission.assignment_id),
+      assignment_rubric: assignments.find((assignment) => assignment.id === submission.assignment_id)?.rubric_json || null,
       student_name: studentNameById.get(submission.student_id),
       file_url: (submission.file_url && submissionUrlByPath.get(submission.file_url)) || submission.file_url,
     })),

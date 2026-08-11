@@ -35,10 +35,12 @@ const StudentResultsRoute = lazy(() => import('../features/students/StudentResul
 const StudentResultsSubjectRoute = lazy(() => import('../features/students/StudentResultsRoute').then((module) => ({ default: module.StudentResultsSubjectRoute })));
 const StudentCommunityRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentCommunityRoute })));
 const StudentReportsRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentReportsRoute })));
+const StudentTutorSessionsRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentTutorSessionsRoute })));
 const StudentSettingsRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentSettingsRoute })));
 const TutorClassesRoute = lazy(() => import('../features/tutors/TutorClassesRoute').then((module) => ({ default: module.TutorClassesRoute })));
 const TutorAssignmentsRoute = lazy(() => import('../features/tutors/TutorAssignmentsRoute').then((module) => ({ default: module.TutorAssignmentsRoute })));
 const TutorDashboardRoute = lazy(() => import('../features/tutors/TutorDashboardRoute').then((module) => ({ default: module.TutorDashboardRoute })));
+const TutorLearnerBriefRoute = lazy(() => import('../features/tutors/TutorLearnerBriefRoute').then((module) => ({ default: module.TutorLearnerBriefRoute })));
 const TutorReportsRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorReportsRoute })));
 const TutorRiskRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorRiskRoute })));
 const TutorSessionsRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorSessionsRoute })));
@@ -90,6 +92,7 @@ export function App() {
         <Route path="/dashboard/student/results/subjects/:subject" element={<ProtectedRoute roles={['student']}><StudentResultsSubjectRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/results/:resultId" element={<ProtectedRoute roles={['student']}><StudentResultDetailRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/careers" element={<ProtectedRoute roles={['student']}><StudentCareersRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/student/sessions" element={<ProtectedRoute roles={['student']}><StudentTutorSessionsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/community" element={<ProtectedRoute roles={['student']}><StudentCommunityRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/reports" element={<ProtectedRoute roles={['student']}><StudentReportsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/settings" element={<ProtectedRoute roles={['student']}><StudentSettingsRoute /></ProtectedRoute>} />
@@ -113,6 +116,7 @@ export function App() {
         <Route path="/dashboard/admin/ops-runbook" element={<ProtectedRoute roles={['admin']}><AdminOpsRunbookRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/reports" element={<ProtectedRoute roles={['admin']}><AdminReportsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor" element={<ProtectedRoute roles={['tutor']}><TutorDashboardRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/tutor/learners/:studentId" element={<ProtectedRoute roles={['tutor']}><TutorLearnerBriefRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/classes" element={<ProtectedRoute roles={['tutor']}><TutorClassesRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/assignments" element={<ProtectedRoute roles={['tutor']}><TutorAssignmentsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/sessions" element={<ProtectedRoute roles={['tutor']}><TutorSessionsRoute /></ProtectedRoute>} />

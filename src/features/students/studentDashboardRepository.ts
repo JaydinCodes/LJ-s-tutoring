@@ -3,7 +3,7 @@ import { getE2EStudentDashboard } from '../../lib/e2e/mockRoleData';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import { callRpc } from '../../lib/supabase/rpc';
 import { resolveSignedUrls } from '../../lib/supabase/storage';
-import type { Assignment, AssignmentSubmission, ClassRecord, Profile, Student, StudentAssignedTutor, StudentDashboardView, StudentProgress } from '../../types/lms';
+import type { Assignment, AssignmentSubmission, ClassRecord, CompetencyEvidence, Profile, Student, StudentAssignedTutor, StudentDashboardView, StudentProgress, StudentSessionRow } from '../../types/lms';
 
 const DASHBOARD_DETAIL_LIMIT = 100;
 
@@ -38,7 +38,9 @@ function emptyStudentDashboard(): StudentDashboardView {
     ],
     assignments: [],
     progress: [],
+    competencyEvidence: [],
     classes: [],
+    sessions: [],
     submissions: [],
     recommendedNext: null,
     recommendedQuiz: null,
@@ -88,12 +90,13 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     return null;
   }
 
-  const [assignmentsResult, progressResult, enrollmentsResult, submissionsResult, assignedTutorsResult] = await Promise.all([
+  const [assignmentsResult, progressResult, competencyEvidenceResult, enrollmentsResult, submissionsResult, assignedTutorsResult, sessionsResult] = await Promise.all([
     // Students never query the raw assignments table. This database-owned,
     // explicit projection omits private/internal fields (including memo_url)
     // and applies the same eligibility gate as uploads and submission RPCs.
     supabase.rpc('get_student_accessible_assignments').limit(DASHBOARD_DETAIL_LIMIT),
-    supabase.from('student_progress').select('id, student_id, subject_id, topic, score, cognitive_level, recorded_at').eq('student_id', student.id).order('recorded_at', { ascending: false }).limit(DASHBOARD_DETAIL_LIMIT),
+    supabase.from('student_progress').select('id, student_id, subject_id, topic, score, cognitive_level, recorded_at, source_submission_id').eq('student_id', student.id).order('recorded_at', { ascending: false }).limit(DASHBOARD_DETAIL_LIMIT),
+    (supabase as unknown as { from: (table: 'competency_evidence') => { select: (columns: string) => { eq: (column: string, value: string) => { order: (column: string, options: { ascending: boolean }) => { limit: (limit: number) => Promise<{ data: CompetencyEvidence[] | null; error: Error | null }> } } } } }).from('competency_evidence').select('id, student_id, subject_id, competency, cognitive_level, score, source_submission_id, rubric_criterion_id, recorded_at').eq('student_id', student.id).order('recorded_at', { ascending: false }).limit(DASHBOARD_DETAIL_LIMIT),
     supabase.from('class_enrollments').select('class_id').eq('student_id', student.id).eq('status', 'active').limit(DASHBOARD_DETAIL_LIMIT),
     // Student submission reads must go through the redacted RPC so unreleased marks and feedback stay hidden.
     supabase.rpc('get_student_assignment_submissions').limit(DASHBOARD_DETAIL_LIMIT),
@@ -101,9 +104,12 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     // with an active allocation to the current learner. Students have no
     // direct SELECT policy on the allocation or tutor base tables.
     supabase.rpc('get_student_assigned_tutors'),
+    // This RPC deliberately redacts private tutor notes and internal session
+    // fields; students must never read public.sessions directly.
+    supabase.rpc('get_student_sessions'),
   ]);
 
-  for (const result of [assignmentsResult, progressResult, enrollmentsResult, submissionsResult, assignedTutorsResult]) {
+  for (const result of [assignmentsResult, progressResult, competencyEvidenceResult, enrollmentsResult, submissionsResult, assignedTutorsResult, sessionsResult]) {
     if (result.error) {
       throw result.error;
     }
@@ -111,6 +117,7 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
 
   const assignments = (assignmentsResult.data || []) as Assignment[];
   const progress = (progressResult.data || []) as StudentProgress[];
+  const competencyEvidence = competencyEvidenceResult.data || [];
   const enrolledClassIds = ((enrollmentsResult.data || []) as Array<{ class_id: string }>).map((item) => item.class_id);
   const classesResult = enrolledClassIds.length
     ? await supabase.from('classes').select('id, name, tutor_id, subject_id, grade, location, day_of_week, start_time, end_time, ngo_partner_id, status, created_at, updated_at').in('id', enrolledClassIds).neq('status', 'inactive').limit(DASHBOARD_DETAIL_LIMIT)
@@ -121,6 +128,7 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
   const classes = (classesResult.data || []) as ClassRecord[];
   const submissions = (submissionsResult.data || []) as AssignmentSubmission[];
   const assignedTutors = (assignedTutorsResult.data || []) as StudentAssignedTutor[];
+  const sessions = (sessionsResult.data || []) as StudentSessionRow[];
   // Exact totals live in the database. The arrays above are bounded
   // presentation data and must never be used to derive a dashboard metric.
   const dashboardMetrics = await callRpc(supabase, 'get_student_dashboard_metrics', {});
@@ -132,6 +140,7 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
   const subjectIds = Array.from(new Set([
     ...assignments.map((assignment) => assignment.subject_id),
     ...progress.map((item) => item.subject_id),
+    ...competencyEvidence.map((item) => item.subject_id),
   ].filter((subjectId): subjectId is string => typeof subjectId === 'string')));
   const subjectsResult = subjectIds.length
     ? await supabase.from('subjects').select('*').in('id', subjectIds)
@@ -163,7 +172,27 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     ...item,
     subject: item.subject || (item.subject_id ? subjectNameById.get(item.subject_id) : undefined),
   }));
-  const weakestProgress = [...progressWithSubjects]
+  const evidenceWithSubjects = competencyEvidence.map((item) => ({
+    ...item,
+    subject: item.subject || (item.subject_id ? subjectNameById.get(item.subject_id) : undefined),
+  }));
+  // Existing manual progress stays visible. Assignment-derived legacy rows are
+  // replaced by criterion-level evidence as soon as the new model is present.
+  const evidenceBackedProgress: StudentProgress[] = evidenceWithSubjects.map((item) => ({
+    id: item.id,
+    student_id: item.student_id,
+    subject_id: item.subject_id,
+    subject: item.subject,
+    topic: item.competency,
+    score: Number(item.score),
+    cognitive_level: item.cognitive_level,
+    recorded_at: item.recorded_at,
+    source_submission_id: item.source_submission_id,
+  }));
+  const learningProgress = evidenceBackedProgress.length
+    ? [...evidenceBackedProgress, ...progressWithSubjects.filter((item) => !item.source_submission_id)]
+    : progressWithSubjects;
+  const weakestProgress = [...learningProgress]
     .filter((item) => Number.isFinite(Number(item.score)))
     .sort((left, right) => Number(left.score) - Number(right.score) || left.topic.localeCompare(right.topic))[0];
 
@@ -181,9 +210,11 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
       { label: 'Classes', value: String(metrics.classes), helper: 'Current classes for this learner.', tone: 'blue' },
     ],
     assignments: assignmentsWithSubjects,
-    progress: progressWithSubjects,
+    progress: learningProgress,
+    competencyEvidence: evidenceWithSubjects,
     classes,
     assignedTutors,
+    sessions,
     submissions: submissionsWithSignedUrls,
     recommendedNext: weakestProgress ? {
       title: `Recommended next: ${weakestProgress.topic}`,

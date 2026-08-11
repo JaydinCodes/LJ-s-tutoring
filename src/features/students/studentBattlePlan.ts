@@ -112,13 +112,21 @@ export function selectTodayBattlePlan(
 
   const careerGoal = data.careerGoals?.[0];
   const recommendation = data.recommendedNext;
+  // A recommendation is only useful when its call-to-action lands on the
+  // matching work. Prefer a live assignment whose title or subject carries
+  // the focus; otherwise the progress view remains the honest destination.
+  const recommendedAssignment = recommendation ? selectDueTasks(studentData).find((task) => {
+    const focus = `${recommendation.title} ${recommendation.description}`.toLowerCase();
+    return focus.includes(task.assignment.title.toLowerCase())
+      || Boolean(task.assignment.subject && focus.includes(task.assignment.subject.toLowerCase()));
+  }) : undefined;
   addUnique(candidates, recommendation ? {
     id: careerGoal ? `career:${careerGoal.goalId}` : 'study:recommended-next',
     kind: careerGoal ? 'career' : 'topic',
     title: recommendation.title,
     description: recommendation.description,
     estimatedMinutes: 20,
-    to: careerGoal ? '/dashboard/student/careers' : '/dashboard/student/progress',
+    to: careerGoal ? '/dashboard/student/careers' : recommendedAssignment ? `/dashboard/student/assignments/${recommendedAssignment.assignmentId}` : '/dashboard/student/progress',
     priority: 60,
   } : {
     id: 'study:daily-focus',

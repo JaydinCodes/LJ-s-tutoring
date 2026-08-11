@@ -20,7 +20,14 @@ export interface ParentReportStudent {
     score: number;
   } | null;
   average_mark: number | null;
+  session_count: number;
+  attendance_rate: number | null;
+  completed_work_count: number;
+  latest_student_summary?: string | null;
+  next_session_date?: string | null;
 }
+
+type ParentLearningUpdate = Pick<ParentReportStudent, 'student_id' | 'session_count' | 'attendance_rate' | 'completed_work_count' | 'latest_student_summary' | 'next_session_date'>;
 
 export async function loadParentProgressReports(): Promise<{ students: ParentReportStudent[] }> {
   if (isE2EAuthMockEnabled()) {
@@ -28,14 +35,18 @@ export async function loadParentProgressReports(): Promise<{ students: ParentRep
   }
 
   const client = requireSupabase();
-  const result = await client.rpc('get_parent_progress_reports');
-  if (result.error) {
-    captureAppError(result.error, {
+  const [result, updatesResult] = await Promise.all([
+    client.rpc('get_parent_progress_reports'),
+    (client as unknown as { rpc: (name: 'get_parent_learning_updates') => Promise<{ data: ParentLearningUpdate[] | null; error: Error | null }> }).rpc('get_parent_learning_updates'),
+  ]);
+  if (result.error || updatesResult.error) {
+    const error = result.error || updatesResult.error;
+    captureAppError(error, {
       featureArea: 'parent',
       action: 'parent_reports.rpc_failed',
       role: 'parent',
     });
-    throw result.error;
+    throw error;
   }
 
   const rows = (result.data || []) as ParentProgressReportRow[];
@@ -50,6 +61,9 @@ export async function loadParentProgressReports(): Promise<{ students: ParentRep
       released_results: [],
       latest_topic: row.topic ? { topic: row.topic, score: Number(row.topic_score ?? 0) } : null,
       average_mark: null,
+      session_count: 0,
+      attendance_rate: null,
+      completed_work_count: 0,
     };
 
     if (row.assignment_title && row.marks_awarded != null) {
@@ -68,9 +82,11 @@ export async function loadParentProgressReports(): Promise<{ students: ParentRep
     grouped.set(row.student_id, current);
   }
 
+  const updateByStudentId = new Map(((updatesResult.data || []) as ParentLearningUpdate[]).map((update) => [update.student_id, update]));
   const students = Array.from(grouped.values()).map((student) => ({
     ...student,
     average_mark: average(student.released_results.map((resultRow) => resultRow.marks_awarded)),
+    ...updateByStudentId.get(student.student_id),
   }));
 
   return { students };

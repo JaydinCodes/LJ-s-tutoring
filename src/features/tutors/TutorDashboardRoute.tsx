@@ -180,7 +180,7 @@ function LearnerCell({ row }: { row: TutorDashboardView['learnerProgress'][numbe
     <div className="flex items-center gap-3">
       <ProgressRing value={row.average_mark} label={`${row.student_name} average mark`} />
       <div className="min-w-0">
-        <p className="font-semibold text-slate-950">{row.student_name}</p>
+        <Link className="font-semibold text-slate-950 hover:text-brand-aegean" to={`/dashboard/tutor/learners/${row.student_id}`}>{row.student_name}</Link>
         <p className="mt-1 text-xs text-slate-500">{row.focus_notes || row.school || 'General support'}</p>
       </div>
     </div>
