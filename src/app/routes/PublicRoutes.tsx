@@ -12,7 +12,7 @@ const tutors = [
   {
     name: 'Jaydin Morrison',
     subject: 'Mathematics',
-    role: 'Senior CAPS tutor',
+    role: 'Co-Founder',
     bio: 'Jaydin helps learners rebuild confidence through patient explanations, exam-focused practice, and a clear plan for closing foundational gaps.',
     // Versioned filename prevents a visitor's existing media cache from serving
     // the retired portrait after deployment.
@@ -23,7 +23,7 @@ const tutors = [
   {
     name: 'Nicholas Dreyer',
     subject: 'Physical Sciences',
-    role: 'Physics Tutor',
+    role: 'Physical Sciences Tutor',
     bio: 'Nicholas makes Physics feel less abstract by connecting the theory to clear examples, structured calculations, and the reasoning behind every formula.',
     image: '/images/nicholas-dreyer.webp',
     imageWidth: 792,
@@ -32,7 +32,7 @@ const tutors = [
   {
     name: 'Liam Newton',
     subject: 'Mathematics',
-    role: 'Problem-solving tutor',
+    role: 'Co-Founder',
     bio: 'Liam focuses on problem-solving habits and calculus foundations, helping learners turn difficult questions into manageable steps and build momentum.',
     image: '/images/liam-newton.webp',
     imageWidth: 1200,
