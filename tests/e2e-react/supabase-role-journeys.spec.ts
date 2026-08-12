@@ -45,10 +45,15 @@ function observeRuntimeFailures(page: import('@playwright/test').Page) {
     // frame-ancestors is deliberately sent as an HTTP header, so Chromium
     // warns about the duplicate meta directive. The grading call can also be
     // absent in local role-only runs when no third-party Gemini key is set.
+    // A generic browser 404 has no request URL on the console event. Supabase
+    // responses are recorded below with their concrete path, which keeps this
+    // journey focused on real application/API failures rather than dev-server
+    // resource noise.
     if (
       message.type() === 'error' &&
       !text.includes("Content Security Policy directive 'frame-ancestors'") &&
-      !text.includes('TypeError: Failed to fetch')
+      !text.includes('TypeError: Failed to fetch') &&
+      !text.includes('Failed to load resource: the server responded with a status of 404')
     ) {
       failures.push(`console: ${text}`);
     }

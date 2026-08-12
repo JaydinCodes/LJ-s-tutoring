@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
 import { useState } from 'react';
+import { Check, Mail, Phone, Send, WalletCards } from 'lucide-react';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
@@ -110,22 +111,33 @@ function CreateTutorForm({ onCreated }: { onCreated: () => Promise<void> }) {
   }
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-950">Invite tutor</h2>
-          <p className="mt-1 text-sm text-slate-600">Create the tutor account and roster profile together. No account ID is needed.</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">Tutor roster</p>
+          <h2 className="mt-1 text-xl font-semibold text-slate-950 dark:text-white">Invite a tutor</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">Set up their account, teaching profile, and rate in one place. They'll receive an email invitation to get started.</p>
         </div>
         <StatusBadge value="admin_only" />
       </div>
-      <form className="mt-5 grid gap-4 lg:grid-cols-2" onSubmit={(event) => void submit(event)}>
-        <FormField label="Full name"><TextInput required value={fullName} onChange={(event) => setFullName(event.target.value)} /></FormField>
-        <FormField label="Email"><TextInput required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></FormField>
-        <FormField label="Phone"><TextInput value={phone} onChange={(event) => setPhone(event.target.value)} /></FormField>
-        <MultiSelect label="Subjects" options={tutorSubjects} value={subjects} onChange={setSubjects} />
-        <MultiSelect label="Grades" options={tutorGrades} value={grades} onChange={setGrades} />
-        <FormField label="Hourly rate"><TextInput type="number" min="0" step="0.01" value={hourlyRate} onChange={(event) => setHourlyRate(event.target.value)} /></FormField>
-        <FormField label="Status"><StatusSelect value={status} onChange={setStatus} /></FormField>
+      <form className="mt-6" onSubmit={(event) => void submit(event)}>
+        <div className="grid gap-x-8 gap-y-6 lg:grid-cols-2">
+          <section className="space-y-4" aria-labelledby="tutor-contact-heading">
+            <p id="tutor-contact-heading" className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Contact details</p>
+            <FormField label="Full name"><TextInput required autoComplete="name" placeholder="e.g. Nandi Mokoena" value={fullName} onChange={(event) => setFullName(event.target.value)} /></FormField>
+            <FormField label="Email address"><div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><TextInput required autoComplete="email" className="pl-10" type="email" placeholder="tutor@example.com" value={email} onChange={(event) => setEmail(event.target.value)} /></div></FormField>
+            <FormField label="Phone number" hint="Optional — useful for roster coordination."><div className="relative"><Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><TextInput autoComplete="tel" className="pl-10" placeholder="e.g. 082 123 4567" value={phone} onChange={(event) => setPhone(event.target.value)} /></div></FormField>
+          </section>
+          <section className="space-y-4 lg:border-l lg:border-slate-200 lg:pl-8 dark:lg:border-white/10" aria-labelledby="tutor-teaching-heading">
+            <p id="tutor-teaching-heading" className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Teaching profile</p>
+            <MultiSelect label="Subjects" options={tutorSubjects} value={subjects} onChange={setSubjects} />
+            <MultiSelect label="Grades taught" options={tutorGrades} value={grades} onChange={setGrades} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Hourly rate" hint="Optional, in South African rand."><div className="relative"><WalletCards className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><span className="pointer-events-none absolute left-9 top-1/2 -translate-y-1/2 text-sm text-slate-500">R</span><TextInput className="pl-14" type="number" min="0" step="0.01" placeholder="0.00" value={hourlyRate} onChange={(event) => setHourlyRate(event.target.value)} /></div></FormField>
+              <FormField label="Initial status"><StatusSelect value={status} onChange={setStatus} /></FormField>
+            </div>
+          </section>
+        </div>
         <SubmitRow busy={busy} label="Send tutor invite" message={message} error={error} />
       </form>
     </Card>
@@ -134,11 +146,28 @@ function CreateTutorForm({ onCreated }: { onCreated: () => Promise<void> }) {
 
 function MultiSelect({ label, options, value, onChange }: { label: string; options: string[]; value: string[]; onChange: (value: string[]) => void }) {
   return (
-    <FormField label={label} hint="Select one or more.">
-      <select multiple required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={value} onChange={(event) => onChange(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>
-        {options.map((option) => <option key={option} value={option}>{option}</option>)}
-      </select>
-    </FormField>
+    <fieldset>
+      <legend className="text-sm font-semibold text-slate-800 dark:text-brand-parchment">{label}</legend>
+      <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-brand-marble">Choose all that apply.</p>
+      <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label={label}>
+        {options.map((option) => {
+          const selected = value.includes(option);
+          return (
+            <button
+              key={option}
+              aria-pressed={selected}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean/50 ${selected ? 'border-brand-aegean bg-brand-aegean text-white shadow-sm dark:border-brand-gold dark:bg-brand-gold dark:text-brand-obsidian' : 'border-slate-200 bg-white/70 text-slate-700 hover:border-brand-aegean/50 hover:bg-brand-aegean/5 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:border-brand-gold/60 dark:hover:bg-white/[0.08]'}`}
+              type="button"
+              onClick={() => onChange(selected ? value.filter((item) => item !== option) : [...value, option])}
+            >
+              <span className={`grid h-4 w-4 place-items-center rounded-full border ${selected ? 'border-current bg-current text-brand-aegean dark:text-brand-gold' : 'border-current/50'}`} aria-hidden="true">{selected ? <Check className="h-3 w-3" strokeWidth={3} /> : null}</span>
+              {option}
+            </button>
+          );
+        })}
+      </div>
+      <input required value={value.length ? 'selected' : ''} className="sr-only" aria-label={`${label} selection`} onChange={() => undefined} />
+    </fieldset>
   );
 }
 
@@ -207,14 +236,15 @@ function ResendInviteButton({ profileId, email, role }: { profileId: string; ema
     setMessage(null);
     setError(null);
     try {
-      const result = await requireSupabase().functions.invoke<{ ok: boolean }>('admin-invite-user', {
+      const result = await requireSupabase().functions.invoke<{ ok: boolean; inviteUrl?: string }>('admin-invite-user', {
         body: { mode: 'resend_invite', profileId },
       });
-      if (result.error || !result.data?.ok) throw result.error || new Error('Could not resend tutor invitation.');
+      if (result.error || !result.data?.ok || !result.data.inviteUrl) throw result.error || new Error('Could not generate tutor sign-in link.');
+      await navigator.clipboard.writeText(result.data.inviteUrl);
       await recordAuditEvent({ action: 'user.invite_resent', entityType: 'profile', entityId: profileId, metadata: { role } });
-      setMessage(`A fresh invitation was sent to ${email || 'this tutor'}.`);
+      setMessage(`A fresh sign-in link for ${email || 'this tutor'} was copied. Send it to them privately.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not resend tutor invitation.');
+      setError(err instanceof Error ? err.message : 'Could not generate tutor sign-in link.');
     } finally {
       setBusy(false);
     }
@@ -223,9 +253,9 @@ function ResendInviteButton({ profileId, email, role }: { profileId: string; ema
   return (
     <section className="mt-5 border-t border-slate-200 pt-4">
       <h4 className="font-semibold text-slate-950">Invitation</h4>
-      <p className="mt-1 text-sm text-slate-600">Send a fresh tutor portal invitation if the previous email expired or used the wrong link.</p>
+      <p className="mt-1 text-sm text-slate-600">Generate and copy a fresh tutor portal sign-in link if the original invitation expired or used the wrong link.</p>
       <button type="button" disabled={busy || !email} onClick={() => void resend()} className="mt-3 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-60">
-        {busy ? 'Sending invitation...' : 'Resend tutor invitation'}
+        {busy ? 'Generating link...' : 'Copy fresh tutor sign-in link'}
       </button>
       {message ? <p className="mt-2 text-sm font-semibold text-emerald-700">{message}</p> : null}
       {error ? <p className="mt-2 text-sm font-semibold text-red-700">{error}</p> : null}
@@ -281,7 +311,7 @@ function TutorDeletionAction({
 
 function StatusSelect({ value, onChange }: { value: RecordStatus; onChange: (status: RecordStatus) => void }) {
   return (
-    <select className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={value} onChange={(event) => onChange(event.target.value as RecordStatus)}>
+    <select className="w-full rounded-2xl border border-brand-marble bg-white px-3 py-2 text-sm text-brand-obsidian outline-none transition focus:border-brand-aegean focus:ring-2 focus:ring-brand-aegean/20 dark:border-brand-marble/30 dark:bg-brand-navy dark:text-brand-parchment dark:focus:border-brand-gold dark:focus:ring-brand-gold/20" value={value} onChange={(event) => onChange(event.target.value as RecordStatus)}>
       <option value="pending">Pending</option>
       <option value="active">Active</option>
       <option value="approved">Approved</option>
@@ -293,12 +323,16 @@ function StatusSelect({ value, onChange }: { value: RecordStatus; onChange: (sta
 
 function SubmitRow({ busy, label, message, error }: { busy: boolean; label: string; message: string | null; error: string | null }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
-      <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
-        {busy ? 'Saving...' : label}
-      </button>
-      {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
-      {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
+    <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-5 dark:border-white/10">
+      <p className="text-sm text-slate-500 dark:text-slate-400"><span className="font-semibold text-slate-700 dark:text-slate-200">Ready to invite?</span> The tutor can complete their setup from the email.</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <button disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-navy px-5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(15,23,42,0.18)] transition hover:-translate-y-0.5 hover:bg-brand-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-brand-gold dark:text-brand-obsidian dark:hover:bg-yellow-300" type="submit">
+          <Send className="h-4 w-4" aria-hidden="true" />
+          {busy ? 'Sending invitation...' : label}
+        </button>
+        {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
+        {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
+      </div>
     </div>
   );
 }

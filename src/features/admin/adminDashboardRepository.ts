@@ -76,6 +76,9 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
   }
   const profiles = (profilesResult.data || []) as Profile[];
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+  // Tutor deletion retains a tombstone for finance/audit history. It is not a
+  // real roster member, so do not render it in administrator tutor lists.
+  const visibleTutors = tutors.filter((tutor) => !profileById.get(tutor.profile_id)?.email?.endsWith('@removed.invalid'));
   // assignment-submissions is a private bucket -- resolve the stored path to a
   // short-lived signed URL so admins can actually open the file (see
   // src/lib/supabase/storage.ts).
@@ -90,7 +93,7 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
   return {
     metrics: [
       { label: 'Students', value: String(students.length), helper: 'Recent learner records.', tone: 'teal' },
-      { label: 'Tutors', value: String(tutors.length), helper: 'Recent tutor records.', tone: 'violet' },
+      { label: 'Tutors', value: String(visibleTutors.length), helper: 'Recent tutor records.', tone: 'violet' },
       { label: 'Assignments', value: String(assignments.length), helper: 'Recently created assignment records.', tone: 'amber' },
       { label: 'Outstanding payments', value: formatCurrency(outstanding), helper: 'Student payments not marked as paid.', tone: 'blue' },
     ],
@@ -110,7 +113,7 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
           student_name: studentDisplayNameById.get(link.student_id),
         })),
     })),
-    tutors: tutors.map((tutor) => ({
+    tutors: visibleTutors.map((tutor) => ({
       ...tutor,
       full_name: profileById.get(tutor.profile_id)?.full_name,
       email: profileById.get(tutor.profile_id)?.email,
