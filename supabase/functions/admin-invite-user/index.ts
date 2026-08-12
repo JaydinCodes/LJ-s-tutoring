@@ -210,12 +210,25 @@ Deno.serve(async (req) => {
       if (authError || !authData.user?.email) throw new Error('invite_auth_user_not_found');
       if (authData.user.email_confirmed_at) throw new Error('invite_already_accepted');
 
-      const { error: resendError } = await admin.auth.admin.inviteUserByEmail(authData.user.email, {
-        redirectTo: getInviteRedirectUrl(roleResult.data),
+      // Supabase only emails invitations while creating a new Auth user. A
+      // second inviteUserByEmail call for this existing, unaccepted user
+      // returns 409. Generate a one-time magic link instead so the admin can
+      // copy it to the person and it still lands in their role's portal.
+      const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: authData.user.email,
+        options: { redirectTo: getInviteRedirectUrl(roleResult.data) },
       });
-      if (resendError) throw new Error(resendError.message);
+      if (linkError || !linkData.properties.action_link) throw new Error(linkError?.message || 'invite_link_generation_failed');
 
-      return json({ ok: true, mode: 'resend_invite', role: roleResult.data, profileId: resend.data.profileId, userId: authUserId });
+      return json({
+        ok: true,
+        mode: 'resend_invite',
+        role: roleResult.data,
+        profileId: resend.data.profileId,
+        userId: authUserId,
+        inviteUrl: linkData.properties.action_link,
+      });
     }
 
     const parsed = AdminUserInviteSchema.safeParse(body);

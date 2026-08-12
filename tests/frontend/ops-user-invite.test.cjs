@@ -29,6 +29,8 @@ test('admin user invite workflow is routed through a backend-only Supabase admin
   assert.match(edgeFunction, /getInviteRedirectUrl\(input\.role\)/);
   assert.match(edgeFunction, /mode: z\.literal\('resend_invite'\)/);
   assert.match(edgeFunction, /admin\.auth\.admin\.getUserById/);
+  assert.match(edgeFunction, /admin\.auth\.admin\.generateLink/);
+  assert.match(edgeFunction, /type: 'magiclink'/);
   assert.match(edgeFunction, /invite_already_accepted/);
   assert.match(edgeFunction, /admin\.auth\.admin\.createUser/);
   assert.match(edgeFunction, /\.from\('profiles'\)/);
@@ -41,8 +43,8 @@ test('admin user invite workflow is routed through a backend-only Supabase admin
   assert.doesNotMatch(adminTutorsRoute, /Account user ID/);
   assert.match(adminStudentsRoute, /functions\.invoke<\{ ok: boolean; profileId: string; userId: string \}>\('admin-invite-user'/);
   assert.doesNotMatch(adminStudentsRoute, /Account user ID/);
-  assert.match(adminTutorsRoute, /Resend tutor invitation/);
-  assert.match(adminStudentsRoute, /Resend student invitation/);
+  assert.match(adminTutorsRoute, /Copy fresh tutor sign-in link/);
+  assert.match(adminStudentsRoute, /Copy fresh student sign-in link/);
   for (const route of [adminUsersRoute, adminStudentsRoute]) {
     assert.match(route, /Choose grade/);
     assert.match(route, /Grade 12/);

@@ -236,14 +236,15 @@ function ResendInviteButton({ profileId, email, role }: { profileId: string; ema
     setMessage(null);
     setError(null);
     try {
-      const result = await requireSupabase().functions.invoke<{ ok: boolean }>('admin-invite-user', {
+      const result = await requireSupabase().functions.invoke<{ ok: boolean; inviteUrl?: string }>('admin-invite-user', {
         body: { mode: 'resend_invite', profileId },
       });
-      if (result.error || !result.data?.ok) throw result.error || new Error('Could not resend tutor invitation.');
+      if (result.error || !result.data?.ok || !result.data.inviteUrl) throw result.error || new Error('Could not generate tutor sign-in link.');
+      await navigator.clipboard.writeText(result.data.inviteUrl);
       await recordAuditEvent({ action: 'user.invite_resent', entityType: 'profile', entityId: profileId, metadata: { role } });
-      setMessage(`A fresh invitation was sent to ${email || 'this tutor'}.`);
+      setMessage(`A fresh sign-in link for ${email || 'this tutor'} was copied. Send it to them privately.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not resend tutor invitation.');
+      setError(err instanceof Error ? err.message : 'Could not generate tutor sign-in link.');
     } finally {
       setBusy(false);
     }
@@ -252,9 +253,9 @@ function ResendInviteButton({ profileId, email, role }: { profileId: string; ema
   return (
     <section className="mt-5 border-t border-slate-200 pt-4">
       <h4 className="font-semibold text-slate-950">Invitation</h4>
-      <p className="mt-1 text-sm text-slate-600">Send a fresh tutor portal invitation if the previous email expired or used the wrong link.</p>
+      <p className="mt-1 text-sm text-slate-600">Generate and copy a fresh tutor portal sign-in link if the original invitation expired or used the wrong link.</p>
       <button type="button" disabled={busy || !email} onClick={() => void resend()} className="mt-3 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-60">
-        {busy ? 'Sending invitation...' : 'Resend tutor invitation'}
+        {busy ? 'Generating link...' : 'Copy fresh tutor sign-in link'}
       </button>
       {message ? <p className="mt-2 text-sm font-semibold text-emerald-700">{message}</p> : null}
       {error ? <p className="mt-2 text-sm font-semibold text-red-700">{error}</p> : null}
