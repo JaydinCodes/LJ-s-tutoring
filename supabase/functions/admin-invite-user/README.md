@@ -33,11 +33,22 @@ supabase functions deploy admin-invite-user --project-ref <your-project-ref>
 ```
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are injected
-automatically by the Edge runtime. Only one optional secret is custom:
+automatically by the Edge runtime. Configure these role-specific callback secrets
+in production so an accepted invitation opens the matching portal:
 
 ```bash
-supabase secrets set APP_INVITE_REDIRECT_URL="https://<app>/dashboard/login"
+supabase secrets set APP_ADMIN_INVITE_REDIRECT_URL="https://admin.projectodysseus.live/dashboard/login"
+supabase secrets set APP_TUTOR_INVITE_REDIRECT_URL="https://tutor.projectodysseus.live/dashboard/login"
+supabase secrets set APP_STUDENT_INVITE_REDIRECT_URL="https://student.projectodysseus.live/dashboard/login"
 ```
+
+Add all three URLs to **Authentication → URL Configuration → Redirect URLs** in
+Supabase as well. `APP_INVITE_REDIRECT_URL` remains a shared fallback for local
+development only.
+
+Administrators can resend an unaccepted invite from the tutor or student roster.
+The function re-reads the stored profile role server-side, refuses an already
+accepted account, and sends the fresh invitation to that role's portal URL.
 
 > Note: unlike the Fastify route, this function has **no dev MFA bypass** — AAL2 is
 > always required, because an Edge Function only runs deployed. Keep using the

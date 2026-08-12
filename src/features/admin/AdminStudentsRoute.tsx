@@ -413,6 +413,7 @@ function StudentRecordCard({
         </div>
         <SubmitRow busy={busy} label="Save student" message={message} error={error} />
       </form>
+      <ResendStudentInviteButton profileId={student.profile_id} email={student.email} />
       <div className="mt-5 border-t border-slate-200 pt-4">
         <h4 className="text-sm font-semibold text-slate-950">Linked guardians</h4>
         <div className="mt-3 grid gap-2">
@@ -460,6 +461,42 @@ function StudentRecordCard({
       setBusy(false);
     }
   }
+}
+
+function ResendStudentInviteButton({ profileId, email }: { profileId: string; email?: string }) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function resend() {
+    setBusy(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const result = await requireSupabase().functions.invoke<{ ok: boolean }>('admin-invite-user', {
+        body: { mode: 'resend_invite', profileId },
+      });
+      if (result.error || !result.data?.ok) throw result.error || new Error('Could not resend student invitation.');
+      await recordAuditEvent({ action: 'user.invite_resent', entityType: 'profile', entityId: profileId, metadata: { role: 'student' } });
+      setMessage(`A fresh invitation was sent to ${email || 'this student'}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not resend student invitation.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mt-5 border-t border-slate-200 pt-4">
+      <h4 className="font-semibold text-slate-950">Invitation</h4>
+      <p className="mt-1 text-sm text-slate-600">Send a fresh learner portal invitation if the previous email expired or used the wrong link.</p>
+      <button type="button" disabled={busy || !email} onClick={() => void resend()} className="mt-3 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-60">
+        {busy ? 'Sending invitation...' : 'Resend student invitation'}
+      </button>
+      {message ? <p className="mt-2 text-sm font-semibold text-emerald-700">{message}</p> : null}
+      {error ? <p className="mt-2 text-sm font-semibold text-red-700">{error}</p> : null}
+    </section>
+  );
 }
 
 function GuardianRecordCard({ guardian, onSaved }: { guardian: Guardian & { linked_students?: Array<StudentGuardian & { student_name?: string }> }; onSaved: () => Promise<void> }) {
