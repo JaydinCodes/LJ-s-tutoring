@@ -655,7 +655,9 @@ function PublicLayout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-brand-navy/10 bg-white/80 shadow-sm shadow-brand-navy/10 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70">
         <nav className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link className="flex min-w-0 items-center gap-2 rounded-lg text-base font-semibold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2 sm:gap-3 sm:text-lg" to="/" onClick={closeMenu}>
-            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-navy text-sm font-bold text-white">PO</span>
+            <span className="grid h-10 w-10 place-items-center overflow-hidden rounded-2xl bg-white">
+              <img className="h-full w-full object-contain" src="/images/project-odysseus-logo-crisp.png" alt="" />
+            </span>
             <span className="greek-display truncate text-xl">Project Odysseus</span>
           </Link>
           <div className="hidden items-center gap-2 text-sm font-semibold md:flex">

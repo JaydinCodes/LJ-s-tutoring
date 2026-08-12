@@ -14,6 +14,7 @@ export interface CreateAssignmentInput {
   attachment?: File | null;
   rubricJson?: string;
   organizationId?: string;
+  studentIds?: string[];
 }
 
 export interface SubmitAssignmentInput {
@@ -734,6 +735,14 @@ export async function createAssignment(input: CreateAssignmentInput) {
   }
   if (!Number.isInteger(draft.revision) || draft.revision < 1) {
     throw new Error('Assignment revision is unavailable. Reload after maintenance before publishing.');
+  }
+  if (input.studentIds?.length) {
+    const targets = await client.rpc('set_assignment_targets', {
+      p_assignment_id: draft.id,
+      p_class_ids: [],
+      p_student_ids: input.studentIds,
+    });
+    if (targets.error) throw mutationError(targets.error, 'Could not assign this work to the selected learners.');
   }
   const uploadId = createSubmissionAttemptId();
   let attachmentPath: string | null = null;

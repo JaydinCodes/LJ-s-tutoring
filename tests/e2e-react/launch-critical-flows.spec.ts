@@ -44,7 +44,7 @@ test.use({ viewport: { width: 390, height: 900 } });
 
 test('public homepage loads', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('link', { name: /PO Project Odysseus/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Project Odysseus/i })).toBeVisible();
   await expect(page.getByText(/Targeted CAPS support/i)).toBeVisible();
   await expect(page.getByRole('link', { name: /View programs/i })).toBeVisible();
 });
