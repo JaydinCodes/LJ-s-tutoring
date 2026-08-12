@@ -9,13 +9,17 @@ import { formatDate } from '../../lib/utils/format';
 import type { Assignment } from '../../types/lms';
 import { AssignmentLifecycleCard, CreateAssignmentForm } from '../admin/AdminAssignmentsRoute';
 import { loadTutorDashboard } from './tutorDashboardRepository';
+import { loadTutorAllocatedStudents } from './tutorOperationsRepository';
 
 export function TutorAssignmentsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadTutorDashboard, []);
+  const { data: allocatedStudents, loading: loadingStudents, error: studentsError } = useAsyncResource(loadTutorAllocatedStudents, []);
 
   return (
     <DashboardShell title="Assignments" subtitle="Create worksheets, attach resources, set due dates, and manage work you have assigned." section="tutor">
-      <CreateAssignmentForm role="tutor" onCreated={reload} />
+      <CreateAssignmentForm role="tutor" targetStudents={allocatedStudents || []} onCreated={reload} />
+      {loadingStudents ? <p className="text-sm text-slate-600">Loading your allocated learners…</p> : null}
+      {studentsError ? <ErrorState title="Learners unavailable" description={studentsError} dashboardHref="/dashboard/tutor" /> : null}
       <Card>
         <h2 className="text-xl font-semibold text-slate-950">Your assignments</h2>
         <p className="mt-1 text-sm text-slate-600">Only assignments created by your tutor account are shown here. Student submissions are reviewed from the Submissions page.</p>

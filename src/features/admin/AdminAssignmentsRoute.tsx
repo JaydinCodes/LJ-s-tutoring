@@ -10,7 +10,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { formatDate } from '../../lib/utils/format';
-import type { Assignment, AssignmentStatus, AssignmentSubmission } from '../../types/lms';
+import type { Assignment, AssignmentStatus, AssignmentSubmission, TutorAllocatedStudentSummary } from '../../types/lms';
 import { getAiGradingPrefill } from '../assignments/aiGradingPrefill';
 import { createAssignment, markSubmission, updateAssignment } from '../assignments/assignmentMutations';
 import { RubricBuilder } from '../assignments/RubricBuilder';
@@ -272,7 +272,7 @@ function SubmissionReviewCard({
   );
 }
 
-export function CreateAssignmentForm({ onCreated, role = 'admin' }: { onCreated: () => Promise<void>; role?: 'admin' | 'tutor' }) {
+export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents = [] }: { onCreated: () => Promise<void>; role?: 'admin' | 'tutor'; targetStudents?: TutorAllocatedStudentSummary[] }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [subjectName, setSubjectName] = useState('');
@@ -281,6 +281,7 @@ export function CreateAssignmentForm({ onCreated, role = 'admin' }: { onCreated:
   const [dueDate, setDueDate] = useState('');
   const [rubricJson, setRubricJson] = useState('[]');
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [studentIds, setStudentIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -291,7 +292,8 @@ export function CreateAssignmentForm({ onCreated, role = 'admin' }: { onCreated:
     setMessage(null);
     setError(null);
     try {
-      await createAssignment({ title, description, subjectName, grade, curriculum, dueDate, attachment, rubricJson });
+      if (role === 'tutor' && !studentIds.length) throw new Error('Select at least one allocated learner for this assignment.');
+      await createAssignment({ title, description, subjectName, grade, curriculum, dueDate, attachment, rubricJson, studentIds });
       setTitle('');
       setDescription('');
       setSubjectName('');
@@ -300,6 +302,7 @@ export function CreateAssignmentForm({ onCreated, role = 'admin' }: { onCreated:
       setDueDate('');
       setRubricJson('[]');
       setAttachment(null);
+      setStudentIds([]);
       setMessage('Assignment published.');
       await onCreated();
     } catch (err) {
@@ -346,6 +349,13 @@ export function CreateAssignmentForm({ onCreated, role = 'admin' }: { onCreated:
         <FormField label="Attachment" hint="Optional worksheet or supporting file, visible to students.">
           <TextInput type="file" onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
         </FormField>
+        {role === 'tutor' ? (
+          <FormField label="Assign to learners" hint="Only your actively allocated learners can receive this individual assignment.">
+            <select multiple required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={studentIds} onChange={(event) => setStudentIds(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>
+              {targetStudents.map((student) => <option key={student.student_id} value={student.student_id}>{student.full_name}{student.grade ? ` — ${student.grade}` : ''}</option>)}
+            </select>
+          </FormField>
+        ) : null}
         <div className="lg:col-span-2">
           <FormField label="Description">
             <TextArea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Instructions, expected work, submission notes..." />

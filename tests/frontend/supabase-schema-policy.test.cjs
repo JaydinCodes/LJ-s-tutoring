@@ -19,6 +19,10 @@ const studentAssignmentAccessMigration = fs.readFileSync(
   path.resolve(__dirname, '..', '..', 'supabase', 'migrations', '20260809164016_harden_student_assignment_access.sql'),
   'utf8',
 );
+const tutorAssignmentTargetMigration = fs.readFileSync(
+  path.resolve(__dirname, '..', '..', 'supabase', 'migrations', '20260812131303_restrict_tutor_assignment_targets.sql'),
+  'utf8',
+);
 
 test('Supabase schema exposes current profile helpers used by RLS policies', () => {
   assert.match(schema, /create or replace function public\.current_profile_role\(\)/);
@@ -131,6 +135,30 @@ test('AUTH-04 / AUTH-05: student assignment reads are an explicit safe RPC behin
   assert.match(studentRepo, /rpc\('get_student_accessible_assignments'\)/);
   assert.doesNotMatch(studentRepo, /from\('assignments'\)\.select\('\*'\)/);
   assert.doesNotMatch(mutations, /const assignmentResult = await client\.from\('assignments'\)/);
+});
+
+test('tutors can target only their allocated learners with individual assignments', () => {
+  const tutorAssignments = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'src', 'features', 'tutors', 'TutorAssignmentsRoute.tsx'),
+    'utf8',
+  );
+  const assignmentForm = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'src', 'features', 'admin', 'AdminAssignmentsRoute.tsx'),
+    'utf8',
+  );
+  const mutations = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'src', 'features', 'assignments', 'assignmentMutations.ts'),
+    'utf8',
+  );
+
+  assert.match(tutorAssignmentTargetMigration, /assignment_target_not_allocated_to_tutor/);
+  assert.match(tutorAssignmentTargetMigration, /tutor_student_allocations tsa/);
+  assert.match(tutorAssignmentTargetMigration, /tsa\.status = 'active'::public\.record_status/);
+  assert.match(tutorAssignmentTargetMigration, /tutors_cannot_assign_to_classes/);
+  assert.match(tutorAssignments, /loadTutorAllocatedStudents/);
+  assert.match(assignmentForm, /Assign to learners/);
+  assert.match(mutations, /rpc\('set_assignment_targets'/);
+  assert.match(mutations, /p_student_ids: input\.studentIds/);
 });
 
 test('students cannot update review fields directly through submission policies', () => {
