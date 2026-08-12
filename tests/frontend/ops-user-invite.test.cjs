@@ -47,11 +47,17 @@ test('admin user invite workflow is routed through a backend-only Supabase admin
     assert.match(route, /Choose grade/);
     assert.match(route, /Grade 12/);
   }
-  for (const route of [adminUsersRoute, adminTutorsRoute]) {
-    assert.match(route, /<select multiple required/);
-    assert.match(route, /Mathematical Literacy/);
-    assert.match(route, /Grade 12/);
-  }
+  assert.match(adminUsersRoute, /<select multiple required/);
+  assert.match(adminUsersRoute, /Mathematical Literacy/);
+  assert.match(adminUsersRoute, /Grade 12/);
+
+  // Tutor selection uses accessible toggle chips instead of a browser-native
+  // multi-select, whose rendering is inconsistent in the dashboard dark theme.
+  assert.match(adminTutorsRoute, /aria-pressed=\{selected\}/);
+  assert.match(adminTutorsRoute, /type="button"/);
+  assert.match(adminTutorsRoute, /value\.filter\(\(item\) => item !== option\)/);
+  assert.match(adminTutorsRoute, /Mathematical Literacy/);
+  assert.match(adminTutorsRoute, /Grade 12/);
   assert.doesNotMatch(adminUsersRoute, /apiPost/);
 });
 
