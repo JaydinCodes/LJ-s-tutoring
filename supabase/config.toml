@@ -60,6 +60,14 @@ entrypoint = "./functions/process-privacy-deletion/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/process-privacy-deletion/*.html" ]
 
+[functions.process-tutor-deletion]
+enabled = true
+# Authorization is verified in the function, so scheduled retries can use the
+# service-role bearer token and administrators can use their normal JWT.
+verify_jwt = false
+import_map = "./functions/process-tutor-deletion/deno.json"
+entrypoint = "./functions/process-tutor-deletion/index.ts"
+
 [functions.grade-submission]
 enabled = true
 verify_jwt = true

@@ -74,6 +74,10 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20260811160000_decouple_notification_dispatch.sql` | `6524d722ece4a674e54da16d3ad72925ac2159f942cb18712a67f2eb1521e103` |
 | `20260811163000_expose_admin_ai_queue_operations.sql` | `c89e1bdafbcbbc63ef99cfe03a92a9258d98c09f815f6b44cf80a6e4b0f5cd22` |
 | `20260811170000_auto_refresh_stale_weekly_reports.sql` | `25a00e54449e477c80f3769c3c0aa9f7133eecf58878f8229c914cfe9419b2c2` |
+| `20260812094451_add_tutor_deletion_workflow.sql` | `47adb11705d1df2639e66999047e20ef79042388a25b7248680d4bb6d899c3f8` |
+| `20260812101923_harden_tutor_deletion_workflow.sql` | `0bd0108de0e9f0ebc3803dc1e14644a3f2c3c9f4ea4632f5466309ab9365fe93` |
+| `20260812102741_enforce_tutor_deletion_function_search_path.sql` | `41dcba17f4d3215ad719524d816ef9d1ef441e5c1f604c454b680b7036c91fcc` |
+| `20260812102947_fix_tutor_deletion_tombstone_identifier.sql` | `32f9a1c667e743768ebe8adc985cfcef4ca5eca7dcc7f5ee2902a298876366d3` |
 
 ## Regeneration
 

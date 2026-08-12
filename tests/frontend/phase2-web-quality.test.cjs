@@ -73,7 +73,7 @@ test('public media uses optimized sources and avoids costly hero video for const
   const publicRoutes = read('src/app/routes/PublicRoutes.tsx');
 
   for (const asset of [
-    'jaydin-morrison.webp',
+    'jaydin-morrison-20260812.webp',
     'nicholas-dreyer.webp',
     'liam-newton.webp',
     'logan-petrus.webp',

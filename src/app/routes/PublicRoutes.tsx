@@ -14,7 +14,9 @@ const tutors = [
     subject: 'Mathematics',
     role: 'Senior CAPS tutor',
     bio: 'Jaydin helps learners rebuild confidence through patient explanations, exam-focused practice, and a clear plan for closing foundational gaps.',
-    image: '/images/jaydin-morrison.webp',
+    // Versioned filename prevents a visitor's existing media cache from serving
+    // the retired portrait after deployment.
+    image: '/images/jaydin-morrison-20260812.webp',
     imageWidth: 1200,
     imageHeight: 1600,
   },

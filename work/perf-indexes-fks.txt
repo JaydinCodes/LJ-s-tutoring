@@ -1,0 +1,228 @@
+﻿supabase/migrations\20260724211453_security_fixes_2026_07_24_aal2_cross_org_coordinator_delete_audit_forgery_popia_ratelimit.sql:883:create index if not exists idx_edge_function_rate_limit_events_lookup
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:21:alter table public.adjustments add constraint adjustments_approved_by_user_id_fkey foreign key (approved_by_user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:24:alter table public.adjustments add constraint adjustments_created_by_user_id_fkey foreign key (created_by_user_id) references auth.users(id) on delete restrict;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:27:alter table public.adjustments add constraint adjustments_voided_by_user_id_fkey foreign key (voided_by_user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:30:alter table public.answers add constraint answers_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:33:alter table public.answers add constraint answers_verified_by_fkey foreign key (verified_by) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:36:alter table public.audit_log add constraint audit_log_actor_user_id_fkey foreign key (actor_user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:39:alter table public.auth_event_log add constraint auth_event_log_user_id_fkey foreign key (user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:42:alter table public.auth_sessions add constraint auth_sessions_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:45:alter table public.baseline_assessments add constraint baseline_assessments_created_by_user_id_fkey foreign key (created_by_user_id) references auth.users(id);
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:48:alter table public.career_goal_selections add constraint career_goal_selections_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:51:alter table public.career_progress_snapshots add constraint career_progress_snapshots_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:54:alter table public.challenge_submissions add constraint challenge_submissions_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:57:alter table public.challenges add constraint challenges_created_by_fkey foreign key (created_by) references auth.users(id) on delete restrict;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:60:alter table public.community_blocks add constraint community_blocks_blocked_user_id_fkey foreign key (blocked_user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:63:alter table public.community_blocks add constraint community_blocks_blocker_user_id_fkey foreign key (blocker_user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:66:alter table public.community_profiles add constraint community_profiles_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:69:alter table public.community_reports add constraint community_reports_reporter_id_fkey foreign key (reporter_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:72:alter table public.email_otp_tokens add constraint email_otp_tokens_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:75:alter table public.impersonation_sessions add constraint impersonation_sessions_admin_user_id_fkey foreign key (admin_user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:78:alter table public.impersonation_sessions add constraint impersonation_sessions_revoked_by_user_id_fkey foreign key (revoked_by_user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:81:alter table public.impersonation_sessions add constraint impersonation_sessions_tutor_user_id_fkey foreign key (tutor_user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:84:alter table public.learning_assignments add constraint learning_assignments_created_by_admin_id_fkey foreign key (created_by_admin_id) references auth.users(id);
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:87:alter table public.learning_assignments add constraint learning_assignments_created_by_user_id_fkey foreign key (created_by_user_id) references auth.users(id);
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:90:alter table public.learning_goals add constraint learning_goals_created_by_user_id_fkey foreign key (created_by_user_id) references auth.users(id);
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:93:alter table public.magic_link_tokens add constraint magic_link_tokens_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:96:alter table public.pay_periods add constraint pay_periods_locked_by_user_id_fkey foreign key (locked_by_user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:99:alter table public.privacy_requests add constraint privacy_requests_closed_by_user_id_fkey foreign key (closed_by_user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:102:alter table public.privacy_requests add constraint privacy_requests_created_by_user_id_fkey foreign key (created_by_user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:105:alter table public.questions add constraint questions_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:108:alter table public.session_history add constraint session_history_changed_by_user_id_fkey foreign key (changed_by_user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:111:alter table public.sessions add constraint sessions_approved_by_fkey foreign key (approved_by) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:114:alter table public.student_exam_events add constraint student_exam_events_created_by_user_id_fkey foreign key (created_by_user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:117:alter table public.student_notifications add constraint student_notifications_created_by_user_id_fkey foreign key (created_by_user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:120:alter table public.student_score_snapshots add constraint student_score_snapshots_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:123:alter table public.study_activity_events add constraint study_activity_events_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:126:alter table public.study_room_members add constraint study_room_members_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:129:alter table public.study_room_messages add constraint study_room_messages_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:132:alter table public.study_room_pinned_resources add constraint study_room_pinned_resources_created_by_fkey foreign key (created_by) references auth.users(id) on delete restrict;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:135:alter table public.study_rooms add constraint study_rooms_created_by_fkey foreign key (created_by) references auth.users(id) on delete restrict;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:138:alter table public.study_streaks add constraint study_streaks_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:141:alter table public.tutor_applications add constraint tutor_applications_reviewed_by_fkey foreign key (reviewed_by) references auth.users(id);
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:144:alter table public.tutor_documents add constraint tutor_documents_verified_by_fkey foreign key (verified_by) references auth.users(id);
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:147:alter table public.tutor_profiles add constraint tutor_profiles_approval_reviewed_by_fkey foreign key (approval_reviewed_by) references auth.users(id);
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:150:alter table public.tutoring_session_log add constraint tutoring_session_log_created_by_user_id_fkey foreign key (created_by_user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:153:alter table public.volunteer_events add constraint volunteer_events_created_by_user_id_fkey foreign key (created_by_user_id) references auth.users(id);
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:156:alter table public.volunteer_logs add constraint volunteer_logs_verified_by_fkey foreign key (verified_by) references auth.users(id);
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:159:alter table public.weekly_reports add constraint weekly_reports_created_by_user_id_fkey foreign key (created_by_user_id) references auth.users(id) on delete set null;
+supabase/migrations\20260724213901_fix_dangling_prisma_users_fk_repoint_to_auth_users.sql:162:alter table public.weekly_reports add constraint weekly_reports_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
+supabase/migrations\20260724214424_correct_fk_target_for_profiles_based_columns.sql:16:alter table public.sessions add constraint sessions_approved_by_fkey foreign key (approved_by) references public.profiles(id);
+supabase/migrations\20260724214424_correct_fk_target_for_profiles_based_columns.sql:19:alter table public.tutor_applications add constraint tutor_applications_reviewed_by_fkey foreign key (reviewed_by) references public.profiles(id);
+supabase/migrations\20260724214424_correct_fk_target_for_profiles_based_columns.sql:22:alter table public.tutor_documents add constraint tutor_documents_verified_by_fkey foreign key (verified_by) references public.profiles(id);
+supabase/migrations\20260724214424_correct_fk_target_for_profiles_based_columns.sql:25:alter table public.volunteer_logs add constraint volunteer_logs_verified_by_fkey foreign key (verified_by) references public.profiles(id);;
+supabase/migrations\20260803162120_project_odysseus_schema_baseline_part2.sql:248:create index if not exists idx_privacy_requests_subject_student
+supabase/migrations\20260803162120_project_odysseus_schema_baseline_part2.sql:250:create index if not exists idx_privacy_requests_status
+supabase/migrations\20260803162120_project_odysseus_schema_baseline_part2.sql:557:create index if not exists idx_organization_members_profile on public.organization_members(profile_id, status);
+supabase/migrations\20260803162120_project_odysseus_schema_baseline_part2.sql:558:create index if not exists idx_organization_members_org_role on public.organization_members(organization_id, org_role);
+supabase/migrations\20260803162120_project_odysseus_schema_baseline_part2.sql:559:create index if not exists idx_students_organization on public.students(organization_id);
+supabase/migrations\20260803162120_project_odysseus_schema_baseline_part2.sql:560:create index if not exists idx_classes_organization on public.classes(organization_id);
+supabase/migrations\20260803162120_project_odysseus_schema_baseline_part2.sql:561:create index if not exists idx_assignments_organization on public.assignments(organization_id);
+supabase/migrations\20260803162120_project_odysseus_schema_baseline_part2.sql:668:create index if not exists idx_organization_members_profile_org_status
+supabase/migrations\20260804092203_project_odysseus_schema_baseline_part3a_sessions.sql:299:create index if not exists idx_sessions_tutor_date on public.sessions(tutor_id, date);
+supabase/migrations\20260804092203_project_odysseus_schema_baseline_part3a_sessions.sql:300:create index if not exists idx_sessions_student_date on public.sessions(student_id, date desc, start_time desc);
+supabase/migrations\20260804092203_project_odysseus_schema_baseline_part3a_sessions.sql:301:create index if not exists idx_sessions_organization on public.sessions(organization_id);
+supabase/migrations\20260804092203_project_odysseus_schema_baseline_part3a_sessions.sql:302:create unique index if not exists idx_sessions_tutor_sync_key on public.sessions(tutor_id, sync_key) where sync_key is not null;
+supabase/migrations\20260804092203_project_odysseus_schema_baseline_part3a_sessions.sql:303:create index if not exists idx_session_history_session on public.session_history(session_id);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:283:create unique index if not exists idx_student_progress_submission_unique
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:388:create index if not exists idx_profiles_role on public.profiles(role);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:389:create index if not exists idx_students_ngo_partner on public.students(ngo_partner_id);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:390:create index if not exists idx_guardians_profile on public.guardians(profile_id);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:391:create index if not exists idx_student_guardians_student on public.student_guardians(student_id, status);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:392:create index if not exists idx_student_guardians_guardian on public.student_guardians(guardian_id, status);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:393:create index if not exists idx_student_career_profiles_student_updated on public.student_career_profiles(student_id, updated_at desc);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:394:create index if not exists idx_assignments_due_date on public.assignments(due_date);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:395:create index if not exists idx_assignments_created_by on public.assignments(created_by);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:396:create index if not exists idx_submissions_student on public.assignment_submissions(student_id);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:397:create index if not exists idx_submissions_student_assignment on public.assignment_submissions(student_id, assignment_id);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:398:create index if not exists idx_submissions_assignment_status on public.assignment_submissions(assignment_id, status);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:399:create unique index if not exists idx_submissions_latest_assignment_student
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:402:create index if not exists idx_submissions_assignment_versions
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:404:create index if not exists idx_audit_log_created_at on public.audit_log(created_at desc);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:405:create index if not exists idx_audit_log_action on public.audit_log(action);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:406:create index if not exists idx_audit_log_entity on public.audit_log(entity_type, entity_id);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:407:create index if not exists idx_audit_log_actor on public.audit_log(actor_user_id);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:408:create index if not exists idx_progress_student_recorded on public.student_progress(student_id, recorded_at desc);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:409:create index if not exists idx_payments_student_status on public.payments(student_id, status);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:410:create index if not exists idx_classes_tutor on public.classes(tutor_id);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:411:create index if not exists idx_classes_status on public.classes(status);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:412:create index if not exists idx_class_enrollments_student on public.class_enrollments(student_id);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:413:create index if not exists idx_class_enrollments_class_status on public.class_enrollments(class_id, status);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:414:create index if not exists idx_tutor_student_allocations_tutor on public.tutor_student_allocations(tutor_id, status);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:415:create index if not exists idx_tutor_student_allocations_student on public.tutor_student_allocations(student_id, status);
+supabase/migrations\20260803161949_project_odysseus_schema_baseline_part1.sql:470:create unique index if not exists idx_profile_identities_profile on public.profile_identities(profile_id);
+supabase/migrations\20260804092349_project_odysseus_schema_baseline_part4a_finance.sql:46:create index if not exists idx_adjustments_tutor_pay_period on public.adjustments(tutor_id, pay_period_id);
+supabase/migrations\20260804092349_project_odysseus_schema_baseline_part4a_finance.sql:47:create index if not exists idx_adjustments_pay_period on public.adjustments(pay_period_id);
+supabase/migrations\20260804092349_project_odysseus_schema_baseline_part4a_finance.sql:48:create index if not exists idx_invoices_tutor_period_start on public.invoices(tutor_id, period_start);
+supabase/migrations\20260804092349_project_odysseus_schema_baseline_part4a_finance.sql:49:create index if not exists idx_invoice_lines_invoice on public.invoice_lines(invoice_id);
+supabase/migrations\20260804092349_project_odysseus_schema_baseline_part4a_finance.sql:50:create index if not exists idx_invoice_lines_session on public.invoice_lines(session_id);
+supabase/migrations\20260804092349_project_odysseus_schema_baseline_part4a_finance.sql:51:create index if not exists idx_invoice_lines_adjustment on public.invoice_lines(adjustment_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:283:create unique index if not exists idx_student_progress_submission_unique
+supabase/migrations\20260606000000_project_odysseus_schema.sql:388:create index if not exists idx_profiles_role on public.profiles(role);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:389:create index if not exists idx_students_ngo_partner on public.students(ngo_partner_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:390:create index if not exists idx_guardians_profile on public.guardians(profile_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:391:create index if not exists idx_student_guardians_student on public.student_guardians(student_id, status);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:392:create index if not exists idx_student_guardians_guardian on public.student_guardians(guardian_id, status);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:393:create index if not exists idx_student_career_profiles_student_updated on public.student_career_profiles(student_id, updated_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:394:create index if not exists idx_assignments_due_date on public.assignments(due_date);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:395:create index if not exists idx_assignments_created_by on public.assignments(created_by);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:396:create index if not exists idx_submissions_student on public.assignment_submissions(student_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:397:create index if not exists idx_submissions_student_assignment on public.assignment_submissions(student_id, assignment_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:398:create index if not exists idx_submissions_assignment_status on public.assignment_submissions(assignment_id, status);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:399:create unique index if not exists idx_submissions_latest_assignment_student
+supabase/migrations\20260606000000_project_odysseus_schema.sql:402:create index if not exists idx_submissions_assignment_versions
+supabase/migrations\20260606000000_project_odysseus_schema.sql:404:create index if not exists idx_audit_log_created_at on public.audit_log(created_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:405:create index if not exists idx_audit_log_action on public.audit_log(action);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:406:create index if not exists idx_audit_log_entity on public.audit_log(entity_type, entity_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:407:create index if not exists idx_audit_log_actor on public.audit_log(actor_user_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:408:create index if not exists idx_progress_student_recorded on public.student_progress(student_id, recorded_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:409:create index if not exists idx_payments_student_status on public.payments(student_id, status);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:410:create index if not exists idx_classes_tutor on public.classes(tutor_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:411:create index if not exists idx_classes_status on public.classes(status);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:412:create index if not exists idx_class_enrollments_student on public.class_enrollments(student_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:413:create index if not exists idx_class_enrollments_class_status on public.class_enrollments(class_id, status);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:414:create index if not exists idx_tutor_student_allocations_tutor on public.tutor_student_allocations(tutor_id, status);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:415:create index if not exists idx_tutor_student_allocations_student on public.tutor_student_allocations(student_id, status);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:470:create unique index if not exists idx_profile_identities_profile on public.profile_identities(profile_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:1686:create index if not exists idx_privacy_requests_subject_student
+supabase/migrations\20260606000000_project_odysseus_schema.sql:1688:create index if not exists idx_privacy_requests_status
+supabase/migrations\20260606000000_project_odysseus_schema.sql:2075:create index if not exists idx_organization_members_profile on public.organization_members(profile_id, status);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:2076:create index if not exists idx_organization_members_org_role on public.organization_members(organization_id, org_role);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:2077:create index if not exists idx_students_organization on public.students(organization_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:2078:create index if not exists idx_classes_organization on public.classes(organization_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:2079:create index if not exists idx_assignments_organization on public.assignments(organization_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:2238:create index if not exists idx_organization_members_profile_org_status
+supabase/migrations\20260606000000_project_odysseus_schema.sql:2995:create index if not exists idx_sessions_tutor_date on public.sessions(tutor_id, date);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:2996:create index if not exists idx_sessions_student_date on public.sessions(student_id, date desc, start_time desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:2997:create index if not exists idx_sessions_organization on public.sessions(organization_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:3001:create unique index if not exists idx_sessions_tutor_sync_key on public.sessions(tutor_id, sync_key) where sync_key is not null;
+supabase/migrations\20260606000000_project_odysseus_schema.sql:3002:create index if not exists idx_session_history_session on public.session_history(session_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:3957:create index if not exists idx_adjustments_tutor_pay_period on public.adjustments(tutor_id, pay_period_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:3958:create index if not exists idx_adjustments_pay_period on public.adjustments(pay_period_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:3959:create index if not exists idx_invoices_tutor_period_start on public.invoices(tutor_id, period_start);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:3960:create index if not exists idx_invoice_lines_invoice on public.invoice_lines(invoice_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:3961:create index if not exists idx_invoice_lines_session on public.invoice_lines(session_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:3962:create index if not exists idx_invoice_lines_adjustment on public.invoice_lines(adjustment_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:4615:create index if not exists idx_weekly_reports_student_created on public.weekly_reports(student_id, created_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:4645:create index if not exists idx_student_notifications_student_created on public.student_notifications(student_id, created_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:4646:create index if not exists idx_student_notifications_student_read on public.student_notifications(student_id, is_read, created_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:5147:create index if not exists idx_tutor_documents_tutor_uploaded on public.tutor_documents(tutor_id, uploaded_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:5162:create index if not exists idx_tutor_availability_tutor_day_start on public.tutor_availability_slots(tutor_id, day_of_week, start_time);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:5715:create index if not exists idx_student_score_snapshots_student_date on public.student_score_snapshots(student_id, score_date desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:5716:create index if not exists idx_student_score_snapshots_organization on public.student_score_snapshots(organization_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:5740:create index if not exists idx_career_progress_snapshots_student_goal on public.career_progress_snapshots(student_id, goal_id, created_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:5741:create index if not exists idx_career_progress_snapshots_organization on public.career_progress_snapshots(organization_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:6443:create index if not exists idx_baseline_assessments_student_completed on public.baseline_assessments(student_id, completed_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:6444:create index if not exists idx_baseline_assessments_subject_grade on public.baseline_assessments(subject, grade, completed_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:6445:create index if not exists idx_baseline_assessments_organization on public.baseline_assessments(organization_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:6473:create index if not exists idx_learning_goals_student_status_due on public.learning_goals(student_id, status, due_date);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:6474:create index if not exists idx_learning_goals_category_status on public.learning_goals(category, status);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:6475:create index if not exists idx_learning_goals_organization on public.learning_goals(organization_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:6496:create index if not exists idx_student_exam_events_student_date on public.student_exam_events(student_id, exam_date);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:6497:create index if not exists idx_student_exam_events_organization on public.student_exam_events(organization_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:6522:create index if not exists idx_volunteer_events_date on public.volunteer_events(event_date desc nulls last, created_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:6541:create index if not exists idx_volunteer_logs_tutor_created on public.volunteer_logs(tutor_id, created_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:6542:create index if not exists idx_volunteer_logs_event on public.volunteer_logs(event_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:7183:create index if not exists idx_community_room_members_room on public.community_room_members(room_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:7184:create index if not exists idx_community_room_members_profile on public.community_room_members(profile_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:7185:create index if not exists idx_community_room_messages_room_created on public.community_room_messages(room_id, created_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:7186:create index if not exists idx_community_challenge_submissions_profile on public.community_challenge_submissions(profile_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:7187:create index if not exists idx_community_questions_created on public.community_questions(created_at desc);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:7188:create index if not exists idx_community_answers_question on public.community_answers(question_id);
+supabase/migrations\20260606000000_project_odysseus_schema.sql:7645:create index if not exists idx_edge_function_rate_limit_events_lookup
+supabase/migrations\20260804092440_project_odysseus_schema_baseline_part4b_reports.sql:22:create index if not exists idx_weekly_reports_student_created on public.weekly_reports(student_id, created_at desc);
+supabase/migrations\20260804092440_project_odysseus_schema_baseline_part4b_reports.sql:43:create index if not exists idx_student_notifications_student_created on public.student_notifications(student_id, created_at desc);
+supabase/migrations\20260804092440_project_odysseus_schema_baseline_part4b_reports.sql:44:create index if not exists idx_student_notifications_student_read on public.student_notifications(student_id, is_read, created_at desc);
+supabase/migrations\20260804092830_project_odysseus_schema_baseline_part5a_tutor_onboarding.sql:34:create index if not exists idx_tutor_documents_tutor_uploaded on public.tutor_documents(tutor_id, uploaded_at desc);
+supabase/migrations\20260804092830_project_odysseus_schema_baseline_part5a_tutor_onboarding.sql:49:create index if not exists idx_tutor_availability_tutor_day_start on public.tutor_availability_slots(tutor_id, day_of_week, start_time);
+supabase/migrations\20260804092830_project_odysseus_schema_baseline_part5a_tutor_onboarding.sql:473:create index if not exists idx_student_score_snapshots_student_date on public.student_score_snapshots(student_id, score_date desc);
+supabase/migrations\20260804092830_project_odysseus_schema_baseline_part5a_tutor_onboarding.sql:474:create index if not exists idx_student_score_snapshots_organization on public.student_score_snapshots(organization_id);
+supabase/migrations\20260804092830_project_odysseus_schema_baseline_part5a_tutor_onboarding.sql:492:create index if not exists idx_career_progress_snapshots_student_goal on public.career_progress_snapshots(student_id, goal_id, created_at desc);
+supabase/migrations\20260804092830_project_odysseus_schema_baseline_part5a_tutor_onboarding.sql:493:create index if not exists idx_career_progress_snapshots_organization on public.career_progress_snapshots(organization_id);
+supabase/migrations\20260804093134_project_odysseus_schema_baseline_part6a_academic_volunteer_community_start.sql:49:create index if not exists idx_baseline_assessments_student_completed on public.baseline_assessments(student_id, completed_at desc);
+supabase/migrations\20260804093134_project_odysseus_schema_baseline_part6a_academic_volunteer_community_start.sql:50:create index if not exists idx_baseline_assessments_subject_grade on public.baseline_assessments(subject, grade, completed_at desc);
+supabase/migrations\20260804093134_project_odysseus_schema_baseline_part6a_academic_volunteer_community_start.sql:51:create index if not exists idx_baseline_assessments_organization on public.baseline_assessments(organization_id);
+supabase/migrations\20260804093134_project_odysseus_schema_baseline_part6a_academic_volunteer_community_start.sql:75:create index if not exists idx_learning_goals_student_status_due on public.learning_goals(student_id, status, due_date);
+supabase/migrations\20260804093134_project_odysseus_schema_baseline_part6a_academic_volunteer_community_start.sql:76:create index if not exists idx_learning_goals_category_status on public.learning_goals(category, status);
+supabase/migrations\20260804093134_project_odysseus_schema_baseline_part6a_academic_volunteer_community_start.sql:77:create index if not exists idx_learning_goals_organization on public.learning_goals(organization_id);
+supabase/migrations\20260804093134_project_odysseus_schema_baseline_part6a_academic_volunteer_community_start.sql:94:create index if not exists idx_student_exam_events_student_date on public.student_exam_events(student_id, exam_date);
+supabase/migrations\20260804093134_project_odysseus_schema_baseline_part6a_academic_volunteer_community_start.sql:95:create index if not exists idx_student_exam_events_organization on public.student_exam_events(organization_id);
+supabase/migrations\20260804093134_project_odysseus_schema_baseline_part6a_academic_volunteer_community_start.sql:115:create index if not exists idx_volunteer_events_date on public.volunteer_events(event_date desc nulls last, created_at desc);
+supabase/migrations\20260804093134_project_odysseus_schema_baseline_part6a_academic_volunteer_community_start.sql:134:create index if not exists idx_volunteer_logs_tutor_created on public.volunteer_logs(tutor_id, created_at desc);
+supabase/migrations\20260804093134_project_odysseus_schema_baseline_part6a_academic_volunteer_community_start.sql:135:create index if not exists idx_volunteer_logs_event on public.volunteer_logs(event_id);
+supabase/migrations\20260723154034_add_community_study_rooms_challenges_questions.sql:115:create index if not exists idx_community_room_members_room on public.community_room_members(room_id);
+supabase/migrations\20260723154034_add_community_study_rooms_challenges_questions.sql:116:create index if not exists idx_community_room_members_profile on public.community_room_members(profile_id);
+supabase/migrations\20260723154034_add_community_study_rooms_challenges_questions.sql:117:create index if not exists idx_community_room_messages_room_created on public.community_room_messages(room_id, created_at desc);
+supabase/migrations\20260723154034_add_community_study_rooms_challenges_questions.sql:118:create index if not exists idx_community_challenge_submissions_profile on public.community_challenge_submissions(profile_id);
+supabase/migrations\20260723154034_add_community_study_rooms_challenges_questions.sql:119:create index if not exists idx_community_questions_created on public.community_questions(created_at desc);
+supabase/migrations\20260723154034_add_community_study_rooms_challenges_questions.sql:120:create index if not exists idx_community_answers_question on public.community_answers(question_id);
+supabase/migrations\20260804093301_project_odysseus_schema_baseline_part7_rate_limit_and_grants.sql:7:create index if not exists idx_edge_function_rate_limit_events_lookup
+supabase/migrations\20260804093226_project_odysseus_schema_baseline_part6b_community_rest.sql:11:create index if not exists idx_community_room_members_room on public.community_room_members(room_id);
+supabase/migrations\20260804093226_project_odysseus_schema_baseline_part6b_community_rest.sql:12:create index if not exists idx_community_room_members_profile on public.community_room_members(profile_id);
+supabase/migrations\20260804093226_project_odysseus_schema_baseline_part6b_community_rest.sql:13:create index if not exists idx_community_room_messages_room_created on public.community_room_messages(room_id, created_at desc);
+supabase/migrations\20260804093226_project_odysseus_schema_baseline_part6b_community_rest.sql:14:create index if not exists idx_community_challenge_submissions_profile on public.community_challenge_submissions(profile_id);
+supabase/migrations\20260804093226_project_odysseus_schema_baseline_part6b_community_rest.sql:15:create index if not exists idx_community_questions_created on public.community_questions(created_at desc);
+supabase/migrations\20260804093226_project_odysseus_schema_baseline_part6b_community_rest.sql:16:create index if not exists idx_community_answers_question on public.community_answers(question_id);
+supabase/migrations\20260804093345_phase1_transactional_onboarding_rate_limit.sql:225:create index if not exists idx_edge_function_rate_limit_events_created_at
+supabase/migrations\20260804094116_fix_tutor_id_fk_repoint_to_tutors.sql:4:  foreign key (tutor_id) references public.tutors(id);
+supabase/migrations\20260804094116_fix_tutor_id_fk_repoint_to_tutors.sql:9:  foreign key (tutor_id) references public.tutors(id);
+supabase/migrations\20260804094116_fix_tutor_id_fk_repoint_to_tutors.sql:14:  foreign key (tutor_id) references public.tutors(id);
+supabase/migrations\20260804094116_fix_tutor_id_fk_repoint_to_tutors.sql:19:  foreign key (tutor_id) references public.tutors(id) on delete cascade;
+supabase/migrations\20260804094116_fix_tutor_id_fk_repoint_to_tutors.sql:24:  foreign key (tutor_id) references public.tutors(id) on delete cascade;
+supabase/migrations\20260804094116_fix_tutor_id_fk_repoint_to_tutors.sql:29:  foreign key (tutor_id) references public.tutors(id) on delete cascade;
+supabase/migrations\20260804094116_fix_tutor_id_fk_repoint_to_tutors.sql:34:  foreign key (tutor_id) references public.tutors(id) on delete cascade;;
+supabase/migrations\20260804093455_phase4_submission_confirmation_and_rls_recursion.sql:147:create index if not exists idx_assignment_submissions_storage_key
+supabase/migrations\20260808235811_prevent_unreleased_progress_leak.sql:29:      foreign key (source_submission_id)
+supabase/migrations\20260808235811_prevent_unreleased_progress_leak.sql:169:create unique index if not exists idx_student_progress_source_submission
+supabase/migrations\20260809132803_durable_ai_grading_jobs.sql:16:create index if not exists idx_assignment_submissions_ai_jobs
+supabase/migrations\20260808231405_harden_privacy_deletion_workflow.sql:27:  foreign key (auth_user_id)
+supabase/migrations\20260809164016_harden_student_assignment_access.sql:26:create index if not exists idx_assignment_class_targets_class_assignment
+supabase/migrations\20260809164016_harden_student_assignment_access.sql:28:create index if not exists idx_assignment_student_targets_student_assignment
+supabase/migrations\20260809164016_harden_student_assignment_access.sql:30:create index if not exists idx_assignments_student_eligibility
+supabase/migrations\20260811115426_bind_submission_content_digest.sql:43:create unique index if not exists assignment_submission_attempts_storage_key_key
+supabase/migrations\20260811115426_bind_submission_content_digest.sql:46:create index if not exists assignment_submission_attempts_assignment_id_idx
+supabase/migrations\20260811115426_bind_submission_content_digest.sql:48:create index if not exists assignment_submission_attempts_student_id_idx
+supabase/migrations\20260811115426_bind_submission_content_digest.sql:50:create index if not exists assignment_submission_attempts_abandoned_idx
+supabase/migrations\20260811105709_competency_evidence_model.sql:17:create index competency_evidence_student_recorded_idx
+supabase/migrations\20260811105709_competency_evidence_model.sql:19:create index competency_evidence_student_competency_idx
+supabase/migrations\20260809185704_eliminate_unbounded_report_reads.sql:7:create index if not exists idx_submissions_student_released_report
