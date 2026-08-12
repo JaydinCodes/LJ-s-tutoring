@@ -12,7 +12,7 @@ import { requireSupabase } from '../../lib/supabase/client';
 import { formatCurrency } from '../../lib/utils/format';
 import type { RecordStatus, Tutor } from '../../types/lms';
 import { loadAdminDashboard } from './adminDashboardRepository';
-import { updateTutorRecord } from './rosterMutations';
+import { deleteTutorAccount, updateTutorRecord } from './rosterMutations';
 
 const tutorSubjects = ['Mathematics', 'Mathematical Literacy', 'Physical Sciences'];
 const tutorGrades = ['Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
@@ -191,7 +191,54 @@ function TutorRecordCard({ tutor, onSaved }: { tutor: Tutor & { full_name?: stri
         </div>
         <SubmitRow busy={busy} label="Save tutor" message={message} error={error} />
       </form>
+      {!isDeletedTutor(tutor) ? <TutorDeletionAction tutor={tutor} onDeleted={onSaved} /> : null}
     </article>
+  );
+}
+
+function TutorDeletionAction({
+  tutor,
+  onDeleted,
+}: {
+  tutor: Tutor & { full_name?: string; email?: string };
+  onDeleted: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function removeTutor() {
+    const tutorName = tutor.full_name || 'this tutor';
+    const confirmed = window.confirm(
+      `Permanently delete ${tutorName}'s account and personal data? Their access and documents will be removed. Finance and audit records are retained without personal details.`,
+    );
+    if (!confirmed) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteTutorAccount({ tutorId: tutor.id, reason: 'Deleted by platform administrator' });
+      await onDeleted();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete tutor account.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mt-5 border-t border-red-200 pt-4">
+      <h4 className="font-semibold text-red-800">Delete tutor account</h4>
+      <p className="mt-1 text-sm text-slate-600">Removes access, documents, onboarding data, availability, and personal details. This cannot be undone.</p>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => void removeTutor()}
+        className="mt-3 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {busy ? 'Deleting tutor...' : 'Delete tutor account'}
+      </button>
+      {error ? <p className="mt-2 text-sm font-semibold text-red-700">{error}</p> : null}
+    </section>
   );
 }
 
@@ -221,5 +268,9 @@ function SubmitRow({ busy, label, message, error }: { busy: boolean; label: stri
 
 function normalizeStatus(value: string): RecordStatus {
   return value === 'active' || value === 'inactive' || value === 'approved' || value === 'suspended' ? value : 'pending';
+}
+
+function isDeletedTutor(tutor: { email?: string }) {
+  return tutor.email?.endsWith('@removed.invalid') ?? false;
 }
 

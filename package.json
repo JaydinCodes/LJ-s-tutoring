@@ -97,6 +97,7 @@
     "typecheck:react": "tsc --noEmit -p tsconfig.app.json",
     "typecheck": "npm run typecheck:react",
     "perf:budget": "node scripts/check-frontend-performance-budget.cjs",
+    "perf:ai-queue": "node scripts/check-ai-queue-capacity.cjs",
     "perf:lighthouse": "lhci autorun --config=./lighthouserc.js",
     "validate:monitoring": "node scripts/validate-monitoring-assets.js",
     "verify:production:headers": "node scripts/verify-production-security-headers.cjs",

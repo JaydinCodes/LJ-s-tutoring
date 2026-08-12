@@ -1,0 +1,193 @@
+﻿src\features\admin\adminDashboardRepository.ts:41:    supabase.from('students').select('*').order('created_at', { ascending: false }).limit(25),
+src\features\admin\adminDashboardRepository.ts:42:    supabase.from('guardians').select('*').order('created_at', { ascending: false }).limit(100),
+src\features\admin\adminDashboardRepository.ts:43:    supabase.from('student_guardians').select('*').order('created_at', { ascending: false }).limit(200),
+src\features\admin\adminDashboardRepository.ts:44:    supabase.from('tutors').select('*').order('created_at', { ascending: false }).limit(25),
+src\features\admin\adminDashboardRepository.ts:45:    supabase.from('assignments').select('*').order('created_at', { ascending: false }).limit(25),
+src\features\admin\adminDashboardRepository.ts:46:    supabase.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }).limit(50),
+src\features\admin\adminDashboardRepository.ts:47:    supabase.from('payments').select('*').order('due_date', { ascending: true }).limit(25),
+src\features\admin\adminDashboardRepository.ts:48:    supabase.from('tutor_payments').select('*').order('payment_period', { ascending: false }).limit(25),
+src\features\admin\adminDashboardRepository.ts:49:    supabase.from('ngo_partners').select('*').order('name', { ascending: true }),
+src\features\admin\adminDashboardRepository.ts:72:    ? await supabase.from('profiles').select('*').in('id', profileIds)
+src\features\auth\authService.ts:258:    .from('profiles')
+src\features\auth\authService.ts:259:    .select('*')
+src\features\tutors\tutorOperationsRepository.ts:70:  const profileResult = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\tutors\tutorOperationsRepository.ts:135:    .from('sessions')
+src\features\tutors\tutorOperationsRepository.ts:136:    .select('*')
+src\features\tutors\tutorOperationsRepository.ts:210:  const reportsResult = await client.from('weekly_reports').select('*').order('week_start', { ascending: false });
+src\features\tutors\tutorOperationsRepository.ts:226:  const result = await client.from('weekly_reports').select('*').eq('id', reportId).single();
+src\features\tutors\tutorOperationsRepository.ts:267:    .from('student_score_snapshots')
+src\features\tutors\tutorOperationsRepository.ts:268:    .select('*')
+src\features\assignments\assignmentMutations.ts:354:  const result = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\assignments\assignmentMutations.ts:355:  if (result.error) {
+src\features\assignments\assignmentMutations.ts:356:    throw result.error;
+src\features\assignments\assignmentMutations.ts:357:  }
+src\features\assignments\assignmentMutations.ts:358:  const profile = result.data as Profile | null;
+src\features\assignments\assignmentMutations.ts:359:  if (!profile) {
+src\features\assignments\assignmentMutations.ts:360:    throw new Error('No profile is linked to the current account.');
+src\features\assignments\assignmentMutations.ts:361:  }
+src\features\assignments\assignmentMutations.ts:362:
+src\features\assignments\assignmentMutations.ts:363:  return profile;
+src\features\assignments\assignmentMutations.ts:364:}
+src\features\assignments\assignmentMutations.ts:365:
+src\features\assignments\assignmentMutations.ts:366:async function getCurrentStudent(profileId: string) {
+src\features\assignments\assignmentMutations.ts:367:  const client = requireSupabase();
+src\features\assignments\assignmentMutations.ts:368:  const result = await client.from('students').select('*').eq('profile_id', profileId).single();
+src\features\assignments\assignmentMutations.ts:387:    .from('subjects')
+src\features\assignments\assignmentMutations.ts:388:    .select('*')
+src\features\assignments\assignmentMutations.ts:401:  const created = await (client.from('subjects') as unknown as {
+src\features\assignments\assignmentMutations.ts:402:    insert: (payload: { name: string; grade: string; curriculum: string }) => {
+src\features\assignments\assignmentMutations.ts:403:      select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> };
+src\features\assignments\assignmentMutations.ts:404:    };
+src\features\assignments\assignmentMutations.ts:405:  })
+src\features\assignments\assignmentMutations.ts:406:    .insert({ name: subjectName, grade, curriculum })
+src\features\assignments\assignmentMutations.ts:407:    .select('*')
+src\features\assignments\assignmentMutations.ts:572:  const confirmed = await client.from('assignments').select('*').eq('id', payload.p_assignment_id).maybeSingle();
+src\features\assignments\assignmentMutations.ts:709:  const existing = await client.from('assignments').select('*').eq('id', input.assignmentId).single();
+src\features\admin\allocationManagementMutations.ts:25:  const result = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\admin\allocationManagementMutations.ts:64:  const result = await (client.from('tutor_student_allocations') as unknown as {
+src\features\admin\allocationManagementMutations.ts:65:    upsert: (row: AllocationPayload, options: { onConflict: string }) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
+src\features\admin\allocationManagementMutations.ts:66:  })
+src\features\admin\allocationManagementMutations.ts:67:    .upsert(allocationPayload(input), { onConflict: 'tutor_id,student_id' })
+src\features\admin\allocationManagementMutations.ts:68:    .select('*')
+src\features\admin\allocationManagementMutations.ts:92:  const result = await (client.from('tutor_student_allocations') as unknown as {
+src\features\admin\allocationManagementMutations.ts:93:    update: (row: AllocationPayload) => { eq: (column: string, value: string) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } } };
+src\features\admin\allocationManagementMutations.ts:94:  })
+src\features\admin\allocationManagementMutations.ts:95:    .update(allocationPayload(input))
+src\features\admin\allocationManagementMutations.ts:96:    .eq('id', allocationId)
+src\features\admin\allocationManagementMutations.ts:97:    .select('*')
+src\features\admin\adminStudentDetailRepository.ts:30:    client.from('tutor_student_allocations').select('*').eq('student_id', studentId).order('created_at', { ascending: false }),
+src\features\admin\adminStudentDetailRepository.ts:31:    client.from('assignment_submissions').select('*').eq('student_id', studentId).order('submitted_at', { ascending: false }),
+src\features\admin\adminStudentDetailRepository.ts:32:    client.from('assignments').select('*'),
+src\features\admin\adminStudentDetailRepository.ts:33:    client.from('subjects').select('*'),
+src\features\admin\adminStudentDetailRepository.ts:34:    client.from('tutors').select('*').order('created_at', { ascending: false }),
+src\features\admin\adminStudentDetailRepository.ts:49:  const profileIds = Array.from(new Set(tutors.map((tutor) => tutor.profile_id).filter(Boolean)));
+src\features\admin\adminStudentDetailRepository.ts:50:  const profilesResult = profileIds.length
+src\features\admin\adminStudentDetailRepository.ts:51:    ? await client.from('profiles').select('*').in('id', profileIds)
+src\features\students\studentReportsRepository.ts:93:  const result = await client.from('weekly_reports').select('*').eq('id', reportId).single();
+src\features\admin\rosterMutations.ts:52:  const result = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\tutors\tutorDashboardRepository.ts:19:  const profileResult = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\tutors\tutorDashboardRepository.ts:20:  if (profileResult.error) {
+src\features\tutors\tutorDashboardRepository.ts:21:    throw profileResult.error;
+src\features\tutors\tutorDashboardRepository.ts:22:  }
+src\features\tutors\tutorDashboardRepository.ts:23:  const profile = profileResult.data as Profile | null;
+src\features\tutors\tutorDashboardRepository.ts:24:  if (!profile || profile.role !== 'tutor') {
+src\features\tutors\tutorDashboardRepository.ts:25:    throw new Error('This dashboard is only available to tutor profiles.');
+src\features\tutors\tutorDashboardRepository.ts:26:  }
+src\features\tutors\tutorDashboardRepository.ts:27:
+src\features\tutors\tutorDashboardRepository.ts:28:  const tutorResult = await client.from('tutors').select('*').eq('profile_id', profile.id).single();
+src\features\tutors\tutorDashboardRepository.ts:49:    client.from('classes').select('*').eq('tutor_id', tutor.id).neq('status', 'inactive').order('day_of_week', { ascending: true }),
+src\features\tutors\tutorDashboardRepository.ts:50:    client.from('assignments').select('*').eq('created_by', profile.id).order('created_at', { ascending: false }),
+src\features\tutors\tutorDashboardRepository.ts:51:    client.from('tutor_student_allocations').select('*').eq('tutor_id', tutor.id).eq('status', 'active').order('created_at', { ascending: false }),
+src\features\tutors\tutorDashboardRepository.ts:74:      .from('assignment_submissions')
+src\features\tutors\tutorDashboardRepository.ts:75:      .select('*')
+src\features\students\studentNotificationsRepository.ts:10:      .from('student_notifications')
+src\features\students\studentNotificationsRepository.ts:11:      .select('*')
+src\features\payments\paymentMutations.ts:42:  const result = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\payments\paymentMutations.ts:83:  const result = await (client.from('payments') as unknown as {
+src\features\payments\paymentMutations.ts:84:    insert: (row: typeof payload) => {
+src\features\payments\paymentMutations.ts:85:      select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> };
+src\features\payments\paymentMutations.ts:86:    };
+src\features\payments\paymentMutations.ts:87:  }).insert(payload).select('*').single();
+src\features\payments\paymentMutations.ts:106:  const result = await (client.from('payments') as unknown as {
+src\features\payments\paymentMutations.ts:107:    update: (row: typeof payload) => {
+src\features\payments\paymentMutations.ts:108:      eq: (column: string, value: string) => {
+src\features\payments\paymentMutations.ts:109:        select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> };
+src\features\payments\paymentMutations.ts:110:      };
+src\features\payments\paymentMutations.ts:111:    };
+src\features\payments\paymentMutations.ts:112:  }).update(payload).eq('id', input.paymentId).select('*').single();
+src\features\payments\paymentMutations.ts:145:  const result = await (client.from('tutor_payments') as unknown as {
+src\features\payments\paymentMutations.ts:146:    insert: (row: typeof payload) => {
+src\features\payments\paymentMutations.ts:147:      select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> };
+src\features\payments\paymentMutations.ts:148:    };
+src\features\payments\paymentMutations.ts:149:  }).insert(payload).select('*').single();
+src\features\payments\paymentMutations.ts:168:  const result = await (client.from('tutor_payments') as unknown as {
+src\features\payments\paymentMutations.ts:169:    update: (row: typeof payload) => {
+src\features\payments\paymentMutations.ts:170:      eq: (column: string, value: string) => {
+src\features\payments\paymentMutations.ts:171:        select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> };
+src\features\payments\paymentMutations.ts:172:      };
+src\features\payments\paymentMutations.ts:173:    };
+src\features\payments\paymentMutations.ts:174:  }).update(payload).eq('id', input.tutorPaymentId).select('*').single();
+src\features\admin\guardianMutations.ts:50:  const created = await (client.from('guardians') as unknown as {
+src\features\admin\guardianMutations.ts:51:    insert: (payload: ReturnType<typeof guardianPayload>) => {
+src\features\admin\guardianMutations.ts:52:      select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> };
+src\features\admin\guardianMutations.ts:53:    };
+src\features\admin\guardianMutations.ts:54:  }).insert(guardianPayload(input)).select('*').single();
+src\features\admin\guardianMutations.ts:76:  const updated = await (client.from('guardians') as unknown as {
+src\features\admin\guardianMutations.ts:77:    update: (payload: ReturnType<typeof guardianPayload>) => {
+src\features\admin\guardianMutations.ts:78:      eq: (column: string, value: string) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
+src\features\admin\guardianMutations.ts:79:    };
+src\features\admin\guardianMutations.ts:80:  }).update(guardianPayload(input)).eq('id', input.guardianId).select('*').single();
+src\features\students\studentCareersRepository.ts:109:  const profileResult = await supabase.from('student_career_profiles').select('*').maybeSingle();
+src\features\students\studentCareersRepository.ts:139:  const result = await (client.from('student_career_profiles') as unknown as {
+src\features\students\studentCareersRepository.ts:140:    upsert: (row: typeof payload, options: { onConflict: string }) => {
+src\features\students\studentCareersRepository.ts:141:      select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> };
+src\features\students\studentCareersRepository.ts:142:    };
+src\features\students\studentCareersRepository.ts:143:  })
+src\features\students\studentCareersRepository.ts:144:    .upsert(payload, { onConflict: 'student_id' })
+src\features\students\studentCareersRepository.ts:145:    .select('*')
+src\features\admin\classManagementRepository.ts:22:    client.from('classes').select('*').order('created_at', { ascending: false }),
+src\features\admin\classManagementRepository.ts:23:    client.from('class_enrollments').select('*').order('created_at', { ascending: false }),
+src\features\admin\classManagementRepository.ts:24:    client.from('students').select('*').order('created_at', { ascending: false }),
+src\features\admin\classManagementRepository.ts:25:    client.from('tutors').select('*').order('created_at', { ascending: false }),
+src\features\admin\classManagementRepository.ts:26:    client.from('subjects').select('*').order('name', { ascending: true }),
+src\features\admin\classManagementRepository.ts:27:    client.from('ngo_partners').select('*').order('name', { ascending: true }),
+src\features\admin\classManagementRepository.ts:47:    ? await client.from('profiles').select('*').in('id', profileIds)
+src\features\admin\classManagementMutations.ts:29:  const result = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\admin\classManagementMutations.ts:73:  const result = await (client.from('classes') as unknown as {
+src\features\admin\classManagementMutations.ts:74:    insert: (row: ClassPayload) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
+src\features\admin\classManagementMutations.ts:75:  }).insert(classPayload(input)).select('*').single();
+src\features\admin\classManagementMutations.ts:105:  const result = await (client.from('classes') as unknown as {
+src\features\admin\classManagementMutations.ts:106:    update: (row: ClassPayload) => { eq: (column: string, value: string) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } } };
+src\features\admin\classManagementMutations.ts:107:  }).update(classPayload(input)).eq('id', classId).select('*').single();
+src\features\admin\classManagementMutations.ts:135:  const result = await (client.from('classes') as unknown as {
+src\features\admin\classManagementMutations.ts:136:    update: (row: { status: RecordStatus; updated_at: string }) => { eq: (column: string, value: string) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } } };
+src\features\admin\classManagementMutations.ts:137:  }).update({ status: 'inactive', updated_at: new Date().toISOString() }).eq('id', classId).select('*').single();
+src\features\admin\classManagementMutations.ts:158:  const result = await (client.from('class_enrollments') as unknown as {
+src\features\admin\classManagementMutations.ts:159:    upsert: (row: EnrollmentPayload, options: { onConflict: string }) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } };
+src\features\admin\classManagementMutations.ts:160:  })
+src\features\admin\classManagementMutations.ts:161:    .upsert({ class_id: classId, student_id: required(studentId, 'Student'), status: 'active' }, { onConflict: 'class_id,student_id' })
+src\features\admin\classManagementMutations.ts:162:    .select('*')
+src\features\admin\allocationManagementRepository.ts:22:    client.from('tutor_student_allocations').select('*').order('created_at', { ascending: false }),
+src\features\admin\allocationManagementRepository.ts:23:    client.from('students').select('*').order('created_at', { ascending: false }),
+src\features\admin\allocationManagementRepository.ts:24:    client.from('tutors').select('*').order('created_at', { ascending: false }),
+src\features\admin\allocationManagementRepository.ts:41:    ? await client.from('profiles').select('*').in('id', profileIds)
+src\features\admin\adminMarkbookRepository.ts:39:    client.from('students').select('*').order('created_at', { ascending: false }),
+src\features\admin\adminMarkbookRepository.ts:40:    client.from('profiles').select('*'),
+src\features\admin\adminMarkbookRepository.ts:41:    client.from('classes').select('*').order('created_at', { ascending: false }),
+src\features\admin\adminMarkbookRepository.ts:42:    client.from('class_enrollments').select('*').eq('status', 'active').order('created_at', { ascending: false }),
+src\features\admin\adminMarkbookRepository.ts:43:    client.from('assignments').select('*').order('created_at', { ascending: false }),
+src\features\admin\adminMarkbookRepository.ts:44:    client.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }),
+src\features\admin\adminMarkbookRepository.ts:45:    client.from('subjects').select('*').order('name', { ascending: true }),
+src\features\students\studentDashboardRepository.ts:75:  const profileResult = await supabase.from('profiles').select('*').eq('auth_user_id', authUserId).maybeSingle();
+src\features\students\studentDashboardRepository.ts:76:  if (profileResult.error) {
+src\features\students\studentDashboardRepository.ts:77:    throw profileResult.error;
+src\features\students\studentDashboardRepository.ts:78:  }
+src\features\students\studentDashboardRepository.ts:79:  const profile = profileResult.data as Profile | null;
+src\features\students\studentDashboardRepository.ts:80:  if (!profile) {
+src\features\students\studentDashboardRepository.ts:81:    return null;
+src\features\students\studentDashboardRepository.ts:82:  }
+src\features\students\studentDashboardRepository.ts:83:
+src\features\students\studentDashboardRepository.ts:84:  const studentResult = await supabase.from('students').select('*').eq('profile_id', profile.id).maybeSingle();
+src\features\students\studentDashboardRepository.ts:146:    ? await supabase.from('subjects').select('*').in('id', subjectIds)
+src\features\admin\adminOperationsRepository.ts:110:    .from('sessions')
+src\features\admin\adminOperationsRepository.ts:111:    .select('*', { count: 'exact' })
+src\features\admin\adminOperationsRepository.ts:126:  const tutorIds = Array.from(new Set(rows.map((row) => row.tutor_id)));
+src\features\admin\adminOperationsRepository.ts:127:  const studentIds = Array.from(new Set(rows.map((row) => row.student_id)));
+src\features\admin\adminOperationsRepository.ts:128:  const [tutorsResult, studentsResult] = await Promise.all([
+src\features\admin\adminOperationsRepository.ts:129:    tutorIds.length ? client.from('tutors').select('*').in('id', tutorIds) : Promise.resolve({ data: [], error: null }),
+src\features\admin\adminOperationsRepository.ts:130:    studentIds.length ? client.from('students').select('*').in('id', studentIds) : Promise.resolve({ data: [], error: null }),
+src\features\admin\adminOperationsRepository.ts:148:    ? await client.from('profiles').select('*').in('id', profileIds)
+src\features\admin\adminOperationsRepository.ts:207:  let query = client.from('privacy_requests').select('*', { count: 'exact' }).order('created_at', { ascending: false });
+src\features\admin\adminOperationsRepository.ts:225:    ? await client.from('students').select('*').in('id', studentIds)
+src\features\admin\adminOperationsRepository.ts:231:  const profileIds = Array.from(new Set(students.map((student) => student.profile_id).filter(Boolean)));
+src\features\admin\adminOperationsRepository.ts:232:  const profilesResult = profileIds.length
+src\features\admin\adminOperationsRepository.ts:233:    ? await client.from('profiles').select('*').in('id', profileIds)
+src\features\admin\adminOperationsRepository.ts:253:    ? ((await client.from('profiles').select('*').eq('auth_user_id', authUserId).single()).data as Profile | null)
+src\features\admin\adminOperationsRepository.ts:335:  const result = await client.from('privacy_requests').select('*').eq('id', requestId).single();
+src\features\admin\adminOperationsRepository.ts:370:    .from('audit_log')
+src\features\admin\adminOperationsRepository.ts:371:    .select('*')
+src\features\admin\adminOperationsRepository.ts:395:    .from('audit_log')
+src\features\admin\adminOperationsRepository.ts:396:    .select('*', { count: 'exact' })
+src\features\admin\adminOperationsRepository.ts:430:  const actorIds = Array.from(new Set(rows.map((row) => row.actor_user_id).filter(Boolean))) as string[];
+src\features\admin\adminOperationsRepository.ts:431:  const profilesResult = actorIds.length
+src\features\admin\adminOperationsRepository.ts:432:    ? await supabase.from('profiles').select('*').in('auth_user_id', actorIds)

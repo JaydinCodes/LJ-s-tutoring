@@ -1,5 +1,6 @@
 import { recordAuditEvent } from '../../lib/audit/auditLog';
 import { requireSupabase } from '../../lib/supabase/client';
+import { callRpc } from '../../lib/supabase/rpc';
 import type { Profile, RecordStatus, Student, Tutor } from '../../types/lms';
 
 export interface CreateStudentInput {
@@ -351,4 +352,40 @@ export async function updateTutorRecord(input: UpdateTutorInput) {
     },
   });
   return tutor;
+}
+
+async function readTutorDeletionError(error: unknown): Promise<string> {
+  const context = (error as { context?: Response })?.context;
+  if (context && typeof context.json === 'function') {
+    try {
+      const body = await context.json() as { error?: unknown; stage?: unknown };
+      if (typeof body.error === 'string') {
+        return typeof body.stage === 'string' ? `${body.error} (${body.stage})` : body.error;
+      }
+    } catch {
+      // Fall through to the normal Error message.
+    }
+  }
+  return error instanceof Error ? error.message : 'tutor_deletion_failed';
+}
+
+export async function deleteTutorAccount(input: { tutorId: string; reason?: string }) {
+  const client = requireSupabase();
+  await requireAdminProfile();
+
+  const requestId = await callRpc(
+    client,
+    'request_tutor_deletion',
+    { p_tutor_id: input.tutorId, p_reason: input.reason?.trim() || undefined },
+  );
+  if (!requestId) throw new Error('Could not create the tutor deletion request.');
+
+  const deletionResult = await client.functions.invoke('process-tutor-deletion', {
+    body: { requestId },
+  });
+  if (deletionResult.error) {
+    throw new Error(await readTutorDeletionError(deletionResult.error));
+  }
+
+  return deletionResult.data;
 }

@@ -1,0 +1,382 @@
+﻿supabase/functions\admin-invite-user\index.ts:129:    const { data: userData, error: userErr } = await admin.auth.getUser(token);
+supabase/functions\admin-invite-user\index.ts:134:      .from('profiles')
+supabase/functions\admin-invite-user\index.ts:135:      .select('role')
+supabase/functions\admin-invite-user\index.ts:149:    const { data: rateLimitAllowed, error: rateLimitError } = await admin.rpc(
+supabase/functions\admin-invite-user\index.ts:175:      .from('profiles')
+supabase/functions\admin-invite-user\index.ts:176:      .select('id')
+supabase/functions\admin-invite-user\index.ts:230:        .from('profiles')
+supabase/functions\admin-invite-user\index.ts:238:        .select('id')
+supabase/functions\admin-invite-user\index.ts:247:        const { error } = await admin.from('students').insert({
+supabase/functions\admin-invite-user\index.ts:259:        const { error } = await admin.from('tutors').insert({
+supabase/functions\_shared\trusted-worker.ts:16:  for (let index = 0; index < token.length; index += 1) {
+supabase/functions\cleanup-submission-assets\index.ts:33:  const { data, error } = await admin.rpc('get_orphaned_assignment_submission_objects', {
+supabase/functions\cleanup-submission-assets\index.ts:47:  for (let index = 0; index < paths.length; index += 100) {
+supabase/functions\cleanup-submission-assets\index.ts:49:      .from('assignment-submissions')
+supabase/functions\cleanup-submission-assets\index.ts:57:  const { error: auditError } = await admin.rpc('record_orphaned_assignment_submission_cleanup', {
+supabase/functions\odie-careers-chat-stream\index.ts:122:  const { data: userData, error: userErr } = await admin.auth.getUser(token);
+supabase/functions\odie-careers-chat-stream\index.ts:127:    .from('profiles')
+supabase/functions\odie-careers-chat-stream\index.ts:128:    .select('id, role')
+supabase/functions\odie-careers-chat-stream\index.ts:135:    .from('students')
+supabase/functions\odie-careers-chat-stream\index.ts:136:    .select('id')
+supabase/functions\odie-careers-chat-stream\index.ts:150:  const { data: rateLimitAllowed, error: rateLimitError } = await admin.rpc(
+supabase/functions\odie-careers-chat-stream\index.ts:222:      for (const event of events) {
+supabase/functions\odie-careers-chat-stream\index.ts:223:        for (const line of event.split('\n')) {
+src\lib\audit\auditLog.ts:22:  }).rpc('record_audit_event', {
+src\hooks\useModalDialog.ts:48:    const backgrounds: BackgroundState[] = Array.from(
+src\hooks\useModalDialog.ts:59:    for (const background of backgrounds) {
+src\hooks\useModalDialog.ts:64:    const getFocusableElements = () => Array.from(
+src\hooks\useModalDialog.ts:108:      for (const background of backgrounds) {
+src\components\animations\SplitHeroTitle.tsx:20:      gsap.from(split.chars, {
+src\components\animations\SmoothScroll.tsx:14:      const [{ default: Lenis }, { default: gsap }, { ScrollTrigger }] = await Promise.all([
+supabase/functions\process-privacy-deletion\index.ts:107:  for (let index = 0; index < items.length; index += size) {
+supabase/functions\process-privacy-deletion\index.ts:156:    const { data: userData, error: userError } = await admin.auth.getUser(token);
+supabase/functions\process-privacy-deletion\index.ts:162:      .from('profiles')
+supabase/functions\process-privacy-deletion\index.ts:163:      .select('role')
+supabase/functions\process-privacy-deletion\index.ts:175:    const { data: rateLimitAllowed, error: rateLimitError } = await admin.rpc(
+supabase/functions\process-privacy-deletion\index.ts:202:    const { data: beginData, error: beginError } = await admin.rpc(
+supabase/functions\process-privacy-deletion\index.ts:232:      const { error: markBanError } = await admin.rpc(
+supabase/functions\process-privacy-deletion\index.ts:245:      const { data: manifestData, error: manifestError } = await admin.rpc(
+supabase/functions\process-privacy-deletion\index.ts:254:      for (const row of manifest) {
+supabase/functions\process-privacy-deletion\index.ts:262:      for (const [bucket, paths] of byBucket) {
+supabase/functions\process-privacy-deletion\index.ts:263:        for (const batch of chunks(paths, 1000)) {
+supabase/functions\process-privacy-deletion\index.ts:264:          const { error: removeError } = await admin.storage.from(bucket).remove(batch);
+supabase/functions\process-privacy-deletion\index.ts:270:      const { error: markStorageError } = await admin.rpc(
+supabase/functions\process-privacy-deletion\index.ts:286:      const { error: eraseError } = await admin.rpc('erase_student_privacy_data', {
+supabase/functions\process-privacy-deletion\index.ts:306:      const { error: markAuthDeletedError } = await admin.rpc(
+supabase/functions\process-privacy-deletion\index.ts:319:      const { data: finalData, error: finalError } = await admin.rpc(
+supabase/functions\process-privacy-deletion\index.ts:337:        await admin.rpc('record_student_privacy_deletion_error', {
+src\lib\monitoring\errorReporting.ts:116:  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+src\features\assignments\assignmentMutations.ts:174:  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+src\features\assignments\assignmentMutations.ts:230:  }).rpc('enqueue_ai_grading', { p_submission_id: submissionId });
+src\features\assignments\assignmentMutations.ts:274:  }).rpc('confirm_assignment_submission_attempt_digest', args);
+src\features\assignments\assignmentMutations.ts:311:  }).rpc('begin_assignment_submission_attempt', args);
+src\features\assignments\assignmentMutations.ts:345:  const { data: auth, error: authError } = await client.auth.getUser();
+src\features\assignments\assignmentMutations.ts:354:  const result = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\assignments\assignmentMutations.ts:368:  const result = await client.from('students').select('*').eq('profile_id', profileId).single();
+src\features\assignments\assignmentMutations.ts:387:    .from('subjects')
+src\features\assignments\assignmentMutations.ts:388:    .select('*')
+src\features\assignments\assignmentMutations.ts:401:  const created = await (client.from('subjects') as unknown as {
+src\features\assignments\assignmentMutations.ts:407:    .select('*')
+src\features\assignments\assignmentMutations.ts:456:    for (let index = 0; index < bytes.length; index += 1) {
+src\features\assignments\assignmentMutations.ts:462:  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
+src\features\assignments\assignmentMutations.ts:513:      .sort(([left], [right]) => left.localeCompare(right))
+src\features\assignments\assignmentMutations.ts:540:  const uploaded = await client.storage.from(bucket).upload(path, file, {
+src\features\assignments\assignmentMutations.ts:558:  const discarded = await (client as unknown as AssignmentPublishClient).rpc('discard_assignment_staged_assets', {
+src\features\assignments\assignmentMutations.ts:572:  const confirmed = await client.from('assignments').select('*').eq('id', payload.p_assignment_id).maybeSingle();
+src\features\assignments\assignmentMutations.ts:614:  const drafted = await (client as unknown as AssignmentPublishClient).rpc('create_assignment_draft', {
+src\features\assignments\assignmentMutations.ts:648:    const finalized = await (client as unknown as AssignmentPublishClient).rpc('finalize_assignment_publication', {
+src\features\assignments\assignmentMutations.ts:709:  const existing = await client.from('assignments').select('*').eq('id', input.assignmentId).single();
+src\features\assignments\assignmentMutations.ts:772:    const finalized = await (client as unknown as AssignmentPublishClient).rpc('finalize_assignment_publication', payload);
+src\features\assignments\assignmentMutations.ts:898:    const uploaded = await client.storage.from('assignment-submissions').upload(rpcArgs.p_storage_key!, input.file, {
+src\features\assignments\assignmentMutations.ts:925:  }).rpc('submit_assignment_submission', rpcArgs);
+src\features\assignments\assignmentMutations.ts:996:  }).rpc('mark_assignment_submission', {
+src\features\auth\AuthProvider.tsx:180:      // second auth request here can deadlock getSession()/getUser() and leave
+supabase/functions\grade-submission\index.ts:101:  for (const byte of bytes) {
+supabase/functions\grade-submission\index.ts:179:  const signed = await admin.storage.from(bucket).createSignedUrl(path, 300);
+supabase/functions\grade-submission\index.ts:309:  }).rpc('fail_ai_grading_job', {
+supabase/functions\grade-submission\index.ts:353:  }).rpc('complete_ai_grading_job', {
+supabase/functions\grade-submission\index.ts:443:      const { data: userData, error: userErr } = await admin.auth.getUser(token);
+supabase/functions\grade-submission\index.ts:449:        .from('profiles')
+supabase/functions\grade-submission\index.ts:450:        .select('id, role')
+supabase/functions\grade-submission\index.ts:459:        .from('students')
+supabase/functions\grade-submission\index.ts:460:        .select('id')
+supabase/functions\grade-submission\index.ts:469:      const { data: rateLimitAllowed, error: rateLimitError } = await admin.rpc(
+supabase/functions\grade-submission\index.ts:492:        const eligibility = await admin.rpc('can_student_access_assignment', {
+supabase/functions\grade-submission\index.ts:503:          .from('assignments')
+supabase/functions\grade-submission\index.ts:504:          .select('id, title, description, grade, status, rubric_json')
+supabase/functions\grade-submission\index.ts:647:        for (const criterion of parsed.criteria) {
+supabase/functions\grade-submission\index.ts:667:        const totalMaxMarks = rubric.reduce((total, criterion) => total + criterion.maxMarks, 0) || 100;
+supabase/functions\grade-submission\index.ts:718:          }).rpc('claim_ai_grading_job', { p_submission_id: submissionId })
+supabase/functions\grade-submission\index.ts:724:          }).rpc('claim_next_ai_grading_job');
+supabase/functions\grade-submission\index.ts:753:      .from('assignment_submissions')
+supabase/functions\grade-submission\index.ts:754:      .select('id, assignment_id, student_id, storage_key, file_url, original_filename, mime_type, size_bytes, text_answer, ai_grading_status, ai_job_claim_token, ai_job_attempts, ai_job_available_at, ai_job_lease_expires_at, ai_job_claimed_at, ai_job_last_error')
+supabase/functions\grade-submission\index.ts:772:    }).rpc('claim_ai_grading_job', { p_submission_id: submissionId });
+src\features\onboarding\onboardingMutations.ts:31:  const result = await client.rpc('onboard_current_user', args);
+src\features\ngo\NgoReportsRoute.tsx:16:    { label: 'Learners', value: String(reports.reduce((total, report) => total + report.student_count, 0)), helper: 'Learner count only, no names exposed.', tone: 'blue' },
+src\features\ngo\NgoReportsRoute.tsx:17:    { label: 'Marked submissions', value: String(reports.reduce((total, report) => total + report.released_results, 0)), helper: 'Aggregate marked work, not a learner outcome count.', tone: 'amber' },
+src\features\ngo\NgoReportsRoute.tsx:31:          <ImpactMetric label="Session delivery" value={String(reports.reduce((total, report) => total + (report.session_count || 0), 0))} helper="Scheduled tutor sessions captured across visible cohorts." />
+src\features\ngo\NgoReportsRoute.tsx:33:          <ImpactMetric label="Competency evidence" value={String(reports.reduce((total, report) => total + (report.competency_evidence_count || 0), 0))} helper="Released rubric criteria supporting the learning view." />
+src\features\ngo\NgoReportsRoute.tsx:34:          <ImpactMetric label="Interventions shared" value={String(reports.reduce((total, report) => total + (report.intervention_count || 0), 0))} helper="Released feedback items with a next learning action." />
+src\features\ngo\NgoReportsRoute.tsx:67:function formatRate(reports: NgoAggregateReport[]) { const sessions = reports.reduce((total, report) => total + (report.session_count || 0), 0); const attended = reports.reduce((total, report) => total + (report.attended_session_count || 0), 0); return sessions ? `${Math.round(attended / sessions * 100)}%` : '--'; }
+src\features\auth\authService.ts:233:  const sessionResult = await supabase.auth.getSession();
+src\features\auth\authService.ts:258:    .from('profiles')
+src\features\auth\authService.ts:259:    .select('*')
+src\features\auth\authService.ts:298:    const accessResult = await supabase.rpc('current_active_student_id');
+src\features\auth\authService.ts:313:    const accessResult = await supabase.rpc(
+src\features\ngo\ngoReportsRepository.ts:47:  for (let offset = 0; ; offset += MEMBERSHIP_PAGE_SIZE) {
+src\features\ngo\ngoReportsRepository.ts:49:      .from('organization_members')
+src\features\ngo\ngoReportsRepository.ts:50:      .select('organization_id, organizations(name)')
+src\features\ngo\ngoReportsRepository.ts:54:      .range(offset, offset + MEMBERSHIP_PAGE_SIZE - 1);
+src\features\ngo\ngoReportsRepository.ts:76:  const reports = await Promise.all(memberRows.map(async (membership) => {
+src\features\ngo\ngoReportsRepository.ts:77:    const result = await (client as unknown as CohortRpcClient).rpc('get_org_cohort_report', { p_org_id: membership.organization_id });
+src\lib\supabase\edgeFunctions.ts:16:  const { data: sessionData } = await client.auth.getSession();
+src\lib\supabase\storage.ts:20:  const uniquePaths = Array.from(new Set(paths.filter((path): path is string => typeof path === 'string' && path.length > 0 && !isAlreadyUrl(path))));
+src\lib\supabase\storage.ts:25:  const result = await client.storage.from(bucket).createSignedUrls(uniquePaths, SIGNED_URL_EXPIRY_SECONDS);
+src\lib\supabase\storage.ts:33:  for (const entry of result.data || []) {
+src\features\assignments\assignmentStatus.ts:150:  return [...assignments].sort((a, b) => {
+src\lib\supabase\rpc.ts:17:  const result = await client.rpc(fn, args);
+src\features\admin\adminMarkbookRepository.ts:38:  const [studentsResult, profilesResult, classesResult, enrollmentsResult, assignmentsResult, submissionsResult, subjectsResult] = await Promise.all([
+src\features\admin\adminMarkbookRepository.ts:39:    client.from('students').select('*').order('created_at', { ascending: false }),
+src\features\admin\adminMarkbookRepository.ts:40:    client.from('profiles').select('*'),
+src\features\admin\adminMarkbookRepository.ts:41:    client.from('classes').select('*').order('created_at', { ascending: false }),
+src\features\admin\adminMarkbookRepository.ts:42:    client.from('class_enrollments').select('*').eq('status', 'active').order('created_at', { ascending: false }),
+src\features\admin\adminMarkbookRepository.ts:43:    client.from('assignments').select('*').order('created_at', { ascending: false }),
+src\features\admin\adminMarkbookRepository.ts:44:    client.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }),
+src\features\admin\adminMarkbookRepository.ts:45:    client.from('subjects').select('*').order('name', { ascending: true }),
+src\features\admin\adminMarkbookRepository.ts:48:  for (const result of [studentsResult, profilesResult, classesResult, enrollmentsResult, assignmentsResult, submissionsResult, subjectsResult]) {
+src\features\admin\adminMarkbookRepository.ts:69:  for (const enrollment of enrollments) {
+src\features\admin\adminMarkbookRepository.ts:112:      ? Math.round((marked.reduce((total, row) => total + Number(row.marks_awarded || 0), 0) / marked.length) * 10) / 10
+src\features\admin\adminOperationsRepository.ts:110:    .from('sessions')
+src\features\admin\adminOperationsRepository.ts:111:    .select('*', { count: 'exact' })
+src\features\admin\adminOperationsRepository.ts:114:    .range(from, to);
+src\features\admin\adminOperationsRepository.ts:126:  const tutorIds = Array.from(new Set(rows.map((row) => row.tutor_id)));
+src\features\admin\adminOperationsRepository.ts:127:  const studentIds = Array.from(new Set(rows.map((row) => row.student_id)));
+src\features\admin\adminOperationsRepository.ts:128:  const [tutorsResult, studentsResult] = await Promise.all([
+src\features\admin\adminOperationsRepository.ts:129:    tutorIds.length ? client.from('tutors').select('*').in('id', tutorIds) : Promise.resolve({ data: [], error: null }),
+src\features\admin\adminOperationsRepository.ts:130:    studentIds.length ? client.from('students').select('*').in('id', studentIds) : Promise.resolve({ data: [], error: null }),
+src\features\admin\adminOperationsRepository.ts:143:  const profileIds = Array.from(new Set([
+src\features\admin\adminOperationsRepository.ts:148:    ? await client.from('profiles').select('*').in('id', profileIds)
+src\features\admin\adminOperationsRepository.ts:207:  let query = client.from('privacy_requests').select('*', { count: 'exact' }).order('created_at', { ascending: false });
+src\features\admin\adminOperationsRepository.ts:219:  const studentIds = Array.from(new Set(
+src\features\admin\adminOperationsRepository.ts:225:    ? await client.from('students').select('*').in('id', studentIds)
+src\features\admin\adminOperationsRepository.ts:231:  const profileIds = Array.from(new Set(students.map((student) => student.profile_id).filter(Boolean)));
+src\features\admin\adminOperationsRepository.ts:233:    ? await client.from('profiles').select('*').in('id', profileIds)
+src\features\admin\adminOperationsRepository.ts:250:  const { data: auth } = await client.auth.getUser();
+src\features\admin\adminOperationsRepository.ts:253:    ? ((await client.from('profiles').select('*').eq('auth_user_id', authUserId).single()).data as Profile | null)
+src\features\admin\adminOperationsRepository.ts:256:  const result = await (client.from('privacy_requests') as unknown as {
+src\features\admin\adminOperationsRepository.ts:268:  }).select('*').single();
+src\features\admin\adminOperationsRepository.ts:335:  const result = await client.from('privacy_requests').select('*').eq('id', requestId).single();
+src\features\admin\adminOperationsRepository.ts:363:  for (const [key, years] of Object.entries(raw.windows_years)) {
+src\features\admin\adminOperationsRepository.ts:370:    .from('audit_log')
+src\features\admin\adminOperationsRepository.ts:371:    .select('*')
+src\features\admin\adminOperationsRepository.ts:374:    .limit(1)
+src\features\admin\adminOperationsRepository.ts:395:    .from('audit_log')
+src\features\admin\adminOperationsRepository.ts:396:    .select('*', { count: 'exact' })
+src\features\admin\adminOperationsRepository.ts:398:    .range(from, to);
+src\features\admin\adminOperationsRepository.ts:430:  const actorIds = Array.from(new Set(rows.map((row) => row.actor_user_id).filter(Boolean))) as string[];
+src\features\admin\adminOperationsRepository.ts:432:    ? await supabase.from('profiles').select('*').in('auth_user_id', actorIds)
+src\features\admin\adminDashboardRepository.ts:40:  const [studentsResult, guardiansResult, studentGuardiansResult, tutorsResult, assignmentsResult, submissionsResult, paymentsResult, tutorPaymentsResult, ngoResult] = await Promise.all([
+src\features\admin\adminDashboardRepository.ts:41:    supabase.from('students').select('*').order('created_at', { ascending: false }).limit(25),
+src\features\admin\adminDashboardRepository.ts:42:    supabase.from('guardians').select('*').order('created_at', { ascending: false }).limit(100),
+src\features\admin\adminDashboardRepository.ts:43:    supabase.from('student_guardians').select('*').order('created_at', { ascending: false }).limit(200),
+src\features\admin\adminDashboardRepository.ts:44:    supabase.from('tutors').select('*').order('created_at', { ascending: false }).limit(25),
+src\features\admin\adminDashboardRepository.ts:45:    supabase.from('assignments').select('*').order('created_at', { ascending: false }).limit(25),
+src\features\admin\adminDashboardRepository.ts:46:    supabase.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }).limit(50),
+src\features\admin\adminDashboardRepository.ts:47:    supabase.from('payments').select('*').order('due_date', { ascending: true }).limit(25),
+src\features\admin\adminDashboardRepository.ts:48:    supabase.from('tutor_payments').select('*').order('payment_period', { ascending: false }).limit(25),
+src\features\admin\adminDashboardRepository.ts:49:    supabase.from('ngo_partners').select('*').order('name', { ascending: true }),
+src\features\admin\adminDashboardRepository.ts:52:  for (const result of [studentsResult, guardiansResult, studentGuardiansResult, tutorsResult, assignmentsResult, submissionsResult, paymentsResult, tutorPaymentsResult, ngoResult]) {
+src\features\admin\adminDashboardRepository.ts:67:  const profileIds = Array.from(new Set([
+src\features\admin\adminDashboardRepository.ts:72:    ? await supabase.from('profiles').select('*').in('id', profileIds)
+src\features\admin\adminDashboardRepository.ts:83:  const outstanding = payments.filter((item) => item.status !== 'paid').reduce((total, item) => total + Number(item.amount || 0), 0);
+src\features\admin\AdminOperationsRoutes.tsx:68:              <Summary label="Submitted minutes" value={String(data.aggregates?.totalMinutesSubmitted ?? data.items.reduce((sum, item) => sum + Number(item.duration_minutes || 0), 0))} />
+src\features\students\StudentAssignmentDetailRoute.tsx:28:      .sort(compareSubmissionVersions)
+src\features\tutors\tutorDashboardRepository.ts:10:  const { data: auth, error: authError } = await client.auth.getUser();
+src\features\tutors\tutorDashboardRepository.ts:19:  const profileResult = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\tutors\tutorDashboardRepository.ts:28:  const tutorResult = await client.from('tutors').select('*').eq('profile_id', profile.id).single();
+src\features\tutors\tutorDashboardRepository.ts:48:  const [classesResult, assignmentsResult, allocationsResult, allocatedStudents, sessionsResult] = await Promise.all([
+src\features\tutors\tutorDashboardRepository.ts:49:    client.from('classes').select('*').eq('tutor_id', tutor.id).neq('status', 'inactive').order('day_of_week', { ascending: true }),
+src\features\tutors\tutorDashboardRepository.ts:50:    client.from('assignments').select('*').eq('created_by', profile.id).order('created_at', { ascending: false }),
+src\features\tutors\tutorDashboardRepository.ts:51:    client.from('tutor_student_allocations').select('*').eq('tutor_id', tutor.id).eq('status', 'active').order('created_at', { ascending: false }),
+src\features\tutors\tutorDashboardRepository.ts:74:      .from('assignment_submissions')
+src\features\tutors\tutorDashboardRepository.ts:75:      .select('*')
+src\features\tutors\tutorDashboardRepository.ts:139:        ? markedSubmissions.reduce((sum, submission) => sum + Number(submission.marks_awarded || 0), 0) / markedSubmissions.length
+src\features\tutors\tutorDashboardRepository.ts:162:    .sort((left, right) => sessionTime(right) - sessionTime(left))
+src\features\parents\ParentReportsRoute.tsx:18:    { label: 'Released results', value: String(students.reduce((total, student) => total + student.released_results.length, 0)), helper: 'Only tutor/admin released results are shown.', tone: 'amber' },
+src\features\parents\ParentReportsRoute.tsx:80:  return `${Math.round((cleanValues.reduce((total, value) => total + value, 0) / cleanValues.length) * 10) / 10}%`;
+src\features\payments\paymentMutations.ts:33:  const { data: auth, error: authError } = await client.auth.getUser();
+src\features\payments\paymentMutations.ts:42:  const result = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\payments\paymentMutations.ts:83:  const result = await (client.from('payments') as unknown as {
+src\features\payments\paymentMutations.ts:87:  }).insert(payload).select('*').single();
+src\features\payments\paymentMutations.ts:106:  const result = await (client.from('payments') as unknown as {
+src\features\payments\paymentMutations.ts:112:  }).update(payload).eq('id', input.paymentId).select('*').single();
+src\features\payments\paymentMutations.ts:145:  const result = await (client.from('tutor_payments') as unknown as {
+src\features\payments\paymentMutations.ts:149:  }).insert(payload).select('*').single();
+src\features\payments\paymentMutations.ts:168:  const result = await (client.from('tutor_payments') as unknown as {
+src\features\payments\paymentMutations.ts:174:  }).update(payload).eq('id', input.tutorPaymentId).select('*').single();
+src\features\admin\adminPayrollRepository.ts:62:  for (const key of ['payPeriod', 'overlaps', 'outsideAssignmentWindow', 'missingInvoiceLines', 'invoiceTotalMismatches', 'pendingSubmissions', 'missingRates', 'duplicateSessions']) {
+src\features\admin\adminPayrollRepository.ts:103:  const [payrollViewJson, integrityJson] = await Promise.all([
+src\features\parents\parentReportsRepository.ts:38:  const [result, updatesResult] = await Promise.all([
+src\features\parents\parentReportsRepository.ts:39:    client.rpc('get_parent_progress_reports'),
+src\features\parents\parentReportsRepository.ts:40:    (client as unknown as { rpc: (name: 'get_parent_learning_updates') => Promise<{ data: ParentLearningUpdate[] | null; error: Error | null }> }).rpc('get_parent_learning_updates'),
+src\features\parents\parentReportsRepository.ts:55:  for (const row of rows) {
+src\features\parents\parentReportsRepository.ts:86:  const students = Array.from(grouped.values()).map((student) => ({
+src\features\parents\parentReportsRepository.ts:98:  return Math.round((cleanValues.reduce((total, value) => total + value, 0) / cleanValues.length) * 10) / 10;
+src\features\tutors\TutorSubmissionReviewCard.tsx:52:      for (const criterion of criteria) {
+src\features\tutors\TutorSubmissionReviewCard.tsx:83:    const awarded = criteria.reduce((total, criterion) => total + Math.min(criterion.maxMarks, Math.max(0, Number(next[criterion.id]) || 0)), 0);
+src\features\tutors\TutorSubmissionReviewCard.tsx:84:    const available = criteria.reduce((total, criterion) => total + criterion.maxMarks, 0);
+src\features\admin\allocationManagementMutations.ts:16:  const { data: auth, error: authError } = await client.auth.getUser();
+src\features\admin\allocationManagementMutations.ts:25:  const result = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\admin\allocationManagementMutations.ts:64:  const result = await (client.from('tutor_student_allocations') as unknown as {
+src\features\admin\allocationManagementMutations.ts:68:    .select('*')
+src\features\admin\allocationManagementMutations.ts:92:  const result = await (client.from('tutor_student_allocations') as unknown as {
+src\features\admin\allocationManagementMutations.ts:97:    .select('*')
+src\features\admin\allocationManagementMutations.ts:121:  const result = await (client.from('tutor_student_allocations') as unknown as {
+src\features\admin\allocationManagementMutations.ts:126:    .select('*')
+src\features\admin\AdminUsersRoute.tsx:237:      <select multiple required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={value} onChange={(event) => onChange(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>
+src\features\students\studentDashboardRepository.ts:66:  const { data: auth, error: authError } = await supabase.auth.getUser();
+src\features\students\studentDashboardRepository.ts:75:  const profileResult = await supabase.from('profiles').select('*').eq('auth_user_id', authUserId).maybeSingle();
+src\features\students\studentDashboardRepository.ts:84:  const studentResult = await supabase.from('students').select('*').eq('profile_id', profile.id).maybeSingle();
+src\features\students\studentDashboardRepository.ts:93:  const [assignmentsResult, progressResult, competencyEvidenceResult, enrollmentsResult, submissionsResult, assignedTutorsResult, sessionsResult] = await Promise.all([
+src\features\students\studentDashboardRepository.ts:97:    supabase.rpc('get_student_accessible_assignments').limit(DASHBOARD_DETAIL_LIMIT),
+src\features\students\studentDashboardRepository.ts:98:    supabase.from('student_progress').select('id, student_id, subject_id, topic, score, cognitive_level, recorded_at, source_submission_id').eq('student_id', student.id).order('recorded_at', { ascending: false }).limit(DASHBOARD_DETAIL_LIMIT),
+src\features\students\studentDashboardRepository.ts:99:    (supabase as unknown as { from: (table: 'competency_evidence') => { select: (columns: string) => { eq: (column: string, value: string) => { order: (column: string, options: { ascending: boolean }) => { limit: (limit: number) => Promise<{ data: CompetencyEvidence[] | null; error: Error | null }> } } } } }).from('competency_evidence').select('id, student_id, subject_id, competency, cognitive_level, score, source_submission_id, rubric_criterion_id, recorded_at').eq('student_id', student.id).order('recorded_at', { ascending: false }).limit(DASHBOARD_DETAIL_LIMIT),
+src\features\students\studentDashboardRepository.ts:100:    supabase.from('class_enrollments').select('class_id').eq('student_id', student.id).eq('status', 'active').limit(DASHBOARD_DETAIL_LIMIT),
+src\features\students\studentDashboardRepository.ts:102:    supabase.rpc('get_student_assignment_submissions').limit(DASHBOARD_DETAIL_LIMIT),
+src\features\students\studentDashboardRepository.ts:106:    supabase.rpc('get_student_assigned_tutors'),
+src\features\students\studentDashboardRepository.ts:109:    supabase.rpc('get_student_sessions'),
+src\features\students\studentDashboardRepository.ts:112:  for (const result of [assignmentsResult, progressResult, competencyEvidenceResult, enrollmentsResult, submissionsResult, assignedTutorsResult, sessionsResult]) {
+src\features\students\studentDashboardRepository.ts:123:    ? await supabase.from('classes').select('id, name, tutor_id, subject_id, grade, location, day_of_week, start_time, end_time, ngo_partner_id, status, created_at, updated_at').in('id', enrolledClassIds).neq('status', 'inactive').limit(DASHBOARD_DETAIL_LIMIT)
+src\features\students\studentDashboardRepository.ts:140:  const subjectIds = Array.from(new Set([
+src\features\students\studentDashboardRepository.ts:146:    ? await supabase.from('subjects').select('*').in('id', subjectIds)
+src\features\students\studentDashboardRepository.ts:158:  const [attachmentUrlByPath, submissionUrlByPath] = await Promise.all([
+src\features\students\studentDashboardRepository.ts:197:    .sort((left, right) => Number(left.score) - Number(right.score) || left.topic.localeCompare(right.topic))[0];
+src\features\admin\allocationManagementRepository.ts:21:  const [allocationsResult, studentsResult, tutorsResult] = await Promise.all([
+src\features\admin\allocationManagementRepository.ts:22:    client.from('tutor_student_allocations').select('*').order('created_at', { ascending: false }),
+src\features\admin\allocationManagementRepository.ts:23:    client.from('students').select('*').order('created_at', { ascending: false }),
+src\features\admin\allocationManagementRepository.ts:24:    client.from('tutors').select('*').order('created_at', { ascending: false }),
+src\features\admin\allocationManagementRepository.ts:27:  for (const result of [allocationsResult, studentsResult, tutorsResult]) {
+src\features\admin\allocationManagementRepository.ts:36:  const profileIds = Array.from(new Set([
+src\features\admin\allocationManagementRepository.ts:41:    ? await client.from('profiles').select('*').in('id', profileIds)
+src\features\admin\rosterMutations.ts:43:  const { data: auth, error: authError } = await client.auth.getUser();
+src\features\admin\rosterMutations.ts:52:  const result = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\admin\rosterMutations.ts:98:  const profileResult = await (client.from('profiles') as unknown as {
+src\features\admin\rosterMutations.ts:110:    .select('*')
+src\features\admin\rosterMutations.ts:118:  const studentResult = await (client.from('students') as unknown as {
+src\features\admin\rosterMutations.ts:138:    .select('*')
+src\features\admin\rosterMutations.ts:177:  const profileResult = await (client.from('profiles') as unknown as {
+src\features\admin\rosterMutations.ts:191:  const studentResult = await (client.from('students') as unknown as {
+src\features\admin\rosterMutations.ts:210:    .select('*')
+src\features\admin\rosterMutations.ts:244:  const profileResult = await (client.from('profiles') as unknown as {
+src\features\admin\rosterMutations.ts:256:    .select('*')
+src\features\admin\rosterMutations.ts:264:  const tutorResult = await (client.from('tutors') as unknown as {
+src\features\admin\rosterMutations.ts:276:    .select('*')
+src\features\admin\rosterMutations.ts:308:  const profileResult = await (client.from('profiles') as unknown as {
+src\features\admin\rosterMutations.ts:322:  const tutorResult = await (client.from('tutors') as unknown as {
+src\features\admin\rosterMutations.ts:334:    .select('*')
+src\features\students\StudentSupportRoutes.tsx:44:  const upcoming = [...sessions].filter((session) => session.date >= today).sort((left, right) => `${left.date}${left.start_time}`.localeCompare(`${right.date}${right.start_time}`));
+src\features\students\StudentSupportRoutes.tsx:45:  const previous = [...sessions].filter((session) => session.date < today).sort((left, right) => `${right.date}${right.start_time}`.localeCompare(`${left.date}${left.start_time}`));
+src\features\admin\classManagementRepository.ts:21:  const [classesResult, enrollmentsResult, studentsResult, tutorsResult, subjectsResult, ngoResult] = await Promise.all([
+src\features\admin\classManagementRepository.ts:22:    client.from('classes').select('*').order('created_at', { ascending: false }),
+src\features\admin\classManagementRepository.ts:23:    client.from('class_enrollments').select('*').order('created_at', { ascending: false }),
+src\features\admin\classManagementRepository.ts:24:    client.from('students').select('*').order('created_at', { ascending: false }),
+src\features\admin\classManagementRepository.ts:25:    client.from('tutors').select('*').order('created_at', { ascending: false }),
+src\features\admin\classManagementRepository.ts:26:    client.from('subjects').select('*').order('name', { ascending: true }),
+src\features\admin\classManagementRepository.ts:27:    client.from('ngo_partners').select('*').order('name', { ascending: true }),
+src\features\admin\classManagementRepository.ts:30:  for (const result of [classesResult, enrollmentsResult, studentsResult, tutorsResult, subjectsResult, ngoResult]) {
+src\features\admin\classManagementRepository.ts:42:  const profileIds = Array.from(new Set([
+src\features\admin\classManagementRepository.ts:47:    ? await client.from('profiles').select('*').in('id', profileIds)
+src\features\admin\classManagementRepository.ts:61:  for (const enrollment of enrollments) {
+src\features\admin\AdminPayrollRoute.tsx:87:                <IntegrityTile label="Pending submissions" value={String(data.integrity.pendingSubmissions?.reduce((sum, item) => sum + Number(item.pending || 0), 0) || 0)} />
+src\features\admin\guardianMutations.ts:50:  const created = await (client.from('guardians') as unknown as {
+src\features\admin\guardianMutations.ts:54:  }).insert(guardianPayload(input)).select('*').single();
+src\features\admin\guardianMutations.ts:76:  const updated = await (client.from('guardians') as unknown as {
+src\features\admin\guardianMutations.ts:80:  }).update(guardianPayload(input)).eq('id', input.guardianId).select('*').single();
+src\features\admin\guardianMutations.ts:106:  const linked = await (client.from('student_guardians') as unknown as {
+src\features\admin\guardianMutations.ts:126:  }, { onConflict: 'student_id,guardian_id' }).select('*').single();
+src\features\admin\guardianMutations.ts:150:  const updated = await (client.from('student_guardians') as unknown as {
+src\features\admin\classManagementMutations.ts:20:  const { data: auth, error: authError } = await client.auth.getUser();
+src\features\admin\classManagementMutations.ts:29:  const result = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\admin\classManagementMutations.ts:73:  const result = await (client.from('classes') as unknown as {
+src\features\admin\classManagementMutations.ts:75:  }).insert(classPayload(input)).select('*').single();
+src\features\admin\classManagementMutations.ts:105:  const result = await (client.from('classes') as unknown as {
+src\features\admin\classManagementMutations.ts:107:  }).update(classPayload(input)).eq('id', classId).select('*').single();
+src\features\admin\classManagementMutations.ts:135:  const result = await (client.from('classes') as unknown as {
+src\features\admin\classManagementMutations.ts:137:  }).update({ status: 'inactive', updated_at: new Date().toISOString() }).eq('id', classId).select('*').single();
+src\features\admin\classManagementMutations.ts:158:  const result = await (client.from('class_enrollments') as unknown as {
+src\features\admin\classManagementMutations.ts:162:    .select('*')
+src\features\admin\classManagementMutations.ts:184:  const result = await (client.from('class_enrollments') as unknown as {
+src\features\admin\classManagementMutations.ts:190:    .select('*')
+src\features\tutors\tutorOperationsRepository.ts:61:  const { data: auth, error: authError } = await client.auth.getUser();
+src\features\tutors\tutorOperationsRepository.ts:70:  const profileResult = await client.from('profiles').select('*').eq('auth_user_id', authUserId).single();
+src\features\tutors\tutorOperationsRepository.ts:79:  const tutorResult = await client.from('tutors').select('id').eq('profile_id', profile.id).single();
+src\features\tutors\tutorOperationsRepository.ts:93:  const result = await client.rpc('get_tutor_allocated_students');
+src\features\tutors\tutorOperationsRepository.ts:135:    .from('sessions')
+src\features\tutors\tutorOperationsRepository.ts:136:    .select('*')
+src\features\tutors\tutorOperationsRepository.ts:210:  const reportsResult = await client.from('weekly_reports').select('*').order('week_start', { ascending: false });
+src\features\tutors\tutorOperationsRepository.ts:226:  const result = await client.from('weekly_reports').select('*').eq('id', reportId).single();
+src\features\tutors\tutorOperationsRepository.ts:247:    .from('tutor_student_allocations')
+src\features\tutors\tutorOperationsRepository.ts:248:    .select('student_id')
+src\features\tutors\tutorOperationsRepository.ts:255:  const studentIds = Array.from(new Set(allocationRows.map((row) => row.student_id)));
+src\features\tutors\tutorOperationsRepository.ts:267:    .from('student_score_snapshots')
+src\features\tutors\tutorOperationsRepository.ts:268:    .select('*')
+src\features\tutors\tutorOperationsRepository.ts:276:  for (const snapshot of snapshots) {
+src\features\students\StudentCareersRoute.tsx:122:  const categories = useMemo(() => [...new Set((data?.careers || []).map((career) => career.category).filter(Boolean) as string[])].sort(), [data?.careers]);
+src\features\students\StudentCareersRoute.tsx:141:    for (const item of learningData?.progress || []) {
+src\features\students\StudentCareersRoute.tsx:153:      .sort((left, right) => right.average - left.average || left.subject.localeCompare(right.subject));
+src\features\students\studentDailyInsight.ts:44:  for (const character of value) {
+src\features\students\studentDailyInsight.ts:61:  return values.length ? Math.round(values.reduce((total, value) => total + value, 0) / values.length) : undefined;
+src\features\students\studentDailyInsight.ts:73:    .sort((left, right) => left.score - right.score || left.topic.localeCompare(right.topic));
+src\features\admin\AdminTutorsRoute.tsx:138:      <select multiple required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={value} onChange={(event) => onChange(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>
+src\features\students\StudentDashboardComponents.tsx:215:  for (const item of progress) {
+src\features\students\StudentDashboardComponents.tsx:223:      const average = scores.length ? Math.round(scores.reduce((total, score) => total + score, 0) / scores.length) : 0;
+src\features\students\StudentDashboardComponents.tsx:224:      const weakest = [...items].sort((left, right) => Number(left.score || 0) - Number(right.score || 0) || left.topic.localeCompare(right.topic))[0];
+src\features\students\StudentDashboardComponents.tsx:233:    .sort((left, right) => left.average - right.average || left.subject.localeCompare(right.subject));
+src\features\students\StudentDashboardComponents.tsx:331:    ? Math.round(progress.reduce((total, item) => total + Number(item.score || 0), 0) / progress.length)
+src\features\students\StudentDashboardComponents.tsx:336:    ? [...progress].sort((left, right) => Number(left.score || 0) - Number(right.score || 0) || left.topic.localeCompare(right.topic))[0]
+src\features\students\StudentProgressRoute.tsx:173:  for (const item of progress) {
+src\features\students\StudentProgressRoute.tsx:185:    .sort((left, right) => left.localeCompare(right));
+src\features\students\StudentProgressRoute.tsx:193:  return [...rows].sort((left, right) => Number(left.score || 0) - Number(right.score || 0) || left.topic.localeCompare(right.topic));
+src\features\students\StudentProgressRoute.tsx:198:  const average = scores.length ? Math.round(scores.reduce((total, score) => total + score, 0) / scores.length) : null;
+src\features\students\StudentProgressRoute.tsx:201:    .sort((left, right) => Number(left.score || 0) - Number(right.score || 0) || left.topic.localeCompare(right.topic))[0]?.topic;
+src\features\students\studentReportsRepository.ts:52:  const { data: auth, error: authError } = await client.auth.getUser();
+src\features\students\studentReportsRepository.ts:61:  const profileResult = await client.from('profiles').select('id').eq('auth_user_id', authUserId).single();
+src\features\students\studentReportsRepository.ts:67:  const studentResult = await client.from('students').select('id').eq('profile_id', profile.id).single();
+src\features\students\studentReportsRepository.ts:80:    .from('weekly_reports')
+src\features\students\studentReportsRepository.ts:81:    .select('id, week_start, week_end, created_at')
+src\features\students\studentReportsRepository.ts:93:  const result = await client.from('weekly_reports').select('*').eq('id', reportId).single();
+src\features\students\StudentResultsRoute.tsx:32:  return [...items].sort((left, right) => new Date(right.completedAt || right.markedAt || 0).getTime() - new Date(left.completedAt || left.markedAt || 0).getTime());
+src\features\students\StudentResultsRoute.tsx:40:    .sort((left, right) => Number(right.average) - Number(left.average) || left.subject.localeCompare(right.subject))[0] || null;
+src\features\students\StudentResultsRoute.tsx:47:    .sort((left, right) => Number(left.score) - Number(right.score) || left.topic.localeCompare(right.topic))[0] || null;
+src\features\students\StudentResultsRoute.tsx:52:  for (const item of items) {
+src\features\students\StudentResultsRoute.tsx:60:  return finite.length ? Math.round((finite.reduce((total, value) => total + value, 0) / finite.length) * 10) / 10 : null;
+src\features\students\StudentResultsRoute.tsx:68:  const variance = scores.reduce((total, score) => total + (score - avg) ** 2, 0) / scores.length;
+src\features\students\StudentResultsRoute.tsx:73:  const chronological = [...items].sort((left, right) => new Date(left.completedAt || left.markedAt || 0).getTime() - new Date(right.completedAt || right.markedAt || 0).getTime());
+src\features\students\StudentResultsRoute.tsx:191:    .sort((left, right) => Number(right.average ?? 0) - Number(left.average ?? 0) || left.subject.localeCompare(right.subject));
+src\features\students\StudentResultsRoute.tsx:358:  const chronological = [...items].sort((left, right) => new Date(left.completedAt || left.markedAt || 0).getTime() - new Date(right.completedAt || right.markedAt || 0).getTime());
+src\features\students\StudentResultsRoute.tsx:545:  const weak = [...levels].filter((item) => item.score != null && item.score < 50).sort((left, right) => Number(left.score) - Number(right.score))[0];
+src\features\students\studentBattlePlan.ts:58:  for (const task of dueTasks) {
+src\features\students\studentBattlePlan.ts:65:  for (const task of dueTasks) {
+src\features\students\studentBattlePlan.ts:88:    .sort((left, right) => Number(left.score) - Number(right.score) || left.topic.localeCompare(right.topic))[0];
+src\features\students\studentBattlePlan.ts:162:  for (const item of fallbackActions) {
+src\features\students\studentBattlePlan.ts:170:    .sort((left, right) => left.priority - right.priority || left.title.localeCompare(right.title))
+src\features\students\studentBattlePlan.ts:175:  return [...items].sort((left, right) => {
+src\features\students\studentCommunityRepository.ts:93:  const [rooms, challenges, questions] = await Promise.all([
+src\features\students\studentData.ts:88:  for (const assignment of data.assignments) {
+src\features\students\studentData.ts:92:  for (const submission of data.submissions) {
+src\features\students\studentData.ts:119:  for (const bucket of assignmentStatusBucketOrder) {
+src\features\students\studentData.ts:123:  for (const assignment of assignmentsById.values()) {
+src\features\students\studentData.ts:131:  for (const [bucket, items] of buckets) {
+src\features\students\studentData.ts:132:    buckets.set(bucket, [...items].sort((left, right) => compareAssignmentsForBucket(left, right, submissionsByAssignmentId, now)));
+src\features\students\studentData.ts:176:  for (const assignment of assignmentsById.values()) {
+src\features\students\studentData.ts:212:  for (const item of items) {
+src\features\students\studentData.ts:220:    for (const topic of topics) {
+src\features\students\studentData.ts:267:    .sort((left, right) => {
+src\features\students\studentResultsRepository.ts:104:  return Math.round((finite.reduce((total, value) => total + value, 0) / finite.length) * 10) / 10;
+src\features\students\studentResultsRepository.ts:149:    .sort((left, right) => cognitiveLevelOrder.indexOf(left.level) - cognitiveLevelOrder.indexOf(right.level));
+src\features\students\studentResultsRepository.ts:173:  for (const item of items) subjectMap.set(item.subject, [...(subjectMap.get(item.subject) || []), item]);
+src\features\students\studentResultsRepository.ts:177:    marksObtained: subjectItems.reduce((total, item) => total + item.score, 0),
+src\features\students\studentResultsRepository.ts:178:    marksAvailable: subjectItems.reduce((total, item) => total + item.total, 0),
+src\features\students\studentResultsRepository.ts:180:  })).sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0));
+src\features\students\studentResultsRepository.ts:187:      totalMarksObtained: items.reduce((total, item) => total + item.score, 0),
+src\features\students\studentResultsRepository.ts:188:      totalMarksAvailable: items.reduce((total, item) => total + item.total, 0),
+src\features\students\studentResultsRepository.ts:198:      topics: [...topics].sort((a, b) => b.score - a.score).slice(0, 5),
+src\features\students\studentResultsRepository.ts:201:      subjects: [...subjectBreakdown].sort((a, b) => Number(a.score ?? 0) - Number(b.score ?? 0)).slice(0, 3),
+src\features\students\studentResultsRepository.ts:202:      topics: [...topics].sort((a, b) => a.score - b.score).slice(0, 5),
+src\features\students\studentCareersRepository.ts:80:  const { data: auth } = await client.auth.getUser();
+src\features\students\studentCareersRepository.ts:85:  const profileResult = await client.from('profiles').select('id').eq('auth_user_id', authUserId).maybeSingle();
+src\features\students\studentCareersRepository.ts:90:  const studentResult = await client.from('students').select('id').eq('profile_id', profileId).maybeSingle();
+src\features\students\studentCareersRepository.ts:109:  const profileResult = await supabase.from('student_career_profiles').select('*').maybeSingle();
+src\features\students\studentCareersRepository.ts:139:  const result = await (client.from('student_career_profiles') as unknown as {
+src\features\students\studentCareersRepository.ts:145:    .select('*')
+src\features\students\studentNotificationsRepository.ts:10:      .from('student_notifications')
+src\features\students\studentNotificationsRepository.ts:11:      .select('*')
+src\features\admin\adminStudentDetailRepository.ts:29:  const [allocationsResult, submissionsResult, assignmentsResult, subjectsResult, tutorsResult] = await Promise.all([
+src\features\admin\adminStudentDetailRepository.ts:30:    client.from('tutor_student_allocations').select('*').eq('student_id', studentId).order('created_at', { ascending: false }),
+src\features\admin\adminStudentDetailRepository.ts:31:    client.from('assignment_submissions').select('*').eq('student_id', studentId).order('submitted_at', { ascending: false }),
+src\features\admin\adminStudentDetailRepository.ts:32:    client.from('assignments').select('*'),
+src\features\admin\adminStudentDetailRepository.ts:33:    client.from('subjects').select('*'),
+src\features\admin\adminStudentDetailRepository.ts:34:    client.from('tutors').select('*').order('created_at', { ascending: false }),
+src\features\admin\adminStudentDetailRepository.ts:37:  for (const result of [allocationsResult, submissionsResult, assignmentsResult, subjectsResult, tutorsResult]) {
+src\features\admin\adminStudentDetailRepository.ts:49:  const profileIds = Array.from(new Set(tutors.map((tutor) => tutor.profile_id).filter(Boolean)));
+src\features\admin\adminStudentDetailRepository.ts:51:    ? await client.from('profiles').select('*').in('id', profileIds)

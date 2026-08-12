@@ -44,6 +44,17 @@ could not delete and disable/delete the corresponding Supabase Auth identity.
 Every new learner-linked table must be added deliberately to export, erasure, and
 retention tests; the functions do not discover schema additions automatically.
 
+## Tutor account deletion
+
+`request_tutor_deletion(tutor_id, reason)` is an AAL2 platform-admin entry
+point. It invokes `process-tutor-deletion`, a resumable trusted worker that
+locks the tutor, bans Auth access, deletes their private `tutor-documents`,
+erases onboarding/availability/volunteer/community data, removes their Auth
+account, and writes an immutable completion receipt. Tutor payments, historical
+classes, allocations, sessions, and audit events remain as inactive,
+de-identified records so finance and operational retention is not broken by a
+foreign-key cascade.
+
 ## Minimum evidence per request
 
 - requester identity and guardian authority where the learner is a minor;

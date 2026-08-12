@@ -2464,6 +2464,119 @@ export type Database = {
           },
         ]
       }
+      tutor_deletion_receipts: {
+        Row: {
+          auth_account_deleted: boolean
+          completed_at: string
+          db_erasure_counts: Json
+          id: string
+          manifest_version: string
+          request_id: string
+          storage_files_removed: number
+        }
+        Insert: {
+          auth_account_deleted: boolean
+          completed_at?: string
+          db_erasure_counts?: Json
+          id?: string
+          manifest_version: string
+          request_id: string
+          storage_files_removed?: number
+        }
+        Update: {
+          auth_account_deleted?: boolean
+          completed_at?: string
+          db_erasure_counts?: Json
+          id?: string
+          manifest_version?: string
+          request_id?: string
+          storage_files_removed?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tutor_deletion_receipts_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "tutor_deletion_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tutor_deletion_requests: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string
+          db_erasure_counts: Json
+          id: string
+          last_error: string | null
+          processing_claim_token: string | null
+          processing_completed_at: string | null
+          processing_lease_expires_at: string | null
+          processing_started_at: string | null
+          processing_state: string
+          processing_subject_auth_user_id: string | null
+          reason: string | null
+          requested_by: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          storage_files_expected: number
+          storage_files_removed: number
+          tutor_id: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string
+          db_erasure_counts?: Json
+          id?: string
+          last_error?: string | null
+          processing_claim_token?: string | null
+          processing_completed_at?: string | null
+          processing_lease_expires_at?: string | null
+          processing_started_at?: string | null
+          processing_state?: string
+          processing_subject_auth_user_id?: string | null
+          reason?: string | null
+          requested_by?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          storage_files_expected?: number
+          storage_files_removed?: number
+          tutor_id: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string
+          db_erasure_counts?: Json
+          id?: string
+          last_error?: string | null
+          processing_claim_token?: string | null
+          processing_completed_at?: string | null
+          processing_lease_expires_at?: string | null
+          processing_started_at?: string | null
+          processing_state?: string
+          processing_subject_auth_user_id?: string | null
+          reason?: string | null
+          requested_by?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          storage_files_expected?: number
+          storage_files_removed?: number
+          tutor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tutor_deletion_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tutor_deletion_requests_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "tutors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tutor_documents: {
         Row: {
           document_type: string
@@ -2948,6 +3061,7 @@ export type Database = {
         Args: { p_request_id: string }
         Returns: Json
       }
+      begin_tutor_deletion: { Args: { p_request_id: string }; Returns: Json }
       can_mark_submission: {
         Args: { p_submission_id: string }
         Returns: boolean
@@ -3078,6 +3192,10 @@ export type Database = {
         Returns: string
       }
       claim_student_privacy_deletion: {
+        Args: { p_claim_token: string; p_request_id: string }
+        Returns: Json
+      }
+      claim_tutor_deletion: {
         Args: { p_claim_token: string; p_request_id: string }
         Returns: Json
       }
@@ -3498,6 +3616,12 @@ export type Database = {
         Args: { p_request_id: string }
         Returns: Json
       }
+      erase_tutor_data:
+        | { Args: { p_request_id: string }; Returns: Json }
+        | {
+            Args: { p_request_id: string; p_storage_files_removed: number }
+            Returns: undefined
+          }
       export_student_data: { Args: { p_student_id: string }; Returns: Json }
       fail_ai_grading_job: {
         Args: {
@@ -3560,6 +3684,7 @@ export type Database = {
         Args: { p_request_id: string }
         Returns: Json
       }
+      finalize_tutor_deletion: { Args: { p_request_id: string }; Returns: Json }
       generate_payroll_week: {
         Args: { p_week_start: string }
         Returns: {
@@ -3817,6 +3942,10 @@ export type Database = {
           student_id: string
         }[]
       }
+      get_tutor_deletion_storage_manifest: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
       insert_session_history: {
         Args: {
           p_after_json: Json
@@ -3952,6 +4081,18 @@ export type Database = {
         Returns: undefined
       }
       mark_student_privacy_storage_deleted: {
+        Args: { p_files_removed: number; p_request_id: string }
+        Returns: undefined
+      }
+      mark_tutor_deletion_auth_banned: {
+        Args: { p_request_id: string }
+        Returns: undefined
+      }
+      mark_tutor_deletion_auth_deleted: {
+        Args: { p_request_id: string }
+        Returns: undefined
+      }
+      mark_tutor_deletion_storage_deleted: {
         Args: { p_files_removed: number; p_request_id: string }
         Returns: undefined
       }
@@ -4100,6 +4241,14 @@ export type Database = {
         Args: { p_files_expected: number; p_request_id: string }
         Returns: undefined
       }
+      record_tutor_deletion_error: {
+        Args: { p_error: string; p_request_id: string; p_stage: string }
+        Returns: undefined
+      }
+      record_tutor_deletion_storage_manifest: {
+        Args: { p_files_expected: number; p_request_id: string }
+        Returns: undefined
+      }
       record_tutor_document: {
         Args: {
           p_document_type: string
@@ -4174,6 +4323,10 @@ export type Database = {
         Args: { p_claim_token: string; p_request_id: string }
         Returns: boolean
       }
+      renew_tutor_deletion_lease: {
+        Args: { p_claim_token: string; p_request_id: string }
+        Returns: boolean
+      }
       replace_tutor_availability: {
         Args: { p_slots: Json }
         Returns: {
@@ -4194,6 +4347,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      request_tutor_deletion: {
+        Args: { p_reason?: string; p_tutor_id: string }
+        Returns: string
       }
       requeue_admin_ai_grading_job: {
         Args: { p_reason: string; p_submission_id: string }
