@@ -70,6 +70,30 @@ const AdminUserInviteSchema = z
 
 type InviteInput = z.infer<typeof AdminUserInviteSchema>;
 
+const ResendInviteSchema = z.object({
+  mode: z.literal('resend_invite'),
+  profileId: z.string().uuid(),
+});
+
+type ManagedRole = z.infer<typeof ManagedRoleSchema>;
+
+const inviteRedirectSecretByRole: Record<ManagedRole, string> = {
+  admin: 'APP_ADMIN_INVITE_REDIRECT_URL',
+  tutor: 'APP_TUTOR_INVITE_REDIRECT_URL',
+  student: 'APP_STUDENT_INVITE_REDIRECT_URL',
+};
+
+function getInviteRedirectUrl(role: ManagedRole): string | undefined {
+  // Select the destination before the invitation is issued. This keeps a
+  // tutor/student/admin in the correct portal hostname from their first page
+  // load. The generic variables remain as a local-development compatibility
+  // fallback while each deployed portal gets its own explicit secret.
+  return Deno.env.get(inviteRedirectSecretByRole[role])
+    || Deno.env.get('APP_INVITE_REDIRECT_URL')
+    || Deno.env.get('SUPABASE_INVITE_REDIRECT_URL')
+    || undefined;
+}
+
 function optionalText(value?: string): string | null {
   return value?.trim() || null;
 }
@@ -92,6 +116,8 @@ function statusForError(message: string): number {
   if (message === 'admin_required' || message === 'admin_mfa_required') return 403;
   if (message === 'supabase_bearer_required' || message === 'supabase_bearer_invalid') return 401;
   if (message === 'duplicate_email') return 409;
+  if (message === 'invite_already_accepted') return 409;
+  if (message === 'invite_profile_not_found' || message === 'invite_auth_user_not_found') return 404;
   if (message === 'supabase_admin_not_configured') return 501;
   return 400;
 }
@@ -164,7 +190,35 @@ Deno.serve(async (req) => {
     }
 
     // 2) Validate the payload.
-    const parsed = AdminUserInviteSchema.safeParse(await req.json());
+    const body = await req.json();
+    const resend = ResendInviteSchema.safeParse(body);
+    if (resend.success) {
+      const { data: profile, error: profileError } = await admin
+        .from('profiles')
+        .select('auth_user_id, role')
+        .eq('id', resend.data.profileId)
+        .maybeSingle();
+      if (profileError) throw profileError;
+      if (!profile) throw new Error('invite_profile_not_found');
+
+      const roleResult = ManagedRoleSchema.safeParse((profile as { role?: unknown }).role);
+      if (!roleResult.success) throw new Error('invite_profile_not_found');
+      const authUserId = (profile as { auth_user_id?: string | null }).auth_user_id;
+      if (!authUserId) throw new Error('invite_auth_user_not_found');
+
+      const { data: authData, error: authError } = await admin.auth.admin.getUserById(authUserId);
+      if (authError || !authData.user?.email) throw new Error('invite_auth_user_not_found');
+      if (authData.user.email_confirmed_at) throw new Error('invite_already_accepted');
+
+      const { error: resendError } = await admin.auth.admin.inviteUserByEmail(authData.user.email, {
+        redirectTo: getInviteRedirectUrl(roleResult.data),
+      });
+      if (resendError) throw new Error(resendError.message);
+
+      return json({ ok: true, mode: 'resend_invite', role: roleResult.data, profileId: resend.data.profileId, userId: authUserId });
+    }
+
+    const parsed = AdminUserInviteSchema.safeParse(body);
     if (!parsed.success) {
       return json({ error: 'invalid_request', details: parsed.error.flatten() }, 400);
     }
@@ -188,9 +242,8 @@ Deno.serve(async (req) => {
       const { data, error } = await admin.auth.admin.inviteUserByEmail(input.email, {
         data: userMetadata,
         // `SUPABASE_*` is reserved by the Edge Functions runtime and cannot
-        // be configured as a project secret. Use an app-owned variable in
-        // production, while retaining the legacy name for local environments.
-        redirectTo: Deno.env.get('APP_INVITE_REDIRECT_URL') || Deno.env.get('SUPABASE_INVITE_REDIRECT_URL') || undefined,
+        // be configured as a project secret. Use app-owned variables instead.
+        redirectTo: getInviteRedirectUrl(input.role),
       });
       if (error) throw new Error(error.message);
       userId = data.user?.id;
