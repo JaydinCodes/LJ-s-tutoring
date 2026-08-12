@@ -78,6 +78,7 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20260812101923_harden_tutor_deletion_workflow.sql` | `0bd0108de0e9f0ebc3803dc1e14644a3f2c3c9f4ea4632f5466309ab9365fe93` |
 | `20260812102741_enforce_tutor_deletion_function_search_path.sql` | `41dcba17f4d3215ad719524d816ef9d1ef441e5c1f604c454b680b7036c91fcc` |
 | `20260812102947_fix_tutor_deletion_tombstone_identifier.sql` | `32f9a1c667e743768ebe8adc985cfcef4ca5eca7dcc7f5ee2902a298876366d3` |
+| `20260812131303_restrict_tutor_assignment_targets.sql` | `fd76f57978cd3ca219e00d2660dc353d0bb9d7f23912a5555dd8c9683635c61d` |
 
 ## Regeneration
 
