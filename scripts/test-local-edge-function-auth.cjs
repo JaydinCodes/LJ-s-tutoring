@@ -150,8 +150,18 @@ async function main() {
     }
 
     for (const name of ['grade-submission', 'odie-careers-chat-stream']) {
-        const result = await edge(local.API_URL, local.ANON_KEY, name, tutorToken, {});
-        if (result.status !== 403) throw new Error(`${name} must reject a valid wrong-role token; received ${result.status}: ${result.body}`);
+      // Odie is lazily compiled by the local Edge runtime. Retry a transient
+      // cold-start 5xx exactly as the active-learner checks below do, then
+      // require the authorization boundary to return its definitive 403.
+      await expectEdgeStatus(
+        local.API_URL,
+        local.ANON_KEY,
+        name,
+        tutorToken,
+        {},
+        403,
+        'must reject a valid wrong-role token',
+      );
     }
 
     for (const learnerStatus of ['inactive', 'suspended', 'pending']) {
