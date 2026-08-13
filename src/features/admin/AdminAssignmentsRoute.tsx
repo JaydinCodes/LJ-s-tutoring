@@ -285,6 +285,8 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const selectedGrade = normalizeGrade(grade);
+  const eligibleStudents = targetStudents.filter((student) => normalizeGrade(student.grade || '') === selectedGrade);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -338,7 +340,7 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
           <TextInput required value={subjectName} onChange={(event) => setSubjectName(event.target.value)} placeholder="Mathematics" />
         </FormField>
         <FormField label="Grade">
-          <TextInput required value={grade} onChange={(event) => setGrade(event.target.value)} placeholder="Grade 11" />
+          <TextInput required value={grade} onChange={(event) => { setGrade(event.target.value); setStudentIds([]); }} placeholder="Grade 11" />
         </FormField>
         <FormField label="Curriculum">
           <TextInput value={curriculum} onChange={(event) => setCurriculum(event.target.value)} placeholder="CAPS" />
@@ -350,10 +352,11 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
           <TextInput type="file" onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
         </FormField>
         {role === 'tutor' ? (
-          <FormField label="Assign to learners" hint="Only your actively allocated learners can receive this individual assignment.">
-            <select multiple required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={studentIds} onChange={(event) => setStudentIds(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>
-              {targetStudents.map((student) => <option key={student.student_id} value={student.student_id}>{student.full_name}{student.grade ? ` — ${student.grade}` : ''}</option>)}
+          <FormField label="Assign to learners" hint={selectedGrade ? `Only your allocated ${grade.trim()} learners can receive this individual assignment.` : 'Choose the assignment grade first.'}>
+            <select multiple required disabled={!selectedGrade} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 disabled:cursor-not-allowed disabled:opacity-60" value={studentIds} onChange={(event) => setStudentIds(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>
+              {eligibleStudents.map((student) => <option key={student.student_id} value={student.student_id}>{student.full_name}{student.grade ? ` — ${student.grade}` : ''}</option>)}
             </select>
+            {selectedGrade && !eligibleStudents.length ? <p className="mt-2 text-sm text-slate-600">You do not have any actively allocated {grade.trim()} learners.</p> : null}
           </FormField>
         ) : null}
         <div className="lg:col-span-2">
@@ -372,6 +375,10 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
       </form>
     </Card>
   );
+}
+
+function normalizeGrade(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 function normalizeAssignmentStatus(value: string): AssignmentStatus {
