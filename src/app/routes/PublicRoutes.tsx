@@ -450,7 +450,7 @@ export function PrivacyRoute() {
       <LegalSection title="Third-Party Services">
         <p>
           Project Odysseus uses service providers to operate the platform, including Supabase for authentication, database, and
-          storage services, hosting providers for the website and portal, the visitor's email or WhatsApp app for enquiries,
+          storage services, hosting providers for the website and portal, Formspree for website enquiries, and the visitor's email or WhatsApp app when those contact options are used,
           and error monitoring for technical diagnostics. We do not intentionally send learner
           marks, private notes, uploaded file contents, or guardian contact details to monitoring tools.
         </p>

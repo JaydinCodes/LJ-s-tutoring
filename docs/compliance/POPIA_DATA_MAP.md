@@ -50,7 +50,8 @@ careers, and APS target. The Edge Function forwards that payload to Groq.
 | Google Gemini | Assignment submission files or text answers and rubric JSON | AI marking processor for draft marks and feedback. Legacy private tutor memos are not sent. The tutor still reviews and saves the final mark manually; confirm retention, region, sub-processors, and transfer basis before launch. |
 | DigitalOcean | Static site assets and public browser configuration | Static frontend only; no Fastify/API service and no platform database. Region is configured as `fra` in `.do/app.yaml`. |
 | Sentry (optional) | Browser error events and deliberately limited pseudonymous context | Disabled without explicit public config; `sendDefaultPii: false` and application context scrubbing are implemented. Validate production sampling and captured breadcrumbs before enabling for learners. |
-| Auth email/SMTP provider | Recipient address and authentication/invitation email content | Confirm the configured Supabase Auth SMTP provider and contract before launch. Public enquiries are composed in the visitor's own email or WhatsApp app. |
+| Auth email/SMTP provider | Recipient address and authentication/invitation email content | Confirm the configured Supabase Auth SMTP provider and contract before launch. |
+| Formspree | Website enquiry name, email address, learner grade, and message | Processes public website enquiries and forwards them to Project Odysseus. Confirm the selected plan's retention, sub-processors, region, and cross-border transfer basis before launch. |
 
 Maintain processor agreements, security measures, retention terms, breach
 contacts, and cross-border transfer bases outside this technical map.

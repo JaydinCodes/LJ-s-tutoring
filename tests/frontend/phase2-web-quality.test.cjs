@@ -90,20 +90,21 @@ test('public media uses optimized sources and avoids costly hero video for const
   assert.match(publicRoutes, /heroVideoEnabled \? \(/);
 });
 
-test('public enquiries and browser policy match the supported email and WhatsApp path', () => {
+test('public enquiries and browser policy support the configured Formspree path', () => {
   const publicRoutes = read('src/app/routes/PublicRoutes.tsx');
   const envExample = read('.env.example');
   const buildStatic = read('scripts/build-static.js');
   const dataMap = read('docs/compliance/POPIA_DATA_MAP.md');
 
-  assert.doesNotMatch(publicRoutes, /FORMSPREE|formspree|fetch\(form/);
-  assert.doesNotMatch(envExample, /FORMSPREE/);
-  assert.doesNotMatch(dataMap, /Formspree/);
+  assert.match(publicRoutes, /__PO_FORMSPREE_ENDPOINT__/);
+  assert.match(publicRoutes, /fetch\(formspreeEndpoint/);
+  assert.match(envExample, /FORMSPREE_ENDPOINT/);
+  assert.match(dataMap, /Formspree/);
   assert.equal(fs.existsSync(path.join(root, '.github', 'workflows', 'formspree-healthcheck.yml')), false);
-  assert.match(publicRoutes, /nothing is sent until you review and send it/);
+  assert.match(publicRoutes, /Your enquiry is sent securely to Project Odysseus/);
   assert.match(buildStatic, /form-action 'self'/);
   assert.match(buildStatic, /https:\/\/\*\.ingest\.sentry\.io/);
-  assert.doesNotMatch(buildStatic, /formspree\.io/);
+  assert.match(buildStatic, /https:\/\/formspree\.io/);
 });
 
 test('AI processor disclosure matches the careers payload sent to Groq', () => {
