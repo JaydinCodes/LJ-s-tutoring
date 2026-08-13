@@ -44,7 +44,9 @@ function assistantEnabled() {
 
 function resolveFormspreeEndpoint(raw) {
   const value = String(raw || '').trim();
-  if (!value) return '';
+  if (!value) {
+    return '';
+  }
   if (!/^https:\/\/formspree\.io\/f\/[A-Za-z0-9_-]+$/.test(value)) {
     throw new Error('FORMSPREE_ENDPOINT must be a Formspree endpoint such as https://formspree.io/f/your_form_id');
   }

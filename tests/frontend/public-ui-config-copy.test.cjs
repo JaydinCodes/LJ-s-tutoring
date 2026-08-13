@@ -10,10 +10,10 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, ...relativePath.split('/')), 'utf8');
 }
 
-test('public enquiry helper copy explains the email handoff without configuration names', () => {
+test('public enquiry helper copy explains the Formspree delivery without configuration names', () => {
   const publicRoutes = read('src/app/routes/PublicRoutes.tsx');
 
-  assert.ok(publicRoutes.includes('nothing is sent until you review and send it'), 'enquiry form must explain that the visitor sends the email');
+  assert.ok(publicRoutes.includes('Your enquiry is sent securely to Project Odysseus.'), 'enquiry form must explain how the visitor enquiry is delivered');
   assert.doesNotMatch(publicRoutes, /VITE_PO_FORMSPREE_ENDPOINT/, 'enquiry form must not retain its retired endpoint configuration name');
 });
 
