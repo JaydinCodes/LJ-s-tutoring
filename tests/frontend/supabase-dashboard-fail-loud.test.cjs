@@ -35,4 +35,8 @@ test('core Supabase dashboards throw query errors instead of rendering plausible
   assert.match(storage, /!expectedPaths\.has\(entry\.path\)[\s\S]*map\.has\(entry\.path\)/);
   assert.match(storage, /map\.size !== expectedPaths\.size[\s\S]*throw signedUrlFailure/);
   assert.doesNotMatch(storage, /throw new Error\([^)]*entry\.(?:error|path)/, 'signed URL failures must not expose object paths or provider detail');
+  assert.match(student, /resolveSignedUrls\(supabase, 'assignment-files',[\s\S]*onFailure: 'omit'/);
+  assert.match(student, /resolveSignedUrls\(supabase, 'assignment-submissions',[\s\S]*onFailure: 'omit'/);
+  assert.match(student, /signedStorageHref\(submission\.file_url, submissionUrlByPath\)/);
+  assert.match(student, /signedStorageHref\(assignment\.attachment_url, attachmentUrlByPath\)/);
 });

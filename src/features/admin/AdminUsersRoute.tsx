@@ -31,8 +31,8 @@ export function AdminUsersRoute() {
 
   return (
     <DashboardShell
-      title="Users"
-      subtitle="Invite Supabase Auth users and create the linked role profile in one controlled admin workflow."
+      title="Account access"
+      subtitle="Invite sign-in users and create their linked role profiles. Learner and guardian records are managed separately."
       section="admin"
     >
       <AdminInviteUserForm ngoPartners={data?.ngoPartners || []} onCreated={reload} />

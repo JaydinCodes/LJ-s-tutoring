@@ -49,16 +49,15 @@ const nav = {
   ],
   admin: [
     { to: '/dashboard/admin', label: 'Today', icon: LayoutDashboard },
-    { to: '/dashboard/admin/students', label: 'People & cohorts', shortLabel: 'People', icon: GraduationCap },
+    { to: '/dashboard/admin/students', label: 'Learners & guardians', shortLabel: 'Learners', icon: GraduationCap },
     { to: '/dashboard/admin/results', label: 'Learning quality', shortLabel: 'Quality', icon: Brain },
     { to: '/dashboard/admin/payments', label: 'Finance', icon: Trophy },
     { to: '/dashboard/admin/approvals', label: 'Governance', icon: Target },
     // Direct destinations remain available for specialist operational work.
     { to: '/dashboard/admin/allocations', label: 'Allocations', icon: Target },
-    { to: '/dashboard/admin/users', label: 'Users', icon: UserPlus },
+    { to: '/dashboard/admin/users', label: 'Account access', icon: UserPlus },
     { to: '/dashboard/admin/tutors', label: 'Tutors', icon: Brain },
     { to: '/dashboard/admin/classes', label: 'Classes', icon: BookOpen },
-    { to: '/dashboard/admin/assignments', label: 'Assignments', icon: ScrollText },
     { to: '/dashboard/admin/payroll', label: 'Payroll', icon: TrendingUp },
     { to: '/dashboard/admin/reconciliation', label: 'Reconciliation', icon: Clock },
     { to: '/dashboard/admin/reports', label: 'Reports', icon: BookOpen },

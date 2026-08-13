@@ -23,7 +23,6 @@ const protectedRoutes = [
   '/dashboard/admin/tutors',
   '/dashboard/admin/allocations',
   '/dashboard/admin/classes',
-  '/dashboard/admin/assignments',
   '/dashboard/admin/approvals',
   '/dashboard/admin/payments',
   '/dashboard/admin/payroll',

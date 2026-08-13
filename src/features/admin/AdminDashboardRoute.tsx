@@ -8,7 +8,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatCurrency, formatDate } from '../../lib/utils/format';
 import { Link } from 'react-router-dom';
-import type { Assignment, Payment, Student, Tutor } from '../../types/lms';
+import type { Payment, Student, Tutor } from '../../types/lms';
 import { loadAdminDashboard } from './adminDashboardRepository';
 
 export function AdminDashboardRoute() {
@@ -17,16 +17,16 @@ export function AdminDashboardRoute() {
   return (
     <DashboardShell
       title="Admin Dashboard"
-      subtitle="Operational React console for learners, tutors, assignments, payments, reporting, and ProVision rollout support."
+      subtitle="Operational console for learners, tutors, payments, reporting, and ProVision rollout support."
       section="admin"
     >
-      {loading ? <LoadingState title="Loading admin dashboard" description="Checking learners, tutors, assignments, and payments..." /> : null}
+      {loading ? <LoadingState title="Loading admin dashboard" description="Checking learners, tutors, and payments..." /> : null}
       {error ? <ErrorState title="Admin dashboard unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
       {data ? (
         <>
           <section className="grid gap-4 xl:grid-cols-3">
-            <ActionQueue title="Work waiting for review" count={data.submissions.filter((item) => item.status === 'submitted' || item.marks_awarded == null).length} description="Submitted learner work that still needs a tutor or admin decision." action="Open marking" to="/dashboard/admin/assignments" />
-            <ActionQueue title="Published work nearing its due date" count={data.assignments.filter((item) => item.status === 'published' && item.due_date && new Date(item.due_date).getTime() <= Date.now() + 7 * 86400000).length} description="Check due dates and follow up before learner momentum is lost." action="Open assignments" to="/dashboard/admin/assignments" />
+            <ActionQueue title="Results waiting for review" count={data.submissions.filter((item) => item.status === 'submitted' || item.marks_awarded == null).length} description="Submitted learner work that still needs a tutor or admin decision." action="Open learning quality" to="/dashboard/admin/results" />
+            <ActionQueue title="Tutors to coordinate" count={data.tutors.length} description="Review pairings and deactivate them when a tutor and learner are no longer working together." action="Review allocations" to="/dashboard/admin/allocations" />
             <ActionQueue title="Learner records to review" count={data.students.length} description="Review learner records and make sure each active learner has a tutor and cohort context." action="Review people" to="/dashboard/admin/students" />
           </section>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -67,52 +67,34 @@ export function AdminDashboardRoute() {
             </Card>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+          <section className="grid gap-4 xl:grid-cols-2">
             <Card>
-              <h2 className="text-xl font-semibold text-slate-950">Assignment management</h2>
-              <div className="mt-4">
-                <DataTable<Assignment>
-                  rows={data.assignments.slice(0, 8)}
-                  empty="Assignments created by admins or tutors will appear here."
-                  columns={[
-                    { key: 'title', label: 'Title', render: (row) => row.title || row.id },
-                    { key: 'grade', label: 'Grade', render: (row) => row.grade || 'Pending' },
-                    { key: 'due', label: 'Due', render: (row) => formatDate(row.due_date) },
-                    { key: 'status', label: 'Status', render: (row) => <StatusBadge value={row.status || 'draft'} /> },
-                  ]}
-                />
+              <h2 className="text-xl font-semibold text-slate-950">Payment overview</h2>
+              <div className="mt-4 space-y-3">
+                {data.payments.slice(0, 5).map((payment: Payment) => (
+                  <div key={payment.id} className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 p-3">
+                    <div>
+                      <p className="font-semibold">{formatCurrency(payment.amount)}</p>
+                      <p className="text-sm text-slate-600">{payment.payment_type} | due {formatDate(payment.due_date)}</p>
+                    </div>
+                    <StatusBadge value={payment.status} />
+                  </div>
+                ))}
+                {!data.payments.length ? <EmptyState title="No payment records yet" description="Student and tutor payment records will appear here once they are added." /> : null}
               </div>
             </Card>
 
-            <div className="space-y-4">
-              <Card>
-                <h2 className="text-xl font-semibold text-slate-950">Payment overview</h2>
-                <div className="mt-4 space-y-3">
-                  {data.payments.slice(0, 5).map((payment: Payment) => (
-                    <div key={payment.id} className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 p-3">
-                      <div>
-                        <p className="font-semibold">{formatCurrency(payment.amount)}</p>
-                        <p className="text-sm text-slate-600">{payment.payment_type} | due {formatDate(payment.due_date)}</p>
-                      </div>
-                      <StatusBadge value={payment.status} />
-                    </div>
-                  ))}
-                  {!data.payments.length ? <EmptyState title="No payment records yet" description="Student and tutor payment records will appear here once they are added." /> : null}
-                </div>
-              </Card>
-
-              <Card>
-                <h2 className="text-xl font-semibold text-slate-950">ProVision and organogram</h2>
-                <div className="mt-4 space-y-3">
-                  {data.team.map((member) => (
-                    <div key={`${member.name}-${member.role}`} className="rounded-lg bg-slate-50 p-3">
-                      <p className="font-semibold text-slate-950">{member.name}</p>
-                      <p className="text-sm text-slate-600">{member.role} | {member.focus}</p>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
+            <Card>
+              <h2 className="text-xl font-semibold text-slate-950">ProVision and organogram</h2>
+              <div className="mt-4 space-y-3">
+                {data.team.map((member) => (
+                  <div key={`${member.name}-${member.role}`} className="rounded-lg bg-slate-50 p-3">
+                    <p className="font-semibold text-slate-950">{member.name}</p>
+                    <p className="text-sm text-slate-600">{member.role} | {member.focus}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
           </section>
         </>
       ) : null}

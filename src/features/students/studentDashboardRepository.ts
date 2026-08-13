@@ -2,7 +2,7 @@ import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2EStudentDashboard } from '../../lib/e2e/mockRoleData';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import { callRpc } from '../../lib/supabase/rpc';
-import { resolveSignedUrls } from '../../lib/supabase/storage';
+import { resolveSignedUrls, signedStorageHref } from '../../lib/supabase/storage';
 import type { Assignment, AssignmentSubmission, ClassRecord, CompetencyEvidence, Profile, Student, StudentAssignedTutor, StudentDashboardView, StudentProgress, StudentSessionRow } from '../../types/lms';
 
 const DASHBOARD_DETAIL_LIMIT = 100;
@@ -151,22 +151,21 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
   const subjectNameById = new Map(((subjectsResult.data || []) as Array<{ id: string; name?: string }>).map((subject) => [subject.id, subject.name]));
 
   // Both storage buckets are private (see docs/supabase/schema.sql), so the
-  // raw paths stored in attachment_url/file_url can't be opened directly --
-  // resolve them to short-lived signed URLs here so the existing component
-  // contract (assignment.attachment_url / submission.file_url as a working
-  // href) keeps working unchanged.
+  // raw paths stored in attachment_url/file_url can't be opened directly.
+  // A missing or stale optional file must not block a learner from opening
+  // their dashboard; omit only that file link and retain all dashboard data.
   const [attachmentUrlByPath, submissionUrlByPath] = await Promise.all([
-    resolveSignedUrls(supabase, 'assignment-files', assignments.map((assignment) => assignment.attachment_url)),
-    resolveSignedUrls(supabase, 'assignment-submissions', submissions.map((submission) => submission.file_url)),
+    resolveSignedUrls(supabase, 'assignment-files', assignments.map((assignment) => assignment.attachment_url), { onFailure: 'omit' }),
+    resolveSignedUrls(supabase, 'assignment-submissions', submissions.map((submission) => submission.file_url), { onFailure: 'omit' }),
   ]);
   const submissionsWithSignedUrls = submissions.map((submission) => ({
     ...submission,
-    file_url: (submission.file_url && submissionUrlByPath.get(submission.file_url)) || submission.file_url,
+    file_url: signedStorageHref(submission.file_url, submissionUrlByPath),
   }));
   const assignmentsWithSubjects = assignments.map((assignment) => ({
     ...assignment,
     subject: assignment.subject || (assignment.subject_id ? subjectNameById.get(assignment.subject_id) : undefined),
-    attachment_url: (assignment.attachment_url && attachmentUrlByPath.get(assignment.attachment_url)) || assignment.attachment_url,
+    attachment_url: signedStorageHref(assignment.attachment_url, attachmentUrlByPath),
   }));
   const progressWithSubjects = progress.map((item) => ({
     ...item,
