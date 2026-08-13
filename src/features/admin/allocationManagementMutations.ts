@@ -7,7 +7,6 @@ export type AllocationInput = {
   studentId: string;
   status: RecordStatus;
   startDate?: string;
-  endDate?: string;
   focusNotes?: string;
 };
 
@@ -50,7 +49,6 @@ function allocationPayload(input: AllocationInput) {
     student_id: required(input.studentId, 'Student'),
     status: input.status,
     start_date: optional(input.startDate),
-    end_date: optional(input.endDate),
     focus_notes: optional(input.focusNotes),
     updated_at: new Date().toISOString(),
   };
@@ -80,7 +78,6 @@ export async function assignTutorToStudent(input: AllocationInput) {
       student_id: allocation.student_id,
       status: allocation.status,
       start_date: allocation.start_date,
-      end_date: allocation.end_date,
     },
   });
   return allocation;
@@ -109,7 +106,6 @@ export async function updateTutorStudentAllocation(allocationId: string, input: 
       student_id: allocation.student_id,
       status: allocation.status,
       start_date: allocation.start_date,
-      end_date: allocation.end_date,
     },
   });
   return allocation;
@@ -119,9 +115,9 @@ export async function deactivateTutorStudentAllocation(allocationId: string) {
   const client = requireSupabase();
   await requireAdminProfile();
   const result = await (client.from('tutor_student_allocations') as unknown as {
-    update: (row: { status: RecordStatus; end_date: string; updated_at: string }) => { eq: (column: string, value: string) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } } };
+    update: (row: { status: RecordStatus; updated_at: string }) => { eq: (column: string, value: string) => { select: (columns: string) => { single: () => Promise<{ data: unknown; error: Error | null }> } } };
   })
-    .update({ status: 'inactive', end_date: new Date().toISOString().slice(0, 10), updated_at: new Date().toISOString() })
+    .update({ status: 'inactive', updated_at: new Date().toISOString() })
     .eq('id', allocationId)
     .select('*')
     .single();
@@ -137,7 +133,6 @@ export async function deactivateTutorStudentAllocation(allocationId: string) {
       tutor_id: allocation.tutor_id,
       student_id: allocation.student_id,
       status: allocation.status,
-      end_date: allocation.end_date,
     },
   });
   return allocation;

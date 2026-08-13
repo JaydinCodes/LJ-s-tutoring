@@ -30,7 +30,7 @@ export function AdminAllocationsRoute() {
                 { key: 'student', label: 'Student', render: (row) => <span className="font-semibold text-slate-950">{row.student_name || row.student_email || row.student_id}</span> },
                 { key: 'tutor', label: 'Tutor', render: (row) => row.tutor_name || row.tutor_email || row.tutor_id },
                 { key: 'grade', label: 'Grade', render: (row) => row.student_grade || 'Pending' },
-                { key: 'dates', label: 'Dates', render: (row) => [row.start_date, row.end_date].filter(Boolean).join(' to ') || 'Open' },
+                { key: 'startDate', label: 'Assigned from', render: (row) => row.start_date || 'Not recorded' },
                 { key: 'status', label: 'Status', render: (row) => <StatusBadge value={row.status} /> },
               ]}
             />
@@ -165,8 +165,7 @@ function AllocationFields({
           {(data?.students || []).map((student) => <option key={student.id} value={student.id}>{student.full_name || student.email || student.id}</option>)}
         </select>
       </FormField>
-      <FormField label="Start date"><TextInput type="date" value={input.startDate || ''} onChange={(event) => update({ startDate: event.target.value })} /></FormField>
-      <FormField label="End date"><TextInput type="date" value={input.endDate || ''} onChange={(event) => update({ endDate: event.target.value })} /></FormField>
+      <FormField label="Assigned from"><TextInput type="date" value={input.startDate || ''} onChange={(event) => update({ startDate: event.target.value })} /></FormField>
       <FormField label="Status"><StatusSelect value={input.status} onChange={(status) => update({ status })} /></FormField>
       <div className="lg:col-span-2">
         <FormField label="Focus notes" hint="Internal operational notes for this allocation.">
@@ -196,7 +195,7 @@ function StatusSelect({ value, onChange }: { value: RecordStatus; onChange: (sta
 }
 
 function emptyAllocationInput(): AllocationInput {
-  return { tutorId: '', studentId: '', status: 'active', startDate: '', endDate: '', focusNotes: '' };
+  return { tutorId: '', studentId: '', status: 'active', startDate: '', focusNotes: '' };
 }
 
 function allocationInputFromRecord(allocation: AdminTutorStudentAllocation): AllocationInput {
@@ -205,7 +204,6 @@ function allocationInputFromRecord(allocation: AdminTutorStudentAllocation): All
     studentId: allocation.student_id,
     status: allocation.status,
     startDate: allocation.start_date || '',
-    endDate: allocation.end_date || '',
     focusNotes: allocation.focus_notes || '',
   };
 }

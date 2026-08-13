@@ -29,7 +29,7 @@ export function AdminStudentsRoute() {
   const selectedStudent = data?.students.find((student) => student.id === selectedStudentId) || null;
 
   return (
-    <DashboardShell title="Students" subtitle="Operational learner list for onboarding, support status, and NGO rollout visibility." section="admin">
+    <DashboardShell title="Learners & guardians" subtitle="Manage learner records, guardian links, and cohort context. Account invitations are managed separately under Account access." section="admin">
       <CreateStudentForm ngoPartners={data?.ngoPartners || []} onCreated={reload} />
       <CreateGuardianForm onCreated={reload} />
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_460px]">
@@ -118,7 +118,7 @@ function StudentDetailPanel({
           <div className="mt-4 space-y-3">
             {data.allocations.map((allocation) => (
               <div key={allocation.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                <span>{allocation.tutor_name || allocation.tutor_email || allocation.tutor_id} | {[allocation.start_date, allocation.end_date].filter(Boolean).join(' to ') || 'Open'}</span>
+                <span>{allocation.tutor_name || allocation.tutor_email || allocation.tutor_id} | Assigned from {allocation.start_date || 'not recorded'}</span>
                 <StatusBadge value={allocation.status} />
               </div>
             ))}

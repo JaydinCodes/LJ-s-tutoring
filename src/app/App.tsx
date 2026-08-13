@@ -5,7 +5,6 @@ import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { routeRedirects } from './routeManifest';
 
 const AdminAllocationsRoute = lazy(() => import('../features/admin/AdminAllocationsRoute').then((module) => ({ default: module.AdminAllocationsRoute })));
-const AdminAssignmentsRoute = lazy(() => import('../features/admin/AdminAssignmentsRoute').then((module) => ({ default: module.AdminAssignmentsRoute })));
 const AdminClassesRoute = lazy(() => import('../features/admin/AdminClassesRoute').then((module) => ({ default: module.AdminClassesRoute })));
 const AdminDashboardRoute = lazy(() => import('../features/admin/AdminDashboardRoute').then((module) => ({ default: module.AdminDashboardRoute })));
 const AdminApprovalsRoute = lazy(() => import('../features/admin/AdminOperationsRoutes').then((module) => ({ default: module.AdminApprovalsRoute })));
@@ -106,7 +105,7 @@ export function App() {
         <Route path="/dashboard/admin/tutors" element={<ProtectedRoute roles={['admin']}><AdminTutorsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/allocations" element={<ProtectedRoute roles={['admin']}><AdminAllocationsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/classes" element={<ProtectedRoute roles={['admin']}><AdminClassesRoute /></ProtectedRoute>} />
-        <Route path="/dashboard/admin/assignments" element={<ProtectedRoute roles={['admin']}><AdminAssignmentsRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/admin/assignments" element={<Navigate replace to="/dashboard/admin/results" />} />
         <Route path="/dashboard/admin/approvals" element={<ProtectedRoute roles={['admin']}><AdminApprovalsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/payments" element={<ProtectedRoute roles={['admin']}><AdminPaymentsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/payroll" element={<ProtectedRoute roles={['admin']}><AdminPayrollRoute /></ProtectedRoute>} />

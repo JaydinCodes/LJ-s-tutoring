@@ -94,7 +94,7 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
     metrics: [
       { label: 'Students', value: String(students.length), helper: 'Recent learner records.', tone: 'teal' },
       { label: 'Tutors', value: String(visibleTutors.length), helper: 'Recent tutor records.', tone: 'violet' },
-      { label: 'Assignments', value: String(assignments.length), helper: 'Recently created assignment records.', tone: 'amber' },
+      { label: 'Guardians', value: String(guardians.length), helper: 'Guardian records linked to learner support.', tone: 'amber' },
       { label: 'Outstanding payments', value: formatCurrency(outstanding), helper: 'Student payments not marked as paid.', tone: 'blue' },
     ],
     students: students.map((student) => ({
