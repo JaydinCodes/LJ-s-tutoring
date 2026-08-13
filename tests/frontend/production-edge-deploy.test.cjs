@@ -15,6 +15,8 @@ test('production releases deploy the Worker and invite users back to this app', 
   assert.match(deployment, /secrets\.CLOUDFLARE_ACCOUNT_ID/);
   assert.match(deployment, /vars\.CLOUDFLARE_ORIGIN_URL/);
   assert.match(deployment, /wrangler@4 deploy --config cloudflare\/wrangler\.toml/);
+  assert.match(deployment, /Verify live React module graph/);
+  assert.match(deployment, /verify-live-react-assets\.cjs/);
   assert.match(inviteFunction, /Deno\.env\.get\('APP_INVITE_REDIRECT_URL'\)/);
   assert.match(inviteFunction, /Deno\.env\.get\('SUPABASE_INVITE_REDIRECT_URL'\)/);
 });

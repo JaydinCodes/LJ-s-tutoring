@@ -167,20 +167,22 @@ test('Lighthouse and release workflows use the same pinned package commands', ()
 
   assert.equal(packageJson.scripts['perf:lighthouse'], 'lhci autorun --config=./lighthouserc.js');
   assert.match(lighthouseConfig, /chromePath: process\.env\.CHROME_PATH/);
+  assert.match(lighthouseConfig, /chromeFlags: '--no-sandbox --disable-setuid-sandbox'/);
   assert.doesNotMatch(lighthouseWorkflow, /npx (?:http-server|wait-on|lhci)/);
   assert.match(lighthouseWorkflow, /npm run qa:serve/);
   assert.match(lighthouseWorkflow, /npm run qa:wait/);
   assert.match(lighthouseWorkflow, /npm run perf:lighthouse/);
-  assert.match(releaseWorkflow, /Install system Chromium for Lighthouse/);
-  assert.match(releaseWorkflow, /SYSTEM_CHROME_PATH=/);
-  assert.match(releaseWorkflow, /CHROME_PATH: \$\{\{ env\.SYSTEM_CHROME_PATH \}\}/);
+  assert.match(releaseWorkflow, /Install Playwright Chromium/);
+  assert.match(releaseWorkflow, /npx playwright install chromium/);
+  assert.doesNotMatch(releaseWorkflow, /apt-get install[^\n]*chromium/);
+  assert.match(releaseWorkflow, /CHROME_PATH: \$\{\{ env\.CHROME_PATH \}\}/);
 
   for (const command of ['lint', 'typecheck', 'test', 'build', 'perf:budget', 'validate:monitoring']) {
     const invocation = command === 'test' ? 'npm test' : `npm run ${command}`;
     assert.match(appWorkflow + lighthouseWorkflow, new RegExp(invocation.replaceAll(':', '\\:')));
     assert.match(releaseWorkflow, new RegExp(invocation.replaceAll(':', '\\:')));
   }
-  for (const command of ['test:e2e:install', 'test:e2e', 'qa:html', 'qa:links', 'qa:a11y', 'perf:lighthouse']) {
+  for (const command of ['test:e2e', 'qa:html', 'qa:links', 'qa:a11y', 'perf:lighthouse']) {
     assert.match(releaseWorkflow, new RegExp(`npm run ${command.replaceAll(':', '\\:')}`));
   }
   for (const command of ['supabase:start', 'supabase:reset', 'test:rls:runtime', 'supabase:types:check', 'test:e2e:supabase']) {

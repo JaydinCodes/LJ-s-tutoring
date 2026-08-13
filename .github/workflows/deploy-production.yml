@@ -152,3 +152,8 @@ jobs:
         env:
           PRODUCTION_ORIGINS: ${{ vars.PRODUCTION_ORIGINS }}
         run: npm run verify:production:headers
+
+      - name: Verify live React module graph
+        env:
+          PRODUCTION_ORIGINS: ${{ vars.PRODUCTION_ORIGINS }}
+        run: node scripts/verify-live-react-assets.cjs

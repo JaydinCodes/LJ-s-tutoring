@@ -59,14 +59,14 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: "true"
         run: HUSKY=0 npm ci
 
-      - name: Install Chromium
-
+      - name: Install Playwright Chromium
         run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser || sudo apt-get install -y chromium
-          CHROME_PATH=$(which chromium-browser || which chromium || true)
-          if [ -z "$CHROME_PATH" ]; then
-            echo "Chromium executable not found after installation"
+          # Avoid Ubuntu's Snap-backed chromium-browser package, which can
+          # fail independently when the Snap store is unavailable.
+          npx playwright install chromium
+          CHROME_PATH=$(node -e "process.stdout.write(require('playwright').chromium.executablePath())")
+          if [ ! -x "$CHROME_PATH" ]; then
+            echo "Playwright Chromium executable not found after installation"
             exit 1
           fi
           echo "CHROME_PATH=$CHROME_PATH" >> $GITHUB_ENV
