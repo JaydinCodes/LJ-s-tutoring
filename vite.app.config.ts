@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,11 +15,32 @@ const localSupabaseCsp = {
   },
 };
 
-export default defineConfig(({ command }) => ({
+function localRuntimeConfig(formspreeEndpoint: string) {
+  return {
+    name: 'project-odysseus-local-runtime-config',
+    transformIndexHtml(html: string) {
+      const endpoint = /^https:\/\/formspree\.io\/f\/[A-Za-z0-9_-]+$/.test(formspreeEndpoint)
+        ? formspreeEndpoint
+        : '';
+      return html.replace(
+        '</head>',
+        `    <script>window.__PO_FORMSPREE_ENDPOINT__ = ${JSON.stringify(endpoint)};</script>\n  </head>`,
+      );
+    },
+  };
+}
+
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, rootDir, '');
+
+  return {
   // The checked-in/production CSP permits only hosted Supabase. Vite's dev
   // server adds loopback Supabase origins so local Auth/RLS can be tested
   // without weakening the generated production documents.
-  plugins: [react(), ...(command === 'serve' ? [localSupabaseCsp] : [])],
+  plugins: [
+    react(),
+    ...(command === 'serve' ? [localSupabaseCsp, localRuntimeConfig(env.FORMSPREE_ENDPOINT || '')] : []),
+  ],
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
@@ -46,4 +67,5 @@ export default defineConfig(({ command }) => ({
       },
     },
   },
-}));
+  };
+});

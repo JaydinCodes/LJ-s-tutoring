@@ -70,7 +70,7 @@
     "start:static": "npm run serve",
     "start": "npm run start:static",
     "dev:static": "npm run build:static && npm run build:css && npm run inject:config && npm run serve",
-    "dev": "npm run dev:static",
+    "dev": "npm run dev:react",
     "supabase:start": "npx supabase start",
     "supabase:legacy-baseline:overwrite": "node scripts/sync-supabase-migration.cjs --overwrite-frozen-baseline",
     "supabase:reset": "npx supabase db reset --local",

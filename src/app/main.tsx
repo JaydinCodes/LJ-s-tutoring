@@ -18,6 +18,10 @@ if (!rootNode) {
   throw new Error('root element not found');
 }
 
+// Static production documents include search-engine fallback content. Do not
+// expose that unhydrated copy as a visible flash while the app bundle starts.
+rootNode.classList.remove('app-booting');
+
 ReactDOM.createRoot(rootNode).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
