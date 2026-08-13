@@ -13,12 +13,8 @@ import { formatDate } from '../../lib/utils/format';
 import type { Assignment, AssignmentStatus, AssignmentSubmission, TutorAllocatedStudentSummary } from '../../types/lms';
 import { getAiGradingPrefill } from '../assignments/aiGradingPrefill';
 import { createAssignment, markSubmission, updateAssignment } from '../assignments/assignmentMutations';
-import { RubricBuilder } from '../assignments/RubricBuilder';
 import { TutorSubmissionReviewCard } from '../tutors/TutorSubmissionReviewCard';
 import { loadAdminDashboard } from './adminDashboardRepository';
-
-// Rubric JSON remains the backwards-compatible storage representation; the
-// interface below deliberately presents a teaching-first criterion builder.
 
 export function AdminAssignmentsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminDashboard, []);
@@ -73,7 +69,6 @@ export function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: A
   const [curriculum, setCurriculum] = useState('CAPS');
   const [dueDate, setDueDate] = useState(toDateInputValue(assignment.due_date));
   const [status, setStatus] = useState<AssignmentStatus>(normalizeAssignmentStatus(assignment.status));
-  const [rubricJson, setRubricJson] = useState(JSON.stringify(assignment.rubric_json || [], null, 2));
   const [attachment, setAttachment] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -84,7 +79,7 @@ export function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: A
     setMessage(null);
     setError(null);
     try {
-      await updateAssignment({ assignmentId: assignment.id, expectedRevision: assignment.revision, title, description, subjectName, grade, curriculum, dueDate, status: nextStatus, attachment, rubricJson });
+      await updateAssignment({ assignmentId: assignment.id, expectedRevision: assignment.revision, title, description, subjectName, grade, curriculum, dueDate, status: nextStatus, attachment });
       setAttachment(null);
       setStatus(nextStatus);
       setMessage('Assignment updated.');
@@ -152,7 +147,6 @@ export function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: A
         <FormField label="Description">
           <TextArea value={description} onChange={(event) => setDescription(event.target.value)} />
         </FormField>
-        <RubricBuilder value={rubricJson} onChange={setRubricJson} />
         <div className="flex flex-wrap items-center gap-3">
           <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
             {busy ? 'Saving...' : 'Save assignment'}
@@ -279,7 +273,6 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
   const [grade, setGrade] = useState('');
   const [curriculum, setCurriculum] = useState('CAPS');
   const [dueDate, setDueDate] = useState('');
-  const [rubricJson, setRubricJson] = useState('[]');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [studentIds, setStudentIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -295,14 +288,13 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
     setError(null);
     try {
       if (role === 'tutor' && !studentIds.length) throw new Error('Select at least one allocated learner for this assignment.');
-      await createAssignment({ title, description, subjectName, grade, curriculum, dueDate, attachment, rubricJson, studentIds });
+      await createAssignment({ title, description, subjectName, grade, curriculum, dueDate, attachment, studentIds });
       setTitle('');
       setDescription('');
       setSubjectName('');
       setGrade('');
       setCurriculum('CAPS');
       setDueDate('');
-      setRubricJson('[]');
       setAttachment(null);
       setStudentIds([]);
       setMessage('Assignment published.');
@@ -364,7 +356,6 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
             <TextArea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Instructions, expected work, submission notes..." />
           </FormField>
         </div>
-        <div className="lg:col-span-2"><RubricBuilder value={rubricJson} onChange={setRubricJson} /></div>
         <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
           <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
             {busy ? 'Publishing...' : 'Publish assignment'}

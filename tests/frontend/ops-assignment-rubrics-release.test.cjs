@@ -42,6 +42,6 @@ test('OPS-06 frontend uses redacted student reads and RPC-backed release control
     assert.match(source, /Rubric scores JSON/);
   }
 
-  assert.match(adminAssignments, /Rubric JSON/);
-  assert.match(adminAssignments, /rubricJson/);
+  assert.doesNotMatch(adminAssignments, /RubricBuilder/);
+  assert.doesNotMatch(adminAssignments, /Add criterion/);
 });
