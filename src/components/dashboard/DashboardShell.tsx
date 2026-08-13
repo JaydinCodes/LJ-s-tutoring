@@ -304,10 +304,10 @@ export function DesktopRail({ navItems }: { navItems: DashboardNavItem[] }) {
       <div className="flex h-full w-16 flex-col items-center rounded-sheet border border-white/70 bg-white/[0.72] py-3 shadow-academy backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06]">
         <NavLink
           aria-label="Project Odysseus dashboard"
-          className="mb-3 grid h-11 w-11 place-items-center rounded-ios bg-academy-navy text-sm font-bold text-white shadow-academy-soft dark:bg-white dark:text-slate-950"
+          className="mb-3 grid h-11 w-11 place-items-center rounded-ios"
           to="/dashboard/student"
         >
-          <img className="h-full w-full object-contain" src="/images/project-odysseus-logo-crisp.png" alt="" />
+          <img className="h-full w-full object-contain" src="/images/project-odysseus-logo-transparent.png" alt="" />
         </NavLink>
         <nav aria-label="Student portal" className="flex flex-1 flex-col items-center gap-1.5">
           {navItems.map((item) => {
@@ -457,8 +457,8 @@ function LegacyDashboardShell({ title, subtitle, section, children }: ShellProps
       <div className="mx-auto flex max-w-[1640px] gap-4 px-3 py-3 sm:px-4 lg:gap-6 lg:py-5" data-modal-background>
         <aside className="sticky top-5 hidden h-[calc(100vh-2.5rem)] w-72 rounded-[2rem] border border-white/70 bg-white/[0.72] p-5 shadow-[0_24px_70px_rgba(15,23,42,0.09)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25 lg:flex lg:flex-col">
           <div className="flex items-center gap-3 border-b border-slate-950/5 pb-5 dark:border-white/10">
-            <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-[1.2rem] bg-white shadow-[0_12px_30px_rgba(15,23,42,0.18)]">
-              <img className="h-full w-full object-contain" src="/images/project-odysseus-logo-crisp.png" alt="" />
+            <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-[1.2rem]">
+              <img className="h-full w-full object-contain" src="/images/project-odysseus-logo-transparent.png" alt="" />
             </div>
             <div>
               <p className="font-semibold">Project Odysseus</p>
