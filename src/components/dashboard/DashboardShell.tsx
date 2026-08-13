@@ -76,6 +76,7 @@ const nav = {
     { to: '/dashboard/tutor/reports', label: 'Insights', icon: TrendingUp },
     { to: '/dashboard/tutor/classes', label: 'Classes', icon: BookOpen },
     { to: '/dashboard/tutor/assignments', label: 'Assignments', icon: ScrollText },
+    { to: '/dashboard/tutor/settings', label: 'Settings', icon: Settings },
   ],
   parent: [
     { to: '/dashboard/parent/reports', label: 'My child', icon: ScrollText },

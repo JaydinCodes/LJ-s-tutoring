@@ -331,12 +331,31 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
         <FormField label="Subject">
           <TextInput required value={subjectName} onChange={(event) => setSubjectName(event.target.value)} placeholder="Mathematics" />
         </FormField>
-        <FormField label="Grade">
-          <TextInput required value={grade} onChange={(event) => { setGrade(event.target.value); setStudentIds([]); }} placeholder="Grade 11" />
+        <FormField label="Grade" hint={role === 'tutor' ? 'Choose the grade, then select exactly which learners should receive this work.' : undefined}>
+          {role === 'tutor' ? (
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Assignment grade">
+              {['Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'].map((option) => {
+                const selected = grade === option;
+                return (
+                  <button
+                    aria-checked={selected}
+                    className={`min-h-11 rounded-full border px-4 text-sm font-semibold transition ${selected ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-300 bg-white text-slate-800 hover:border-slate-500'}`}
+                    key={option}
+                    role="radio"
+                    type="button"
+                    onClick={() => { setGrade(option); setStudentIds([]); }}
+                  >
+                    <span className={`mr-2 inline-block h-3 w-3 rounded-full border ${selected ? 'border-white bg-white' : 'border-slate-400 bg-transparent'}`} aria-hidden="true" />
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
+          ) : <TextInput required value={grade} onChange={(event) => setGrade(event.target.value)} placeholder="Grade 11" />}
         </FormField>
-        <FormField label="Curriculum">
+        {role !== 'tutor' ? <FormField label="Curriculum">
           <TextInput value={curriculum} onChange={(event) => setCurriculum(event.target.value)} placeholder="CAPS" />
-        </FormField>
+        </FormField> : null}
         <FormField label="Due date">
           <TextInput type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
         </FormField>
@@ -344,7 +363,7 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
           <TextInput type="file" onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
         </FormField>
         {role === 'tutor' ? (
-          <FormField label="Assign to learners" hint={selectedGrade ? `Only your allocated ${grade.trim()} learners can receive this individual assignment.` : 'Choose the assignment grade first.'}>
+          <FormField label="Assign to specific learners" hint={selectedGrade ? `Only your allocated ${grade.trim()} learners can receive this work. Select one or more learners.` : 'Choose a grade first.'}>
             <select multiple required disabled={!selectedGrade} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 disabled:cursor-not-allowed disabled:opacity-60" value={studentIds} onChange={(event) => setStudentIds(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>
               {eligibleStudents.map((student) => <option key={student.student_id} value={student.student_id}>{student.full_name}{student.grade ? ` — ${student.grade}` : ''}</option>)}
             </select>
