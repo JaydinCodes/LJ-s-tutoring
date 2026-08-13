@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..', '..');
 
-test('React public route prepares enquiries for user-controlled email or WhatsApp sending', () => {
+test('React public route submits enquiries through the configured Formspree endpoint', () => {
   const publicRoutes = fs.readFileSync(path.join(root, 'src', 'app', 'routes', 'PublicRoutes.tsx'), 'utf8');
   const envExample = fs.readFileSync(path.join(root, '.env.example'), 'utf8');
 
@@ -17,10 +17,10 @@ test('React public route prepares enquiries for user-controlled email or WhatsAp
   assert.ok(publicRoutes.includes('name="website"'), 'React enquiry form must keep honeypot protection');
   assert.ok(publicRoutes.includes('https://wa.me/'), 'React enquiry path must include WhatsApp');
   assert.ok(publicRoutes.includes('mailto:'), 'React enquiry path must include email');
-  assert.ok(publicRoutes.includes('nothing is sent until you review and send it'), 'the form must explain the user-controlled handoff');
-  assert.ok(!publicRoutes.includes('fetch(form'), 'React enquiry form must not post to an external browser endpoint');
-  assert.ok(!publicRoutes.includes('FORMSPREE'), 'React enquiry form must not retain dead external form configuration');
-  assert.ok(!envExample.includes('FORMSPREE'), '.env.example must not advertise a dead form endpoint');
+  assert.ok(publicRoutes.includes('Your enquiry is sent securely to Project Odysseus.'), 'the form must explain delivery');
+  assert.ok(publicRoutes.includes('fetch(formspreeEndpoint'), 'React enquiry form must post to Formspree');
+  assert.ok(publicRoutes.includes('__PO_FORMSPREE_ENDPOINT__'), 'React enquiry form must read the configured endpoint');
+  assert.ok(envExample.includes('FORMSPREE_ENDPOINT'), '.env.example must document the Formspree endpoint');
 });
 
 test('React public route carries remaining public-site parity sections', () => {

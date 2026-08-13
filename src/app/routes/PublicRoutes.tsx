@@ -293,8 +293,10 @@ export function PublicHomeRoute() {
 
       <TutorSection />
       <GreekDivider background="white" tone="gold" />
+      <GuideSection />
       <FaqSection />
       <GreekDivider background="slate" tone="gold" />
+      <BecomeTutorSection />
       <EnquirySection />
     </PublicLayout>
   );
@@ -348,6 +350,35 @@ export function ProgramsRoute() {
           </a>
         </div>
       </section>
+    </PublicLayout>
+  );
+}
+
+export function GuidesIndexRoute() {
+  return (
+    <PublicLayout>
+      <main className="bg-white px-6 py-20">
+        <div className="mx-auto max-w-4xl">
+          <SectionIntro title="Learning guides" eyebrow="Resources">Short, practical resources for focused revision.</SectionIntro>
+          <Link className="mt-8 inline-flex rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">Read the Matric Maths Mistakes Guide</Link>
+        </div>
+      </main>
+    </PublicLayout>
+  );
+}
+
+export function MatricMathsMistakesGuideRoute() {
+  return (
+    <PublicLayout>
+      <article className="bg-white px-6 py-20">
+        <div className="mx-auto max-w-3xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Guide</p>
+          <h1 className="mt-3 text-5xl font-semibold tracking-tight text-slate-950">Matric Maths Mistakes Guide</h1>
+          <section className="mt-10"><h2>Misreading the question</h2><p>Underline command words and rewrite the ask before calculating.</p></section>
+          <section className="mt-6"><h2>Skipping algebra steps</h2><p>Show transformations line by line so method marks are still earned when arithmetic slips happen.</p></section>
+          <Link className="mt-8 inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800" to="/guides">Back to guides</Link>
+        </div>
+      </article>
     </PublicLayout>
   );
 }
@@ -687,11 +718,29 @@ function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
   );
 }
 
+function GuideSection() {
+  return (
+    <Reveal as="section" className="bg-white py-16">
+      <div className="mx-auto max-w-7xl px-6">
+        <SectionIntro title="Matric maths guide" eyebrow="Free resource">Practical checks to make every test and exam response clearer.</SectionIntro>
+        <Link className="mt-6 inline-flex rounded-lg bg-brand-navy px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">Open guide</Link>
+      </div>
+    </Reveal>
+  );
+}
 
-
-
-
-
+function BecomeTutorSection() {
+  const tutorEmailHref = `mailto:${contactEmail}?subject=${encodeURIComponent('Tutor application')}`;
+  return (
+    <Reveal as="section" id="become-a-tutor" className="bg-slate-950 py-16 text-white">
+      <div className="mx-auto max-w-7xl px-6">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-gold">Join our team</p>
+        <h2 className="mt-3 text-4xl font-semibold tracking-tight">Passionate about maths? Teach with us.</h2>
+        <a className="mt-6 inline-flex rounded-lg bg-brand-gold px-4 py-2 text-sm font-semibold text-brand-obsidian" href={tutorEmailHref}>Apply by email</a>
+      </div>
+    </Reveal>
+  );
+}
 
 function FaqSection() {
   return (
