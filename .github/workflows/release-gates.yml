@@ -87,23 +87,14 @@ jobs:
       - name: Monitoring assets validation
         run: npm run validate:monitoring
 
-      - name: Install system Chromium for Lighthouse
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser || sudo apt-get install -y chromium
-          SYSTEM_CHROME_PATH=$(which chromium-browser || which chromium || true)
-          if [ -z "$SYSTEM_CHROME_PATH" ]; then
-            echo "System Chromium executable not found after installation"
-            exit 1
-          fi
-          echo "SYSTEM_CHROME_PATH=$SYSTEM_CHROME_PATH" >> $GITHUB_ENV
-
       - name: Install Playwright Chromium
         run: |
-          npm run test:e2e:install
+          # Do not use Ubuntu's chromium-browser package: it delegates to
+          # Snap and makes this gate depend on Snapcraft availability.
+          npx playwright install chromium
           CHROME_PATH=$(node -e "process.stdout.write(require('playwright').chromium.executablePath())")
-          if [ -z "$CHROME_PATH" ]; then
-            echo "Chromium executable not found after installation"
+          if [ ! -x "$CHROME_PATH" ]; then
+            echo "Playwright Chromium executable not found after installation"
             exit 1
           fi
           echo "CHROME_PATH=$CHROME_PATH" >> $GITHUB_ENV
@@ -119,10 +110,7 @@ jobs:
 
       - name: Canonical route QA and Lighthouse budgets
         env:
-          # Playwright supplies browser journeys; Lighthouse must use the
-          # system browser because the Playwright binary is sandbox-restricted
-          # on current Ubuntu GitHub runners.
-          CHROME_PATH: ${{ env.SYSTEM_CHROME_PATH }}
+          CHROME_PATH: ${{ env.CHROME_PATH }}
           PUPPETEER_EXECUTABLE_PATH: ${{ env.CHROME_PATH }}
         run: |
           npm run qa:serve > /tmp/release-static-server.log 2>&1 &

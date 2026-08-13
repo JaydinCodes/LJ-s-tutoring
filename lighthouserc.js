@@ -2,9 +2,9 @@ module.exports = {
   ci: {
     collect: {
       staticDistDir: './dist',
-      // CI also installs Playwright for browser journeys. Explicitly use the
-      // system Chromium selected by each workflow, otherwise LHCI can prefer
-      // Playwright's sandbox-restricted browser on Ubuntu runners.
+      // Workflows install Playwright's Chromium directly rather than Ubuntu's
+      // Snap-backed chromium-browser package. The no-sandbox flags below make
+      // that browser usable by Lighthouse on hosted CI runners.
       chromePath: process.env.CHROME_PATH,
       url: ['http://localhost:8080/'],
       numberOfRuns: 3,
