@@ -29,5 +29,5 @@ test('static build prerenders crawlable public content without exposing dashboar
   assert.match(programs, /<main data-prerendered-page="programs">/);
   assert.match(guide, /<main data-prerendered-page="matric-maths-mistakes-guide">/);
   assert.doesNotMatch(dashboard, /data-prerendered-page=/);
-  assert.match(dashboard, /<div id="root"><\/div>/);
+  assert.match(dashboard, /<div id="root" class="app-booting"><\/div>/);
 });
