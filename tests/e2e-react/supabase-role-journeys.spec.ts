@@ -175,6 +175,6 @@ test('admin authenticates through local Supabase and loads the protected operati
 
   await expect(page.getByRole('heading', { name: 'Admin Dashboard', exact: true })).toBeVisible();
   await expect(page.getByRole('table').filter({ hasText: 'Local Supabase School' })).toBeVisible();
-  await expect(page.getByRole('table').filter({ hasText: 'Local Supabase Algebra Check' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Review allocations' })).toBeVisible();
   expectNoUnexpectedRuntimeFailures(runtimeFailures);
 });
