@@ -292,14 +292,15 @@ ${description}${robots}${canonical}${openGraph}    <meta name="theme-color" cont
       fallback deliberately allows inline scripts so it does not block schema
       markup when developing without that edge worker.
     -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://formspree.io https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <style>#root.app-booting { opacity: 0; }</style>
     <link rel="stylesheet" href="/react-app-dist/${reactAppCssFile}">
 ${publicScripts}
   </head>
   <body>
-    <div id="root">${prerenderedContent}</div>
+    <div id="root" class="app-booting">${prerenderedContent}</div>
     <script type="module" src="/react-app-dist/${reactAppJsFile}"></script>
   </body>
 </html>

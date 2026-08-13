@@ -79,11 +79,6 @@ const faqs = [
     answer:
       'We tutor CAPS Mathematics for Grade 8 to Grade 12 learners, from foundation gaps through to distinction-level exam preparation.',
   },
-  {
-    question: 'Is there a satisfaction guarantee?',
-    answer:
-      'Yes. If the first session is not a fit, we refund that session. For packages, we work with families to fix the issue or prorate unused hours where appropriate.',
-  },
 ];
 
 const tutorPerks = [
@@ -274,36 +269,7 @@ export function PublicHomeRoute() {
               ))}
             </StaggerReveal>
           </div>
-          <aside className="space-y-4">
-            <div className="rounded-[1.5rem] bg-brand-deepBlue p-5 text-white shadow-xl shadow-brand-navy/20">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-marble">Student snapshot</p>
-              <h3 className="mt-3 text-2xl font-semibold">This week in Maths</h3>
-              <div className="mt-5 grid gap-3">
-                {[
-                  ['Assignments due', '2 priority tasks'],
-                  ['Latest result', '78% Algebra revision'],
-                  ['Progress', 'Functions improving'],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between gap-4 rounded-2xl bg-white/[0.12] px-4 py-3">
-                    <span className="text-sm text-brand-parchment">{label}</span>
-                    <span className="text-sm font-semibold">{value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="grid gap-3">
-              {[
-                ['Student dashboard', 'Assignments, results, progress, careers'],
-                ['Tutor dashboard', 'Classes, sessions, submissions, reports'],
-                ['Admin dashboard', 'Students, tutors, approvals, payments'],
-              ].map(([title, description]) => (
-                <div key={title} className="rounded-2xl border border-brand-marble bg-white/95 p-4 shadow-lg shadow-slate-200/50">
-                  <p className="font-semibold text-brand-obsidian">{title}</p>
-                  <p className="mt-1 text-sm text-slate-600">{description}</p>
-                </div>
-              ))}
-            </div>
-          </aside>
+          
         </div>
       </Reveal>
 
@@ -318,7 +284,6 @@ export function PublicHomeRoute() {
               </SectionIntro>
               <div className="mt-8 flex flex-wrap gap-3">
                 <a className="rounded-full bg-brand-navy px-5 py-3 text-sm font-semibold text-white" href="#enquiry">Book a first conversation</a>
-                <Link className="rounded-full border border-brand-marble px-5 py-3 text-sm font-semibold text-brand-obsidian" to="/guides/matric-maths-mistakes-guide">Read the matric guide</Link>
               </div>
             </div>
           
@@ -389,66 +354,39 @@ export function ProgramsRoute() {
   );
 }
 
-
-
-
-
 export function GuidesIndexRoute() {
   return (
     <PublicLayout>
-      <section className="bg-white px-6 py-20">
+      <main className="bg-white px-6 py-20">
         <div className="mx-auto max-w-4xl">
-          <SectionIntro title="Learning guides" eyebrow="Resources">
-            Short, practical resources that help learners revise with purpose and help families understand what to work on next.
-          </SectionIntro>
-          <div className="mt-10 rounded-lg border border-slate-200 bg-slate-50 p-6">
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Matric Maths Mistakes Guide</h2>
-            <p className="mt-3 text-sm leading-7 text-slate-600">
-              A concise guide to avoid frequent Grade 12 maths mistakes and improve exam consistency.
-            </p>
-            <Link className="mt-5 inline-flex rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">
-              Read guide
-            </Link>
-          </div>
+          <SectionIntro title="Learning guides" eyebrow="Resources">Short, practical resources for focused revision.</SectionIntro>
+          <Link className="mt-8 inline-flex rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">Read the Matric Maths Mistakes Guide</Link>
         </div>
-      </section>
+      </main>
     </PublicLayout>
   );
 }
 
 export function MatricMathsMistakesGuideRoute() {
-  const guideSections = [
-    ['Misreading the question', 'Underline command words and rewrite the ask before calculating. This keeps the method aligned with what the examiner actually wants.'],
-    ['Skipping algebra steps', 'Show transformations line by line so method marks are still earned when arithmetic slips happen.'],
-    ['No time strategy', 'Allocate time per mark and return to hard questions later. Do not let one difficult question drain marks from the rest of the paper.'],
-    ['Weak error review', 'Keep an error log by topic and trigger so revision follows patterns instead of guesswork.'],
-  ];
-
   return (
     <PublicLayout>
       <article className="bg-white px-6 py-20">
         <div className="mx-auto max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">Guide</p>
           <h1 className="mt-3 text-5xl font-semibold tracking-tight text-slate-950">Matric Maths Mistakes Guide</h1>
-          <p className="mt-5 text-lg leading-8 text-slate-600">
-            A concise Grade 12 maths guide for avoiding common exam mistakes and making revision more consistent.
-          </p>
-          <div className="mt-10 grid gap-4">
-            {guideSections.map(([title, description], index) => (
-              <section key={title} className="rounded-lg border border-slate-200 bg-slate-50 p-6">
-                <h2 className="text-xl font-semibold text-slate-950">{index + 1}. {title}</h2>
-                <p className="mt-3 text-sm leading-7 text-slate-600">{description}</p>
-              </section>
-            ))}
-          </div>
-          <Link className="mt-8 inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800" to="/guides">
-            Back to guides
-          </Link>
+          <section className="mt-10"><h2>Misreading the question</h2><p>Underline command words and rewrite the ask before calculating.</p></section>
+          <section className="mt-6"><h2>Skipping algebra steps</h2><p>Show transformations line by line so method marks are still earned when arithmetic slips happen.</p></section>
+          <Link className="mt-8 inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800" to="/guides">Back to guides</Link>
         </div>
       </article>
     </PublicLayout>
   );
 }
+
+
+
+
+
 
 export function PrivacyRoute() {
   return (
@@ -512,7 +450,7 @@ export function PrivacyRoute() {
       <LegalSection title="Third-Party Services">
         <p>
           Project Odysseus uses service providers to operate the platform, including Supabase for authentication, database, and
-          storage services, hosting providers for the website and portal, the visitor's email or WhatsApp app for enquiries,
+          storage services, hosting providers for the website and portal, Formspree for website enquiries, and the visitor's email or WhatsApp app when those contact options are used,
           and error monitoring for technical diagnostics. We do not intentionally send learner
           marks, private notes, uploaded file contents, or guardian contact details to monitoring tools.
         </p>
@@ -664,7 +602,7 @@ function PublicLayout({ children }: { children: ReactNode }) {
             <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/about">About</Link>
             <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/programs">Programs</Link>
             <a className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" href="/#faq">FAQ</a>
-            <a className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" href="/#become-a-tutor">Tutor with us</a>
+            
           </div>
           <button
             className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-brand-navy shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2 md:hidden"
@@ -759,15 +697,6 @@ function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
           loading="lazy"
           width={tutor.imageWidth}
         />
-        <button
-          className="absolute inset-0 z-10 focus:outline-none focus:ring-4 focus:ring-inset focus:ring-brand-gold"
-          type="button"
-          aria-label={`Read ${tutor.name}'s bio`}
-          aria-controls={bioId}
-          aria-expanded={isBioVisible}
-          onClick={() => setIsBioVisible(true)}
-          onFocus={() => setIsBioVisible(true)}
-        />
         <div
           id={bioId}
           className={`absolute inset-0 z-20 flex flex-col justify-end bg-brand-navy/90 p-5 text-white ${
@@ -776,58 +705,38 @@ function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
         >
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">Tutor bio</p>
           <p className="mt-3 text-sm leading-6 text-brand-parchment">{tutor.bio}</p>
-          <button
-            className="mt-4 w-fit rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-brand-gold"
-            type="button"
-            tabIndex={isBioVisible ? 0 : -1}
-            onClick={(event) => {
-              setIsBioVisible(false);
-              event.currentTarget.blur();
-            }}
-          >
-            Close bio
-          </button>
+         
         </div>
       </div>
       <div className="p-5">
         <h3 className="text-xl font-semibold text-brand-obsidian">{tutor.name}</h3>
         <p className="mt-2 text-sm font-semibold text-brand-deepBlue">{tutor.subject}</p>
         <p className="mt-1 text-sm text-slate-600">{tutor.role}</p>
-        <button
-          className="mt-4 rounded-full border border-brand-marble px-3 py-1.5 text-xs font-semibold text-brand-deepBlue transition hover:border-brand-aegean hover:bg-brand-parchment focus:outline-none focus:ring-2 focus:ring-brand-aegean/50"
-          type="button"
-          aria-controls={bioId}
-          aria-expanded={isBioVisible}
-          onClick={() => setIsBioVisible((current) => !current)}
-          onFocus={() => setIsBioVisible(true)}
-        >
-          {isBioVisible ? 'Hide bio' : 'Read bio'}
-        </button>
+        
       </div>
     </article>
   );
 }
 
-
-
-
-
 function GuideSection() {
   return (
-    <Reveal as="section" variant="marble" className="bg-white py-16">
-      <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
-        <SectionIntro title="Matric maths guide" eyebrow="Free resource">
-          Review the common habits that cost marks, then use practical checks to make each test and exam response clearer.
-        </SectionIntro>
-        <div className="rounded-[1.5rem] border border-brand-marble bg-brand-parchment p-6 shadow-sm">
-          <h3 className="text-xl font-semibold text-brand-obsidian">Common matric maths mistakes</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            A practical revision guide for avoiding avoidable marks lost in tests and exams.
-          </p>
-          <Link className="mt-5 inline-flex rounded-lg bg-brand-navy px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">
-            Open guide
-          </Link>
-        </div>
+    <Reveal as="section" className="bg-white py-16">
+      <div className="mx-auto max-w-7xl px-6">
+        <SectionIntro title="Matric maths guide" eyebrow="Free resource">Practical checks to make every test and exam response clearer.</SectionIntro>
+        <Link className="mt-6 inline-flex rounded-lg bg-brand-navy px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">Open guide</Link>
+      </div>
+    </Reveal>
+  );
+}
+
+function BecomeTutorSection() {
+  const tutorEmailHref = `mailto:${contactEmail}?subject=${encodeURIComponent('Tutor application')}`;
+  return (
+    <Reveal as="section" id="become-a-tutor" className="bg-slate-950 py-16 text-white">
+      <div className="mx-auto max-w-7xl px-6">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-gold">Join our team</p>
+        <h2 className="mt-3 text-4xl font-semibold tracking-tight">Passionate about maths? Teach with us.</h2>
+        <a className="mt-6 inline-flex rounded-lg bg-brand-gold px-4 py-2 text-sm font-semibold text-brand-obsidian" href={tutorEmailHref}>Apply by email</a>
       </div>
     </Reveal>
   );
@@ -892,78 +801,17 @@ function FaqItem({ faq, index }: { faq: (typeof faqs)[number]; index: number }) 
   );
 }
 
-function BecomeTutorSection() {
-  return (
-    <Reveal as="section" id="become-a-tutor" className="bg-slate-950 py-16 text-white">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="max-w-3xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-gold">Join our team</p>
-          <h2 className="mt-3 text-4xl font-semibold tracking-tight">Passionate about maths? Teach with us.</h2>
-          <p className="mt-4 text-sm leading-7 text-slate-300">
-            We are looking for talented mathematics tutors who want flexible work, proper operational support, and a learner-first teaching culture.
-          </p>
-        </div>
-        <div className="mt-10 grid gap-4 lg:grid-cols-2">
-          <div className="rounded-lg border border-white/10 bg-white/10 p-6">
-            <h3 className="text-xl font-semibold">Why tutor with us</h3>
-            <StaggerReveal className="mt-5 grid gap-4 sm:grid-cols-2" staggerBy={0.08}>
-              {tutorPerks.map(([title, description]) => (
-                <article key={title} data-reveal-child className="rounded-lg border border-white/10 bg-slate-950/40 p-4">
-                  <h4 className="font-semibold text-white">{title}</h4>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p>
-                </article>
-              ))}
-            </StaggerReveal>
-          </div>
-          <div className="rounded-lg border border-white/10 bg-white p-6 text-slate-950">
-            <h3 className="text-xl font-semibold">What we look for</h3>
-            <ul className="mt-5 grid gap-3 text-sm leading-6 text-slate-600">
-              {tutorRequirements.map((requirement) => (
-                <li key={requirement} className="rounded-lg bg-slate-50 px-4 py-3">
-                  {requirement}
-                </li>
-              ))}
-            </ul>
-            <a
-              className="mt-6 inline-flex w-full justify-center rounded-lg bg-brand-gold px-4 py-3 text-sm font-semibold text-brand-obsidian hover:bg-[#f7d24f]"
-              href={`mailto:${contactEmail}?subject=${encodeURIComponent('Tutor Application - Project Odysseus')}`}
-            >
-              Apply now
-            </a>
-            <p className="mt-3 text-center text-xs leading-5 text-slate-500">Send a brief intro and CV. We aim to reply within 48 hours.</p>
-          </div>
-        </div>
-      </div>
-    </Reveal>
-  );
-}
+
 
 function EnquirySection() {
   const [form, setForm] = useState<EnquiryFormState>(initialEnquiryForm);
   const [status, setStatus] = useState<EnquiryStatus>({ tone: 'idle', message: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const formspreeEndpoint = (window as Window & { __PO_FORMSPREE_ENDPOINT__?: string })
+    .__PO_FORMSPREE_ENDPOINT__?.trim();
 
   function updateField(field: keyof EnquiryFormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
-  }
-
-  function buildMailtoHref(details: EnquiryFormState) {
-    const subject = 'Tutoring enquiry (website)';
-    const body = [
-      'Hi Project Odysseus,',
-      '',
-      'I would like help with maths tutoring.',
-      '',
-      `Name: ${details.name}`,
-      `Email: ${details.email}`,
-      details.grade ? `Grade: ${details.grade}` : '',
-      details.message ? `Message: ${details.message}` : '',
-      '',
-      'Thanks!',
-    ]
-      .filter(Boolean)
-      .join('\n');
-
-    return `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
   function buildWhatsappHref(details: EnquiryFormState) {
@@ -1007,11 +855,16 @@ function EnquirySection() {
     return '';
   }
 
-  function submitEnquiry(event: FormEvent<HTMLFormElement>) {
+  async function submitEnquiry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const validationMessage = validateForm();
     if (validationMessage) {
       setStatus({ tone: 'error', message: validationMessage });
+      return;
+    }
+
+    if (!formspreeEndpoint) {
+      setStatus({ tone: 'error', message: 'Enquiries are not configured yet. Please use WhatsApp or email us.' });
       return;
     }
 
@@ -1022,9 +875,34 @@ function EnquirySection() {
       message: form.message.trim(),
     };
 
-    window.sessionStorage.setItem(enquiryThrottleKey, String(Date.now()));
-    setStatus({ tone: 'info', message: 'Opening your email app with the enquiry details.' });
-    window.location.href = buildMailtoHref(trimmedForm);
+    setIsSubmitting(true);
+    setStatus({ tone: 'info', message: 'Sending your enquiry...' });
+
+    try {
+      const response = await fetch(formspreeEndpoint, {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: trimmedForm.name,
+          email: trimmedForm.email,
+          grade: trimmedForm.grade,
+          message: trimmedForm.message,
+          _subject: `Tutoring enquiry from ${trimmedForm.name}`,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Formspree rejected the enquiry.');
+      }
+
+      window.sessionStorage.setItem(enquiryThrottleKey, String(Date.now()));
+      setForm(initialEnquiryForm);
+      setStatus({ tone: 'success', message: 'Thanks — your enquiry has been sent. We will be in touch shortly.' });
+    } catch {
+      setStatus({ tone: 'error', message: 'We could not send your enquiry. Please try again or contact us by WhatsApp or email.' });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -1145,12 +1023,13 @@ function EnquirySection() {
           </p>
           <button
             type="submit"
+            disabled={isSubmitting}
             className="mt-5 w-full rounded-lg bg-brand-gold px-4 py-3 text-sm font-semibold text-brand-obsidian transition hover:bg-[#f7d24f]"
           >
-            Prepare email enquiry
+            {isSubmitting ? 'Sending enquiry...' : 'Send enquiry'}
           </button>
           <p id="enquiry-helper" className="mt-3 text-xs leading-5 text-slate-400">
-            This opens a pre-filled message in your email app; nothing is sent until you review and send it. You can also use WhatsApp below.
+            Your enquiry is sent securely to Project Odysseus. You can also use WhatsApp below.
           </p>
         </form>
       </div>

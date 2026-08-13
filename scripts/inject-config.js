@@ -42,7 +42,18 @@ function assistantEnabled() {
   return raw !== 'false' && raw !== '0' && raw !== 'off' && raw !== 'disabled';
 }
 
-function injectIntoFile(filePath, apiBase, enabled) {
+function resolveFormspreeEndpoint(raw) {
+  const value = String(raw || '').trim();
+  if (!value) {
+    return '';
+  }
+  if (!/^https:\/\/formspree\.io\/f\/[A-Za-z0-9_-]+$/.test(value)) {
+    throw new Error('FORMSPREE_ENDPOINT must be a Formspree endpoint such as https://formspree.io/f/your_form_id');
+  }
+  return value;
+}
+
+function injectIntoFile(filePath, apiBase, enabled, formspreeEndpoint) {
   if (!fs.existsSync(filePath)) {
     return false;
   }
@@ -51,6 +62,12 @@ function injectIntoFile(filePath, apiBase, enabled) {
     /window\.__PO_API_BASE__\s*=\s*.*?;\s*$/m,
     `window.__PO_API_BASE__ = '${apiBase}';`,
   );
+  const formspreeLine = `window.__PO_FORMSPREE_ENDPOINT__ = ${JSON.stringify(formspreeEndpoint)};`;
+  if (/window\.__PO_FORMSPREE_ENDPOINT__\s*=/.test(updated)) {
+    updated = updated.replace(/window\.__PO_FORMSPREE_ENDPOINT__\s*=\s*.*?;\s*$/m, formspreeLine);
+  } else {
+    updated = `${updated.trimEnd()}\n${formspreeLine}\n`;
+  }
   updated = updated.replace(
     /^\s*window\.__ODIE_ACCESS_KEY__\s*=\s*.*?;\s*$/gm,
     '',
@@ -71,6 +88,7 @@ function injectIntoFile(filePath, apiBase, enabled) {
 const rawApiBase = (process.env.PUBLIC_PO_API_BASE || process.env.API_BASE_URL || '/api').replace(/\/$/, '');
 const apiBase = resolveApiBase(rawApiBase);
 const enabled = assistantEnabled();
+const formspreeEndpoint = resolveFormspreeEndpoint(process.env.FORMSPREE_ENDPOINT);
 
 if (apiBase !== rawApiBase) {
   process.stdout.write(`Rewrote API base: ${rawApiBase} -> ${apiBase}\n`);
@@ -82,7 +100,7 @@ if (process.env.PUBLIC_ODIE_ACCESS_KEY) {
 }
 
 const distConfigPath = path.resolve(root, 'dist', 'assets', 'portal-config.js');
-if (injectIntoFile(distConfigPath, apiBase, enabled)) {
+if (injectIntoFile(distConfigPath, apiBase, enabled, formspreeEndpoint)) {
   process.stdout.write(`Injected config into ${distConfigPath}\n`);
 } else {
   process.stdout.write('portal-config.js not found in dist/assets - skipping dist injection\n');

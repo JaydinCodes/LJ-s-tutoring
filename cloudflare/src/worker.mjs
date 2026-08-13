@@ -32,7 +32,7 @@ function contentSecurityPolicy(nonce) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob:",
-    "connect-src 'self' https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
+    "connect-src 'self' https://formspree.io https://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
