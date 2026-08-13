@@ -160,13 +160,13 @@ test('tutors can target only their allocated learners with individual assignment
   assert.match(tutorAssignmentTargetMigration, /tsa\.status = 'active'::public\.record_status/);
   assert.match(tutorAssignmentTargetMigration, /tutors_cannot_assign_to_classes/);
   assert.match(tutorAssignments, /loadTutorAllocatedStudents/);
-  assert.match(assignmentForm, /Assign to learners/);
+  assert.match(assignmentForm, /Assign to specific learners/);
   assert.match(mutations, /rpc\('set_assignment_targets'/);
   assert.match(mutations, /p_student_ids: input\.studentIds/);
   assert.match(tutorAssignmentTargetGradeMigration, /assignment_target_grade_mismatch/);
   assert.match(tutorAssignmentTargetGradeMigration, /s\.grade is distinct from v_assignment\.grade/);
   assert.match(assignmentForm, /eligibleStudents/);
-  assert.match(assignmentForm, /Choose the assignment grade first/);
+  assert.match(assignmentForm, /Choose a grade first/);
 });
 
 test('students cannot update review fields directly through submission policies', () => {

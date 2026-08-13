@@ -37,7 +37,7 @@ const StudentResultsSubjectRoute = lazy(() => import('../features/students/Stude
 const StudentCommunityRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentCommunityRoute })));
 const StudentReportsRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentReportsRoute })));
 const StudentTutorSessionsRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentTutorSessionsRoute })));
-const StudentSettingsRoute = lazy(() => import('../features/students/StudentSupportRoutes').then((module) => ({ default: module.StudentSettingsRoute })));
+const StudentSettingsRoute = lazy(() => import('../features/settings/PortalSettingsRoute').then((module) => ({ default: () => <PortalSettingsRoute role="student" /> })));
 const TutorClassesRoute = lazy(() => import('../features/tutors/TutorClassesRoute').then((module) => ({ default: module.TutorClassesRoute })));
 const TutorAssignmentsRoute = lazy(() => import('../features/tutors/TutorAssignmentsRoute').then((module) => ({ default: module.TutorAssignmentsRoute })));
 const TutorDashboardRoute = lazy(() => import('../features/tutors/TutorDashboardRoute').then((module) => ({ default: module.TutorDashboardRoute })));
@@ -46,6 +46,7 @@ const TutorReportsRoute = lazy(() => import('../features/tutors/TutorOperationsR
 const TutorRiskRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorRiskRoute })));
 const TutorSessionsRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorSessionsRoute })));
 const TutorSubmissionsRoute = lazy(() => import('../features/tutors/TutorSubmissionsRoute').then((module) => ({ default: module.TutorSubmissionsRoute })));
+const PortalSettingsRoute = lazy(() => import('../features/settings/PortalSettingsRoute').then((module) => ({ default: module.PortalSettingsRoute })));
 const AboutRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.AboutRoute })));
 const GuidesIndexRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.GuidesIndexRoute })));
 const MatricMathsMistakesGuideRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.MatricMathsMistakesGuideRoute })));
@@ -125,6 +126,7 @@ export function App() {
         <Route path="/dashboard/tutor/submissions" element={<ProtectedRoute roles={['tutor']}><TutorSubmissionsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/reports" element={<ProtectedRoute roles={['tutor']}><TutorReportsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/risk" element={<ProtectedRoute roles={['tutor']}><TutorRiskRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/tutor/settings" element={<ProtectedRoute roles={['tutor']}><PortalSettingsRoute role="tutor" /></ProtectedRoute>} />
           <Route path="*" element={<NotFoundRoute />} />
         </Routes>
       </Suspense>
