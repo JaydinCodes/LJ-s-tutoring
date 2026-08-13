@@ -23,6 +23,10 @@ const tutorAssignmentTargetMigration = fs.readFileSync(
   path.resolve(__dirname, '..', '..', 'supabase', 'migrations', '20260812131303_restrict_tutor_assignment_targets.sql'),
   'utf8',
 );
+const tutorAssignmentTargetGradeMigration = fs.readFileSync(
+  path.resolve(__dirname, '..', '..', 'supabase', 'migrations', '20260813084719_enforce_tutor_assignment_target_grades.sql'),
+  'utf8',
+);
 
 test('Supabase schema exposes current profile helpers used by RLS policies', () => {
   assert.match(schema, /create or replace function public\.current_profile_role\(\)/);
@@ -159,6 +163,10 @@ test('tutors can target only their allocated learners with individual assignment
   assert.match(assignmentForm, /Assign to learners/);
   assert.match(mutations, /rpc\('set_assignment_targets'/);
   assert.match(mutations, /p_student_ids: input\.studentIds/);
+  assert.match(tutorAssignmentTargetGradeMigration, /assignment_target_grade_mismatch/);
+  assert.match(tutorAssignmentTargetGradeMigration, /s\.grade is distinct from v_assignment\.grade/);
+  assert.match(assignmentForm, /eligibleStudents/);
+  assert.match(assignmentForm, /Choose the assignment grade first/);
 });
 
 test('students cannot update review fields directly through submission policies', () => {
