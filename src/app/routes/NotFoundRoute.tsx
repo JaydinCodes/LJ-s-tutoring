@@ -17,8 +17,8 @@ export function NotFoundRoute() {
     <main className="grid min-h-screen place-items-center bg-[radial-gradient(circle_at_top,_rgba(31,111,139,0.22),_transparent_35%),linear-gradient(180deg,_#071326_0%,_#0f172a_100%)] px-4 py-12 text-white" data-page-status="not-found">
       <section className="w-full max-w-2xl rounded-[2rem] border border-white/[0.15] bg-white/10 p-6 text-center shadow-[0_30px_90px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:p-10" aria-labelledby="not-found-title">
         <Link className="mx-auto inline-flex items-center gap-3 rounded-full px-3 py-2 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold" to="/">
-          <span className="grid h-10 w-10 place-items-center overflow-hidden rounded-2xl bg-white">
-            <img className="h-full w-full object-contain" src="/images/project-odysseus-logo-crisp.png" alt="" />
+          <span className="grid h-10 w-10 place-items-center overflow-hidden rounded-2xl">
+            <img className="h-full w-full object-contain" src="/images/project-odysseus-logo-transparent.png" alt="" />
           </span>
           Project Odysseus
         </Link>
