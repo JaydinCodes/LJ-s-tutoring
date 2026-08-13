@@ -9,7 +9,9 @@ module.exports = {
       url: ['http://localhost:8080/'],
       numberOfRuns: 3,
       settings: {
-        chromeFlags: ['--no-sandbox', '--disable-setuid-sandbox'],
+        // @lhci/cli forwards this field as a single command-line string;
+        // an array is coerced with commas and Chromium ignores the flags.
+        chromeFlags: '--no-sandbox --disable-setuid-sandbox',
       },
     },
     upload: {

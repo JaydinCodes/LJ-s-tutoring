@@ -167,6 +167,7 @@ test('Lighthouse and release workflows use the same pinned package commands', ()
 
   assert.equal(packageJson.scripts['perf:lighthouse'], 'lhci autorun --config=./lighthouserc.js');
   assert.match(lighthouseConfig, /chromePath: process\.env\.CHROME_PATH/);
+  assert.match(lighthouseConfig, /chromeFlags: '--no-sandbox --disable-setuid-sandbox'/);
   assert.doesNotMatch(lighthouseWorkflow, /npx (?:http-server|wait-on|lhci)/);
   assert.match(lighthouseWorkflow, /npm run qa:serve/);
   assert.match(lighthouseWorkflow, /npm run qa:wait/);
