@@ -101,7 +101,7 @@ uncontrolled learner data.
 - Record the deployed commit SHA and release-gate artifact.
 - Invite test users through the `admin-invite-user` Edge Function and complete
   Supabase MFA (AAL2) for the admin account.
-- Confirm the static `/health.json`, Supabase Auth health, and zero-row PostgREST
+- Confirm the static `/health.json`, Supabase Auth health, and data-free PostgREST RPC
   probes are green in the uptime workflow.
 - Keep frontend error monitoring and Supabase service health visible.
 
