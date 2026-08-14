@@ -101,7 +101,7 @@ jobs:
           }
 
           deployed_sha="$(doctl apps get-deployment "$DIGITALOCEAN_APP_ID" "$deployment_id" --output json \
-            | jq -r '.static_sites[]? | select(.name == "website") | .source_commit_hash // empty')"
+            | jq -r '.[] | .static_sites[]? | select(.name == "website") | .source_commit_hash // empty')"
           test -n "$deployed_sha" || {
             echo 'DigitalOcean did not report the website source commit.' >&2
             exit 1

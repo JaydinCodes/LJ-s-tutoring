@@ -243,6 +243,7 @@ test('production deployment is gated by the tested main SHA and workflow actions
   assert.match(deploymentWorkflow, /DIGITALOCEAN_APP_ID must be a UUID/);
   assert.match(deploymentWorkflow, /--format ID --no-header/);
   assert.match(deploymentWorkflow, /doctl apps get-deployment .*--format Phase --no-header/);
+  assert.match(deploymentWorkflow, /jq -r '\.\[\] \| \.static_sites\[\]\? \| select\(\.name == "website"\)/);
   assert.match(deploymentWorkflow, /Apply Supabase migrations and Edge Functions/);
   assert.match(deploymentWorkflow, /SUPABASE_ACCESS_TOKEN/);
   assert.match(deploymentWorkflow, /SUPABASE_PRODUCTION_PROJECT_REF/);
