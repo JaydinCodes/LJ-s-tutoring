@@ -336,6 +336,8 @@ test('SEC-02 security headers are an executable edge policy with live production
   assert.match(probe, /Strict-Transport-Security must have max-age/);
   assert.match(probe, /frame-ancestors/);
   assert.match(probe, /__security_header_probe/);
+  assert.match(probe, /redirect: 'manual'/);
+  assert.match(probe, /redirected outside the production origin/);
   assert.match(uptime, /vars\.PRODUCTION_ORIGINS/);
   assert.match(uptime, /npm run verify:production:headers/);
   assert.match(deployment, /npm run verify:production:headers/);

@@ -26,11 +26,26 @@ async function verifyOrigin(origin) {
     fail(origin, 'must use HTTPS');
   }
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     headers: { 'cache-control': 'no-cache' },
-    redirect: 'error',
+    redirect: 'manual',
     signal: AbortSignal.timeout(15_000),
   });
+  if (response.status >= 300 && response.status < 400) {
+    const location = response.headers.get('location');
+    if (!location) {
+      fail(origin, `redirected with HTTP ${response.status} but no Location header`);
+    }
+    const redirectUrl = new URL(location, url);
+    if (redirectUrl.origin !== url.origin) {
+      fail(origin, `redirected outside the production origin to ${redirectUrl.origin}`);
+    }
+    response = await fetch(redirectUrl, {
+      headers: { 'cache-control': 'no-cache' },
+      redirect: 'error',
+      signal: AbortSignal.timeout(15_000),
+    });
+  }
   if (!response.ok) {
     fail(origin, `returned HTTP ${response.status}`);
   }
