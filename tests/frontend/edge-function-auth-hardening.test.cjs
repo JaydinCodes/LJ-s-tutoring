@@ -51,7 +51,7 @@ test('privileged workers require the actual service-role secret and do not trust
 
 test('all non-public Edge Functions explicitly retain gateway JWT verification', () => {
   const config = read('supabase/config.toml');
-  for (const name of ['admin-invite-user', 'cleanup-submission-assets', 'grade-submission', 'odie-careers-chat-stream', 'refresh-stale-weekly-reports']) {
+  for (const name of ['admin-invite-user', 'complete-temporary-password', 'cleanup-submission-assets', 'grade-submission', 'odie-careers-chat-stream', 'refresh-stale-weekly-reports']) {
     const section = functionConfigSection(config, name);
     assert.ok(section, `expected a config section for ${name}`);
     assert.match(section, /^verify_jwt\s*=\s*true\s*$/m);

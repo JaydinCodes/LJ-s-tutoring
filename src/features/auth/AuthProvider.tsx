@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     status: 'loading',
     operationalAccess: 'not_applicable',
     adminMfa: ADMIN_MFA_NOT_APPLICABLE,
+    mustChangeTemporaryPassword: false,
     error: null,
   });
 
@@ -52,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: 'error',
         operationalAccess: 'not_applicable',
         adminMfa: ADMIN_MFA_NOT_APPLICABLE,
+        mustChangeTemporaryPassword: false,
         error:
           'The sign-in service is temporarily unavailable. Please contact support if you need urgent access.',
       });
@@ -74,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status,
         operationalAccess,
         adminMfa,
+        mustChangeTemporaryPassword,
       } = await fetchCurrentProfile();
 
       const statusError =
@@ -91,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status,
         operationalAccess,
         adminMfa,
+        mustChangeTemporaryPassword,
         error: statusError,
       });
     } catch (error) {
@@ -107,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: 'error',
         operationalAccess: 'not_applicable',
         adminMfa: ADMIN_MFA_NOT_APPLICABLE,
+        mustChangeTemporaryPassword: false,
         error:
           error instanceof Error
             ? error.message

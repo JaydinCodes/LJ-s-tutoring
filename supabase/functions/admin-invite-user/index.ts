@@ -75,6 +75,12 @@ const ResendInviteSchema = z.object({
   profileId: z.string().uuid(),
 });
 
+const ResetStudentPasswordSchema = z.object({
+  mode: z.literal('reset_student_password'),
+  profileId: z.string().uuid(),
+  password: z.string().min(10).max(200),
+});
+
 type ManagedRole = z.infer<typeof ManagedRoleSchema>;
 
 const inviteRedirectSecretByRole: Record<ManagedRole, string> = {
@@ -118,6 +124,7 @@ function statusForError(message: string): number {
   if (message === 'duplicate_email') return 409;
   if (message === 'invite_already_accepted') return 409;
   if (message === 'invite_profile_not_found' || message === 'invite_auth_user_not_found') return 404;
+  if (message === 'student_profile_required') return 400;
   if (message === 'supabase_admin_not_configured') return 501;
   return 400;
 }
@@ -191,6 +198,34 @@ Deno.serve(async (req) => {
 
     // 2) Validate the payload.
     const body = await req.json();
+    const reset = ResetStudentPasswordSchema.safeParse(body);
+    if (reset.success) {
+      const { data: profile, error: profileError } = await admin
+        .from('profiles')
+        .select('auth_user_id, role')
+        .eq('id', reset.data.profileId)
+        .maybeSingle();
+      if (profileError) throw profileError;
+      if (!profile) throw new Error('invite_profile_not_found');
+      if ((profile as { role?: string }).role !== 'student') throw new Error('student_profile_required');
+      const authUserId = (profile as { auth_user_id?: string | null }).auth_user_id;
+      if (!authUserId) throw new Error('invite_auth_user_not_found');
+
+      const { data: authData, error: authError } = await admin.auth.admin.getUserById(authUserId);
+      if (authError || !authData.user) throw new Error('invite_auth_user_not_found');
+      const { error: updateError } = await admin.auth.admin.updateUserById(authUserId, {
+        password: reset.data.password,
+        email_confirm: true,
+        app_metadata: {
+          ...(authData.user.app_metadata ?? {}),
+          require_password_change: true,
+        },
+      });
+      if (updateError) throw new Error(updateError.message);
+
+      return json({ ok: true, mode: 'reset_student_password', profileId: reset.data.profileId, userId: authUserId });
+    }
+
     const resend = ResendInviteSchema.safeParse(body);
     if (resend.success) {
       const { data: profile, error: profileError } = await admin
@@ -265,7 +300,9 @@ Deno.serve(async (req) => {
       const { data, error } = await admin.auth.admin.createUser({
         email: input.email,
         password: input.password,
-        email_confirm: false,
+        // A temporary password is delivered by the administrator, not the
+        // email-confirmation flow, so it must be usable immediately.
+        email_confirm: true,
         user_metadata: userMetadata,
       });
       if (error) throw new Error(error.message);
@@ -284,6 +321,9 @@ Deno.serve(async (req) => {
         app_metadata: {
           ...existingAppMetadata,
           onboarding_role: input.role,
+          // Server-owned metadata lets the portal block student access until
+          // the temporary password is replaced. It is never used for roles.
+          ...(input.mode === 'create' && input.role === 'student' ? { require_password_change: true } : {}),
         },
       });
       if (appMetadataError) {
