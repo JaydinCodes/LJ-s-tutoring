@@ -49,7 +49,7 @@ for (const variable of ['HEALTHCHECK_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY'])
 for (const endpoint of [
   '/health.json',
   '/auth/v1/health',
-  '/rest/v1/profiles?select=id&limit=0',
+  '/rest/v1/rpc/monitoring_health_probe',
 ]) {
   mustInclude(uptime, new RegExp(endpoint.replace(/[?]/g, '\\?')), `${endpoint} probe`);
 }

@@ -10,7 +10,7 @@ release evidence.
 - **Web availability:** the hourly `Uptime Check` workflow verifies the exact
   versioned `/health.json` body and JSON content type.
 - **Supabase availability:** the same workflow verifies Supabase Auth health and
-  an authenticated zero-row PostgREST query with the public anon key.
+  a data-free PostgREST monitoring RPC with the public anon key.
 - **Browser/workflow errors:** the production React bundle can report sanitized
   failures to Sentry when its reviewed public DSN and release variables are set.
 - **Provider signals:** Supabase and DigitalOcean service dashboards/logs remain

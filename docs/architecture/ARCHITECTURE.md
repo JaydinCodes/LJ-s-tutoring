@@ -342,7 +342,7 @@ Local Supabase details live in `docs/supabase/LOCAL_DEVELOPMENT.md`.
 - Browser-exposed config must contain only public values such as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 - Never expose Supabase service-role keys to the browser.
 - Production admin access requires Supabase MFA configuration and verified admin factors.
-- Scheduled uptime monitoring validates the static JSON contract, Supabase Auth health, and a zero-row PostgREST request using only the public URL and anon key.
+- Scheduled uptime monitoring validates the static JSON contract, Supabase Auth health, and the data-free `monitoring_health_probe` PostgREST RPC using only the public URL and anon key.
 
 ## Security Notes
 

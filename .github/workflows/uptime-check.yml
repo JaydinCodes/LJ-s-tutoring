@@ -68,8 +68,10 @@ jobs:
             -H 'Accept: application/json' \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "${SUPABASE_URL%/}/rest/v1/profiles?select=id&limit=0" | \
-            jq -e 'type == "array" and length == 0' > /dev/null
+            -H 'Content-Type: application/json' \
+            --data '{}' \
+            "${SUPABASE_URL%/}/rest/v1/rpc/monitoring_health_probe" | \
+            jq -e 'type == "array" and length == 1 and .[0].status == "ok"' > /dev/null
 
           npm run verify:production:headers
       - name: Create or update issue on failure
@@ -80,7 +82,7 @@ jobs:
             const title = 'Uptime check failed';
             const body = `The scheduled uptime check failed at ${new Date().toISOString()}.
 
-            Please verify the exact /health.json contract, Supabase Auth health, and the zero-row PostgREST probe.
+            Please verify the exact /health.json contract, Supabase Auth health, and the data-free PostgREST monitoring RPC.
 
             Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const { data: issues } = await github.rest.issues.listForRepo({
