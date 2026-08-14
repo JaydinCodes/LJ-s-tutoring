@@ -249,6 +249,7 @@ function CreateStudentForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartner
   const [parentContact, setParentContact] = useState('');
   const [ngoPartnerId, setNgoPartnerId] = useState('');
   const [status, setStatus] = useState<RecordStatus>('pending');
+  const [temporaryPassword, setTemporaryPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -262,11 +263,12 @@ function CreateStudentForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartner
       const client = requireSupabase();
       const result = await client.functions.invoke<{ ok: boolean; profileId: string; userId: string }>('admin-invite-user', {
         body: {
-          mode: 'invite',
+          mode: 'create',
           role: 'student',
           fullName,
           email,
           phone: phone.trim() || undefined,
+          password: temporaryPassword,
           student: {
             grade,
             school: school.trim() || undefined,
@@ -293,7 +295,8 @@ function CreateStudentForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartner
       setParentContact('');
       setNgoPartnerId('');
       setStatus('pending');
-      setMessage('Student invited and added to the roster.');
+      setTemporaryPassword('');
+      setMessage('Student created. Share their temporary password privately; they will be asked to replace it at first sign-in.');
       await onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create student record.');
@@ -306,14 +309,15 @@ function CreateStudentForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartner
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-950">Invite student</h2>
-          <p className="mt-1 text-sm text-slate-600">Create the learner account and roster profile together. No account ID is needed.</p>
+          <h2 className="text-xl font-semibold text-slate-950">Create student account</h2>
+          <p className="mt-1 text-sm text-slate-600">Create the learner account and roster profile together, then give the learner their temporary password privately.</p>
         </div>
         <StatusBadge value="admin_only" />
       </div>
       <form className="mt-5 grid gap-4 lg:grid-cols-2" onSubmit={(event) => void submit(event)}>
         <FormField label="Full name"><TextInput required value={fullName} onChange={(event) => setFullName(event.target.value)} /></FormField>
         <FormField label="Email"><TextInput required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></FormField>
+        <FormField label="Temporary password" hint="At least 10 characters. The learner must replace it at first sign-in."><TextInput required minLength={10} autoComplete="new-password" type="password" value={temporaryPassword} onChange={(event) => setTemporaryPassword(event.target.value)} /></FormField>
         <FormField label="Phone"><TextInput value={phone} onChange={(event) => setPhone(event.target.value)} /></FormField>
         <FormField label="Grade">
           <select required className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={grade} onChange={(event) => setGrade(event.target.value)}>
@@ -331,7 +335,7 @@ function CreateStudentForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartner
           </select>
         </FormField>
         <FormField label="Status"><StatusSelect value={status} onChange={setStatus} /></FormField>
-        <SubmitRow busy={busy} label="Send student invite" message={message} error={error} />
+        <SubmitRow busy={busy} label="Create student account" message={message} error={error} />
       </form>
     </Card>
   );
@@ -414,6 +418,7 @@ function StudentRecordCard({
         <SubmitRow busy={busy} label="Save student" message={message} error={error} />
       </form>
       <ResendStudentInviteButton profileId={student.profile_id} email={student.email} />
+      <ResetStudentPasswordButton profileId={student.profile_id} />
       <div className="mt-5 border-t border-slate-200 pt-4">
         <h4 className="text-sm font-semibold text-slate-950">Linked guardians</h4>
         <div className="mt-3 grid gap-2">
@@ -461,6 +466,24 @@ function StudentRecordCard({
       setBusy(false);
     }
   }
+}
+
+function ResetStudentPasswordButton({ profileId }: { profileId: string }) {
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  async function reset(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setBusy(true); setMessage(null); setError(null);
+    try {
+      const result = await requireSupabase().functions.invoke<{ ok: boolean }>('admin-invite-user', { body: { mode: 'reset_student_password', profileId, password } });
+      if (result.error || !result.data?.ok) throw result.error || new Error('Could not reset the temporary password.');
+      await recordAuditEvent({ action: 'student.password_reset', entityType: 'profile', entityId: profileId });
+      setPassword(''); setMessage('Temporary password reset. Give it to the learner privately.');
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not reset the temporary password.'); }
+    finally { setBusy(false); }
+  }
+  return <section className="mt-5 border-t border-slate-200 pt-4"><h4 className="font-semibold text-slate-950">Temporary password</h4><p className="mt-1 text-sm text-slate-600">Reset this only when the learner cannot sign in. They will choose a new password after signing in.</p><form className="mt-3 flex flex-wrap gap-3" onSubmit={(event) => void reset(event)}><TextInput required minLength={10} autoComplete="new-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="New temporary password" /><button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-60" disabled={busy} type="submit">{busy ? 'Resetting...' : 'Reset temporary password'}</button></form>{message ? <p className="mt-2 text-sm font-semibold text-emerald-700">{message}</p> : null}{error ? <p className="mt-2 text-sm font-semibold text-red-700">{error}</p> : null}</section>;
 }
 
 function ResendStudentInviteButton({ profileId, email }: { profileId: string; email?: string }) {

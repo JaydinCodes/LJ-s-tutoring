@@ -99,3 +99,8 @@ entrypoint = "./functions/odie-careers-chat-stream/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/admin-invite-user/index.ts"
+
+[functions.complete-temporary-password]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/complete-temporary-password/index.ts"

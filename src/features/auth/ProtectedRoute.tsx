@@ -5,6 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { LoadingState, MissingProfileState, PermissionDeniedState } from '../../components/ui/State';
 import { captureAppMessage } from '../../lib/monitoring/errorReporting';
 import { AdminMfaGate } from './AdminMfaGate';
+import { TemporaryPasswordGate } from './TemporaryPasswordGate';
 import { useAuth } from './AuthProvider';
 import { formatRoleList, getDashboardPath, normalizeUserRole, type SupportedDashboardRole } from './roles';
 
@@ -90,6 +91,10 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
 }
   if (currentRole === 'admin') {
     return <AdminMfaGate>{children}</AdminMfaGate>;
+  }
+
+  if (currentRole === 'student') {
+    return <TemporaryPasswordGate>{children}</TemporaryPasswordGate>;
   }
 
   return <>{children}</>;

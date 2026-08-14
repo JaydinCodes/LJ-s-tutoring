@@ -49,6 +49,7 @@ export interface AuthState {
   status: AuthStatus;
   operationalAccess: OperationalAccess;
   adminMfa: AdminMfaState;
+  mustChangeTemporaryPassword: boolean;
   error: string | null;
 }
 
@@ -206,6 +207,7 @@ export async function fetchCurrentProfile() {
 
     return {
       ...snapshot,
+      mustChangeTemporaryPassword: false,
       operationalAccess,
       adminMfa:
         role === 'admin'
@@ -227,6 +229,7 @@ export async function fetchCurrentProfile() {
       status: 'error' as const,
       operationalAccess: 'not_applicable' as const,
       adminMfa: ADMIN_MFA_NOT_APPLICABLE,
+      mustChangeTemporaryPassword: false,
     };
   }
 
@@ -251,6 +254,7 @@ export async function fetchCurrentProfile() {
       status: 'unauthenticated' as const,
       operationalAccess: 'not_applicable' as const,
       adminMfa: ADMIN_MFA_NOT_APPLICABLE,
+      mustChangeTemporaryPassword: false,
     };
   }
 
@@ -277,6 +281,7 @@ export async function fetchCurrentProfile() {
       status: 'missing_profile' as const,
       operationalAccess: 'not_applicable' as const,
       adminMfa: ADMIN_MFA_NOT_APPLICABLE,
+      mustChangeTemporaryPassword: false,
     };
   }
 
@@ -289,6 +294,7 @@ export async function fetchCurrentProfile() {
       status: 'invalid_role' as const,
       operationalAccess: 'not_applicable' as const,
       adminMfa: ADMIN_MFA_NOT_APPLICABLE,
+      mustChangeTemporaryPassword: false,
     };
   }
 
@@ -340,6 +346,7 @@ export async function fetchCurrentProfile() {
     status: 'authenticated' as const,
     operationalAccess,
     adminMfa,
+    mustChangeTemporaryPassword: role === 'student' && session.user.app_metadata?.require_password_change === true,
   };
 }
 

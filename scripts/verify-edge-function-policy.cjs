@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, '..');
 const configPath = path.join(root, 'supabase', 'config.toml');
 const protectedFunctions = [
   'admin-invite-user',
+  'complete-temporary-password',
   'cleanup-submission-assets',
   'grade-submission',
   'odie-careers-chat-stream',
