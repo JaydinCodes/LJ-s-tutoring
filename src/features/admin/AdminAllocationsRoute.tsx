@@ -14,6 +14,8 @@ import { assignTutorToStudent, deactivateTutorStudentAllocation, updateTutorStud
 
 export function AdminAllocationsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminAllocationManagement, []);
+  const [selectedAllocationId, setSelectedAllocationId] = useState<string | null>(null);
+  const selectedAllocation = data?.allocations.find((allocation) => allocation.id === selectedAllocationId) || null;
 
   return (
     <DashboardShell title="Tutor Allocations" subtitle="Assign learners to tutors and preserve allocation history for operations and reporting." section="admin">
@@ -32,13 +34,10 @@ export function AdminAllocationsRoute() {
                 { key: 'grade', label: 'Grade', render: (row) => row.student_grade || 'Pending' },
                 { key: 'startDate', label: 'Assigned from', render: (row) => row.start_date || 'Not recorded' },
                 { key: 'status', label: 'Status', render: (row) => <StatusBadge value={row.status} /> },
+                { key: 'action', label: 'Action', render: (row) => <ManageButton label={selectedAllocationId === row.id ? 'Managing' : 'Manage'} onClick={() => setSelectedAllocationId(row.id)} /> },
               ]}
             />
-            <div className="grid gap-4 xl:grid-cols-2">
-              {data.allocations.map((allocation) => (
-                <AllocationCard key={allocation.id} allocation={allocation} data={data} onSaved={reload} />
-              ))}
-            </div>
+            {selectedAllocation ? <AllocationCard key={selectedAllocation.id} allocation={selectedAllocation} data={data} onSaved={reload} onClose={() => setSelectedAllocationId(null)} /> : <SelectionHint label="an allocation" />}
           </div>
         ) : null}
       </Card>
@@ -83,7 +82,7 @@ function CreateAllocationForm({ data, onSaved }: { data?: AdminAllocationManagem
   );
 }
 
-function AllocationCard({ allocation, data, onSaved }: { allocation: AdminTutorStudentAllocation; data: AdminAllocationManagementView; onSaved: () => Promise<void> }) {
+function AllocationCard({ allocation, data, onSaved, onClose }: { allocation: AdminTutorStudentAllocation; data: AdminAllocationManagementView; onSaved: () => Promise<void>; onClose: () => void }) {
   const [input, setInput] = useState<AllocationInput>(allocationInputFromRecord(allocation));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -112,13 +111,13 @@ function AllocationCard({ allocation, data, onSaved }: { allocation: AdminTutorS
   }
 
   return (
-    <article className="rounded-lg border border-slate-200 p-4">
+    <article className="rounded-2xl border border-brand-aegean/30 bg-brand-aegean/[0.04] p-4 shadow-sm dark:border-brand-gold/30 dark:bg-brand-gold/[0.06]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-slate-950">{allocation.student_name || allocation.student_email || allocation.student_id}</h3>
           <p className="mt-1 text-sm text-slate-600">{allocation.tutor_name || allocation.tutor_email || allocation.tutor_id}</p>
         </div>
-        <StatusBadge value={allocation.status} />
+        <div className="flex items-center gap-2"><StatusBadge value={allocation.status} /><button className="text-sm font-semibold text-brand-aegean underline dark:text-brand-gold" type="button" onClick={onClose}>Close editor</button></div>
       </div>
       <AllocationFields data={data} input={input} onChange={setInput} onSubmit={submit} busy={busy} submitLabel="Save allocation" message={message} error={error} />
       <button disabled={busy || allocation.status === 'inactive'} className="mt-3 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => void run(async () => {
@@ -129,6 +128,14 @@ function AllocationCard({ allocation, data, onSaved }: { allocation: AdminTutorS
       </button>
     </article>
   );
+}
+
+function ManageButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return <button className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-800 transition hover:border-brand-aegean hover:text-brand-aegean dark:border-white/20 dark:text-slate-200 dark:hover:border-brand-gold dark:hover:text-brand-gold" type="button" onClick={onClick}>{label}</button>;
+}
+
+function SelectionHint({ label }: { label: string }) {
+  return <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-600 dark:border-white/15 dark:text-slate-300">Select {label} from the table to edit it. This keeps the roster easy to scan as it grows.</p>;
 }
 
 function AllocationFields({

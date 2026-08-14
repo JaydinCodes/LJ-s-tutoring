@@ -20,6 +20,8 @@ const tutorGrades = ['Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
 
 export function AdminTutorsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminDashboard, []);
+  const [selectedTutorId, setSelectedTutorId] = useState<string | null>(null);
+  const selectedTutor = data?.tutors.find((tutor) => tutor.id === selectedTutorId) || null;
 
   return (
     <DashboardShell title="Tutors" subtitle="Tutor roster for subjects, grades, rates, status, and future payroll workflows." section="admin">
@@ -39,13 +41,10 @@ export function AdminTutorsRoute() {
                 { key: 'grades', label: 'Grades', render: (row) => row.grades?.join(', ') || 'Pending' },
                 { key: 'rate', label: 'Rate', render: (row) => row.hourly_rate ? formatCurrency(row.hourly_rate) : 'Pending' },
                 { key: 'status', label: 'Status', render: (row) => <StatusBadge value={row.status || 'pending'} /> },
+                { key: 'action', label: 'Action', render: (row) => <ManageButton label={selectedTutorId === row.id ? 'Managing' : 'Manage'} onClick={() => setSelectedTutorId(row.id)} /> },
               ]}
             />
-            <div className="grid gap-4 xl:grid-cols-2">
-              {data.tutors.map((tutor) => (
-                <TutorRecordCard key={tutor.id} tutor={tutor} onSaved={reload} />
-              ))}
-            </div>
+            {selectedTutor ? <TutorRecordCard key={selectedTutor.id} tutor={selectedTutor} onSaved={reload} onClose={() => setSelectedTutorId(null)} /> : <SelectionHint label="a tutor" />}
           </div>
         ) : null}
       </Card>
@@ -171,7 +170,7 @@ function MultiSelect({ label, options, value, onChange }: { label: string; optio
   );
 }
 
-function TutorRecordCard({ tutor, onSaved }: { tutor: Tutor & { full_name?: string; email?: string; phone?: string | null }; onSaved: () => Promise<void> }) {
+function TutorRecordCard({ tutor, onSaved, onClose }: { tutor: Tutor & { full_name?: string; email?: string; phone?: string | null }; onSaved: () => Promise<void>; onClose: () => void }) {
   const [fullName, setFullName] = useState(tutor.full_name || '');
   const [email, setEmail] = useState(tutor.email || '');
   const [phone, setPhone] = useState(tutor.phone || '');
@@ -200,13 +199,13 @@ function TutorRecordCard({ tutor, onSaved }: { tutor: Tutor & { full_name?: stri
   }
 
   return (
-    <article className="rounded-lg border border-slate-200 p-4">
+    <article className="rounded-2xl border border-brand-aegean/30 bg-brand-aegean/[0.04] p-4 shadow-sm dark:border-brand-gold/30 dark:bg-brand-gold/[0.06]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-slate-950">{tutor.full_name || tutor.id}</h3>
           <p className="mt-1 text-sm text-slate-600">{tutor.email || 'Email pending'}</p>
         </div>
-        <StatusBadge value={status} />
+        <div className="flex items-center gap-2"><StatusBadge value={status} /><button className="text-sm font-semibold text-brand-aegean underline dark:text-brand-gold" type="button" onClick={onClose}>Close editor</button></div>
       </div>
       <form className="mt-4 grid gap-3" onSubmit={(event) => void submit(event)}>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -224,6 +223,14 @@ function TutorRecordCard({ tutor, onSaved }: { tutor: Tutor & { full_name?: stri
       {!isDeletedTutor(tutor) ? <TutorDeletionAction tutor={tutor} onDeleted={onSaved} /> : null}
     </article>
   );
+}
+
+function ManageButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return <button className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-800 transition hover:border-brand-aegean hover:text-brand-aegean dark:border-white/20 dark:text-slate-200 dark:hover:border-brand-gold dark:hover:text-brand-gold" type="button" onClick={onClick}>{label}</button>;
+}
+
+function SelectionHint({ label }: { label: string }) {
+  return <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-600 dark:border-white/15 dark:text-slate-300">Select {label} from the table to edit it. This keeps the roster easy to scan as it grows.</p>;
 }
 
 function ResendInviteButton({ profileId, email, role }: { profileId: string; email?: string; role: 'tutor' }) {
