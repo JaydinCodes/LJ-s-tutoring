@@ -4103,6 +4103,12 @@ export type Database = {
           state: Database["public"]["Enums"]["community_moderation_state"]
         }[]
       }
+      monitoring_health_probe: {
+        Args: never
+        Returns: {
+          status: string
+        }[]
+      }
       onboard_current_user: {
         Args: {
           p_full_name: string
