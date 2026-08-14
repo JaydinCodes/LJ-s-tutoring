@@ -74,23 +74,29 @@ jobs:
             echo "DIGITALOCEAN_APP_ID must be a UUID." >&2
             exit 1
           }
-          # `--wait` returns a non-zero status when App Platform's build fails.
-          # Preserve and print its diagnostics instead of letting `bash -e` hide
-          # the actual deployment error inside a command substitution.
-          set +e
-          deployment_json="$(doctl apps create-deployment "$DIGITALOCEAN_APP_ID" --wait --output json 2>&1)"
-          deployment_status=$?
-          set -e
-          if [ "$deployment_status" -ne 0 ]; then
-            echo 'DigitalOcean deployment request failed:' >&2
-            echo "$deployment_json" >&2
-            echo 'Most recent DigitalOcean deployments:' >&2
-            doctl apps list-deployments "$DIGITALOCEAN_APP_ID" --output json >&2 || true
-            exit "$deployment_status"
-          fi
-          deployment_id="$(jq -r 'if type == "array" then .[0].id else .id end' <<<"$deployment_json")"
-          test -n "$deployment_id" && test "$deployment_id" != "null" || {
+          # `--wait` writes progress text alongside its result, so it cannot be
+          # safely parsed as JSON. Request only the raw deployment ID, then
+          # poll its phase independently.
+          deployment_id="$(doctl apps create-deployment "$DIGITALOCEAN_APP_ID" --format ID --no-header)"
+          test -n "$deployment_id" || {
             echo 'DigitalOcean did not return a deployment ID.' >&2
+            exit 1
+          }
+
+          for attempt in $(seq 1 60); do
+            deployment_phase="$(doctl apps get-deployment "$DIGITALOCEAN_APP_ID" "$deployment_id" --format Phase --no-header)"
+            case "$deployment_phase" in
+              ACTIVE) break ;;
+              ERROR|CANCELED|SUPERSEDED)
+                echo "DigitalOcean deployment entered $deployment_phase." >&2
+                doctl apps get-deployment "$DIGITALOCEAN_APP_ID" "$deployment_id" --output json >&2 || true
+                exit 1
+                ;;
+            esac
+            sleep 5
+          done
+          test "$deployment_phase" = ACTIVE || {
+            echo "Timed out waiting for DigitalOcean deployment $deployment_id (last phase: $deployment_phase)." >&2
             exit 1
           }
 
