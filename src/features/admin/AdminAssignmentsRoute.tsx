@@ -18,6 +18,8 @@ import { loadAdminDashboard } from './adminDashboardRepository';
 
 export function AdminAssignmentsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminDashboard, []);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
+  const selectedAssignment = data?.assignments.find((assignment) => assignment.id === selectedAssignmentId) || null;
 
   return (
     <DashboardShell title="Assignment Management" subtitle="Admin view for published work, due dates, status, and future creation workflows." section="admin">
@@ -38,13 +40,10 @@ export function AdminAssignmentsRoute() {
                 { key: 'grade', label: 'Grade', render: (row) => row.grade || 'Pending' },
                 { key: 'due', label: 'Due', render: (row) => formatDate(row.due_date) },
                 { key: 'status', label: 'Status', render: (row) => <StatusBadge value={row.status || 'draft'} /> },
+                { key: 'action', label: 'Action', render: (row) => <ManageButton label={selectedAssignmentId === row.id ? 'Managing' : 'Manage'} onClick={() => setSelectedAssignmentId(row.id)} /> },
               ]}
             />
-            <div className="grid gap-4 xl:grid-cols-2">
-              {data.assignments.map((assignment) => (
-                <AssignmentLifecycleCard key={assignment.id} assignment={assignment} onSaved={reload} />
-              ))}
-            </div>
+            {selectedAssignment ? <AssignmentLifecycleCard key={selectedAssignment.id} assignment={selectedAssignment} onSaved={reload} onClose={() => setSelectedAssignmentId(null)} /> : <SelectionHint label="an assignment" />}
           </div>
         ) : null}
       </Card>
@@ -61,7 +60,7 @@ export function AdminAssignmentsRoute() {
   );
 }
 
-export function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: Assignment; onSaved: () => Promise<void> }) {
+export function AssignmentLifecycleCard({ assignment, onSaved, onClose }: { assignment: Assignment; onSaved: () => Promise<void>; onClose?: () => void }) {
   const [title, setTitle] = useState(assignment.title || '');
   const [description, setDescription] = useState(assignment.description || '');
   const [subjectName, setSubjectName] = useState('');
@@ -107,13 +106,13 @@ export function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: A
   }
 
   return (
-    <article className="rounded-lg border border-slate-200 p-4">
+    <article className="rounded-2xl border border-brand-aegean/30 bg-brand-aegean/[0.04] p-4 shadow-sm dark:border-brand-gold/30 dark:bg-brand-gold/[0.06]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-slate-950">{assignment.title || assignment.id}</h3>
           <p className="mt-1 text-sm text-slate-600">{[assignment.grade, `Due ${formatDate(assignment.due_date)}`].filter(Boolean).join(' | ')}</p>
         </div>
-        <StatusBadge value={status} />
+        <div className="flex items-center gap-2"><StatusBadge value={status} />{onClose ? <button className="text-sm font-semibold text-brand-aegean underline dark:text-brand-gold" type="button" onClick={onClose}>Close editor</button> : null}</div>
       </div>
       <form className="mt-4 grid gap-3" onSubmit={(event) => void submit(event)}>
         <FormField label="Title">
@@ -163,6 +162,14 @@ export function AssignmentLifecycleCard({ assignment, onSaved }: { assignment: A
       </form>
     </article>
   );
+}
+
+function ManageButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return <button className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-800 transition hover:border-brand-aegean hover:text-brand-aegean dark:border-white/20 dark:text-slate-200 dark:hover:border-brand-gold dark:hover:text-brand-gold" type="button" onClick={onClick}>{label}</button>;
+}
+
+function SelectionHint({ label }: { label: string }) {
+  return <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-600 dark:border-white/15 dark:text-slate-300">Select {label} from the table to edit it. This keeps the roster easy to scan as it grows.</p>;
 }
 
 function SubmissionReviewCard({
