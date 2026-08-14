@@ -217,8 +217,8 @@ test('uptime monitoring validates the exact web and Supabase health contracts', 
   assert.match(workflow, /keys == \["service", "status", "version"\]/);
   assert.match(workflow, /\.version == "1"/);
   assert.match(workflow, /\/auth\/v1\/health/);
-  assert.match(workflow, /\/rest\/v1\/profiles\?select=id&limit=0/);
-  assert.match(workflow, /type == "array" and length == 0/);
+  assert.match(workflow, /\/rest\/v1\/rpc\/monitoring_health_probe/);
+  assert.match(workflow, /type == "array" and length == 1 and \.\[0\]\.status == "ok"/);
   assert.match(workflow, /issues\.listForRepo/);
   assert.match(workflow, /issues\.createComment/);
   assert.doesNotMatch(workflow, /skipping/i);
@@ -240,6 +240,7 @@ test('production deployment is gated by the tested main SHA and workflow actions
   assert.match(deploymentWorkflow, /secrets\.DIGITAL_ACCESS_TOKEN/);
   assert.match(deploymentWorkflow, /secrets\.DIGITAL_APP_ID/);
   assert.match(deploymentWorkflow, /doctl apps create-deployment/);
+  assert.match(deploymentWorkflow, /DIGITALOCEAN_APP_ID must be a UUID/);
   assert.match(deploymentWorkflow, /Apply Supabase migrations and Edge Functions/);
   assert.match(deploymentWorkflow, /SUPABASE_ACCESS_TOKEN/);
   assert.match(deploymentWorkflow, /SUPABASE_PRODUCTION_PROJECT_REF/);
@@ -248,10 +249,16 @@ test('production deployment is gated by the tested main SHA and workflow actions
   assert.match(deploymentWorkflow, /supabase db push --linked/);
   assert.match(deploymentWorkflow, /supabase db push/);
   assert.match(deploymentWorkflow, /supabase functions deploy .*--use-api/);
+  assert.match(deploymentWorkflow, /process-tutor-deletion/);
   assert.match(deploymentWorkflow, /Bootstrap and verify recovery schedules/);
   assert.match(deploymentWorkflow, /supabase db query --linked/);
   assert.match(deploymentWorkflow, /private\.ensure_recovery_schedules/);
   assert.match(deploymentWorkflow, /private\.assert_recovery_schedules_ready/);
+  assert.ok(
+    deploymentWorkflow.indexOf('Deploy the tested main commit')
+      < deploymentWorkflow.indexOf('Apply Supabase migrations and Edge Functions'),
+    'the website must deploy before Supabase changes',
+  );
 
   for (const filename of fs.readdirSync(workflowDirectory).filter((name) => name.endsWith('.yml'))) {
     const workflow = read(path.join('.github', 'workflows', filename));
