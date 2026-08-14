@@ -1,11 +1,10 @@
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
 import { LoadingState, MissingProfileState, PermissionDeniedState } from '../../components/ui/State';
 import { captureAppMessage } from '../../lib/monitoring/errorReporting';
 import { AdminMfaGate } from './AdminMfaGate';
-import { TemporaryPasswordGate } from './TemporaryPasswordGate';
 import { useAuth } from './AuthProvider';
 import { formatRoleList, getDashboardPath, normalizeUserRole, type SupportedDashboardRole } from './roles';
 
@@ -94,7 +93,7 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
   }
 
   if (currentRole === 'student') {
-    return <TemporaryPasswordGate>{children}</TemporaryPasswordGate>;
+    return <Suspense fallback={<GuardShell><LoadingState title="Loading account setup" description="Preparing your secure sign-in screen..." /></GuardShell>}><TemporaryPasswordGate>{children}</TemporaryPasswordGate></Suspense>;
   }
 
   return <>{children}</>;
@@ -144,3 +143,4 @@ function GuardMessage({ title, description }: { title: string; description: stri
     </main>
   );
 }
+const TemporaryPasswordGate = lazy(() => import('./TemporaryPasswordGate').then((module) => ({ default: module.TemporaryPasswordGate })));
