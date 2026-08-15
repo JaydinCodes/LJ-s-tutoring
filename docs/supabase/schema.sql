@@ -2813,11 +2813,12 @@ using (
     )
     or (
       public.current_profile_role() = 'student'
-      and exists (
-        select 1 from public.assignments a
-        where a.id::text = (storage.foldername(name))[1]
-          and a.status = 'published'
-          and a.organization_id = public.current_student_org_id()
+      and public.can_student_access_assignment(
+        case
+          when (storage.foldername(name))[1] ~ '^[0-9a-fA-F-]{36}$'
+            then (storage.foldername(name))[1]::uuid
+          else null
+        end
       )
     )
   )

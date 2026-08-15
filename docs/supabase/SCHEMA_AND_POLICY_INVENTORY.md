@@ -81,6 +81,7 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20260812131303_restrict_tutor_assignment_targets.sql` | `fd76f57978cd3ca219e00d2660dc353d0bb9d7f23912a5555dd8c9683635c61d` |
 | `20260813084719_enforce_tutor_assignment_target_grades.sql` | `1482a5d6fb853212c729859c02f7d613a6ef78e7464db8d134cd72f4f7ddc6a9` |
 | `20260814102402_monitoring_health_probe.sql` | `ce8c9e1591cbf55ff0ad8fa27a054b7a57cbdea9b2a9b8346ee60f5e09deea6f` |
+| `20260815204809_fix_student_assignment_file_access.sql` | `be31de2711cbdd51c00f2bae760b35f0c2d718bb3022e9e36566b2fcbf4f114c` |
 
 ## Regeneration
 
