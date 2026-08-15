@@ -87,7 +87,11 @@ test('assignment-files storage bucket is ownership/org-scoped, not a blanket aut
   const block = schema.slice(lastIdx, lastIdx + 900);
   assert.doesNotMatch(block, /using \(\s*bucket_id = 'assignment-files'\s*and auth\.uid\(\) is not null\s*\)/, 'must not be the old blanket-authenticated policy');
   assert.match(block, /a\.created_by = public\.current_profile_id\(\)/, 'tutor read must be scoped to assignments they created');
-  assert.match(block, /a\.organization_id = public\.current_student_org_id\(\)/, 'student read must be scoped to their own org');
+  assert.match(
+    block,
+    /public\.can_student_access_assignment\(\s*case[\s\S]*storage\.foldername\(name\)\)\[1\]::uuid/,
+    'student read must use the centralized assignment eligibility gate',
+  );
 
   const uploadBlock = schema.slice(schema.indexOf('create policy "admin_tutor_upload_assignment_files"'), schema.indexOf('create policy "admin_tutor_upload_assignment_files"') + 700);
   assert.match(uploadBlock, /a\.created_by = public\.current_profile_id\(\)/, 'tutor upload must be scoped to assignments they created');
