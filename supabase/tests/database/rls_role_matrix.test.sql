@@ -517,7 +517,7 @@ select throws_ok(
 select is((select count(*) from public.classes), 1::bigint, 'student sees only an enrolled own-organization class without recursive RLS');
 select is((select count(*) from public.class_enrollments), 1::bigint, 'student sees only their own class enrollment');
 select is((select count(*) from public.classes where organization_id = 'a0000000-0000-0000-0000-000000000002'), 0::bigint, 'student cannot see a cross-organization class');
-select is((select count(*) from storage.objects where bucket_id = 'assignment-files'), 0::bigint, 'student cannot enumerate assignment Storage objects directly');
+select is((select count(*) from storage.objects where bucket_id = 'assignment-files'), 2::bigint, 'student sees assignment files only for eligible published work');
 select is((select count(*) from storage.objects where bucket_id = 'assignment-submissions'), 2::bigint, 'student sees only own submission files');
 
 reset role;
