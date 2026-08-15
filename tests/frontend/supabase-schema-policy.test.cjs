@@ -72,6 +72,13 @@ test('assignment storage buckets remain private with scoped upload policies', ()
   assert.match(schema, /create policy "students_read_own_submission_files_or_admin"/);
 });
 
+test('student assignment-file reads pass the object path directly to the eligibility gate', () => {
+  const policy = schema.slice(schema.lastIndexOf('create policy "authenticated_read_assignment_files"'));
+
+  assert.match(policy, /public\.can_student_access_assignment\(\s*case[\s\S]*storage\.foldername\(name\)\)\[1\]::uuid/);
+  assert.doesNotMatch(policy, /current_profile_role\(\) = 'student'[\s\S]*exists \(\s*select 1 from public\.assignments a[\s\S]*can_student_access_assignment\(a\.id\)/);
+});
+
 test('assignment submission writes use RPC for versioning and marking', () => {
   const mutations = fs.readFileSync(
     path.resolve(__dirname, '..', '..', 'src', 'features', 'assignments', 'assignmentMutations.ts'),
