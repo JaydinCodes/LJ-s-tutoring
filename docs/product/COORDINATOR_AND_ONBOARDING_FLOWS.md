@@ -70,7 +70,8 @@ After that, the org runs itself within its own isolated boundary (RLS scopes eve
 - See any other organisation's data (RLS hard-scopes them).
 - Create organisations or assign platform-admin rights.
 - Access sensitive vetting-check details (platform-admin-only; they see only a "cleared" flag).
-- Bypass the vetting gate — the allocation RPC refuses an un-vetted tutor regardless of role.
+- Bypass the vetting gate — database triggers refuse an active allocation or
+  class for an unvetted tutor regardless of write path.
 
 ---
 
@@ -89,7 +90,9 @@ After that, the org runs itself within its own isolated boundary (RLS scopes eve
 - Every learner/class/assignment carries an `organization_id`; RLS requires **org membership AND role** to read/write (ADR-0002 §5).
 - A coordinator or tutor of Org A can read **zero rows** from Org B — verified by the cross-org isolation test suite (the gate before any real onboarding).
 - NGO/funder viewers never touch PII — aggregate RPC only.
-- No tutor/volunteer is allocated to a learner until `tutor_vetting.status = 'passed'` (enforced in the RPC).
+- No tutor/volunteer receives an active learner allocation or class until
+  `tutor_vetting_records.status = 'approved'` and unexpired (enforced by
+  database triggers).
 
 ---
 

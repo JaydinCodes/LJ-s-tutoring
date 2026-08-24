@@ -15,7 +15,7 @@ test('React public route submits enquiries through the configured Formspree endp
   assert.ok(publicRoutes.includes('name="grade"'), 'React enquiry form must collect grade');
   assert.ok(publicRoutes.includes('name="message"'), 'React enquiry form must collect message');
   assert.ok(publicRoutes.includes('name="website"'), 'React enquiry form must keep honeypot protection');
-  assert.ok(publicRoutes.includes('https://wa.me/'), 'React enquiry path must include WhatsApp');
+  assert.match(publicRoutes, /https:\/\/wa\.me\//, 'React enquiry path must include WhatsApp');
   assert.ok(publicRoutes.includes('mailto:'), 'React enquiry path must include email');
   assert.ok(publicRoutes.includes('Your enquiry is sent securely to Project Odysseus.'), 'the form must explain delivery');
   assert.ok(publicRoutes.includes('fetch(formspreeEndpoint'), 'React enquiry form must post to Formspree');

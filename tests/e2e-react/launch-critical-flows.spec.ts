@@ -8,7 +8,7 @@ const users: Record<SmokeRole, { email: string; dashboard: string; heading: stri
   admin: {
     email: 'admin.e2e@projectodysseus.test',
     dashboard: '/dashboard/admin',
-    heading: 'Admin Dashboard',
+    heading: /Good (morning|afternoon|evening), Admin/,
   },
   ngo_partner: {
     email: 'ngo.e2e@projectodysseus.test',
@@ -23,12 +23,12 @@ const users: Record<SmokeRole, { email: string; dashboard: string; heading: stri
   student: {
     email: 'student.e2e@projectodysseus.test',
     dashboard: '/dashboard/student',
-    heading: 'Today',
+    heading: /Good (morning|afternoon|evening), Student/,
   },
   tutor: {
     email: 'tutor.e2e@projectodysseus.test',
     dashboard: '/dashboard/tutor',
-    heading: 'Tutor Dashboard',
+    heading: /Good (morning|afternoon|evening), Tutor/,
   },
 };
 
@@ -66,7 +66,7 @@ test('unauthorized role is blocked from another role dashboard', async ({ page }
 test('student can view and upload assignment work', async ({ page }) => {
   await loginAs(page, 'student');
   await page.goto('/dashboard/student/assignments');
-  await expect(page.getByRole('heading', { name: 'Assignments' }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tasks' }).first()).toBeVisible();
   await page.getByRole('link', { name: /Open Quadratic Functions Launch Smoke/i }).first().click();
 
   await expect(page.getByRole('heading', { name: 'Assignment Detail' }).first()).toBeVisible();

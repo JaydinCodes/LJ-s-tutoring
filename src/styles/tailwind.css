@@ -31,10 +31,8 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-  }
+.dark {
+  color-scheme: dark;
 }
 
 * {
@@ -44,10 +42,7 @@
 body {
   margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(31, 111, 139, 0.12), transparent 30rem),
-    radial-gradient(circle at 86% 6%, rgba(244, 197, 24, 0.1), transparent 24rem),
-    linear-gradient(180deg, #f7f8fb 0%, #eef2f7 100%);
+  background: #f8f5ee;
   color: rgb(var(--academy-ink));
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -59,20 +54,15 @@ body {
   letter-spacing: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --academy-ink: 248 245 238;
-    --academy-muted: 198 206 219;
-    --academy-surface: 13 21 36;
-    --academy-hairline: 255 255 255;
-  }
+.dark {
+  --academy-ink: 248 245 238;
+  --academy-muted: 198 206 219;
+  --academy-surface: 13 21 36;
+  --academy-hairline: 255 255 255;
+}
 
-  body {
-    background:
-      radial-gradient(circle at 12% 0%, rgba(31, 111, 139, 0.2), transparent 30rem),
-      radial-gradient(circle at 86% 6%, rgba(244, 197, 24, 0.07), transparent 24rem),
-      linear-gradient(180deg, #070b14 0%, #111827 100%);
-  }
+.dark body {
+  background: #090f1c;
 }
 
 button,
@@ -99,7 +89,22 @@ a {
 
 @layer components {
   .academy-app-bg {
-    @apply min-h-screen bg-[radial-gradient(circle_at_12%_0%,_rgba(31,111,139,0.12),_transparent_30rem),radial-gradient(circle_at_86%_6%,_rgba(244,197,24,0.10),_transparent_24rem),linear-gradient(180deg,_#f7f8fb_0%,_#eef2f7_100%)] text-academy-ink dark:bg-[radial-gradient(circle_at_12%_0%,_rgba(31,111,139,0.2),_transparent_30rem),radial-gradient(circle_at_86%_6%,_rgba(244,197,24,0.07),_transparent_24rem),linear-gradient(180deg,_#070b14_0%,_#111827_100%)] dark:text-academy-parchment;
+    @apply min-h-screen bg-academy-parchment text-academy-ink dark:bg-[#090f1c] dark:text-academy-parchment;
+  }
+
+  .student-parchment-bg {
+    background-color: #f8f5ee;
+    background-image:
+      radial-gradient(circle at 18% 12%, rgb(244 197 24 / 0.035), transparent 28rem),
+      radial-gradient(circle at 84% 44%, rgb(31 111 139 / 0.025), transparent 34rem),
+      repeating-linear-gradient(0deg, rgb(15 23 42 / 0.012) 0, rgb(15 23 42 / 0.012) 1px, transparent 1px, transparent 4px);
+  }
+
+  .dark .student-parchment-bg {
+    background-color: #090f1c;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgb(244 197 24 / 0.035), transparent 28rem),
+      radial-gradient(circle at 82% 42%, rgb(31 111 139 / 0.055), transparent 34rem);
   }
 
   .academy-flow {
@@ -111,11 +116,15 @@ a {
   }
 
   .academy-surface {
-    @apply rounded-ios-lg border border-white/70 bg-white/[0.78] p-5 shadow-academy backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25;
+    @apply rounded-ios-lg border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,0.055)] dark:border-white/10 dark:bg-slate-900 dark:shadow-black/25;
   }
 
   .academy-major-surface {
-    @apply rounded-sheet border border-white/10 bg-[radial-gradient(circle_at_16%_0%,_rgba(31,111,139,0.38),_transparent_34%),linear-gradient(135deg,_#071326_0%,_#102b49_56%,_#0f172a_100%)] p-5 text-white shadow-academy-strong sm:p-7;
+    @apply rounded-sheet border border-white/10 bg-academy-navy p-5 text-white shadow-[0_18px_44px_rgba(15,23,42,0.18)] sm:p-7;
+  }
+
+  .student-bento-card {
+    @apply flex min-h-[20rem] min-w-0 flex-col rounded-sheet border border-[#ded5c6] bg-[#fffbf2] p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] dark:border-white/10 dark:bg-slate-900 sm:p-6;
   }
 
   .academy-row {
@@ -123,11 +132,11 @@ a {
   }
 
   .academy-chip {
-    @apply inline-flex min-h-9 items-center justify-center rounded-full border border-slate-950/10 bg-white/70 px-3 text-sm font-semibold text-academy-navy shadow-sm transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09];
+    @apply inline-flex min-h-9 items-center justify-center rounded-full border border-slate-200 bg-white px-3 text-sm font-semibold text-academy-navy shadow-sm transition duration-fluid ease-ios hover:border-academy-aegean dark:border-white/10 dark:bg-slate-900 dark:text-academy-parchment;
   }
 
   .academy-segmented {
-    @apply grid rounded-full border border-slate-950/10 bg-white/[0.58] p-1 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05];
+    @apply grid rounded-full border border-slate-200 bg-slate-100 p-1 dark:border-white/10 dark:bg-slate-950;
   }
 
   .academy-segment {
@@ -147,7 +156,7 @@ a {
   }
 
   .academy-btn-outline {
-    @apply border border-slate-950/10 bg-white/70 text-academy-navy hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-academy-parchment dark:hover:bg-white/[0.09];
+    @apply border border-slate-300 bg-white text-academy-navy hover:border-academy-aegean dark:border-white/15 dark:bg-slate-900 dark:text-academy-parchment;
   }
 
   .academy-progress-track {
@@ -159,11 +168,11 @@ a {
   }
 
   .academy-bottom-nav {
-    @apply fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 rounded-sheet border border-white/70 bg-white/[0.82] p-2 shadow-[0_22px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/[0.78];
+    @apply fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 rounded-sheet border border-slate-200 bg-white p-2 shadow-[0_18px_50px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-slate-950;
   }
 
   .academy-nav-item {
-    @apply rounded-ios px-2 py-2.5 text-center text-[0.68rem] font-semibold leading-tight text-slate-600 transition duration-fluid ease-ios hover:bg-white/70 data-[active=true]:bg-academy-navy data-[active=true]:text-white data-[active=true]:shadow-academy-soft dark:text-academy-marble dark:hover:bg-white/[0.08] dark:data-[active=true]:bg-academy-aegean;
+    @apply min-h-12 rounded-ios px-1.5 py-2 text-center text-[0.68rem] font-semibold leading-tight text-slate-600 transition duration-fluid ease-ios hover:bg-slate-100 data-[active=true]:bg-academy-navy data-[active=true]:text-white data-[active=true]:shadow-academy-soft dark:text-academy-marble dark:hover:bg-white/[0.08] dark:data-[active=true]:bg-academy-aegean;
   }
 
   .academy-title {
@@ -172,6 +181,10 @@ a {
 
   .academy-subtitle {
     @apply max-w-3xl text-sm leading-6 text-academy-muted dark:text-academy-muted;
+  }
+
+  .admin-field-label {
+    @apply mb-1 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-academy-muted lg:hidden;
   }
 }
 
@@ -182,6 +195,18 @@ a {
 
   .greek-keyline {
     background-image: linear-gradient(90deg, transparent, rgba(244, 197, 24, 0.58), transparent);
+  }
+
+  .student-greek-key {
+    height: 18px;
+    opacity: 0.22;
+    background-image:
+      linear-gradient(90deg, rgb(217 183 95) 2px, transparent 2px),
+      linear-gradient(180deg, rgb(217 183 95) 2px, transparent 2px),
+      linear-gradient(90deg, transparent 8px, rgb(217 183 95) 8px, rgb(217 183 95) 10px, transparent 10px),
+      linear-gradient(180deg, transparent 8px, rgb(217 183 95) 8px, rgb(217 183 95) 10px, transparent 10px);
+    background-position: 0 0, 0 0, 0 8px, 8px 0;
+    background-size: 18px 18px;
   }
 }
 

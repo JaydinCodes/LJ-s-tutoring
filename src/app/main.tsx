@@ -9,6 +9,7 @@ import { SmoothScroll } from '../components/animations/SmoothScroll';
 import { queryClient } from '../lib/query/client';
 import { initErrorReporting } from '../lib/monitoring/errorReporting';
 import '../styles/tailwind.css';
+import { PortalThemeRestorer } from '../features/settings/portalPreferences';
 
 initErrorReporting();
 
@@ -29,6 +30,7 @@ ReactDOM.createRoot(rootNode).render(
         <BrowserRouter>
           <ErrorBoundary>
             <AuthProvider>
+              <PortalThemeRestorer />
               <App />
             </AuthProvider>
           </ErrorBoundary>

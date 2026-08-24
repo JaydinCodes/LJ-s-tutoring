@@ -15,7 +15,8 @@ test('dashboard uses one Lucide icon system across navigation and student cards'
   const studentCards = read('src', 'features', 'students', 'StudentDashboardComponents.tsx');
   const results = read('src', 'features', 'students', 'StudentResultsRoute.tsx');
   const careers = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
-  const joined = [shell, design, studentCards, results, careers].join('\n');
+  const pathway = read('src', 'features', 'students', 'StudentPathwayBuilderComponents.tsx');
+  const joined = [shell, design, studentCards, results, careers, pathway].join('\n');
 
   for (const icon of ['LayoutDashboard', 'ScrollText', 'Trophy', 'TrendingUp', 'Compass', 'BookOpen', 'UploadCloud', 'Sparkles', 'Clock', 'Target', 'Brain', 'GraduationCap']) {
     assert.ok(joined.includes(icon), `${icon} must be used from the Lucide set`);
@@ -28,7 +29,7 @@ test('dashboard uses one Lucide icon system across navigation and student cards'
   assert.ok(design.includes('text-current'), 'icons must inherit the current themed text color');
   assert.ok(studentCards.includes('icon={Clock}'), 'Next Due must use the shared icon system');
   assert.ok(results.includes('icon={Trophy}'), 'result metric cards must use icons');
-  assert.ok(careers.includes('icon={Compass}'), 'career metric cards must use icons');
+  assert.ok(pathway.includes('icon={Route}'), 'career selection states must use the shared icon system');
 });
 
 test('mobile dashboard layout keeps bottom navigation and tables usable', () => {
@@ -39,7 +40,7 @@ test('mobile dashboard layout keeps bottom navigation and tables usable', () => 
   assert.ok(shell.includes('pb-[calc(6.75rem+env(safe-area-inset-bottom))]'), 'main content must reserve space for phone bottom nav');
   assert.ok(styles.includes('bottom-[calc(0.75rem+env(safe-area-inset-bottom))]'), 'bottom nav must respect iOS safe area');
   assert.ok(shell.includes('lg:hidden'), 'mobile nav must hide on desktop breakpoints');
-  assert.ok(shell.includes('mx-auto mb-1 h-4 w-4'), 'mobile nav must show icons above labels');
+  assert.ok(shell.includes('mx-auto mb-1 h-[1.15rem] w-[1.15rem]'), 'mobile nav must show icons above labels');
   assert.ok(table.includes('md:hidden'), 'tables must render card rows on small screens');
   assert.ok(table.includes('hidden overflow-x-auto md:block'), 'full tables must only render from medium screens up');
 });
@@ -51,16 +52,17 @@ test('student empty states are premium, differentiated, and action-oriented', ()
   const progress = read('src', 'features', 'students', 'StudentProgressRoute.tsx');
   const results = read('src', 'features', 'students', 'StudentResultsRoute.tsx');
   const careers = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
+  const pathway = read('src', 'features', 'students', 'StudentPathwayBuilderComponents.tsx');
   const studentCards = read('src', 'features', 'students', 'StudentDashboardComponents.tsx');
-  const joined = [assignments, dashboard, progress, results, careers, studentCards].join('\n');
+  const joined = [assignments, dashboard, progress, results, careers, pathway, studentCards].join('\n');
 
   assert.ok(design.includes('actionLabel?: string'), 'EmptyState must support a next-action label');
   assert.ok(design.includes('actionHref?: string'), 'EmptyState must support a next-action route');
-  assert.ok(design.includes('border-white/70'), 'EmptyState must use the shared translucent surface rule');
-  assert.ok(design.includes('backdrop-blur-2xl'), 'EmptyState must use the iOS-style glass blur rule');
+  assert.ok(design.includes('border-slate-200'), 'EmptyState must use the shared thin border rule');
+  assert.ok(!design.match(/EmptyState[\s\S]*backdrop-blur-2xl[\s\S]*export function ErrorState/), 'EmptyState must use a solid surface');
   assert.ok(design.includes('via-brand-gold/[0.45]'), 'EmptyState must keep the Greek accent without a loud dashed card');
 
-  for (const title of ['No assignments need action', 'No released marks yet', 'No topic mastery yet', 'No quiz recommendation yet', 'No matching careers yet']) {
+  for (const title of ['No actionable work', 'No released marks yet', 'No topic mastery yet', 'No quiz recommendation yet', 'No careers match those filters']) {
     assert.ok(joined.includes(title), `${title} empty state must be present`);
   }
 

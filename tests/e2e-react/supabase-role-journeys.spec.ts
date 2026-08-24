@@ -69,10 +69,14 @@ function observeRuntimeFailures(page: import('@playwright/test').Page) {
 function expectNoUnexpectedRuntimeFailures(failures: string[]) {
   // Local role journeys do not inject a third-party Gemini credential. The
   // application must keep the submitted work durable and human-reviewable in
-  // that state; any other failing Supabase request remains a test failure.
+  // that state. Depending on whether the local Edge runtime starts before the
+  // request, its unavailable worker is surfaced as 501 or 502; every other
+  // failing Supabase request remains a test failure.
   const expectedLocalAiFailures = new Set([
     'supabase 501: /functions/v1/grade-submission',
     'console: Failed to load resource: the server responded with a status of 501 (Not Implemented)',
+    'supabase 502: /functions/v1/grade-submission',
+    'console: Failed to load resource: the server responded with a status of 502 (Bad Gateway)',
   ]);
   expect(failures.filter((failure) => !expectedLocalAiFailures.has(failure))).toEqual([]);
 }
@@ -80,13 +84,16 @@ function expectNoUnexpectedRuntimeFailures(failures: string[]) {
 test('student authenticates through local Supabase, reads seeded work, and is denied admin access', async ({ page }) => {
   const runtimeFailures = observeRuntimeFailures(page);
   await signIn(page, 'student.supabase-e2e@projectodysseus.test', /\/dashboard\/student\/?$/);
-  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+  await expect(page.getByText('Local Supabase Learner', { exact: true })).toBeVisible();
 
   await page.goto('/dashboard/student/assignments');
-  await expect(page.getByRole('heading', { name: 'Assignments', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tasks', exact: true })).toBeVisible();
   await expect(page.getByText('Local Supabase Algebra Check').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Preview Local Supabase Algebra Check' }).click();
+  await expect(page.getByLabel('Details for Local Supabase Algebra Check')).toBeVisible();
 
-  await page.getByRole('link', { name: 'Open Local Supabase Algebra Check' }).click();
+  expect(assignmentId).toBeTruthy();
+  await page.goto(`/dashboard/student/assignments/${assignmentId}`);
   await expect(page.getByRole('heading', { name: 'Assignment Detail', exact: true })).toBeVisible();
   await page.getByLabel('Submission note').fill('Real local Supabase academic-loop evidence.');
   await page.locator('input[type="file"]').setInputFiles({
@@ -109,8 +116,8 @@ test('student authenticates through local Supabase, reads seeded work, and is de
 test('tutor authenticates through local Supabase and sees only the seeded allocation', async ({ page }) => {
   const runtimeFailures = observeRuntimeFailures(page);
   await signIn(page, 'tutor.supabase-e2e@projectodysseus.test', /\/dashboard\/tutor\/?$/);
-  await expect(page.getByRole('heading', { name: 'Tutor Dashboard', exact: true })).toBeVisible();
-  await expect(page.getByRole('table').filter({ hasText: 'Local Supabase Learner' })).toBeVisible();
+  await expect(page.getByText('Local Supabase Tutor', { exact: true })).toBeVisible();
+  await expect(page.getByText('Local Supabase Learner').first()).toBeVisible();
   await expect(page.getByText('Local Supabase Algebra Check').first()).toBeVisible();
 
   await page.goto('/dashboard/tutor/classes');
@@ -173,8 +180,8 @@ test('admin authenticates through local Supabase and loads the protected operati
   await page.getByLabel('Authenticator code').fill(currentTotp(secret!));
   await page.getByRole('button', { name: 'Verify and unlock admin' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Admin Dashboard', exact: true })).toBeVisible();
-  await expect(page.getByRole('table').filter({ hasText: 'Local Supabase School' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Review allocations' })).toBeVisible();
+  await expect(page.getByText('Local Supabase Admin', { exact: true })).toBeVisible();
+  await expect(page.getByText('Active learners', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Operations requiring attention' })).toBeVisible();
   expectNoUnexpectedRuntimeFailures(runtimeFailures);
 });

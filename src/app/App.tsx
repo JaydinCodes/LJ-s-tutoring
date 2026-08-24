@@ -57,8 +57,11 @@ const NotFoundRoute = lazy(() => import('./routes/NotFoundRoute').then((module) 
 
 function RouteLoadingFallback() {
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-950 px-4 text-white">
-      <p className="text-sm font-semibold" role="status">Loading page...</p>
+    <main className="min-h-screen bg-brand-parchment px-4 py-5 text-brand-obsidian dark:bg-slate-950 dark:text-brand-parchment" aria-busy="true">
+      <div className="mx-auto grid max-w-[1720px] gap-4 lg:grid-cols-[16.5rem_minmax(0,1fr)]">
+        <div className="hidden min-h-[calc(100vh-2.5rem)] rounded-3xl bg-brand-navy p-5 lg:block"><img className="h-14 w-14 object-contain" src="/images/project-odysseus-logo-transparent.png" alt="" /><div className="mt-8 space-y-3">{[0, 1, 2, 3, 4].map((item) => <div className="h-11 animate-pulse rounded-xl bg-white/10" key={item} />)}</div></div>
+        <div className="min-w-0"><div className="h-20 animate-pulse rounded-3xl border border-slate-200 bg-white dark:border-white/10 dark:bg-slate-900" /><div className="mt-4 h-72 animate-pulse rounded-3xl bg-brand-navy" /><div className="mt-4 grid gap-4 md:grid-cols-3">{[0, 1, 2].map((item) => <div className="h-36 animate-pulse rounded-3xl border border-slate-200 bg-white dark:border-white/10 dark:bg-slate-900" key={item} />)}</div><p className="sr-only" role="status">Preparing your Project Odysseus page</p></div>
+      </div>
     </main>
   );
 }

@@ -37,6 +37,8 @@ test('admin user invite workflow is routed through a backend-only Supabase admin
   assert.match(edgeFunction, /\.from\('students'\)/);
   assert.match(edgeFunction, /\.from\('tutors'\)/);
   assert.match(edgeFunction, /duplicate_email/);
+  assert.match(edgeFunction, /EXTERNAL_ONBOARDING_ENABLED/);
+  assert.match(edgeFunction, /external_onboarding_frozen/);
 
   assert.match(adminUsersRoute, /functions\.invoke<AdminUserCreateResponse>\('admin-invite-user'/);
   assert.match(adminTutorsRoute, /functions\.invoke<\{ ok: boolean; profileId: string; userId: string \}>\('admin-invite-user'/);
@@ -77,5 +79,6 @@ test('admin user invite route is visible in the React admin app without exposing
   assert.match(shell, /to: '\/dashboard\/admin\/users'/);
   assert.match(buildStatic, /dashboard\/admin\/users/);
   assert.match(envExample, /SUPABASE_SERVICE_ROLE_KEY=replace_with_local_service_role_key_from_supabase_status/);
+  assert.match(envExample, /EXTERNAL_ONBOARDING_ENABLED=false/);
   assert.doesNotMatch(frontendSources, /SUPABASE_SERVICE_ROLE_KEY/);
 });

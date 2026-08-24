@@ -144,6 +144,7 @@ export function parseStudentCareersApiResponse(value: unknown, fallback: CareerO
   return {
     careers: Array.isArray(payload.careers) ? payload.careers as CareerOverview['careers'] : fallback.careers,
     institutions: Array.isArray(payload.institutions) ? payload.institutions as CareerOverview['institutions'] : fallback.institutions,
+    programmes: Array.isArray(payload.programmes) ? payload.programmes as CareerOverview['programmes'] : fallback.programmes,
     supportedSubjects: Array.isArray(payload.supportedSubjects) ? payload.supportedSubjects as string[] : fallback.supportedSubjects,
     profile,
   };

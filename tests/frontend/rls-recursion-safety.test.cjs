@@ -21,10 +21,11 @@ const path = require('node:path');
 //
 // The fix: those four helper functions (plus current_org_ids/
 // current_student_org_id/current_org_role) now resolve auth_user_id via
-// public.profile_identities -- a tiny denormalized table with NO RLS at all,
-// kept in sync via a trigger on public.profiles, reachable only through these
-// SECURITY DEFINER functions (table privileges are revoked from anon/
-// authenticated). Every policy that used to embed a raw profiles/students/
+// public.profile_identities -- a tiny denormalized table kept in sync via a
+// trigger on public.profiles, reachable only through these SECURITY DEFINER
+// functions. It has RLS enabled with no client policies and table privileges
+// revoked from anon/authenticated. Every policy that used to embed a raw
+// profiles/students/
 // tutors subquery now calls one of these functions instead.
 //
 // This class of bug is INVISIBLE to the schema-vs-regex tests the rest of
@@ -37,6 +38,10 @@ const path = require('node:path');
 const repoRoot = path.resolve(__dirname, '..', '..');
 const schema = fs.readFileSync(
   path.join(repoRoot, 'docs', 'supabase', 'schema.sql'),
+  'utf8',
+);
+const profileIdentityRlsMigration = fs.readFileSync(
+  path.join(repoRoot, 'supabase', 'migrations', '20260824215910_enable_profile_identity_rls.sql'),
   'utf8',
 );
 
@@ -62,21 +67,23 @@ function allPolicyBlocks() {
   return blocks;
 }
 
-test('public.profile_identities exists: no RLS, revoked from anon/authenticated, kept in sync via trigger', () => {
+test('public.profile_identities is RLS-locked, client-inaccessible, and kept in sync via trigger', () => {
   assert.match(schema, /create table if not exists public\.profile_identities \(/);
   assert.match(schema, /auth_user_id uuid primary key references auth\.users\(id\) on delete cascade/);
   assert.match(schema, /profile_id uuid not null references public\.profiles\(id\) on delete cascade/);
   assert.match(schema, /role public\.user_role not null/);
 
-  // Deliberately NOT `alter table ... enable row level security` -- this
-  // table has no RLS at all (see header comment), not "RLS enabled with deny-all".
-  const rlsEnableLines = schema.match(/alter table public\.\w+ enable row level security;/g) || [];
-  assert.ok(
-    !rlsEnableLines.some((line) => line.includes('profile_identities')),
-    'profile_identities must NOT have RLS enabled (by design -- see header comment)',
-  );
-
   assert.match(schema, /revoke all on public\.profile_identities from anon, authenticated;/);
+  assert.match(
+    profileIdentityRlsMigration,
+    /alter table public\.profile_identities enable row level security;/,
+    'the final migration enables RLS for the public-schema identity lookup',
+  );
+  assert.doesNotMatch(
+    profileIdentityRlsMigration,
+    /create policy/i,
+    'the internal lookup intentionally has no direct client RLS policy',
+  );
 
   const triggerBody = functionBody('sync_profile_identity');
   assert.match(triggerBody, /security definer/);

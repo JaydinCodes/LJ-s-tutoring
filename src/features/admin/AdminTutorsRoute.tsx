@@ -13,10 +13,27 @@ import { requireSupabase } from '../../lib/supabase/client';
 import { formatCurrency } from '../../lib/utils/format';
 import type { RecordStatus, Tutor } from '../../types/lms';
 import { loadAdminDashboard } from './adminDashboardRepository';
-import { deleteTutorAccount, updateTutorRecord } from './rosterMutations';
+import { deleteTutorAccount, recordTutorVetting, updateTutorRecord, type TutorVettingStatus } from './rosterMutations';
 
 const tutorSubjects = ['Mathematics', 'Mathematical Literacy', 'Physical Sciences'];
 const tutorGrades = ['Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+
+type TutorVettingSummary = {
+  status: string;
+  reviewed_at: string | null;
+  expires_at: string | null;
+  evidence_reference: string | null;
+};
+
+async function loadTutorVetting(tutorId: string): Promise<TutorVettingSummary | null> {
+  const result = await requireSupabase()
+    .from('tutor_vetting_records')
+    .select('status, reviewed_at, expires_at, evidence_reference')
+    .eq('tutor_id', tutorId)
+    .maybeSingle();
+  if (result.error) throw result.error;
+  return result.data;
+}
 
 export function AdminTutorsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminDashboard, []);
@@ -219,9 +236,66 @@ function TutorRecordCard({ tutor, onSaved, onClose }: { tutor: Tutor & { full_na
         </div>
         <SubmitRow busy={busy} label="Save tutor" message={message} error={error} />
       </form>
+      <TutorVettingForm tutorId={tutor.id} onRecorded={onSaved} />
       <ResendInviteButton profileId={tutor.profile_id} email={tutor.email} role="tutor" />
       {!isDeletedTutor(tutor) ? <TutorDeletionAction tutor={tutor} onDeleted={onSaved} /> : null}
     </article>
+  );
+}
+
+function TutorVettingForm({ tutorId, onRecorded }: { tutorId: string; onRecorded: () => Promise<void> }) {
+  const { data: current, loading, error: loadError, reload } = useAsyncResource(() => loadTutorVetting(tutorId), [tutorId]);
+  const [status, setStatus] = useState<TutorVettingStatus>('pending');
+  const [reviewedAt, setReviewedAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [expiresAt, setExpiresAt] = useState('');
+  const [evidenceReference, setEvidenceReference] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    setError(null);
+    try {
+      await recordTutorVetting({ tutorId, status, reviewedAt, expiresAt, evidenceReference });
+      setMessage('Vetting record saved. Active placements are allowed only while approval remains in date.');
+      await reload();
+      await onRecorded();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not record tutor vetting.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mt-5 border-t border-amber-200 pt-4 dark:border-amber-400/20">
+      <h4 className="font-semibold text-slate-950 dark:text-white">Safeguarding verification</h4>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Record the decision and the restricted safeguarding-register case reference only. Never paste identity checks, certificates, or document links here.</p>
+      {loading ? <p className="mt-2 text-sm text-slate-500">Loading current verification…</p> : null}
+      {loadError ? <p className="mt-2 text-sm font-semibold text-red-700">Current verification could not be loaded: {loadError}</p> : null}
+      {current ? <p className="mt-2 text-sm text-slate-700 dark:text-slate-200">Current record: <span className="font-semibold">{current.status}</span>{current.reviewed_at ? ` · reviewed ${new Date(current.reviewed_at).toLocaleDateString()}` : ''}{current.expires_at ? ` · expires ${new Date(current.expires_at).toLocaleDateString()}` : ''}{current.evidence_reference ? ` · ${current.evidence_reference}` : ''}</p> : null}
+      <form className="mt-3 grid gap-3 sm:grid-cols-2" onSubmit={(event) => void submit(event)}>
+        <FormField label="Decision">
+          <select className="w-full rounded-2xl border border-brand-marble bg-white px-3 py-2 text-sm text-brand-obsidian outline-none transition focus:border-brand-aegean focus:ring-2 focus:ring-brand-aegean/20 dark:border-brand-marble/30 dark:bg-brand-navy dark:text-brand-parchment" value={status} onChange={(event) => setStatus(event.target.value as TutorVettingStatus)}>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="expired">Expired</option>
+          </select>
+        </FormField>
+        <FormField label="Reviewed date"><TextInput required type="date" value={reviewedAt} onChange={(event) => setReviewedAt(event.target.value)} /></FormField>
+        <FormField label="Expiry date" hint="Required for approval."><TextInput required={status === 'approved'} type="date" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} /></FormField>
+        <FormField label="Restricted-register reference" hint="Required for approval; never use a document URL."><TextInput required={status === 'approved'} value={evidenceReference} onChange={(event) => setEvidenceReference(event.target.value)} placeholder="e.g. SG-2026-0042" /></FormField>
+        <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
+          <button disabled={busy} className="rounded-lg border border-amber-500 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-950 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-amber-400/10 dark:text-amber-100" type="submit">{busy ? 'Saving verification...' : 'Save safeguarding verification'}</button>
+          {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
+          {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
+        </div>
+      </form>
+    </section>
   );
 }
 

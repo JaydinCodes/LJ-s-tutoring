@@ -15,7 +15,7 @@ export type AssignmentLifecycleStatus =
 
 export interface AssignmentStatusInput {
   assignment: Pick<Assignment, 'status' | 'due_date'>;
-  submission?: Pick<AssignmentSubmission, 'status' | 'submitted_at' | 'marks_awarded' | 'feedback'> | null;
+  submission?: Pick<AssignmentSubmission, 'status' | 'submitted_at' | 'marks_awarded' | 'feedback' | 'marks_released' | 'feedback_released' | 'released_at'> | null;
   now?: Date;
 }
 
@@ -56,7 +56,7 @@ export function calculateAssignmentStatus({
     return 'archived';
   }
   if (assignmentStatus === 'closed' || assignmentStatus === 'cancelled') {
-    return submission ? normalizeSubmissionStatus(submissionStatus, submission, isOverdue) : 'closed';
+    return submission ? normalizeSubmissionStatus(submissionStatus, submission, dueInDays) : 'closed';
   }
 
   if (!submission) {
@@ -66,19 +66,32 @@ export function calculateAssignmentStatus({
     return dueInDays !== null && dueInDays <= 3 ? 'due_soon' : 'not_started';
   }
 
-  return normalizeSubmissionStatus(submissionStatus, submission, isOverdue);
+  return normalizeSubmissionStatus(submissionStatus, submission, dueInDays);
 }
 
 function normalizeSubmissionStatus(
   submissionStatus: string,
-  submission: Pick<AssignmentSubmission, 'marks_awarded'>,
-  isOverdue: boolean,
+  submission: Pick<AssignmentSubmission, 'marks_awarded' | 'feedback' | 'marks_released' | 'feedback_released' | 'released_at'>,
+  dueInDays: number | null,
 ): AssignmentLifecycleStatus {
+  const isOverdue = dueInDays !== null && dueInDays < 0;
+  const hasReleasedResult = Boolean(
+    submission.marks_released
+    || submission.feedback_released
+    || submission.released_at
+    || submission.marks_awarded != null
+    || submission.feedback,
+  );
+
   if (submissionStatus === 'returned' || submissionStatus === 'returned_for_correction') {
     return 'returned_for_correction';
   }
   if (submissionStatus === 'marked' || submissionStatus === 'reviewed' || submission.marks_awarded != null) {
-    return 'marked';
+    return hasReleasedResult ? 'marked' : 'under_review';
+  }
+  if (!submissionStatus || submissionStatus === 'not_submitted' || submissionStatus === 'incomplete' || submissionStatus === 'failed') {
+    if (isOverdue) return 'missing';
+    return dueInDays !== null && dueInDays <= 3 ? 'due_soon' : 'not_started';
   }
   if (submissionStatus === 'late' || submissionStatus === 'late_submitted') {
     return 'late_submitted';

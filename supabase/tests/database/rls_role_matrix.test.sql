@@ -126,6 +126,23 @@ values
   ('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', array['Mathematics'], array['Grade 11'], 'active', 'approved'),
   ('30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000007', array['Mathematics'], array['Grade 11'], 'active', 'approved');
 
+-- The safeguarding gate requires an explicit, dated verification record before
+-- an active allocation can be created. Fixture tutors model records verified
+-- in the restricted safeguarding register; no document data is stored here.
+insert into public.tutor_vetting_records (
+  tutor_id, status, reviewed_at, expires_at, reviewed_by_profile_id, evidence_reference
+)
+values
+  ('30000000-0000-0000-0000-000000000001', 'approved', now() - interval '1 day', now() + interval '1 year', '10000000-0000-0000-0000-000000000001', 'fixture-register-001'),
+  ('30000000-0000-0000-0000-000000000002', 'approved', now() - interval '1 day', now() + interval '1 year', '10000000-0000-0000-0000-000000000001', 'fixture-register-002')
+on conflict (tutor_id) do update
+set status = excluded.status,
+    reviewed_at = excluded.reviewed_at,
+    expires_at = excluded.expires_at,
+    reviewed_by_profile_id = excluded.reviewed_by_profile_id,
+    evidence_reference = excluded.evidence_reference,
+    updated_at = now();
+
 insert into public.organization_members (organization_id, profile_id, org_role, status)
 values
   ('a0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', 'tutor', 'active'),
@@ -143,14 +160,21 @@ values
   ('20000000-0000-0000-0000-000000000002', '40000000-0000-0000-0000-000000000002', 'parent', true, true, 'active');
 
 insert into public.subjects (id, name, grade, curriculum)
-values ('90000000-0000-0000-0000-000000000001', 'Mathematics', 'Grade 11', 'CAPS');
+values ('90000000-0000-0000-0000-000000000001', 'Mathematics', 'Grade 11', 'CAPS')
+on conflict (name, grade, curriculum) do nothing;
+
+select set_config(
+  'test.grade11_mathematics_subject_id',
+  (select id::text from public.subjects where name = 'Mathematics' and grade = 'Grade 11' and curriculum = 'CAPS'),
+  true
+);
 
 insert into public.assignments (id, title, subject_id, grade, created_by, status, organization_id)
 values
-  ('50000000-0000-0000-0000-000000000001', 'Alpha Published One', '90000000-0000-0000-0000-000000000001', 'Grade 11', '10000000-0000-0000-0000-000000000003', 'published', 'a0000000-0000-0000-0000-000000000001'),
-  ('50000000-0000-0000-0000-000000000002', 'Alpha Published Two', '90000000-0000-0000-0000-000000000001', 'Grade 11', '10000000-0000-0000-0000-000000000003', 'published', 'a0000000-0000-0000-0000-000000000001'),
-  ('50000000-0000-0000-0000-000000000003', 'Alpha Draft', '90000000-0000-0000-0000-000000000001', 'Grade 11', '10000000-0000-0000-0000-000000000003', 'draft', 'a0000000-0000-0000-0000-000000000001'),
-  ('50000000-0000-0000-0000-000000000004', 'Beta Published', '90000000-0000-0000-0000-000000000001', 'Grade 11', '10000000-0000-0000-0000-000000000007', 'published', 'a0000000-0000-0000-0000-000000000002');
+  ('50000000-0000-0000-0000-000000000001', 'Alpha Published One', current_setting('test.grade11_mathematics_subject_id')::uuid, 'Grade 11', '10000000-0000-0000-0000-000000000003', 'published', 'a0000000-0000-0000-0000-000000000001'),
+  ('50000000-0000-0000-0000-000000000002', 'Alpha Published Two', current_setting('test.grade11_mathematics_subject_id')::uuid, 'Grade 11', '10000000-0000-0000-0000-000000000003', 'published', 'a0000000-0000-0000-0000-000000000001'),
+  ('50000000-0000-0000-0000-000000000003', 'Alpha Draft', current_setting('test.grade11_mathematics_subject_id')::uuid, 'Grade 11', '10000000-0000-0000-0000-000000000003', 'draft', 'a0000000-0000-0000-0000-000000000001'),
+  ('50000000-0000-0000-0000-000000000004', 'Beta Published', current_setting('test.grade11_mathematics_subject_id')::uuid, 'Grade 11', '10000000-0000-0000-0000-000000000007', 'published', 'a0000000-0000-0000-0000-000000000002');
 
 -- A private legacy path exists to prove the student projection does not leak
 -- it even though staff can still retain historical memo data.
@@ -160,8 +184,8 @@ where id = '50000000-0000-0000-0000-000000000001';
 
 insert into public.classes (id, name, tutor_id, subject_id, grade, status, organization_id)
 values
-  ('c0000000-0000-0000-0000-000000000001', 'Alpha Mathematics', '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001', 'Grade 11', 'active', 'a0000000-0000-0000-0000-000000000001'),
-  ('c0000000-0000-0000-0000-000000000002', 'Beta Mathematics', '30000000-0000-0000-0000-000000000002', '90000000-0000-0000-0000-000000000001', 'Grade 11', 'active', 'a0000000-0000-0000-0000-000000000002');
+  ('c0000000-0000-0000-0000-000000000001', 'Alpha Mathematics', '30000000-0000-0000-0000-000000000001', current_setting('test.grade11_mathematics_subject_id')::uuid, 'Grade 11', 'active', 'a0000000-0000-0000-0000-000000000001'),
+  ('c0000000-0000-0000-0000-000000000002', 'Beta Mathematics', '30000000-0000-0000-0000-000000000002', current_setting('test.grade11_mathematics_subject_id')::uuid, 'Grade 11', 'active', 'a0000000-0000-0000-0000-000000000002');
 
 insert into public.class_enrollments (id, class_id, student_id, status)
 values
@@ -186,7 +210,7 @@ values
     '20000000-0000-0000-0000-000000000001',
     'active',
     'Internal Alpha focus notes',
-    '90000000-0000-0000-0000-000000000001',
+    current_setting('test.grade11_mathematics_subject_id')::uuid,
     777.77,
     '["monday"]'::jsonb,
     '[{"start":"15:00","end":"17:00"}]'::jsonb
@@ -197,7 +221,7 @@ values
     '20000000-0000-0000-0000-000000000002',
     'active',
     'Internal Beta focus notes',
-    '90000000-0000-0000-0000-000000000001',
+    current_setting('test.grade11_mathematics_subject_id')::uuid,
     888.88,
     '["tuesday"]'::jsonb,
     '[{"start":"14:00","end":"16:00"}]'::jsonb
@@ -441,7 +465,7 @@ insert into public.student_progress (id, student_id, subject_id, topic, score, r
 select
   ('7' || lpad(series::text, 31, '0'))::uuid,
   '20000000-0000-0000-0000-000000000001'::uuid,
-  '90000000-0000-0000-0000-000000000001'::uuid,
+  current_setting('test.grade11_mathematics_subject_id')::uuid,
   'PERF-01 fixture ' || series,
   42,
   now() - (series || ' minutes')::interval
@@ -582,7 +606,7 @@ select throws_ok(
   $$
     select public.create_assignment_draft(
       'a0000000-0000-0000-0000-000000000002',
-      'Cross-org RPC write', null, '90000000-0000-0000-0000-000000000001',
+      'Cross-org RPC write', null, current_setting('test.grade11_mathematics_subject_id')::uuid,
       'Grade 11', null, '[]'::jsonb,
       'd1111111-1111-4111-8111-111111111111'
     )
@@ -595,7 +619,7 @@ select lives_ok(
   $$
     select public.create_assignment_draft(
       'a0000000-0000-0000-0000-000000000001',
-      'Same-org RPC write', null, '90000000-0000-0000-0000-000000000001',
+      'Same-org RPC write', null, current_setting('test.grade11_mathematics_subject_id')::uuid,
       'Grade 11', null, '[]'::jsonb,
       'd2222222-2222-4222-8222-222222222222'
     )
@@ -611,7 +635,7 @@ select lives_ok(
   $$
     select public.create_assignment_draft(
       'a0000000-0000-0000-0000-000000000001',
-      'Same-org RPC write', null, '90000000-0000-0000-0000-000000000001',
+      'Same-org RPC write', null, current_setting('test.grade11_mathematics_subject_id')::uuid,
       'Grade 11', null, '[]'::jsonb,
       'd2222222-2222-4222-8222-222222222222'
     )
@@ -632,7 +656,7 @@ select throws_ok(
   $$
     select public.create_assignment_draft(
       'a0000000-0000-0000-0000-000000000001',
-      'Changed same request', null, '90000000-0000-0000-0000-000000000001',
+      'Changed same request', null, current_setting('test.grade11_mathematics_subject_id')::uuid,
       'Grade 11', null, '[]'::jsonb,
       'd2222222-2222-4222-8222-222222222222'
     )
@@ -660,7 +684,7 @@ select throws_ok(
       '50000000-0000-0000-0000-000000000003',
       'Legacy stale assignment client',
       null,
-      '90000000-0000-0000-0000-000000000001',
+      current_setting('test.grade11_mathematics_subject_id')::uuid,
       'Grade 11',
       null,
       'draft',
@@ -679,7 +703,7 @@ select lives_ok(
       p_assignment_id => '50000000-0000-0000-0000-000000000003',
       p_title => 'Alpha Draft CAS winner',
       p_description => null,
-      p_subject_id => '90000000-0000-0000-0000-000000000001',
+      p_subject_id => current_setting('test.grade11_mathematics_subject_id')::uuid,
       p_grade => 'Grade 11',
       p_due_date => null,
       p_status => 'draft',
@@ -697,7 +721,7 @@ select throws_ok(
       p_assignment_id => '50000000-0000-0000-0000-000000000003',
       p_title => 'Alpha Draft stale loser',
       p_description => null,
-      p_subject_id => '90000000-0000-0000-0000-000000000001',
+      p_subject_id => current_setting('test.grade11_mathematics_subject_id')::uuid,
       p_grade => 'Grade 11',
       p_due_date => null,
       p_status => 'draft',
@@ -824,17 +848,67 @@ select is(
   false,
   'AAL2 admin can run a non-destructive retention dry run'
 );
-select is((select count(*) from public.assignments), 5::bigint, 'AAL2 admin sees assignments across organizations');
-select is((select count(*) from public.assignment_submissions), 3::bigint, 'AAL2 admin sees submissions/results across organizations');
-select is((select count(*) from public.guardians), 2::bigint, 'AAL2 admin sees guardian records across organizations');
-select is((select count(*) from public.student_guardians), 2::bigint, 'AAL2 admin sees guardian links across organizations');
-select is((select count(*) from public.tutors), 2::bigint, 'AAL2 admin sees tutor base rows across organizations');
-select is((select count(*) from public.tutor_student_allocations), 2::bigint, 'AAL2 admin sees allocations across organizations');
-select is((select count(*) from public.classes), 2::bigint, 'AAL2 admin sees classes across organizations');
-select is((select count(*) from public.class_enrollments), 2::bigint, 'AAL2 admin sees class enrollments across organizations');
+select is(
+  (
+    select count(*)
+    from public.assignments
+    where organization_id in (
+      'a0000000-0000-0000-0000-000000000001',
+      'a0000000-0000-0000-0000-000000000002'
+    )
+      and created_by in (
+        '10000000-0000-0000-0000-000000000003',
+        '10000000-0000-0000-0000-000000000007'
+      )
+  ),
+  5::bigint,
+  'AAL2 admin sees assignments across organizations'
+);
+select is(
+  (
+    select count(*)
+    from public.assignment_submissions
+    where id in (
+      '60000000-0000-0000-0000-000000000001',
+      '60000000-0000-0000-0000-000000000002',
+      '60000000-0000-0000-0000-000000000003'
+    )
+  ),
+  3::bigint,
+  'AAL2 admin sees submission fixtures across organizations'
+);
+select is((select count(*) from public.guardians where id in ('40000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees guardian records across organizations');
+select is((select count(*) from public.student_guardians where student_id in ('20000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002') and guardian_id in ('40000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees guardian links across organizations');
+select is(
+  (
+    select count(*)
+    from public.tutors
+    where id in (
+      '30000000-0000-0000-0000-000000000001',
+      '30000000-0000-0000-0000-000000000002'
+    )
+  ),
+  2::bigint,
+  'AAL2 admin sees the tutor fixtures across organizations'
+);
+select is((select count(*) from public.tutor_student_allocations where tutor_id in ('30000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002') and student_id in ('20000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees allocations across organizations');
+select is((select count(*) from public.classes where id in ('c0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees classes across organizations');
+select is((select count(*) from public.class_enrollments where class_id in ('c0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002') and student_id in ('20000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees class enrollments across organizations');
 select is((select count(*) from public.organizations where id in ('a0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees both organizations');
-select is((select count(*) from storage.objects where bucket_id = 'assignment-files'), 4::bigint, 'AAL2 admin sees assignment files across organizations');
-select is((select count(*) from storage.objects where bucket_id = 'assignment-submissions'), 3::bigint, 'AAL2 admin sees submission files across organizations');
+select is(
+  (
+    select count(*)
+    from storage.objects
+    where bucket_id = 'assignment-files'
+      and owner in (
+        '00000000-0000-0000-0000-000000000003',
+        '00000000-0000-0000-0000-000000000007'
+      )
+  ),
+  4::bigint,
+  'AAL2 admin sees the assignment-file fixtures across organizations'
+);
+select is((select count(*) from storage.objects where bucket_id = 'assignment-submissions' and owner in ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000006')), 3::bigint, 'AAL2 admin sees submission files across organizations');
 select is((select count(*) from public.student_notifications), 0::bigint, 'even AAL2 admin cannot read student-only notifications');
 
 reset role;
@@ -1959,6 +2033,194 @@ select throws_ok(
   'pay_period_locked',
   'a tutor cannot submit a draft session after payroll wins the week lock'
 );
+
+reset role;
+
+-- Safeguarding is a database boundary, not an admin-dashboard convention: an
+-- allocation cannot be activated again until a documented, in-date vetting
+-- record exists.
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000001', 'aal2');
+set local role authenticated;
+update public.tutor_student_allocations
+set status = 'inactive'
+where id = 'e0000000-0000-0000-0000-000000000001';
+update public.classes
+set status = 'inactive'
+where id = 'c0000000-0000-0000-0000-000000000001';
+select lives_ok(
+  $$select public.record_tutor_vetting(
+    '30000000-0000-0000-0000-000000000001'::uuid,
+    'pending',
+    now(),
+    null,
+    null
+  )$$,
+  'AAL2 admin can record a pending safeguarding review through the trusted RPC'
+);
+select throws_ok(
+  $$
+    update public.tutor_student_allocations
+    set status = 'active'
+    where id = 'e0000000-0000-0000-0000-000000000001'
+  $$,
+  '42501',
+  'tutor_vetting_required',
+  'an unvetted tutor cannot receive an active learner allocation'
+);
+select throws_ok(
+  $$
+    update public.classes
+    set status = 'active'
+    where id = 'c0000000-0000-0000-0000-000000000001'
+  $$,
+  '42501',
+  'tutor_vetting_required',
+  'an unvetted tutor cannot lead an active class'
+);
+select lives_ok(
+  $$select public.record_tutor_vetting(
+    '30000000-0000-0000-0000-000000000001'::uuid,
+    'approved',
+    now() - interval '1 day',
+    now() + interval '1 year',
+    'fixture-register-renewal-001'
+  )$$,
+  'AAL2 admin can record an evidenced, expiring tutor verification'
+);
+select lives_ok(
+  $$
+    update public.tutor_student_allocations
+    set status = 'active'
+    where id = 'e0000000-0000-0000-0000-000000000001'
+  $$,
+  'an approved, in-date tutor can receive an active learner allocation'
+);
+select lives_ok(
+  $$
+    update public.classes
+    set status = 'active'
+    where id = 'c0000000-0000-0000-0000-000000000001'
+  $$,
+  'an approved, in-date tutor can lead an active class'
+);
+select ok(
+  exists (
+    select 1
+    from public.audit_log
+    where action = 'tutor.vetting_recorded'
+      and entity_id = '30000000-0000-0000-0000-000000000001'
+  ),
+  'tutor verification changes are audit logged'
+);
+
+reset role;
+
+-- Adaptive-learning synthetic journey: a fake learner's reviewed skill evidence
+-- yields a private internal state, a tutor draft, and only an approved
+-- learner-safe next action. No learner reads a level/state or a draft.
+insert into public.curriculum_skills (
+  id, subject_id, grade, strand, topic, skill_code, title, cognitive_level,
+  review_status, reviewed_by_profile_id, reviewed_at
+) values (
+  'a1000000-0000-0000-0000-000000000001',
+  current_setting('test.grade11_mathematics_subject_id')::uuid,
+  'Grade 11', 'Functions', 'Algebraic functions', 'test.simplify-algebraic-fractions',
+  'Simplify algebraic fractions', 'Routine Procedure', 'approved',
+  '10000000-0000-0000-0000-000000000001', now()
+);
+insert into public.learning_activities (
+  id, subject_id, grade, title, summary, activity_type, estimated_minutes,
+  content_reference, review_status, reviewed_by_profile_id, reviewed_at
+) values (
+  'a2000000-0000-0000-0000-000000000001',
+  current_setting('test.grade11_mathematics_subject_id')::uuid, 'Grade 11',
+  'Algebraic fractions foundations', 'A short teacher-reviewed reteach sequence.',
+  'reteach', 20, 'local://adaptive-learning/algebraic-fractions-foundations',
+  'approved', '10000000-0000-0000-0000-000000000001', now()
+);
+insert into public.activity_skill_targets (activity_id, skill_id, target_role)
+values ('a2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'primary');
+insert into public.curriculum_question_types (
+  id, skill_id, question_type_code, title, description, representation,
+  cognitive_demand, source_reference, review_status
+) values (
+  'a3000000-0000-0000-0000-000000000001',
+  'a1000000-0000-0000-0000-000000000001',
+  'test.simplify-algebraic-fractions.cancellation',
+  'Cancellation after factorisation',
+  'Simplify an algebraic fraction by factorising before cancelling common factors.',
+  'symbolic', 'procedure', 'synthetic pgTAP fixture', 'approved'
+);
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000003');
+set local role authenticated;
+select lives_ok(
+  $$select public.record_learning_evidence('20000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 42, 'rubric', 'Fake learner diagnostic one', now() - interval '3 days', null, false, 'a3000000-0000-0000-0000-000000000001')$$,
+  'allocated tutor records reviewed synthetic skill evidence'
+);
+select lives_ok(
+  $$select public.record_learning_evidence('20000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 48, 'diagnostic', 'Fake learner diagnostic two', now() - interval '1 day', null, false, 'a3000000-0000-0000-0000-000000000001')$$,
+  'allocated tutor records a second evidence point for confidence'
+);
+select is(
+  (select instructional_state from public.recompute_learner_skill_state('20000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001')),
+  'rebuild',
+  'two weak reviewed observations produce an internal rebuild state'
+);
+select is(
+  (select instructional_state from public.learner_question_type_state where student_id = '20000000-0000-0000-0000-000000000001' and question_type_id = 'a3000000-0000-0000-0000-000000000001'),
+  'rebuild',
+  'the same evidence is tracked separately for its exact algebra question type'
+);
+select is(
+  (select status from public.refresh_learning_recommendation('20000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001')),
+  'draft',
+  'the recommendation starts as a tutor-only draft'
+);
+select throws_ok(
+  $$select public.record_learning_evidence('20000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 42, 'rubric', 'Cross-org attempt')$$,
+  '42501', 'learning_evidence_not_authorized',
+  'a tutor cannot record evidence for an unallocated learner'
+);
+
+reset role;
+select set_config('test.adaptive_recommendation_id', (select id::text from public.learning_recommendations limit 1), true);
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
+set local role authenticated;
+select is((select count(*) from public.learner_skill_state), 0::bigint, 'learner cannot directly read the internal instructional state');
+select is((select count(*) from public.learner_question_type_state), 0::bigint, 'learner cannot directly read the internal question-type state');
+select is((select count(*) from public.learning_recommendations), 0::bigint, 'learner cannot directly read recommendation records or their rationale');
+select is((select count(*) from public.get_my_learning_recommendations()), 0::bigint, 'learner cannot read an unapproved recommendation');
+select throws_ok(
+  $$select public.decide_learning_recommendation(current_setting('test.adaptive_recommendation_id')::uuid, 'approved')$$,
+  '42501', 'learning_recommendation_not_authorized',
+  'learner cannot approve their own recommendation'
+);
+
+reset role;
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000003');
+set local role authenticated;
+select is(
+  (select status from public.decide_learning_recommendation((select id from public.learning_recommendations limit 1), 'approved', 'Use this before the next functions session')),
+  'approved',
+  'allocated tutor can approve the synthetic learner recommendation'
+);
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
+set local role authenticated;
+select results_eq(
+  $$select skill_title || '|' || activity_title from public.get_my_learning_recommendations()$$,
+  array['Simplify algebraic fractions|Algebraic fractions foundations'],
+  'learner receives only the approved next focus and activity'
+);
+select ok(
+  (select learner_copy not ilike '%rebuild%' from public.get_my_learning_recommendations()),
+  'learner copy does not expose the internal instructional state'
+);
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000006');
+set local role authenticated;
+select is((select count(*) from public.get_my_learning_recommendations()), 0::bigint, 'unrelated fake learner receives no recommendation');
 
 reset role;
 

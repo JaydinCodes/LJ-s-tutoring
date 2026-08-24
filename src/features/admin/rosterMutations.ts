@@ -39,6 +39,16 @@ export interface UpdateTutorInput extends Omit<CreateTutorInput, 'authUserId' | 
   status: RecordStatus;
 }
 
+export type TutorVettingStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
+export interface RecordTutorVettingInput {
+  tutorId: string;
+  status: TutorVettingStatus;
+  reviewedAt: string;
+  expiresAt?: string;
+  evidenceReference?: string;
+}
+
 async function requireAdminProfile() {
   const client = requireSupabase();
   const { data: auth, error: authError } = await client.auth.getUser();
@@ -352,6 +362,27 @@ export async function updateTutorRecord(input: UpdateTutorInput) {
     },
   });
   return tutor;
+}
+
+export async function recordTutorVetting(input: RecordTutorVettingInput) {
+  const client = requireSupabase();
+  await requireAdminProfile();
+
+  const status = input.status;
+  const reviewedAt = required(input.reviewedAt, 'Review date');
+  const expiresAt = optional(input.expiresAt);
+  const evidenceReference = optional(input.evidenceReference);
+  if (status === 'approved' && (!expiresAt || !evidenceReference)) {
+    throw new Error('Approved vetting requires an expiry date and restricted-register reference.');
+  }
+
+  return callRpc(client, 'record_tutor_vetting', {
+    p_tutor_id: input.tutorId,
+    p_status: status,
+    p_reviewed_at: new Date(reviewedAt).toISOString(),
+    p_expires_at: expiresAt ? new Date(`${expiresAt}T23:59:59.999Z`).toISOString() : undefined,
+    p_evidence_reference: evidenceReference ?? undefined,
+  });
 }
 
 async function readTutorDeletionError(error: unknown): Promise<string> {

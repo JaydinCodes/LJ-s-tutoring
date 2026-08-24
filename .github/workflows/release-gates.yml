@@ -39,6 +39,24 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      - name: Set up Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.5.4
+
+      - name: Type-check Supabase Edge Functions
+        run: |
+          deno check --no-lock --node-modules-dir=none \
+            supabase/functions/admin-invite-user/index.ts \
+            supabase/functions/cleanup-submission-assets/index.ts \
+            supabase/functions/complete-temporary-password/index.ts \
+            supabase/functions/dispatch-notification-outbox/index.ts \
+            supabase/functions/grade-submission/index.ts \
+            supabase/functions/odie-careers-chat-stream/index.ts \
+            supabase/functions/process-privacy-deletion/index.ts \
+            supabase/functions/process-tutor-deletion/index.ts \
+            supabase/functions/refresh-stale-weekly-reports/index.ts
+
       # `public-prerender.test.cjs` exercises the generated static shell and
       # needs Vite's ignored, content-hashed React output in a clean runner.
       - name: Build React assets for source-contract tests

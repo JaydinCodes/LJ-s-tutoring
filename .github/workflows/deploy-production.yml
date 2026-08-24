@@ -57,12 +57,42 @@ jobs:
               );
             }
 
-      # Publish the immutable, fully-tested frontend first. A failed static-site
-      # deployment must not advance database or Edge Function state on its own.
       - name: Install pinned DigitalOcean CLI action
         uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
         with:
           token: ${{ secrets.DIGITAL_ACCESS_TOKEN }}
+
+      # Fail before any provider write when configuration is absent or a
+      # deployment credential cannot read its declared target. This avoids a
+      # static-site or database-only partial release when a later provider
+      # secret is missing, expired, or belongs to a different account.
+      - name: Preflight production deployment configuration
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ORIGIN_URL: ${{ vars.CLOUDFLARE_ORIGIN_URL }}
+          DIGITAL_ACCESS_TOKEN: ${{ secrets.DIGITAL_ACCESS_TOKEN }}
+          DIGITALOCEAN_APP_ID: ${{ secrets.DIGITAL_APP_ID }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PRODUCTION_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 1; }
+          test -n "$CLOUDFLARE_ORIGIN_URL" || { echo "CLOUDFLARE_ORIGIN_URL is required"; exit 1; }
+          test -n "$DIGITAL_ACCESS_TOKEN" || { echo "DIGITAL_ACCESS_TOKEN is required"; exit 1; }
+          test -n "$DIGITALOCEAN_APP_ID" || { echo "DIGITAL_APP_ID is required"; exit 1; }
+          test -n "$SUPABASE_ACCESS_TOKEN" || { echo "SUPABASE_ACCESS_TOKEN is required"; exit 1; }
+          test -n "$SUPABASE_PRODUCTION_PROJECT_REF" || { echo "SUPABASE_PRODUCTION_PROJECT_REF is required"; exit 1; }
+          test -n "$SUPABASE_DB_PASSWORD" || { echo "SUPABASE_DB_PASSWORD is required"; exit 1; }
+          [[ "$DIGITALOCEAN_APP_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || {
+            echo "DIGITAL_APP_ID must be a UUID." >&2
+            exit 1
+          }
+          npx --yes wrangler@4 whoami
+          npx --yes wrangler@4 deployments list --config cloudflare/wrangler.toml --json > /dev/null
+          doctl apps get "$DIGITALOCEAN_APP_ID" > /dev/null
+          npx supabase projects list --output json > /dev/null
 
       - name: Deploy the tested main commit
         env:

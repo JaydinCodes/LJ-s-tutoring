@@ -1,24 +1,31 @@
 import type { ReactNode } from 'react';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Bell,
   BookOpen,
   Brain,
-  CalendarDays,
-  Ellipsis,
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
   Clock,
   Compass,
+  Ellipsis,
+  FolderOpen,
   GraduationCap,
+  Home,
   LayoutDashboard,
   LogOut,
-  UsersRound,
   ScrollText,
   Settings,
+  ShieldCheck,
   Sparkles,
   Target,
   TrendingUp,
   Trophy,
   UserPlus,
+  UserRound,
+  UsersRound,
+  WalletCards,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -36,66 +43,135 @@ type DashboardNavItem = {
   icon: LucideIcon;
 };
 
-const nav = {
+type DashboardNavGroup = {
+  label: string;
+  items: DashboardNavItem[];
+};
+
+const navigation = {
   student: [
-    { to: '/dashboard/student', label: 'Dashboard', shortLabel: 'Today', icon: LayoutDashboard },
-    { to: '/dashboard/student/assignments', label: 'Assignments', shortLabel: 'Tasks', icon: ScrollText },
-    { to: '/dashboard/student/results', label: 'Results', icon: Trophy },
-    { to: '/dashboard/student/progress', label: 'Progress', icon: TrendingUp },
-    { to: '/dashboard/student/sessions', label: 'My tutor & sessions', icon: CalendarDays },
-    { to: '/dashboard/student/reports', label: 'Resources', icon: BookOpen },
-    { to: '/dashboard/student/careers', label: 'Careers', icon: Compass },
-    { to: '/dashboard/student/settings', label: 'Settings', icon: Settings },
-  ],
-  admin: [
-    { to: '/dashboard/admin', label: 'Today', icon: LayoutDashboard },
-    { to: '/dashboard/admin/students', label: 'Learners & guardians', shortLabel: 'Learners', icon: GraduationCap },
-    { to: '/dashboard/admin/results', label: 'Learning quality', shortLabel: 'Quality', icon: Brain },
-    { to: '/dashboard/admin/payments', label: 'Finance', icon: Trophy },
-    { to: '/dashboard/admin/approvals', label: 'Governance', icon: Target },
-    // Direct destinations remain available for specialist operational work.
-    { to: '/dashboard/admin/allocations', label: 'Allocations', icon: Target },
-    { to: '/dashboard/admin/users', label: 'Account access', icon: UserPlus },
-    { to: '/dashboard/admin/tutors', label: 'Tutors', icon: Brain },
-    { to: '/dashboard/admin/classes', label: 'Classes', icon: BookOpen },
-    { to: '/dashboard/admin/payroll', label: 'Payroll', icon: TrendingUp },
-    { to: '/dashboard/admin/reconciliation', label: 'Reconciliation', icon: Clock },
-    { to: '/dashboard/admin/reports', label: 'Reports', icon: BookOpen },
-    { to: '/dashboard/admin/audit', label: 'Audit', icon: Sparkles },
-    { to: '/dashboard/admin/ai-grading', label: 'AI grading', icon: Brain },
-    { to: '/dashboard/admin/privacy-requests', label: 'Privacy', icon: Target },
-    { to: '/dashboard/admin/retention', label: 'Retention', icon: Clock },
-    { to: '/dashboard/admin/ops-runbook', label: 'Runbook', icon: Compass },
+    {
+      label: 'Learning',
+      items: [
+        { to: '/dashboard/student', label: 'Today', icon: Home },
+        { to: '/dashboard/student/assignments', label: 'Tasks', icon: ClipboardList },
+        { to: '/dashboard/student/results', label: 'Results', icon: Trophy },
+        { to: '/dashboard/student/progress', label: 'Progress', icon: TrendingUp },
+      ],
+    },
+    {
+      label: 'Support',
+      items: [
+        { to: '/dashboard/student/sessions', label: 'Tutor & sessions', shortLabel: 'Sessions', icon: UserRound },
+        { to: '/dashboard/student/reports', label: 'Resources', icon: FolderOpen },
+        { to: '/dashboard/student/careers', label: 'Careers', icon: Compass },
+        { to: '/dashboard/student/settings', label: 'Settings', icon: Settings },
+      ],
+    },
   ],
   tutor: [
-    { to: '/dashboard/tutor', label: 'Today', icon: LayoutDashboard },
-    { to: '/dashboard/tutor/risk', label: 'Learners', icon: UsersRound },
-    { to: '/dashboard/tutor/sessions', label: 'Teach', icon: Clock },
-    { to: '/dashboard/tutor/submissions', label: 'Assess', icon: ScrollText },
-    { to: '/dashboard/tutor/reports', label: 'Insights', icon: TrendingUp },
-    { to: '/dashboard/tutor/classes', label: 'Classes', icon: BookOpen },
-    { to: '/dashboard/tutor/assignments', label: 'Assignments', icon: ScrollText },
-    { to: '/dashboard/tutor/settings', label: 'Settings', icon: Settings },
+    {
+      label: 'Teaching day',
+      items: [
+        { to: '/dashboard/tutor', label: 'Today', icon: LayoutDashboard },
+        { to: '/dashboard/tutor/risk', label: 'Learners', icon: UsersRound },
+        { to: '/dashboard/tutor/sessions', label: 'Teach', icon: Clock },
+        { to: '/dashboard/tutor/submissions', label: 'Assess', icon: ScrollText },
+        { to: '/dashboard/tutor/reports', label: 'Insights', icon: TrendingUp },
+      ],
+    },
+    {
+      label: 'Workspace',
+      items: [
+        { to: '/dashboard/tutor/classes', label: 'Classes', icon: BookOpen },
+        { to: '/dashboard/tutor/assignments', label: 'Assignments', icon: Target },
+      ],
+    },
+    {
+      label: 'Account',
+      items: [{ to: '/dashboard/tutor/settings', label: 'Settings', icon: Settings }],
+    },
+  ],
+  admin: [
+    {
+      label: 'Overview',
+      items: [{ to: '/dashboard/admin', label: 'Today', icon: LayoutDashboard }],
+    },
+    {
+      label: 'Learners',
+      items: [
+        { to: '/dashboard/admin/students', label: 'Learners & guardians', shortLabel: 'Learners', icon: GraduationCap },
+        { to: '/dashboard/admin/tutors', label: 'Tutors', icon: UsersRound },
+        { to: '/dashboard/admin/allocations', label: 'Allocations', icon: Target },
+        { to: '/dashboard/admin/users', label: 'Account access', icon: UserPlus },
+      ],
+    },
+    {
+      label: 'Teaching',
+      items: [
+        { to: '/dashboard/admin/results', label: 'Learning quality', shortLabel: 'Teaching', icon: Brain },
+        { to: '/dashboard/admin/classes', label: 'Classes', icon: BookOpen },
+        { to: '/dashboard/admin/approvals', label: 'Session approvals', icon: ShieldCheck },
+        { to: '/dashboard/admin/ai-grading', label: 'AI grading', icon: Sparkles },
+      ],
+    },
+    {
+      label: 'Finance',
+      items: [
+        { to: '/dashboard/admin/payments', label: 'Finance', icon: WalletCards },
+        { to: '/dashboard/admin/payroll', label: 'Payroll', icon: TrendingUp },
+        { to: '/dashboard/admin/reconciliation', label: 'Reconciliation', icon: Clock },
+      ],
+    },
+    {
+      label: 'Governance',
+      items: [
+        { to: '/dashboard/admin/audit', label: 'Audit trail', shortLabel: 'Governance', icon: ShieldCheck },
+        { to: '/dashboard/admin/privacy-requests', label: 'Privacy requests', icon: Target },
+        { to: '/dashboard/admin/retention', label: 'Retention', icon: Clock },
+        { to: '/dashboard/admin/ops-runbook', label: 'Operations runbook', icon: Compass },
+      ],
+    },
+    {
+      label: 'Reports',
+      items: [{ to: '/dashboard/admin/reports', label: 'Reports', icon: BookOpen }],
+    },
   ],
   parent: [
-    { to: '/dashboard/parent/reports', label: 'My child', icon: ScrollText },
+    { label: 'Overview', items: [{ to: '/dashboard/parent/reports', label: 'My child', icon: ScrollText }] },
   ],
   ngo: [
-    { to: '/dashboard/ngo/reports', label: 'Cohort impact', shortLabel: 'Impact', icon: UsersRound },
+    { label: 'Overview', items: [{ to: '/dashboard/ngo/reports', label: 'Cohort impact', shortLabel: 'Impact', icon: UsersRound }] },
   ],
-} satisfies Record<string, DashboardNavItem[]>;
+} satisfies Record<string, DashboardNavGroup[]>;
 
-export type DashboardSection = keyof typeof nav;
+export type DashboardSection = keyof typeof navigation;
 
 type ShellProps = {
   title: string;
   subtitle: string;
   section: DashboardSection;
   children: ReactNode;
+  identity?: DashboardIdentity;
 };
 
+export type DashboardIdentity = {
+  name?: string;
+  meta?: string;
+};
+
+const mobilePrimaryLabels: Partial<Record<DashboardSection, string[]>> = {
+  student: ['Today', 'Tasks', 'Results', 'Progress'],
+  tutor: ['Today', 'Learners', 'Teach', 'Assess'],
+  admin: ['Today', 'Learners & guardians', 'Learning quality', 'Finance'],
+};
+
+function flattenNavigation(groups: DashboardNavGroup[]) {
+  return groups.flatMap((group) => group.items);
+}
+
 function getInitials(name?: string) {
-  if (!name) return '—';
+  if (!name) return 'PO';
   return name
     .split(' ')
     .filter(Boolean)
@@ -105,9 +181,8 @@ function getInitials(name?: string) {
 }
 
 function isCurrentPath(pathname: string, item: DashboardNavItem) {
-  if (item.to === '/dashboard/student' || item.to === '/dashboard/admin' || item.to === '/dashboard/tutor') {
-    return pathname === item.to;
-  }
+  const roleHomes = ['/dashboard/student', '/dashboard/admin', '/dashboard/tutor'];
+  if (roleHomes.includes(item.to)) return pathname === item.to;
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
 }
 
@@ -117,16 +192,21 @@ function getSectionHome(section: DashboardSection) {
   return `/dashboard/${section}`;
 }
 
+function dayGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
 function useDashboardSignOut(refreshAuth: () => Promise<void>) {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
   async function handleSignOut() {
     if (isSigningOut) return;
-
     setIsSigningOut(true);
     setSignOutError(null);
-
     try {
       await signOut();
       await refreshAuth();
@@ -141,383 +221,42 @@ function useDashboardSignOut(refreshAuth: () => Promise<void>) {
   return { handleSignOut, isSigningOut, signOutError };
 }
 
-function SignOutFailure({
-  busy,
-  message,
-  onRetry,
-}: {
-  busy: boolean;
-  message: string;
-  onRetry: () => void;
-}) {
-  return (
-    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-ios border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-400/40 dark:bg-red-950/40 dark:text-red-100" role="alert">
-      <p>{message}</p>
-      <button className="min-h-10 rounded-lg border border-current px-3 font-semibold disabled:cursor-not-allowed disabled:opacity-60" disabled={busy} onClick={onRetry} type="button">
-        {busy ? 'Retrying...' : 'Try again'}
-      </button>
-    </div>
-  );
-}
-
-export function DashboardShell(props: ShellProps) {
-  if (props.section === 'student') {
-    return <AppShell {...props} />;
-  }
-
-  return <LegacyDashboardShell {...props} />;
-}
-
-export function AppShell({ title, subtitle, children }: ShellProps) {
+export function DashboardShell({ title, subtitle, section, children, identity }: ShellProps) {
   const auth = useAuth();
   const location = useLocation();
-  const onCareersPage = location.pathname.startsWith('/dashboard/student/careers');
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const { data: notifications } = useStudentNotifications();
-  const unreadCount = (notifications ?? []).filter((n) => !n.is_read).length;
+  const groups = navigation[section];
+  const navItems = useMemo(() => flattenNavigation(groups), [groups]);
+  const homeHref = getSectionHome(section);
+  const isHome = location.pathname === homeHref;
+  const useGreeting = isHome && (section === 'student' || section === 'tutor' || section === 'admin');
+  const displayTitle = useGreeting
+    ? `${dayGreeting()}, ${auth.profile?.full_name?.split(' ')[0] || (section === 'admin' ? 'Admin' : section === 'tutor' ? 'Tutor' : 'Student')}`
+    : title;
   const { handleSignOut, isSigningOut, signOutError } = useDashboardSignOut(auth.refresh);
 
   return (
-    <div className="academy-app-bg">
-      <div className="mx-auto grid min-h-screen w-full max-w-[1180px] grid-cols-1 lg:grid-cols-[5rem_minmax(0,1fr)]" data-modal-background>
-        <DesktopRail navItems={nav.student} />
-        <main className="min-w-0 px-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-5 lg:px-6 lg:pb-8 lg:pt-5">
-          <TopStudentHeader
-            name={auth.profile?.full_name}
-            role={auth.profile?.role}
+    <div className={`academy-app-bg overflow-x-clip ${section === 'student' ? 'student-parchment-bg' : ''}`}>
+      <div className={`mx-auto grid min-h-screen w-full max-w-[1720px] grid-cols-1 ${section === 'student' ? 'lg:grid-cols-[13.5rem_minmax(0,1fr)]' : 'lg:grid-cols-[16.5rem_minmax(0,1fr)]'}`} data-modal-background>
+        <DesktopSidebar groups={groups} homeHref={homeHref} role={section} onSignOut={() => void handleSignOut()} signingOut={isSigningOut} />
+        <main className={`min-w-0 px-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 lg:pb-8 lg:pt-5 ${section === 'student' ? 'lg:px-9 xl:px-12' : 'lg:px-7 xl:px-9'}`}>
+          <DashboardHeader
+            title={displayTitle}
             subtitle={subtitle}
-            title={title}
-            onSignOut={() => void handleSignOut()}
-            signingOut={isSigningOut}
-            unreadCount={unreadCount}
-            onOpenNotifications={() => setNotificationsOpen(true)}
+            name={identity?.name || auth.profile?.full_name}
+            role={identity?.meta || auth.profile?.role}
+            section={section}
+            notificationControl={section === 'student' ? <StudentNotificationControl /> : undefined}
           />
           {signOutError ? (
-            <SignOutFailure busy={isSigningOut} message={signOutError} onRetry={() => void handleSignOut()} />
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-400/30 dark:bg-red-950/40 dark:text-red-100" role="alert">
+              <p>{signOutError}</p>
+              <button className="min-h-11 rounded-xl border border-current px-4 font-semibold" disabled={isSigningOut} onClick={() => void handleSignOut()} type="button">Try again</button>
+            </div>
           ) : null}
-          <div className="mx-auto mt-4 w-full max-w-4xl space-y-4">{children}</div>
+          <div className="mt-5 min-w-0 space-y-4">{children}</div>
         </main>
       </div>
-      <MobileBottomNav navItems={nav.student} onSignOut={() => void handleSignOut()} signingOut={isSigningOut} />
-      <NotificationDialog open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
-      {onCareersPage ? (
-        <a
-          aria-label="Open Odie career assistant"
-          className="fixed bottom-[calc(6.35rem+env(safe-area-inset-bottom))] right-4 z-40 grid h-14 w-14 place-items-center rounded-full bg-academy-gold text-academy-ink shadow-[0_18px_44px_rgba(15,23,42,0.24)] transition duration-fluid ease-ios hover:scale-[1.03] focus-visible:outline-academy-gold lg:bottom-6 lg:right-6"
-          data-modal-background
-          href="#odie-career-assistant"
-        >
-          <Sparkles className="h-5 w-5" aria-hidden="true" strokeWidth={2.2} />
-        </a>
-      ) : null}
-    </div>
-  );
-}
-
-export function TopStudentHeader({
-  name,
-  role,
-  subtitle,
-  title,
-  onSignOut,
-  signingOut,
-  unreadCount,
-  onOpenNotifications,
-}: {
-  name?: string;
-  role?: string;
-  subtitle: string;
-  title: string;
-  onSignOut: () => void;
-  signingOut: boolean;
-  unreadCount: number;
-  onOpenNotifications: () => void;
-}) {
-  return (
-    <header className="mx-auto w-full max-w-4xl">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">
-            Project Odysseus
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold leading-tight tracking-normal text-academy-ink dark:text-academy-parchment sm:text-3xl">
-            {title}
-          </h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <NavLink
-            aria-label="Open resources"
-            className="grid h-11 w-11 place-items-center rounded-ios border border-slate-950/10 bg-white/[0.64] text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09]"
-            to="/dashboard/student/reports"
-          >
-            <BookOpen className="h-4 w-4" aria-hidden="true" />
-          </NavLink>
-          <NavLink
-            aria-label="Open settings"
-            className="grid h-11 w-11 place-items-center rounded-ios border border-slate-950/10 bg-white/[0.64] text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09]"
-            to="/dashboard/student/settings"
-          >
-            <Settings className="h-4 w-4" aria-hidden="true" />
-          </NavLink>
-          <button
-            aria-label="Sign out"
-            className="hidden h-11 items-center gap-2 rounded-full border border-slate-950/10 bg-white/[0.64] px-4 text-sm font-semibold text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09] sm:inline-flex"
-            disabled={signingOut}
-            type="button"
-            onClick={onSignOut}
-          >
-            <LogOut className="h-4 w-4" aria-hidden="true" />
-            {signingOut ? 'Signing out...' : 'Sign out'}
-          </button>
-          <button
-            aria-label={unreadCount > 0 ? `Open notifications, ${unreadCount} unread`: 'Open notifications'}
-            className="relative grid h-11 w-11 place-items-center rounded-ios border border-slate-950/10 bg-white/[0.64] text-academy-navy shadow-sm backdrop-blur-xl transition duration-fluid ease-ios hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment dark:hover:bg-white/[0.09]"
-            type="button"
-            onClick={onOpenNotifications}
-          >
-            <Bell className="h-4 w-4" aria-hidden="true" />
-            {unreadCount > 0 ? (
-              <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-academy-gold px-1 text-[10px] font-bold text-academy-ink">
-                {unreadCount > 9 ? '9+' : unreadCount}
-                 </span>
-            ) : null}
-          </button>
-          <div className="grid h-11 w-11 place-items-center rounded-ios bg-academy-navy text-sm font-bold text-white shadow-academy-soft dark:bg-white dark:text-slate-950">
-            {getInitials(name)}
-          </div>
-        </div>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-academy-muted">
-        {name ? <span className="font-semibold text-academy-ink dark:text-academy-parchment">{name}</span> : null}
-        {role ? <span className="h-1 w-1 rounded-full bg-academy-gold" aria-hidden="true" /> : null}
-        {role ? <span className="capitalize">{role}</span> : null}
-      </div>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-academy-muted">{subtitle}</p>
-      <div className="greek-keyline mt-4 h-px" aria-hidden="true" />
-    </header>
-  );
-}
-
-export function DesktopRail({ navItems }: { navItems: DashboardNavItem[] }) {
-  return (
-    <aside className="sticky top-0 hidden h-screen py-5 pl-3 lg:block">
-      <div className="flex h-full w-16 flex-col items-center rounded-sheet border border-white/70 bg-white/[0.72] py-3 shadow-academy backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06]">
-        <NavLink
-          aria-label="Project Odysseus dashboard"
-          className="mb-3 grid h-11 w-11 place-items-center rounded-ios"
-          to="/dashboard/student"
-        >
-          <img className="h-full w-full object-contain" src="/images/project-odysseus-logo-transparent.png" alt="" />
-        </NavLink>
-        <nav aria-label="Student portal" className="flex flex-1 flex-col items-center gap-1.5">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.to}
-                aria-label={item.label}
-                className={({ isActive }) => `group relative grid h-11 w-11 place-items-center rounded-ios transition duration-fluid ease-ios ${isActive ? 'bg-academy-navy text-white shadow-academy-soft dark:bg-academy-aegean' : 'text-slate-500 hover:bg-white/80 hover:text-academy-navy dark:text-academy-marble dark:hover:bg-white/[0.08] dark:hover:text-white'}`}
-                end={item.to === '/dashboard/student'}
-                title={item.label}
-                to={item.to}
-              >
-                <Icon className="h-[1.125rem] w-[1.125rem]" aria-hidden="true" strokeWidth={2} />
-                <span className="pointer-events-none absolute left-[3.65rem] z-50 hidden rounded-full border border-slate-950/10 bg-white/95 px-3 py-1.5 text-xs font-semibold text-academy-ink shadow-academy-soft backdrop-blur-xl group-hover:block dark:border-white/10 dark:bg-slate-950/95 dark:text-academy-parchment">
-                  {item.label}
-                </span>
-              </NavLink>
-            );
-          })}
-        </nav>
-      </div>
-    </aside>
-  );
-}
-
-export function MobileBottomNav({
-  navItems,
-  onSignOut,
-  signingOut,
-}: {
-  navItems: DashboardNavItem[];
-  onSignOut: () => void;
-  signingOut: boolean;
-}) {
-  const location = useLocation();
-  const [open, setOpen] = useState(false);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const primaryItems = navItems.length <= 5 ? navItems : navItems.slice(0, 4);
-  const overflowItems = navItems.length <= 5 ? [] : navItems.slice(4);
-  const visibleCount = primaryItems.length + (overflowItems.length ? 1 : 0);
-  useModalDialog({ dialogRef, onClose: () => setOpen(false), open });
-
-  return (
-    <>
-      {open ? (
-        <div
-          className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-sm lg:hidden"
-          onMouseDown={(event) => {
-            if (event.currentTarget === event.target) setOpen(false);
-          }}
-        >
-          <div
-            aria-labelledby="student-more-navigation-title"
-            aria-modal="true"
-            className="fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-50 max-h-[min(28rem,calc(100vh-8rem))] overflow-auto rounded-sheet border border-white/70 bg-white/[0.94] p-3 shadow-[0_24px_80px_rgba(15,23,42,0.22)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/[0.94]"
-            id="student-more-navigation"
-            ref={dialogRef}
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="mb-2 flex items-center justify-between gap-3 px-1">
-              <p id="student-more-navigation-title" className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">More</p>
-              <button
-                aria-label="Close menu"
-                className="grid min-h-9 min-w-9 place-items-center rounded-ios border border-slate-950/10 bg-white text-sm font-semibold text-academy-ink dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment"
-                data-modal-initial-focus
-                onClick={() => setOpen(false)}
-                type="button"
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-            <nav aria-label="More student navigation" className="grid grid-cols-2 gap-2">
-              {overflowItems.map((item) => {
-                const Icon = item.icon;
-                const active = isCurrentPath(location.pathname, item);
-                return (
-                  <NavLink
-                    key={item.to}
-                    aria-label={item.label}
-                    className="flex min-h-12 items-center gap-3 rounded-ios px-3 text-sm font-semibold text-academy-ink transition duration-fluid ease-ios hover:bg-white/70 data-[active=true]:bg-academy-navy data-[active=true]:text-white dark:text-academy-parchment dark:hover:bg-white/[0.08] dark:data-[active=true]:bg-academy-aegean"
-                    data-active={active}
-                    onClick={() => setOpen(false)}
-                    to={item.to}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                    <span className="truncate">{item.label}</span>
-                  </NavLink>
-                );
-              })}
-            </nav>
-            <div className="mt-3 border-t border-slate-950/10 pt-3 dark:border-white/10">
-              <button
-                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-ios border border-slate-950/10 bg-white px-4 text-sm font-semibold text-academy-ink dark:border-white/10 dark:bg-white/[0.06] dark:text-academy-parchment"
-                disabled={signingOut}
-                onClick={onSignOut}
-                type="button"
-              >
-                <LogOut className="h-4 w-4" aria-hidden="true" />
-                {signingOut ? 'Signing out...' : 'Sign out'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      <nav aria-label="Student portal" className="academy-bottom-nav lg:hidden" data-modal-background>
-        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${visibleCount}, minmax(0, 1fr))` }}>
-          {primaryItems.map((item) => {
-            const Icon = item.icon;
-            const active = isCurrentPath(location.pathname, item);
-            return (
-              <NavLink
-                key={item.to}
-                aria-label={item.label}
-                className="academy-nav-item"
-                data-active={active}
-                end={item.to === '/dashboard/student'}
-                to={item.to}
-              >
-                <Icon className="mx-auto mb-1 h-4 w-4 text-current" aria-hidden="true" strokeWidth={2} />
-                <span className="block truncate">{item.shortLabel ?? item.label}</span>
-              </NavLink>
-            );
-          })}
-          {overflowItems.length ? (
-            <button aria-controls="student-more-navigation" aria-expanded={open} aria-haspopup="dialog" className="academy-nav-item" onClick={() => setOpen(true)} type="button">
-              <Ellipsis className="mx-auto mb-1 h-4 w-4 text-current" aria-hidden="true" strokeWidth={2} />
-              <span className="block truncate">More</span>
-            </button>
-          ) : null}
-        </div>
-      </nav>
-    </>
-  );
-}
-
-function LegacyDashboardShell({ title, subtitle, section, children }: ShellProps) {
-  const auth = useAuth();
-  const sectionLabel = `${section} dashboard`;
-  const navItems = nav[section];
-  const homeHref = getSectionHome(section);
-  const { handleSignOut, isSigningOut, signOutError } = useDashboardSignOut(auth.refresh);
-
-  return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_12%_0%,_rgba(31,111,139,0.12),_transparent_30%),radial-gradient(circle_at_88%_8%,_rgba(244,197,24,0.10),_transparent_26%),linear-gradient(180deg,_#f7f8fb_0%,_#eef2f7_100%)] text-brand-obsidian dark:bg-[radial-gradient(circle_at_12%_0%,_rgba(31,111,139,0.2),_transparent_30%),linear-gradient(180deg,_#070b14_0%,_#111827_100%)] dark:text-brand-parchment">
-      <div className="mx-auto flex max-w-[1640px] gap-4 px-3 py-3 sm:px-4 lg:gap-6 lg:py-5" data-modal-background>
-        <aside className="sticky top-5 hidden h-[calc(100vh-2.5rem)] w-72 rounded-[2rem] border border-white/70 bg-white/[0.72] p-5 shadow-[0_24px_70px_rgba(15,23,42,0.09)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25 lg:flex lg:flex-col">
-          <div className="flex items-center gap-3 border-b border-slate-950/5 pb-5 dark:border-white/10">
-            <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-[1.2rem]">
-              <img className="h-full w-full object-contain" src="/images/project-odysseus-logo-transparent.png" alt="" />
-            </div>
-            <div>
-              <p className="font-semibold">Project Odysseus</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Learning management</p>
-            </div>
-          </div>
-          <nav className="mt-5 grid gap-1.5">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.to}
-                  className={({ isActive }) => `flex items-center justify-between rounded-[1.25rem] px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-navy text-white shadow-[0_14px_34px_rgba(15,23,42,0.16)] dark:bg-brand-aegean dark:text-white' : 'text-slate-600 hover:bg-white/80 hover:text-brand-obsidian dark:text-brand-marble dark:hover:bg-white/[0.08] dark:hover:text-white'}`}
-                  end={item.to === '/dashboard/admin' || item.to === '/dashboard/tutor'}
-                  to={item.to}
-                >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <Icon className="h-4 w-4 shrink-0 text-current" aria-hidden="true" strokeWidth={2} />
-                    <span className="truncate">{item.label}</span>
-                  </span>
-                  <span className="h-5 w-1 rounded-full bg-current opacity-25" aria-hidden="true" />
-                </NavLink>
-              );
-            })}
-          </nav>
-        </aside>
-        <main className="min-w-0 flex-1">
-          <header className="rounded-[1.5rem] border border-white/70 bg-white/[0.72] p-4 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/25 sm:rounded-[2rem] sm:p-5">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-aegean dark:text-brand-gold">{sectionLabel}</p>
-                <h1 className="mt-2 break-words text-2xl font-semibold tracking-normal sm:text-3xl md:text-4xl">{title}</h1>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{subtitle}</p>
-              </div>
-              <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-                {auth.profile ? (
-                  <div className="flex min-w-0 items-center gap-2 rounded-[1.3rem] border border-slate-950/5 bg-white/60 p-2 pr-3 dark:border-white/10 dark:bg-white/[0.05] sm:gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-[1.1rem] bg-brand-navy text-sm font-bold text-white dark:bg-white dark:text-slate-950">
-                      {auth.profile.full_name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="hidden min-w-0 sm:block">
-                      <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">{auth.profile.full_name}</p>
-                      <p className="text-xs capitalize text-slate-500 dark:text-slate-400">{auth.profile.role}</p>
-                    </div>
-                    <button className="text-xs font-semibold text-slate-600 underline disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-300" disabled={isSigningOut} type="button" onClick={() => void handleSignOut()}>
-                      {isSigningOut ? 'Signing out...' : 'Sign out'}
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </header>
-          {signOutError ? (
-            <SignOutFailure busy={isSigningOut} message={signOutError} onRetry={() => void handleSignOut()} />
-          ) : null}
-          <div className="mt-4 space-y-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-4">{children}</div>
-        </main>
-      </div>
-      <MobileRoleNav
+      <MobileRoleNavigation
         homeHref={homeHref}
         navItems={navItems}
         onSignOut={() => void handleSignOut()}
@@ -528,7 +267,134 @@ function LegacyDashboardShell({ title, subtitle, section, children }: ShellProps
   );
 }
 
-function MobileRoleNav({
+function DashboardHeader({
+  title,
+  subtitle,
+  name,
+  role,
+  section,
+  notificationControl,
+}: {
+  title: string;
+  subtitle: string;
+  name?: string;
+  role?: string;
+  section: DashboardSection;
+  notificationControl?: ReactNode;
+}) {
+  return (
+    <header className="flex min-w-0 items-start justify-between gap-4 border-b border-slate-200/80 pb-4 dark:border-white/10">
+      <div className="min-w-0">
+        <p className={`text-[0.7rem] font-bold uppercase tracking-[0.2em] text-academy-aegean dark:text-academy-gold ${section === 'student' ? 'lg:hidden' : ''}`}>Project Odysseus</p>
+        <h1 className={`mt-1 break-words font-display font-semibold leading-tight text-academy-navy dark:text-academy-parchment ${section === 'student' ? 'text-[clamp(1.8rem,4vw,3.3rem)]' : 'text-[clamp(1.8rem,3vw,2.65rem)]'}`}>{title}</h1>
+        <p className={`mt-2 text-sm leading-6 text-academy-muted ${section === 'student' ? 'max-w-5xl line-clamp-3 sm:line-clamp-2 lg:line-clamp-1' : 'max-w-3xl'}`}>{subtitle}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {notificationControl}
+        {section === 'student' ? (
+          <NavLink aria-label="Open student settings" className="flex h-11 min-w-11 items-center gap-2 rounded-2xl border border-[#ded5c6] bg-[#fffbf2] p-1 shadow-sm transition hover:border-academy-gold dark:border-white/10 dark:bg-slate-900 sm:pr-3 lg:h-16 lg:min-w-72 lg:gap-3 lg:rounded-full lg:px-2" to="/dashboard/student/settings">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-academy-navy text-xs font-bold text-white dark:bg-academy-aegean lg:hidden">{getInitials(name)}</span>
+            <span className="hidden h-11 w-11 shrink-0 place-items-center rounded-full bg-academy-gold/15 text-[#b1830a] lg:grid"><GraduationCap className="h-6 w-6" aria-hidden="true" /></span>
+            <span className="hidden min-w-0 flex-1 sm:block">
+              <span className="block max-w-40 truncate text-xs font-semibold text-academy-navy dark:text-white lg:max-w-44 lg:text-base">{name || 'Project Odysseus'}</span>
+              <span className="block text-[0.65rem] capitalize text-academy-muted lg:text-sm">{role || 'Student'}</span>
+            </span>
+            <ChevronDown className="hidden h-4 w-4 shrink-0 text-academy-navy dark:text-white lg:block" aria-hidden="true" />
+          </NavLink>
+        ) : (
+          <div className="flex h-11 min-w-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1 pr-1 shadow-sm dark:border-white/10 dark:bg-slate-900 sm:pr-3">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-academy-navy text-xs font-bold text-white dark:bg-academy-aegean">{getInitials(name)}</span>
+            <span className="hidden min-w-0 sm:block">
+              <span className="block max-w-36 truncate text-xs font-semibold text-academy-navy dark:text-white">{name || 'Project Odysseus'}</span>
+              <span className="block text-[0.65rem] capitalize text-academy-muted">{role || 'Portal'}</span>
+            </span>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function StudentNotificationControl() {
+  const [open, setOpen] = useState(false);
+  const { data: notifications } = useStudentNotifications();
+  const unreadCount = (notifications ?? []).filter((notification) => !notification.is_read).length;
+
+  return (
+    <>
+      <button
+        aria-label={unreadCount > 0 ? `Open notifications, ${unreadCount} unread` : 'Open notifications'}
+        className="relative grid h-11 w-11 place-items-center rounded-2xl border border-slate-200 bg-white text-academy-navy shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-white"
+        onClick={() => setOpen(true)}
+        type="button"
+      >
+        <Bell className="h-5 w-5" aria-hidden="true" />
+        {unreadCount > 0 ? <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-academy-gold px-1 text-[0.65rem] font-bold text-academy-navy">{unreadCount > 9 ? '9+' : unreadCount}</span> : null}
+      </button>
+      <NotificationDialog open={open} onClose={() => setOpen(false)} />
+    </>
+  );
+}
+
+function DesktopSidebar({
+  groups,
+  homeHref,
+  role,
+  onSignOut,
+  signingOut,
+}: {
+  groups: DashboardNavGroup[];
+  homeHref: string;
+  role: DashboardSection;
+  onSignOut: () => void;
+  signingOut: boolean;
+}) {
+  return (
+    <aside className="sticky top-0 hidden h-screen min-h-0 bg-academy-navy text-white lg:flex lg:flex-col" data-testid={`${role}-desktop-sidebar`}>
+      <NavLink className={`shrink-0 border-b border-white/10 ${role === 'student' ? 'flex flex-col items-center gap-2 px-4 py-6 text-center' : 'flex items-center gap-3 px-5 py-5'}`} to={homeHref}>
+        <img className={role === 'student' ? 'h-28 w-32 scale-110 object-contain' : 'h-12 w-12 object-contain'} src="/images/project-odysseus-logo-transparent.png" alt="" />
+        <span className="min-w-0">
+          {role === 'student' ? null : <span className="block font-display text-xl font-semibold text-white">Odysseus</span>}
+          <span className={`block font-semibold uppercase text-academy-gold ${role === 'student' ? 'rounded-lg border border-academy-gold/70 px-4 py-1 text-[0.62rem] tracking-[0.18em]' : 'text-[0.65rem] tracking-[0.16em]'}`}>{role} portal</span>
+        </span>
+      </NavLink>
+      <nav aria-label={`${role} dashboard`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 [scrollbar-gutter:stable]" data-testid={`${role}-desktop-navigation`}>
+        {groups.map((group) => (
+          <div className="mb-5 last:mb-0" key={group.label}>
+            <p className="mb-1 px-3 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-slate-400">{group.label}</p>
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.to}
+                    className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors ${isActive ? 'bg-white/[0.12] text-white ring-1 ring-white/10' : 'text-slate-300 hover:bg-white/[0.07] hover:text-white'}`}
+                    end={item.to === homeHref}
+                    to={item.to}
+                  >
+                    {({ isActive }) => <>
+                      <Icon className={`h-[1.1rem] w-[1.1rem] shrink-0 ${isActive && role === 'student' ? 'text-academy-gold' : 'text-current'}`} aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      <ChevronRight className={`h-3.5 w-3.5 shrink-0 ${isActive && role === 'student' ? 'text-academy-gold' : 'opacity-40'}`} aria-hidden="true" />
+                    </>}
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+      <div className="shrink-0 border-t border-white/10 p-3">
+        <button className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-slate-300 hover:bg-white/[0.07] hover:text-white" disabled={signingOut} onClick={onSignOut} type="button">
+          <LogOut className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />
+          {signingOut ? 'Signing out...' : 'Sign out'}
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+function MobileRoleNavigation({
   homeHref,
   navItems,
   onSignOut,
@@ -544,100 +410,86 @@ function MobileRoleNav({
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const primaryItems = navItems.length <= 5 ? navItems : navItems.slice(0, 4);
-  const overflowItems = navItems.length <= 5 ? [] : navItems.slice(4);
-  const visibleCount = primaryItems.length + (overflowItems.length ? 1 : 0);
-  const dialogTitleId = `${section}-more-navigation-title`;
+  const requestedLabels = mobilePrimaryLabels[section];
+  const primaryItems = requestedLabels
+    ? requestedLabels.map((label) => navItems.find((item) => item.label === label)).filter((item): item is DashboardNavItem => Boolean(item))
+    : navItems.slice(0, 4);
+  const primaryPaths = new Set(primaryItems.map((item) => item.to));
+  const overflowItems = navItems.filter((item) => !primaryPaths.has(item.to));
+  const visibleItems = navItems.length <= 5 && !requestedLabels ? navItems : primaryItems;
+  const showMore = overflowItems.length > 0;
+  const activeOverflow = overflowItems.some((item) => isCurrentPath(location.pathname, item));
   const dialogId = `${section}-more-navigation`;
+  const dialogTitleId = `${dialogId}-title`;
   useModalDialog({ dialogRef, onClose: () => setOpen(false), open });
 
   return (
     <>
       {open ? (
-        <div
-          className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-sm lg:hidden"
-          onMouseDown={(event) => {
-            if (event.currentTarget === event.target) setOpen(false);
-          }}
-        >
+        <div className="fixed inset-0 z-50 bg-slate-950/45 px-3 lg:hidden" onMouseDown={(event) => { if (event.currentTarget === event.target) setOpen(false); }}>
           <div
             aria-labelledby={dialogTitleId}
             aria-modal="true"
-            className="absolute inset-x-3 bottom-[calc(5.8rem+env(safe-area-inset-bottom))] max-h-[min(32rem,calc(100vh-7rem))] overflow-auto rounded-[1.5rem] border border-white/70 bg-white/95 p-3 shadow-[0_24px_80px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-950/95"
+            className="fixed inset-x-3 bottom-[calc(5.9rem+env(safe-area-inset-bottom))] max-h-[min(34rem,calc(100vh-7rem))] overflow-y-auto rounded-3xl border border-slate-200 bg-academy-parchment p-4 shadow-2xl dark:border-white/10 dark:bg-slate-950"
             id={dialogId}
             ref={dialogRef}
             role="dialog"
             tabIndex={-1}
           >
-            <div className="mb-2 flex items-center justify-between gap-3 px-1">
-              <div className="min-w-0">
-                <p id={dialogTitleId} className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">{section} navigation</p>
-                <p className="mt-1 truncate text-sm text-slate-600 dark:text-slate-300">Jump to any dashboard area</p>
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3 dark:border-white/10">
+              <div>
+                <p className="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Project Odysseus</p>
+                <h2 className="mt-1 font-display text-2xl font-semibold text-academy-navy dark:text-white" id={dialogTitleId}>More</h2>
               </div>
-              <button className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-slate-950/10 bg-white text-sm font-semibold text-slate-800 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" data-modal-initial-focus type="button" onClick={() => setOpen(false)}>
-                Close
+              <button aria-label="Close More navigation" className="grid h-11 w-11 place-items-center rounded-2xl border border-slate-200 bg-white text-academy-navy dark:border-white/10 dark:bg-slate-900 dark:text-white" data-modal-initial-focus onClick={() => setOpen(false)} type="button">
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
-            <nav className="grid gap-2 sm:grid-cols-2" aria-label={`${section} mobile menu`}>
-              {overflowItems.map((item) => <MobileMenuLink key={item.to} item={item} onSelect={() => setOpen(false)} />)}
+            <nav aria-label={`${section} secondary navigation`} className="mt-3 grid gap-2 sm:grid-cols-2">
+              {overflowItems.map((item) => {
+                const Icon = item.icon;
+                const active = isCurrentPath(location.pathname, item);
+                return (
+                  <NavLink
+                    key={item.to}
+                    className="flex min-h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-academy-navy data-[active=true]:border-academy-aegean data-[active=true]:bg-academy-navy data-[active=true]:text-white dark:border-white/10 dark:bg-slate-900 dark:text-white dark:data-[active=true]:bg-academy-aegean"
+                    data-active={active}
+                    onClick={() => setOpen(false)}
+                    to={item.to}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 truncate">{item.label}</span>
+                  </NavLink>
+                );
+              })}
             </nav>
-            <div className="mt-3 border-t border-slate-950/10 pt-3 dark:border-white/10">
-              <button className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-950/10 bg-white px-4 text-sm font-semibold text-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" disabled={signingOut} type="button" onClick={onSignOut}>
-                <LogOut className="h-4 w-4" aria-hidden="true" />
-                {signingOut ? 'Signing out...' : 'Sign out'}
-              </button>
-            </div>
+            <button className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white text-sm font-semibold text-academy-navy dark:border-white/10 dark:bg-slate-900 dark:text-white" disabled={signingOut} onClick={onSignOut} type="button">
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              {signingOut ? 'Signing out...' : 'Sign out'}
+            </button>
           </div>
         </div>
       ) : null}
-      <nav aria-label={`${section} dashboard`} className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 rounded-[1.45rem] border border-white/70 bg-white/[0.86] p-2 shadow-[0_22px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/[0.82] lg:hidden" data-modal-background>
-        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${visibleCount}, minmax(0, 1fr))` }}>
-          {primaryItems.map((item) => {
+      <nav aria-label={`${section} dashboard`} className="academy-bottom-nav lg:hidden" data-modal-background data-testid={`${section}-mobile-navigation`}>
+        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${visibleItems.length + (showMore ? 1 : 0)}, minmax(0, 1fr))` }}>
+          {visibleItems.map((item) => {
             const Icon = item.icon;
             const active = isCurrentPath(location.pathname, item);
             return (
-              <NavLink
-                key={item.to}
-                aria-label={item.label}
-                className="rounded-xl px-1.5 py-2 text-center text-[0.68rem] font-semibold leading-tight text-slate-600 transition hover:bg-white/70 data-[active=true]:bg-brand-navy data-[active=true]:text-white data-[active=true]:shadow-[0_10px_24px_rgba(15,23,42,0.14)] dark:text-brand-marble dark:hover:bg-white/[0.08] dark:data-[active=true]:bg-brand-aegean"
-                data-active={active}
-                end={item.to === homeHref}
-                to={item.to}
-              >
-                <Icon className="mx-auto mb-1 h-4 w-4 text-current" aria-hidden="true" />
+              <NavLink key={item.to} aria-label={item.label} className="academy-nav-item" data-active={active} end={item.to === homeHref} to={item.to}>
+                <Icon className="mx-auto mb-1 h-[1.15rem] w-[1.15rem] text-current" aria-hidden="true" />
                 <span className="block truncate">{item.shortLabel ?? item.label}</span>
               </NavLink>
             );
           })}
-          {overflowItems.length ? (
-            <button
-              aria-expanded={open}
-              aria-controls={dialogId}
-              aria-haspopup="dialog"
-              className="rounded-xl px-1.5 py-2 text-center text-[0.68rem] font-semibold leading-tight text-slate-600 transition hover:bg-white/70 dark:text-brand-marble dark:hover:bg-white/[0.08]"
-              type="button"
-              onClick={() => setOpen(true)}
-            >
-              <Ellipsis className="mx-auto mb-1 h-4 w-4 text-current" aria-hidden="true" />
+          {showMore ? (
+            <button aria-controls={dialogId} aria-expanded={open} aria-haspopup="dialog" className="academy-nav-item" data-active={activeOverflow} onClick={() => setOpen(true)} type="button">
+              <Ellipsis className="mx-auto mb-1 h-[1.15rem] w-[1.15rem] text-current" aria-hidden="true" />
               <span className="block truncate">More</span>
             </button>
           ) : null}
         </div>
       </nav>
     </>
-  );
-}
-
-function MobileMenuLink({ item, onSelect }: { item: DashboardNavItem; onSelect: () => void }) {
-  const Icon = item.icon;
-  return (
-    <NavLink
-      className={({ isActive }) => `flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition ${isActive ? 'bg-brand-navy text-white dark:bg-brand-aegean' : 'bg-slate-50 text-slate-700 hover:bg-white dark:bg-white/[0.06] dark:text-brand-marble dark:hover:bg-white/[0.09]'}`}
-      to={item.to}
-      onClick={onSelect}
-    >
-      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-      <span className="min-w-0 truncate">{item.label}</span>
-    </NavLink>
   );
 }

@@ -38,6 +38,7 @@ test('student card collections opt into shared first-load staggering', () => {
   const results = read('src', 'features', 'students', 'StudentResultsRoute.tsx');
   const progress = read('src', 'features', 'students', 'StudentProgressRoute.tsx');
   const careers = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
+  const pathway = read('src', 'features', 'students', 'StudentPathwayBuilderComponents.tsx');
 
   for (const [name, source] of [
     ['assignment cards', components],
@@ -50,6 +51,6 @@ test('student card collections opt into shared first-load staggering', () => {
   assert.ok(results.includes('<AnimatedProgressBar'), 'results bars must use the shared animation');
   assert.ok(progress.includes('<AnimatedProgressBar'), 'progress rows must use shared animated bars');
   assert.ok(progress.includes('TopicProgressList'), 'progress page must use a stable row list instead of forced card staggering');
-  assert.ok(careers.includes('CareerRow'), 'careers page must use a stable row explorer instead of forced card staggering');
-  assert.ok(careers.includes('duration-sheet ease-ios'), 'careers Odie sheet and drawer must use shared sheet motion timing');
+  assert.ok(pathway.includes('ProgrammeDesktopRow'), 'careers page must use stable programme rows instead of forced card staggering');
+  assert.ok(pathway.includes('motion-reduce:transition-none'), 'careers disclosures must disable decorative transition for reduced-motion users');
 });

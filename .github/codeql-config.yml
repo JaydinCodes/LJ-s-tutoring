@@ -1,0 +1,10 @@
+name: Project Odysseus production analysis
+
+# Browser journeys and source-contract tests read fixture strings only; they
+# never ship to a learner, parent, tutor, or production worker. Analyze the
+# complete application, Edge Functions, scripts, and Cloudflare worker while
+# excluding these non-production fixtures from security findings.
+paths-ignore:
+  - tests/**
+  - artifacts/**
+  - local-supabase-snapshot/**

@@ -12,8 +12,8 @@ type StateAction = {
 
 function actionClass(primary = false) {
   return primary
-    ? 'inline-flex min-h-10 items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800'
-    : 'inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-50';
+    ? 'inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-brand-gold dark:text-brand-navy'
+    : 'inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 dark:border-white/15 dark:bg-slate-900 dark:text-white';
 }
 
 function StateActions({ primaryAction, secondaryAction }: { primaryAction?: StateAction; secondaryAction?: StateAction }) {
@@ -44,8 +44,8 @@ export function LoadingState({ title = 'Loading', description = 'Preparing the l
           <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+          <h2 className="text-lg font-semibold text-slate-950 dark:text-white">{title}</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p>
         </div>
       </div>
     </Card>
