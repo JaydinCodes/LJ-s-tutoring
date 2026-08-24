@@ -3719,10 +3719,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      can_student_read_assignment_file: {
-        Args: { p_assignment_id: string }
-        Returns: boolean
-      }
       can_write_uncommitted_assignment_submission_storage: {
         Args: { p_storage_key: string }
         Returns: boolean
