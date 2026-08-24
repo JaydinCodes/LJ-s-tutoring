@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      activity_skill_targets: {
+        Row: {
+          activity_id: string
+          cognitive_level: string | null
+          evidence_weight: number
+          skill_id: string
+          target_role: string
+        }
+        Insert: {
+          activity_id: string
+          cognitive_level?: string | null
+          evidence_weight?: number
+          skill_id: string
+          target_role?: string
+        }
+        Update: {
+          activity_id?: string
+          cognitive_level?: string | null
+          evidence_weight?: number
+          skill_id?: string
+          target_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_skill_targets_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "learning_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_skill_targets_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       adjustments: {
         Row: {
           amount: number
@@ -1065,6 +1104,131 @@ export type Database = {
           },
         ]
       }
+      curriculum_question_types: {
+        Row: {
+          cognitive_demand: string
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          question_type_code: string
+          representation: string
+          review_status: string
+          skill_id: string
+          source_reference: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cognitive_demand: string
+          created_at?: string
+          description: string
+          id?: string
+          is_active?: boolean
+          question_type_code: string
+          representation: string
+          review_status?: string
+          skill_id: string
+          source_reference: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cognitive_demand?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          question_type_code?: string
+          representation?: string
+          review_status?: string
+          skill_id?: string
+          source_reference?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_question_types_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      curriculum_skills: {
+        Row: {
+          cognitive_level: string | null
+          created_at: string
+          curriculum: string
+          description: string | null
+          grade: string
+          id: string
+          is_active: boolean
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by_profile_id: string | null
+          skill_code: string
+          strand: string
+          subject_id: string
+          title: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          cognitive_level?: string | null
+          created_at?: string
+          curriculum?: string
+          description?: string | null
+          grade: string
+          id?: string
+          is_active?: boolean
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by_profile_id?: string | null
+          skill_code: string
+          strand: string
+          subject_id: string
+          title: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          cognitive_level?: string | null
+          created_at?: string
+          curriculum?: string
+          description?: string | null
+          grade?: string
+          id?: string
+          is_active?: boolean
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by_profile_id?: string | null
+          skill_code?: string
+          strand?: string
+          subject_id?: string
+          title?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_skills_reviewed_by_profile_id_fkey"
+            columns: ["reviewed_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curriculum_skills_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       edge_function_rate_limit_events: {
         Row: {
           created_at: string
@@ -1232,6 +1396,267 @@ export type Database = {
           },
         ]
       }
+      learner_question_type_state: {
+        Row: {
+          calculation_version: string
+          computed_at: string
+          confidence: number
+          evidence_count: number
+          instructional_state: string
+          internal_score: number | null
+          question_type_id: string
+          recent_trend: number | null
+          student_id: string
+        }
+        Insert: {
+          calculation_version?: string
+          computed_at?: string
+          confidence: number
+          evidence_count: number
+          instructional_state: string
+          internal_score?: number | null
+          question_type_id: string
+          recent_trend?: number | null
+          student_id: string
+        }
+        Update: {
+          calculation_version?: string
+          computed_at?: string
+          confidence?: number
+          evidence_count?: number
+          instructional_state?: string
+          internal_score?: number | null
+          question_type_id?: string
+          recent_trend?: number | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learner_question_type_state_question_type_id_fkey"
+            columns: ["question_type_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_question_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learner_question_type_state_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learner_skill_state: {
+        Row: {
+          calculation_version: string
+          computed_at: string
+          confidence: number
+          evidence_count: number
+          evidence_window_end: string | null
+          evidence_window_start: string | null
+          instructional_state: string
+          internal_score: number | null
+          recent_trend: number | null
+          skill_id: string
+          student_id: string
+        }
+        Insert: {
+          calculation_version?: string
+          computed_at?: string
+          confidence: number
+          evidence_count: number
+          evidence_window_end?: string | null
+          evidence_window_start?: string | null
+          instructional_state: string
+          internal_score?: number | null
+          recent_trend?: number | null
+          skill_id: string
+          student_id: string
+        }
+        Update: {
+          calculation_version?: string
+          computed_at?: string
+          confidence?: number
+          evidence_count?: number
+          evidence_window_end?: string | null
+          evidence_window_start?: string | null
+          instructional_state?: string
+          internal_score?: number | null
+          recent_trend?: number | null
+          skill_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learner_skill_state_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learner_skill_state_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_activities: {
+        Row: {
+          accessibility_notes: string | null
+          activity_type: string
+          content_reference: string
+          created_at: string
+          estimated_minutes: number
+          grade: string
+          id: string
+          is_active: boolean
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by_profile_id: string | null
+          subject_id: string
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          accessibility_notes?: string | null
+          activity_type: string
+          content_reference: string
+          created_at?: string
+          estimated_minutes: number
+          grade: string
+          id?: string
+          is_active?: boolean
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by_profile_id?: string | null
+          subject_id: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          accessibility_notes?: string | null
+          activity_type?: string
+          content_reference?: string
+          created_at?: string
+          estimated_minutes?: number
+          grade?: string
+          id?: string
+          is_active?: boolean
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by_profile_id?: string | null
+          subject_id?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_activities_reviewed_by_profile_id_fkey"
+            columns: ["reviewed_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_activities_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_evidence: {
+        Row: {
+          created_at: string
+          created_by_profile_id: string | null
+          evidence_type: string
+          id: string
+          learner_visible: boolean
+          observed_at: string
+          question_type_id: string | null
+          reviewed_at: string
+          score: number
+          skill_id: string
+          source_reference: string
+          source_submission_id: string | null
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_profile_id?: string | null
+          evidence_type: string
+          id?: string
+          learner_visible?: boolean
+          observed_at?: string
+          question_type_id?: string | null
+          reviewed_at?: string
+          score: number
+          skill_id: string
+          source_reference: string
+          source_submission_id?: string | null
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by_profile_id?: string | null
+          evidence_type?: string
+          id?: string
+          learner_visible?: boolean
+          observed_at?: string
+          question_type_id?: string | null
+          reviewed_at?: string
+          score?: number
+          skill_id?: string
+          source_reference?: string
+          source_submission_id?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_evidence_created_by_profile_id_fkey"
+            columns: ["created_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_evidence_question_type_id_fkey"
+            columns: ["question_type_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_question_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_evidence_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_evidence_source_submission_id_fkey"
+            columns: ["source_submission_id"]
+            isOneToOne: false
+            referencedRelation: "assignment_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_evidence_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learning_goals: {
         Row: {
           category: Database["public"]["Enums"]["learning_goal_category"]
@@ -1304,6 +1729,83 @@ export type Database = {
           },
           {
             foreignKeyName: "learning_goals_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_recommendations: {
+        Row: {
+          activity_id: string
+          calculation_version: string
+          decided_at: string | null
+          decided_by_profile_id: string | null
+          decision_note: string | null
+          expires_at: string
+          id: string
+          learner_copy: string
+          proposed_at: string
+          rationale_json: Json
+          skill_id: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          activity_id: string
+          calculation_version?: string
+          decided_at?: string | null
+          decided_by_profile_id?: string | null
+          decision_note?: string | null
+          expires_at?: string
+          id?: string
+          learner_copy: string
+          proposed_at?: string
+          rationale_json?: Json
+          skill_id: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          activity_id?: string
+          calculation_version?: string
+          decided_at?: string | null
+          decided_by_profile_id?: string | null
+          decision_note?: string | null
+          expires_at?: string
+          id?: string
+          learner_copy?: string
+          proposed_at?: string
+          rationale_json?: Json
+          skill_id?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_recommendations_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "learning_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_recommendations_decided_by_profile_id_fkey"
+            columns: ["decided_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_recommendations_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_recommendations_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
@@ -1754,6 +2256,58 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_decisions: {
+        Row: {
+          activity_id: string | null
+          decided_at: string
+          decided_by_profile_id: string
+          decision: string
+          id: string
+          note: string | null
+          recommendation_id: string
+        }
+        Insert: {
+          activity_id?: string | null
+          decided_at?: string
+          decided_by_profile_id: string
+          decision: string
+          id?: string
+          note?: string | null
+          recommendation_id: string
+        }
+        Update: {
+          activity_id?: string | null
+          decided_at?: string
+          decided_by_profile_id?: string
+          decision?: string
+          id?: string
+          note?: string | null
+          recommendation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_decisions_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "learning_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendation_decisions_decided_by_profile_id_fkey"
+            columns: ["decided_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendation_decisions_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "learning_recommendations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_history: {
         Row: {
           after_json: Json | null
@@ -1918,6 +2472,42 @@ export type Database = {
             columns: ["tutor_student_allocation_id"]
             isOneToOne: false
             referencedRelation: "tutor_student_allocations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_prerequisites: {
+        Row: {
+          created_at: string
+          prerequisite_skill_id: string
+          skill_id: string
+          strength: number
+        }
+        Insert: {
+          created_at?: string
+          prerequisite_skill_id: string
+          skill_id: string
+          strength?: number
+        }
+        Update: {
+          created_at?: string
+          prerequisite_skill_id?: string
+          skill_id?: string
+          strength?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_prerequisites_prerequisite_skill_id_fkey"
+            columns: ["prerequisite_skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_prerequisites_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
             referencedColumns: ["id"]
           },
         ]
@@ -2745,6 +3335,57 @@ export type Database = {
           },
         ]
       }
+      tutor_vetting_records: {
+        Row: {
+          created_at: string
+          evidence_reference: string | null
+          expires_at: string | null
+          id: string
+          reviewed_at: string | null
+          reviewed_by_profile_id: string | null
+          status: string
+          tutor_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          evidence_reference?: string | null
+          expires_at?: string | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by_profile_id?: string | null
+          status?: string
+          tutor_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          evidence_reference?: string | null
+          expires_at?: string | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by_profile_id?: string | null
+          status?: string
+          tutor_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tutor_vetting_records_reviewed_by_profile_id_fkey"
+            columns: ["reviewed_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tutor_vetting_records_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: true
+            referencedRelation: "tutors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tutors: {
         Row: {
           approval_note: string | null
@@ -3062,6 +3703,10 @@ export type Database = {
         Returns: Json
       }
       begin_tutor_deletion: { Args: { p_request_id: string }; Returns: Json }
+      can_manage_learning_for_student: {
+        Args: { p_student_id: string }
+        Returns: boolean
+      }
       can_mark_submission: {
         Args: { p_submission_id: string }
         Returns: boolean
@@ -3570,6 +4215,35 @@ export type Database = {
       current_tutor_id: { Args: never; Returns: string }
       current_tutor_identity_id: { Args: never; Returns: string }
       current_tutor_onboarding_id: { Args: never; Returns: string }
+      decide_learning_recommendation: {
+        Args: {
+          p_activity_id?: string
+          p_decision: string
+          p_note?: string
+          p_recommendation_id: string
+        }
+        Returns: {
+          activity_id: string
+          calculation_version: string
+          decided_at: string | null
+          decided_by_profile_id: string | null
+          decision_note: string | null
+          expires_at: string
+          id: string
+          learner_copy: string
+          proposed_at: string
+          rationale_json: Json
+          skill_id: string
+          status: string
+          student_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "learning_recommendations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       decide_tutor_application: {
         Args: { p_application_id: string; p_note: string; p_status: string }
         Returns: {
@@ -3790,6 +4464,20 @@ export type Database = {
           is_member: boolean
           member_count: number
           subject: string
+        }[]
+      }
+      get_my_learning_recommendations: {
+        Args: never
+        Returns: {
+          activity_reference: string
+          activity_summary: string
+          activity_title: string
+          estimated_minutes: number
+          expires_at: string
+          learner_copy: string
+          recommendation_id: string
+          skill_title: string
+          skill_topic: string
         }[]
       }
       get_or_create_pay_period: {
@@ -4166,6 +4854,48 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      recompute_learner_question_type_state: {
+        Args: { p_question_type_id: string; p_student_id: string }
+        Returns: {
+          calculation_version: string
+          computed_at: string
+          confidence: number
+          evidence_count: number
+          instructional_state: string
+          internal_score: number | null
+          question_type_id: string
+          recent_trend: number | null
+          student_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "learner_question_type_state"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      recompute_learner_skill_state: {
+        Args: { p_skill_id: string; p_student_id: string }
+        Returns: {
+          calculation_version: string
+          computed_at: string
+          confidence: number
+          evidence_count: number
+          evidence_window_end: string | null
+          evidence_window_start: string | null
+          instructional_state: string
+          internal_score: number | null
+          recent_trend: number | null
+          skill_id: string
+          student_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "learner_skill_state"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       recompute_student_risk_snapshot: {
         Args: { p_score_date?: string; p_student_id: string }
         Returns: {
@@ -4235,6 +4965,40 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      record_learning_evidence: {
+        Args: {
+          p_evidence_type: string
+          p_learner_visible?: boolean
+          p_observed_at?: string
+          p_question_type_id?: string
+          p_score: number
+          p_skill_id: string
+          p_source_reference: string
+          p_source_submission_id?: string
+          p_student_id: string
+        }
+        Returns: {
+          created_at: string
+          created_by_profile_id: string | null
+          evidence_type: string
+          id: string
+          learner_visible: boolean
+          observed_at: string
+          question_type_id: string | null
+          reviewed_at: string
+          score: number
+          skill_id: string
+          source_reference: string
+          source_submission_id: string | null
+          student_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "learning_evidence"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       record_orphaned_assignment_submission_cleanup: {
         Args: { p_removed_count: number }
         Returns: undefined
@@ -4280,6 +5044,56 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "tutor_documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_tutor_vetting: {
+        Args: {
+          p_evidence_reference?: string
+          p_expires_at?: string
+          p_reviewed_at: string
+          p_status: string
+          p_tutor_id: string
+        }
+        Returns: {
+          created_at: string
+          evidence_reference: string | null
+          expires_at: string | null
+          id: string
+          reviewed_at: string | null
+          reviewed_by_profile_id: string | null
+          status: string
+          tutor_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tutor_vetting_records"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      refresh_learning_recommendation: {
+        Args: { p_skill_id: string; p_student_id: string }
+        Returns: {
+          activity_id: string
+          calculation_version: string
+          decided_at: string | null
+          decided_by_profile_id: string | null
+          decision_note: string | null
+          expires_at: string
+          id: string
+          learner_copy: string
+          proposed_at: string
+          rationale_json: Json
+          skill_id: string
+          status: string
+          student_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "learning_recommendations"
           isOneToOne: true
           isSetofReturn: false
         }

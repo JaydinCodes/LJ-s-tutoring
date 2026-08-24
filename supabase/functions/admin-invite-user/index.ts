@@ -104,6 +104,13 @@ function optionalText(value?: string): string | null {
   return value?.trim() || null;
 }
 
+// New accounts are the external-onboarding boundary. Keep it fail-closed while
+// production reconciliation, safeguarding evidence, and the pilot controls are
+// incomplete. Existing account recovery (resend/reset) remains available.
+function isExternalOnboardingEnabled(): boolean {
+  return Deno.env.get('EXTERNAL_ONBOARDING_ENABLED') === 'true';
+}
+
 // Read the aal (authenticator assurance level) claim from the caller's JWT.
 function decodeAal(token: string): string | null {
   try {
@@ -125,6 +132,7 @@ function statusForError(message: string): number {
   if (message === 'invite_already_accepted') return 409;
   if (message === 'invite_profile_not_found' || message === 'invite_auth_user_not_found') return 404;
   if (message === 'student_profile_required') return 400;
+  if (message === 'external_onboarding_frozen') return 423;
   if (message === 'supabase_admin_not_configured') return 501;
   return 400;
 }
@@ -271,6 +279,10 @@ Deno.serve(async (req) => {
       return json({ error: 'invalid_request', details: parsed.error.flatten() }, 400);
     }
     const input: InviteInput = parsed.data;
+
+    if (!isExternalOnboardingEnabled()) {
+      return json({ error: 'external_onboarding_frozen' }, 423);
+    }
 
     // 3) Reject duplicate email.
     const { data: duplicate } = await admin

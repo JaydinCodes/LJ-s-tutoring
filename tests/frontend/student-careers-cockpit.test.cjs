@@ -9,18 +9,19 @@ function read(...segments) {
   return fs.readFileSync(path.join(root, ...segments), 'utf8');
 }
 
-test('careers page is a discovery cockpit with the required student sections', () => {
+test('careers page is a URL-backed Pathway Builder with the required student sections', () => {
   const source = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
+  const components = read('src', 'features', 'students', 'StudentPathwayBuilderComponents.tsx');
 
-  for (const label of ['Career Explorer', 'Subject Match', 'APS Planner', 'Opportunity Map', 'Ask Odie', 'Saved Careers']) {
-    assert.ok(source.includes(label), `${label} section must be present`);
+  for (const label of ['Pathway Builder', 'Turn a career idea into subjects, APS targets and realistic study routes.']) {
+    assert.ok(source.includes(label), `${label} must be present`);
   }
-
-  assert.ok(source.includes('filters.interest'), 'students must filter by interest');
-  assert.ok(source.includes('filters.subject'), 'students must filter by subject');
-  assert.ok(source.includes('filters.category'), 'students must filter by career category');
-  assert.ok(source.includes('latestCareerMetric'), 'salary and growth details must be conditional on backend data');
-  assert.ok(source.includes('profile.savedCareers'), 'saved careers must be visible and persisted');
+  for (const label of ['Your pathway', 'Career goal', 'Subject and APS fit', 'Study routes', 'Programme eligibility', 'What to improve next', 'Alternative routes', 'Ask Odie to explain this pathway']) {
+    assert.ok(components.includes(label), `${label} section must be present`);
+  }
+  assert.ok(source.includes("searchParams.get('career')"), 'selected career must live in the URL');
+  assert.ok(source.includes('profile.savedCareers'), 'saved careers must remain persisted');
+  assert.ok(components.includes('aria-expanded={expanded}'), 'mobile programme cards must expose disclosure state');
 });
 
 test('Odie career chat streams with stop support and bounded memory', () => {

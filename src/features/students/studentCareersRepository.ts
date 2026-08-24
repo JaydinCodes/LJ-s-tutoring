@@ -1,4 +1,5 @@
 import { parseStudentCareersApiResponse } from '../../types/studentApiContracts';
+import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import careersDataset from '../../data/odie-careers/careers.v1.json';
 import coursesDataset from '../../data/odie-careers/courses.v1.json';
@@ -21,6 +22,47 @@ export interface CareerSummary {
     confidence?: string;
     forecastScore?: number;
   };
+  relatedCareerIds?: string[];
+  educationRoutes?: string[];
+  institutionPathCategories?: string[];
+  timeToEnterMonths?: { min: number; max: number };
+  sourceUrls?: string[];
+}
+
+export interface CareerSubjectRequirement {
+  label: string;
+  acceptedSubjects: string[];
+  minimumPercentage: number;
+  notes?: string;
+}
+
+export interface CareerProgramme {
+  id: string;
+  institutionId: string;
+  institutionName: string;
+  qualificationType: string;
+  programmeName: string;
+  faculty?: string;
+  institutionTypes?: string[];
+  alignedCareerIds: string[];
+  alignmentTags?: string[];
+  requirementConfidence?: string;
+  applicationNotes?: string[];
+  sourceUrl?: string;
+  requirements?: {
+    minimumAps?: number;
+    minimumEnglishPercentage?: number;
+    subjectRequirements?: CareerSubjectRequirement[];
+    notes?: string[];
+  };
+}
+
+export interface CareerInstitution {
+  id: string;
+  name: string;
+  city: string;
+  institutionTypes?: string[];
+  sourceUrl?: string;
 }
 
 export interface StudentCareerProfile {
@@ -33,7 +75,8 @@ export interface StudentCareerProfile {
 
 export interface CareerOverview {
   careers?: CareerSummary[];
-  institutions?: Array<{ id: string; name: string; city: string; institutionTypes?: string[] }>;
+  institutions?: CareerInstitution[];
+  programmes?: CareerProgramme[];
   supportedSubjects?: string[];
   profile?: StudentCareerProfile;
 }
@@ -99,14 +142,21 @@ export async function loadCareersOverview() {
   const base = {
     careers: careersDataset.careers,
     institutions: coursesDataset.institutions,
+    programmes: coursesDataset.courses,
     supportedSubjects: coursesDataset.supportedSubjects,
     profile: emptyProfile,
   };
+  if (isE2EAuthMockEnabled()) {
+    return parseStudentCareersApiResponse(base, base);
+  }
   if (!isSupabaseConfigured || !supabase) {
     return parseStudentCareersApiResponse(base, base);
   }
   // RLS scopes this to the current student's single row (unique student_id).
   const profileResult = await supabase.from('student_career_profiles').select('*').maybeSingle();
+  if (profileResult.error) {
+    throw profileResult.error;
+  }
   const profile = mapProfileRow((profileResult.data as CareerProfileRow | null) ?? null);
   return parseStudentCareersApiResponse({ ...base, profile }, base);
 }

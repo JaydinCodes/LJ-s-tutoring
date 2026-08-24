@@ -950,6 +950,20 @@ values
   ('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', array['Mathematics'], array['Grade 11'], 'active', 'approved'),
   ('30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000007', array['Mathematics'], array['Grade 11'], 'active', 'approved');
 
+insert into public.tutor_vetting_records (
+  tutor_id, status, reviewed_at, expires_at, reviewed_by_profile_id, evidence_reference
+)
+values
+  ('30000000-0000-0000-0000-000000000001', 'approved', now() - interval '1 day', now() + interval '1 year', '10000000-0000-0000-0000-000000000001', 'fixture-register-001'),
+  ('30000000-0000-0000-0000-000000000002', 'approved', now() - interval '1 day', now() + interval '1 year', '10000000-0000-0000-0000-000000000001', 'fixture-register-002')
+on conflict (tutor_id) do update
+set status = excluded.status,
+    reviewed_at = excluded.reviewed_at,
+    expires_at = excluded.expires_at,
+    reviewed_by_profile_id = excluded.reviewed_by_profile_id,
+    evidence_reference = excluded.evidence_reference,
+    updated_at = now();
+
 insert into public.organization_members (organization_id, profile_id, org_role, status)
 values
   ('a0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', 'tutor', 'active'),
@@ -1440,17 +1454,67 @@ select is(
   false,
   'AAL2 admin can run a non-destructive retention dry run'
 );
-select is((select count(*) from public.assignments), 4::bigint, 'AAL2 admin sees assignments across organizations');
-select is((select count(*) from public.assignment_submissions), 3::bigint, 'AAL2 admin sees submissions/results across organizations');
-select is((select count(*) from public.guardians), 2::bigint, 'AAL2 admin sees guardian records across organizations');
-select is((select count(*) from public.student_guardians), 2::bigint, 'AAL2 admin sees guardian links across organizations');
-select is((select count(*) from public.tutors), 2::bigint, 'AAL2 admin sees tutor base rows across organizations');
-select is((select count(*) from public.tutor_student_allocations), 2::bigint, 'AAL2 admin sees allocations across organizations');
-select is((select count(*) from public.classes), 2::bigint, 'AAL2 admin sees classes across organizations');
-select is((select count(*) from public.class_enrollments), 2::bigint, 'AAL2 admin sees class enrollments across organizations');
+select is(
+  (
+    select count(*)
+    from public.assignments
+    where organization_id in (
+      'a0000000-0000-0000-0000-000000000001',
+      'a0000000-0000-0000-0000-000000000002'
+    )
+      and created_by in (
+        '10000000-0000-0000-0000-000000000003',
+        '10000000-0000-0000-0000-000000000007'
+      )
+  ),
+  4::bigint,
+  'AAL2 admin sees the assignment fixtures across organizations'
+);
+select is(
+  (
+    select count(*)
+    from public.assignment_submissions
+    where id in (
+      '60000000-0000-0000-0000-000000000001',
+      '60000000-0000-0000-0000-000000000002',
+      '60000000-0000-0000-0000-000000000003'
+    )
+  ),
+  3::bigint,
+  'AAL2 admin sees submission fixtures across organizations'
+);
+select is((select count(*) from public.guardians where id in ('40000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees guardian records across organizations');
+select is((select count(*) from public.student_guardians where student_id in ('20000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002') and guardian_id in ('40000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees guardian links across organizations');
+select is(
+  (
+    select count(*)
+    from public.tutors
+    where id in (
+      '30000000-0000-0000-0000-000000000001',
+      '30000000-0000-0000-0000-000000000002'
+    )
+  ),
+  2::bigint,
+  'AAL2 admin sees the tutor fixtures across organizations'
+);
+select is((select count(*) from public.tutor_student_allocations where tutor_id in ('30000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002') and student_id in ('20000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees allocations across organizations');
+select is((select count(*) from public.classes where id in ('c0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees classes across organizations');
+select is((select count(*) from public.class_enrollments where class_id in ('c0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002') and student_id in ('20000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees class enrollments across organizations');
 select is((select count(*) from public.organizations where id in ('a0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000002')), 2::bigint, 'AAL2 admin sees both organizations');
-select is((select count(*) from storage.objects where bucket_id = 'assignment-files'), 4::bigint, 'AAL2 admin sees assignment files across organizations');
-select is((select count(*) from storage.objects where bucket_id = 'assignment-submissions'), 3::bigint, 'AAL2 admin sees submission files across organizations');
+select is(
+  (
+    select count(*)
+    from storage.objects
+    where bucket_id = 'assignment-files'
+      and owner in (
+        '00000000-0000-0000-0000-000000000003',
+        '00000000-0000-0000-0000-000000000007'
+      )
+  ),
+  4::bigint,
+  'AAL2 admin sees the assignment-file fixtures across organizations'
+);
+select is((select count(*) from storage.objects where bucket_id = 'assignment-submissions' and owner in ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000006')), 3::bigint, 'AAL2 admin sees submission files across organizations');
 select is((select count(*) from public.student_notifications), 0::bigint, 'even AAL2 admin cannot read student-only notifications');
 
 reset role;

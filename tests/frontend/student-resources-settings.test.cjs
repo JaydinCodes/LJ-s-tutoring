@@ -24,20 +24,16 @@ test('resources page uses grouped rows instead of resource cards or tables', () 
   assert.ok(!source.includes('<DataTable<WeeklyReport'), 'resources must avoid report tables');
 });
 
-test('settings page uses iOS-style settings groups and is routed from student shell', () => {
-  const source = read('src', 'features', 'students', 'StudentSupportRoutes.tsx');
+test('settings page restores accessible theme preferences and is routed from student shell', () => {
+  const source = read('src', 'features', 'settings', 'PortalSettingsRoute.tsx');
+  const preferences = read('src', 'features', 'settings', 'portalPreferences.ts');
   const app = read('src', 'app', 'App.tsx');
   const shell = read('src', 'components', 'dashboard', 'DashboardShell.tsx');
 
-  for (const component of ['StudentSettingsRoute', 'SettingsGroup', 'SettingsRow']) {
-    assert.ok(source.includes(`export function ${component}`), `${component} must be exported`);
-  }
-
-  for (const label of ['Profile', 'Account', 'Privacy', 'Appearance']) {
-    assert.ok(source.includes(`title="${label}"`), `${label} settings group must be present`);
-  }
-
   assert.ok(app.includes('path="/dashboard/student/settings"'), 'student settings route must be registered');
   assert.ok(shell.includes("to: '/dashboard/student/settings'"), 'student rail settings link must target settings route');
-  assert.ok(shell.includes('to="/dashboard/student/settings"'), 'top header settings link must target settings route');
+  assert.ok(source.includes('role="radio"'), 'theme choices must expose radio semantics');
+  assert.ok(source.includes('aria-checked='), 'theme choices must expose selected state');
+  assert.ok(preferences.includes('PortalThemeRestorer'), 'saved theme preference must be reapplied after refresh');
+  assert.ok(preferences.includes("root.classList.toggle('dark'"), 'theme restoration must update the Tailwind dark class');
 });

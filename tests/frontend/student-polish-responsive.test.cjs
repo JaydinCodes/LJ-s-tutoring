@@ -38,7 +38,7 @@ test('career Odie surfaces expose dialog semantics only on the careers route', (
   const dashboard = read('src', 'features', 'students', 'StudentDashboardRoute.tsx');
 
   assert.ok(careers.includes('role="dialog"'), 'Odie sheet and drawer must expose dialog semantics');
-  assert.ok(careers.includes('aria-hidden={!props.open}'), 'closed Odie surfaces must be hidden from assistive tech');
+  assert.ok(careers.includes('aria-hidden={!open}'), 'closed Odie surfaces must be hidden from assistive tech');
   assert.ok(careers.includes('aria-label="Odie career assistant"'), 'Odie dialog must have an accessible label');
   assert.equal(dashboard.includes('Odie career assistant'), false, 'Odie accessibility surface must stay out of the normal dashboard');
 });

@@ -1,5 +1,5 @@
 import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
-import { getE2EStudentDashboard } from '../../lib/e2e/mockRoleData';
+import { getE2EStudentDashboard, getE2EStudentTaskQueueState } from '../../lib/e2e/mockRoleData';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import { callRpc } from '../../lib/supabase/rpc';
 import { resolveSignedUrls, signedStorageHref } from '../../lib/supabase/storage';
@@ -90,7 +90,7 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     return null;
   }
 
-  const [assignmentsResult, progressResult, competencyEvidenceResult, enrollmentsResult, submissionsResult, assignedTutorsResult, sessionsResult] = await Promise.all([
+  const [assignmentsResult, progressResult, competencyEvidenceResult, enrollmentsResult, submissionsResult, assignedTutorsResult, sessionsResult, learningRecommendationsResult] = await Promise.all([
     // Students never query the raw assignments table. This database-owned,
     // explicit projection omits private/internal fields (including memo_url)
     // and applies the same eligibility gate as uploads and submission RPCs.
@@ -107,9 +107,13 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     // This RPC deliberately redacts private tutor notes and internal session
     // fields; students must never read public.sessions directly.
     supabase.rpc('get_student_sessions'),
+    // This security-definer projection is deliberately learner-safe: it only
+    // returns tutor-approved activities and never exposes the internal
+    // instructional state, score, confidence, or decision rationale.
+    supabase.rpc('get_my_learning_recommendations').limit(1),
   ]);
 
-  for (const result of [assignmentsResult, progressResult, competencyEvidenceResult, enrollmentsResult, submissionsResult, assignedTutorsResult, sessionsResult]) {
+  for (const result of [assignmentsResult, progressResult, competencyEvidenceResult, enrollmentsResult, submissionsResult, assignedTutorsResult, sessionsResult, learningRecommendationsResult]) {
     if (result.error) {
       throw result.error;
     }
@@ -129,6 +133,7 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
   const submissions = (submissionsResult.data || []) as AssignmentSubmission[];
   const assignedTutors = (assignedTutorsResult.data || []) as StudentAssignedTutor[];
   const sessions = (sessionsResult.data || []) as StudentSessionRow[];
+  const approvedRecommendation = learningRecommendationsResult.data?.[0] || null;
   // Exact totals live in the database. The arrays above are bounded
   // presentation data and must never be used to derive a dashboard metric.
   const dashboardMetrics = await callRpc(supabase, 'get_student_dashboard_metrics', {});
@@ -215,8 +220,15 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
     assignedTutors,
     sessions,
     submissions: submissionsWithSignedUrls,
-    recommendedNext: weakestProgress ? {
-      title: `Recommended next: ${weakestProgress.topic}`,
+    // A genuine next-step activity appears only after a tutor has reviewed and
+    // approved it. Generic progress remains a neutral fallback, not an
+    // automated placement or learner-visible "level".
+    recommendedNext: approvedRecommendation ? {
+      title: `Next focus: ${approvedRecommendation.skill_title}`,
+      description: approvedRecommendation.learner_copy,
+      action: approvedRecommendation.activity_title,
+    } : weakestProgress ? {
+      title: `Focus area: ${weakestProgress.topic}`,
       description: `Spend one focused block on ${weakestProgress.topic}.`,
       action: 'Open progress',
     } : null,
@@ -243,6 +255,9 @@ async function loadFromSupabase(): Promise<StudentDashboardView | null> {
 
 export async function loadStudentDashboard(): Promise<StudentDashboardView> {
   if (isE2EAuthMockEnabled()) {
+    if (getE2EStudentTaskQueueState() === 'loading') {
+      await new Promise((resolve) => window.setTimeout(resolve, 700));
+    }
     return getE2EStudentDashboard();
   }
 

@@ -1,7 +1,7 @@
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDropzone, type FileRejection } from 'react-dropzone';
-import { BookOpen, Brain, CheckCircle2, Clock, ScrollText, Sparkles, Target, TrendingUp, Trophy, UploadCloud, type LucideIcon } from 'lucide-react';
+import { ArrowRight, BookOpen, Brain, CheckCircle2, Clock, ScrollText, Sparkles, Target, TrendingUp, Trophy, UploadCloud, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AnimatedProgressBar, GreekHeroCard, InsightCard, PremiumButton, StaggerGrid, StaggerItem, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
@@ -26,70 +26,38 @@ import type { DailyInsight } from './studentDailyInsight';
 import { useRecoverPendingStudentAssignmentMutation, useSubmitStudentAssignmentMutation } from './studentQueries';
 
 export function TodayOdyssey({
-  data,
   nextAssignment,
-  completionRate,
-  dailyInsight,
   battlePlan,
 }: {
-  data: StudentDashboardView;
   nextAssignment?: Assignment;
-  completionRate: number;
-  dailyInsight: DailyInsight;
   battlePlan: BattlePlanItem[];
 }) {
-  const dueDelta = daysUntil(nextAssignment?.due_date);
-  const nextExam = data.examCalendar?.nextExam;
-  const nextExamDelta = daysUntil(nextExam?.examDate);
   const firstAction = battlePlan[0];
-  const academicStatus = data.dailyInsightContext?.currentAcademicStatus || data.supportStatus?.label || 'Building rhythm';
+  const actionTitle = firstAction?.title || nextAssignment?.title || 'Review your next learning step';
+  const estimatedMinutes = firstAction?.estimatedMinutes || 20;
 
   return (
-    <section className="academy-major-surface relative overflow-hidden">
-      <div className="absolute inset-x-6 top-0 h-px greek-keyline" aria-hidden="true" />
-      <div className="relative">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-academy-gold">Today&apos;s Odyssey</p>
-        <div className="mt-3 grid gap-5 lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-end">
-          <div>
-            <h2 className="font-display text-4xl font-semibold leading-tight tracking-normal text-white sm:text-5xl">
-              {data.profile.name ? `Good to see you, ${data.profile.name.split(' ')[0]}` : 'Good to see you'}
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-academy-parchment">{dailyInsight.message}</p>
-          </div>
-          <div className="rounded-ios-lg border border-white/[0.15] bg-white/10 p-4 shadow-academy-inset backdrop-blur-xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-gold">Current status</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{academicStatus}</p>
-            <p className="mt-2 text-sm leading-6 text-academy-parchment">{completionRate}% assignment completion</p>
+    <section className="academy-major-surface relative min-h-[20rem] overflow-hidden bg-cover bg-center" data-testid="student-primary-plan" style={{ backgroundImage: "url('/images/dashboard/student-learning-plan-classical.webp')" }}>
+      <div className="absolute inset-0 bg-gradient-to-r from-academy-navy via-academy-navy/90 to-transparent" aria-hidden="true" />
+      <div className="relative flex min-h-[16.5rem] max-w-[40rem] flex-col justify-between">
+        <div>
+          <h2 className="font-display text-2xl font-semibold text-white sm:text-3xl">Today&apos;s learning plan</h2>
+          <span className="mt-3 block h-0.5 w-8 bg-academy-gold" aria-hidden="true" />
+        </div>
+        <div className="mt-6 flex items-center gap-5">
+          <span className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-academy-gold text-academy-navy shadow-[0_8px_24px_rgba(244,197,24,0.22)]">
+            <BookOpen className="h-10 w-10" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="font-display text-2xl font-semibold leading-tight text-white sm:text-3xl">{actionTitle}</h3>
+            <p className="mt-2 inline-flex items-center gap-2 text-base text-academy-parchment"><Clock className="h-5 w-5" aria-hidden="true" />{estimatedMinutes} min</p>
           </div>
         </div>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <OdysseySignal label="Next task" value={nextAssignment?.title || 'Queue clear'} helper={formatTaskDue(nextAssignment?.due_date, dueDelta)} />
-          <OdysseySignal label="Next exam" value={nextExam?.subject || 'Not scheduled'} helper={formatExamDue(nextExam?.title, nextExam?.examDate, nextExamDelta)} />
-          <OdysseySignal label="Focus" value={dailyInsight.eyebrow} helper={dailyInsight.action} />
-        </div>
-
-        <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-gold">Primary action</p>
-            <p className="mt-1 text-base font-semibold text-white">{firstAction?.title || 'Open your next learning step'}</p>
-          </div>
-          <Link className="academy-btn academy-btn-gold w-full sm:w-auto" to={firstAction?.to || '/dashboard/student/assignments'}>
-            {firstAction ? 'Start now' : 'Open assignments'}
-          </Link>
-        </div>
+        <Link className="academy-btn academy-btn-gold mt-7 w-full rounded-xl px-8 sm:w-fit sm:min-w-72" data-testid="student-primary-action" to={firstAction?.to || '/dashboard/student/assignments'}>
+          Continue learning <ArrowRight className="h-5 w-5" aria-hidden="true" />
+        </Link>
       </div>
     </section>
-  );
-}
-
-function OdysseySignal({ label, value, helper }: { label: string; value: string; helper: string }) {
-  return (
-    <div className="min-w-0 border-t border-white/[0.12] pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">{label}</p>
-      <p className="mt-2 truncate text-lg font-semibold text-white">{value}</p>
-      <p className="mt-1 line-clamp-2 text-xs leading-5 text-academy-parchment">{helper}</p>
-    </div>
   );
 }
 
@@ -140,7 +108,7 @@ export function LearningTimeline({ items }: { items: BattlePlanItem[] }) {
                 <span className={`mb-2 grid h-8 w-8 place-items-center rounded-full border text-xs font-bold sm:absolute sm:left-0 sm:top-4 ${isCompleted ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200' : 'border-academy-gold/30 bg-academy-gold/[0.12] text-academy-navy dark:text-academy-gold'}`}>
                   {isCompleted ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : index + 1}
                 </span>
-                <div className="rounded-ios-lg border border-white/70 bg-white/[0.58] p-4 shadow-academy-inset backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.045]">
+                <div className="rounded-ios-lg border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">{item.kind}</p>
@@ -177,7 +145,7 @@ export function SubjectProgressBands({ progress }: { progress: StudentProgress[]
         </h2>
       </div>
 
-      <div className="divide-y divide-slate-950/5 rounded-ios-lg border border-white/70 bg-white/[0.46] px-4 shadow-academy-inset backdrop-blur-xl dark:divide-white/10 dark:border-white/10 dark:bg-white/[0.035]">
+      <div className="divide-y divide-slate-950/5 rounded-ios-lg border border-slate-200 bg-white px-4 shadow-[0_10px_28px_rgba(15,23,42,0.055)] dark:divide-white/10 dark:border-white/10 dark:bg-slate-900">
         {!bands.length ? (
           <div className="py-4">
             <EmptyState

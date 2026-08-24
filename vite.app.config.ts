@@ -56,6 +56,24 @@ export default defineConfig(({ command, mode }) => {
     rollupOptions: {
       preserveEntrySignatures: false,
       output: {
+        // Keep shared third-party code out of the initial application entry.
+        // The route modules are already lazy; without explicit vendor chunks,
+        // Rollup promotes their shared dependencies into the entry and makes
+        // every first visit pay for all role dashboards.
+        manualChunks(id) {
+          const normalizedId = id.replace(/\\\\/g, '/');
+          if (!normalizedId.includes('/node_modules/')) {
+            return undefined;
+          }
+          if (normalizedId.includes('/node_modules/lucide-react/')) {
+            return 'lucide-icons';
+          }
+          const supabasePackage = normalizedId.match(/\/node_modules\/@supabase\/([^/]+)\//)?.[1];
+          if (supabasePackage) {
+            return `supabase-${supabasePackage}`;
+          }
+          return undefined;
+        },
         entryFileNames: 'react-app-[hash].js',
         chunkFileNames: 'chunks/[name]-[hash].js',
         assetFileNames: (assetInfo) => {

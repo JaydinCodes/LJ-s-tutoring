@@ -82,6 +82,15 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20260813084719_enforce_tutor_assignment_target_grades.sql` | `1482a5d6fb853212c729859c02f7d613a6ef78e7464db8d134cd72f4f7ddc6a9` |
 | `20260814102402_monitoring_health_probe.sql` | `ce8c9e1591cbf55ff0ad8fa27a054b7a57cbdea9b2a9b8346ee60f5e09deea6f` |
 | `20260815204809_fix_student_assignment_file_access.sql` | `be31de2711cbdd51c00f2bae760b35f0c2d718bb3022e9e36566b2fcbf4f114c` |
+| `20260824195539_enforce_tutor_vetting_before_allocation.sql` | `b09989adb29d50000742965605239eb2a16a0cad7d16e3aa4332001a2069a99e` |
+| `20260824200719_enforce_tutor_vetting_for_classes.sql` | `5197f3273e7c22036cfbaa230dd7c9973f41f9b7ec490ccd36a984457a285c6b` |
+| `20260824204121_add_adaptive_learning_foundation.sql` | `69851565971ddd5c45d895b0b133e6425683e8549a8adcb28a7ffb437b736b23` |
+| `20260824211253_add_question_type_mastery_and_grade12_caps_taxonomy.sql` | `3e811a23cc424db858d4865cc555811f68a70aa73f05f3f9512450c1428f3c57` |
+| `20260824211724_fix_question_type_state_read_policy.sql` | `c1aa366c45a676e9ddb3c7c49e10aee4aada3074b69bc2acdda8d9c98c00eb7f` |
+| `20260824211806_fix_question_type_state_policy_execution.sql` | `12968de20e5dda4f7dbd80e5e6646c984aa58d76de5c2a817933f009e5a989f0` |
+| `20260824212208_align_grade12_taxonomy_to_atp.sql` | `8a42b1ad873416499ca86a87342c50a61c545cb4742868b2e68b2e5082b9a6a4` |
+| `20260824213658_seed_grades_8_to_11_maths_taxonomy.sql` | `e0f3e03d8a7a3f61f69ed9ad4ef0b705b28d73e79b11184b93d39d4302a1d005` |
+| `20260824215910_enable_profile_identity_rls.sql` | `fd7e4eafd103decac8b90de44e49366f681ad37458f301adc6863aa171f87010` |
 
 ## Regeneration
 

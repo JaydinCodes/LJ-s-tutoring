@@ -698,10 +698,11 @@ function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
           width={tutor.imageWidth}
         />
         <div
+          aria-hidden={!isBioVisible}
           id={bioId}
           className={`absolute inset-0 z-20 flex flex-col justify-end bg-brand-navy/90 p-5 text-white ${
             isBioVisible ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-          } ${transitionClass} group-hover:pointer-events-auto group-hover:opacity-100`}
+          } ${transitionClass} group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100`}
         >
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">Tutor bio</p>
           <p className="mt-3 text-sm leading-6 text-brand-parchment">{tutor.bio}</p>
@@ -712,7 +713,15 @@ function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
         <h3 className="text-xl font-semibold text-brand-obsidian">{tutor.name}</h3>
         <p className="mt-2 text-sm font-semibold text-brand-deepBlue">{tutor.subject}</p>
         <p className="mt-1 text-sm text-slate-600">{tutor.role}</p>
-        
+        <button
+          aria-controls={bioId}
+          aria-expanded={isBioVisible}
+          className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-brand-aegean/30 bg-brand-aegean/[0.06] px-4 text-sm font-semibold text-brand-deepBlue transition hover:bg-brand-aegean/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean"
+          onClick={() => setIsBioVisible((visible) => !visible)}
+          type="button"
+        >
+          {isBioVisible ? 'Hide tutor bio' : 'Read tutor bio'}
+        </button>
       </div>
     </article>
   );

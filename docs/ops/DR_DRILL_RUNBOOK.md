@@ -1,40 +1,53 @@
-# Disaster Recovery Drill Runbook
+# Disaster-Recovery Drill Runbook
 
-Frequency: Monthly
+Frequency: quarterly, and after a material Supabase, Storage, Auth, or
+deployment-topology change. This runbook is for an isolated restore drill; it
+must not be exercised against the production project.
 
-> **Stale (2026-07-24):** step 1 below (`npm run migrate --prefix lms-api`,
-> `/ready`, `npm run restore:verify --prefix lms-api`) referenced the retired
-> `lms-api` service and its DR script, which checked stale/wrong tables and
-> was deleted rather than fixed forward. This repo's database is a single
-> Supabase-managed Postgres project — restore verification should use
-> Supabase's own backup/restore tooling. No replacement drill procedure
-> exists yet; see `docs/architecture/PRISMA_TO_SUPABASE_MIGRATION_PLAN.md` §6
-> step 7 for context.
+## Before the drill
 
-## 1) Database Restore Verification (stale, see note above)
-1) Provision a clean Postgres instance.
-2) Restore the latest production backup.
-3) ~~Run migrations: npm run migrate --prefix lms-api~~ (script deleted)
-4) ~~Verify /ready returns ok.~~ (endpoint deleted)
-5) ~~Run restore verification script: npm run restore:verify --prefix lms-api~~ (script deleted)
-6) Attach output as drill evidence.
+1. Appoint a recovery lead, independent verifier, and incident recorder.
+2. Open the drill record and capture the production SHA, release-gate artifact,
+   current Supabase migration history, target recovery point, and expected
+   Storage inventories.
+3. Confirm the target is isolated and has no production integrations or real
+   recipient email/SMS/payment configuration.
+4. Confirm the actual Supabase plan capability and support path for the
+   selected recovery point. If PITR cannot meet the stated RPO, record the gap
+   and stop the drill rather than substituting an untested method.
 
-## 2) Session Integrity Verification
-1) Run a sample arcade session (start, score, end).
-2) Verify session token validation accepts only signed tokens.
-3) Confirm scores appear only when validated.
+## Execute
 
-## 3) Audit Continuity Verification
-1) Export audit log from admin console.
-2) Check that audit_log records exist for last 24 hours.
+1. Follow the database and Storage procedures in
+   [`PITR_STRATEGY_AND_RESTORE_VERIFICATION.md`](../db/PITR_STRATEGY_AND_RESTORE_VERIFICATION.md).
+2. Verify migration history before any schema action. Do not run forward
+   migrations merely to make a restored target look current.
+3. Run the protected role checks: AAL2 admin, tutor, student, parent, and an
+   unrelated organisation user. Check database rows, released-result masking,
+   and private Storage access.
+4. Verify the tutor safeguarding boundary by attempting an active allocation
+   for a pending/unvetted tutor, then for an approved unexpired tutor.
+5. Verify that cron jobs, Edge Functions, webhooks, and notification workers
+   are disabled or target only drill-safe endpoints.
+6. Record measured recovery time, data gap, object comparison, and all errors.
 
-## 4) Evidence Logging
-- Record timestamps, operator, and outcome.
-- Attach logs/screenshots to the DR logbook.
-- Attach latest `DR Restore Verify` workflow run reference.
+## Pass criteria
 
-## Rollback Procedure
-1) Activate read-only mode for API.
-2) Restore DB snapshot to last known good.
-3) Re-run migrations.
-4) Re-enable API and confirm health endpoints.
+- Recovery meets the approved RPO/RTO, or the gap is accepted by the service
+  owner with a dated remediation.
+- No production credential, user, provider, or public Storage exposure is used.
+- Role and cross-organisation checks pass, including released-data and tutor
+  vetting gates.
+- Database and Storage inventories are reconciled for the selected recovery
+  point.
+- The verifier signs the evidence and a recovery lead approves target teardown.
+
+## After the drill
+
+1. Attach the evidence items named in the PITR procedure to the drill record.
+2. Log failures in the production-readiness register with an owner and due
+   date. A failed or undocumented drill blocks a production release.
+3. Destroy the isolated target, revoke temporary secrets, and verify that no
+   test scheduler or webhook remains enabled.
+4. Update this runbook if the actual restore flow, target services, or recovery
+   objectives changed.

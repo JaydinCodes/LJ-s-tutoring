@@ -12,12 +12,13 @@ function read(relativePath) {
 test('LAUNCH-03 non-student role dashboards have mobile navigation and overflow menu', () => {
   const shell = read('src/components/dashboard/DashboardShell.tsx');
 
-  assert.match(shell, /function MobileRoleNav/);
+  assert.match(shell, /function MobileRoleNavigation/);
   assert.match(shell, /lg:hidden/);
   assert.match(shell, /overflowItems/);
   assert.match(shell, /aria-expanded=\{open\}/);
-  assert.match(shell, /bottom-\[calc\(0\.75rem\+env\(safe-area-inset-bottom\)\)\]/);
-  assert.match(shell, /gridTemplateColumns: `repeat\(\$\{visibleCount\}, minmax\(0, 1fr\)\)`/);
+  const styles = read('src/styles/tailwind.css');
+  assert.match(styles, /bottom-\[calc\(0\.75rem\+env\(safe-area-inset-bottom\)\)\]/);
+  assert.match(shell, /gridTemplateColumns: `repeat\(\$\{visibleItems\.length \+ \(showMore \? 1 : 0\)\}, minmax\(0, 1fr\)\)`/);
   assert.match(shell, /Sign out/);
   assert.match(shell, /getSectionHome/);
 });
@@ -27,13 +28,13 @@ test('LAUNCH-03 mobile cards and table rows reserve space and tap targets', () =
   const styles = read('src/components/dashboard/dashboardStyles.ts');
   const dataTable = read('src/components/ui/DataTable.tsx');
 
-  assert.match(shell, /pb-\[calc\(6\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
-  assert.match(shell, /break-words text-2xl/);
+  assert.match(shell, /pb-\[calc\(6\.75rem\+env\(safe-area-inset-bottom\)\)\]/);
+  assert.match(shell, /break-words font-display/);
   assert.match(shell, /hidden min-w-0 sm:block/);
   assert.match(styles, /p-4/);
   assert.match(styles, /sm:p-5/);
   assert.match(dataTable, /md:hidden/);
-  assert.match(dataTable, /\[&_button\]:min-h-10/);
-  assert.match(dataTable, /\[&_a\]:min-h-10/);
+  assert.match(dataTable, /\[&_button\]:min-h-11/);
+  assert.match(dataTable, /\[&_a\]:min-h-11/);
   assert.match(dataTable, /hidden overflow-x-auto md:block/);
 });

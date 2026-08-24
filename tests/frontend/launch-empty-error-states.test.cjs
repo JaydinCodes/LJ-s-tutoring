@@ -50,7 +50,7 @@ test('LAUNCH-04 protected and major role routes use shared launch states', () =>
   assert.match(protectedRoute, /LoadingState/);
 
   for (const source of [adminDashboard, adminAssignments, adminResults, tutorSubmissions, parentReports, ngoReports]) {
-    assert.match(source, /LoadingState/, 'route must use shared loading state');
+    assert.match(source, /LoadingState|SkeletonCard/, 'route must use a shared loading state or dashboard skeleton');
     assert.match(source, /ErrorState/, 'route must use shared error state');
   }
 

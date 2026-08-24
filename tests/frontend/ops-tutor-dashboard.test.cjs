@@ -25,21 +25,21 @@ test('OPS-04 tutor dashboard is an allocation-scoped operations cockpit', () => 
   assert.match(types, /sessions: Array/);
   assert.match(types, /learnerProgress: Array/);
 
-  assert.match(route, /Tutor operations/);
-  assert.match(route, /Allocated students/);
-  assert.match(route, /Marking queue/);
-  assert.match(route, /Upcoming and recent sessions/);
-  assert.match(route, /Open risk monitor/);
-  assert.match(route, /grid gap-3 sm:grid-cols-2 lg:grid-cols-4/);
+  assert.match(route, /Today’s teaching plan/);
+  assert.match(route, /Learners needing attention/);
+  assert.match(route, /Submissions awaiting review/);
+  assert.match(route, /Upcoming sessions/);
+  assert.match(route, /Open learner brief/);
+  assert.match(route, /sm:grid-cols-3/);
 });
 
 test('OPS-04 tutor dashboard preserves deeper tutor workflows', () => {
   const route = read('src/features/tutors/TutorDashboardRoute.tsx');
 
-  assert.match(route, /href="\/dashboard\/tutor\/submissions"/);
-  assert.match(route, /href="\/dashboard\/tutor\/sessions"/);
-  assert.match(route, /href="\/dashboard\/tutor\/classes"/);
-  assert.match(route, /href="\/dashboard\/tutor\/reports"/);
-  assert.match(route, /TutorSubmissionReviewCard/);
-  assert.match(route, /Session records are loaded directly from Supabase/);
+  assert.match(route, /to="\/dashboard\/tutor\/submissions"/);
+  assert.match(route, /to="\/dashboard\/tutor\/sessions"/);
+  assert.match(route, /to="\/dashboard\/tutor\/assignments"/);
+  assert.match(route, /to=\{nextLearner \? `\/dashboard\/tutor\/learners/);
+  assert.match(route, /Review work and respond/);
+  assert.match(route, /Brief ready/);
 });

@@ -44,9 +44,14 @@ All four run on **one platform, one content spine, one security model** — they
 - **Implemented foundation:** organisation/member tables and scoped RLS, parent
   and aggregate NGO reporting routes, committed forward migrations, runtime RLS
   tests, tutor applications/documents, and volunteer-log capability.
-- **Still incomplete:** the CAPS content taxonomy/authoring system, the formal
-  `tutor_vetting` allocation gate, production backup/restore evidence, and the
-  remaining release-hardening work tracked by the 2026-08-02 audit.
+- **Still incomplete:** the CAPS content taxonomy/authoring system, production
+  backup/restore evidence, reconciliation of currently active tutor placements,
+  and the external release-hardening evidence tracked in
+  [`../ops/PRODUCTION_READINESS_REGISTER.md`](../ops/PRODUCTION_READINESS_REGISTER.md).
+- **Safeguarding gate landed:** `tutor_vetting_records` is admin-only and an
+  active learner allocation or class requires an approved, unexpired record
+  with a restricted-system evidence reference. Existing tutors are deliberately
+  `pending` until reviewed; this never invents a safeguarding clearance.
 - **Accepted deferment:** Community is not in use and its audit work is excluded
   at the owner's direction. It must be disabled or redesigned before onboarding
   real users; this deferment is not evidence that Community is production-safe.
@@ -83,12 +88,18 @@ Phases are ordered by dependency and risk, not calendar dates (small team, ASAP 
 - Stand up the content pipeline: `draft (AI) → teacher_review → approved → published` (teacher-review gate is non-negotiable).
 - Author **depth-first**: Grade 12 Paper-1 topics first, then outward.
 - Build our own **practice/diagnostic item bank** mapped to concept slugs.
+- Sequence tutor-approved next actions from atomic skill evidence. The internal
+  instructional state is never a learner-facing level, rank, or placement decision;
+  see [GRADE12_MATHS_ADAPTIVE_LEARNING_SYSTEM.md](GRADE12_MATHS_ADAPTIVE_LEARNING_SYSTEM.md).
 - **Exit criteria:** a learner can work a full Grade 12 Paper-1 topic end to end (lesson → practice → diagnostic → progress signal).
 
 ### Phase D — People: tutor hiring + volunteer onboarding
 - Recruitment funnel and **safeguarding/vetting** gate ([TUTOR_AND_VOLUNTEER_MODEL.md](TUTOR_AND_VOLUNTEER_MODEL.md)).
 - Paid vs volunteer engagement tracking; volunteer-hour logging for the community strand.
-- **Exit criteria:** a new tutor/volunteer can't be assigned to a learner until vetting is recorded as passed.
+- **Technical exit criterion met:** a new tutor/volunteer cannot receive an
+  active learner allocation or class until vetting is recorded as approved and
+  unexpired. The operational exit still requires a named safeguarding lead,
+  legal/process evidence, and reconciliation of existing placements.
 
 ### Phase E — User-centric dashboard + data-light mode
 - Redesign the student landing around the two questions ("what do I do next?" / "am I okay?") with progressive disclosure, on the existing brand.

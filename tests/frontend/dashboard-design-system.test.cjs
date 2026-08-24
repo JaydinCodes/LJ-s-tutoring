@@ -35,17 +35,18 @@ test('dashboard surfaces use the homepage brand palette and shared visual rules'
   const tailwind = read('tailwind.config.js');
   const styles = read('src', 'components', 'dashboard', 'dashboardStyles.ts');
   const shell = read('src', 'components', 'dashboard', 'DashboardShell.tsx');
+  const design = read('src', 'components', 'dashboard', 'DashboardDesignSystem.tsx');
   const card = read('src', 'components', 'ui', 'Card.tsx');
 
   for (const token of ['navy', 'aegean', 'gold', 'parchment', 'marble', 'obsidian']) {
     assert.match(tailwind, new RegExp(`${token}:`), `brand.${token} must remain configured`);
-    assert.ok(shell.includes(`brand-${token}`) || styles.includes(`brand-${token}`), `dashboard must use brand.${token}`);
+    assert.ok(shell.includes(`brand-${token}`) || shell.includes(`academy-${token}`) || styles.includes(`brand-${token}`) || design.includes(`brand-${token}`), `dashboard must use brand.${token}`);
   }
 
   assert.ok(styles.includes('rounded-[1.5rem]'), 'shared cards must use one radius rule');
-  assert.ok(styles.includes('border-white/70'), 'shared cards must use the translucent glass border rule');
-  assert.ok(styles.includes('backdrop-blur-2xl'), 'shared cards must use the iOS-style glass blur rule');
-  assert.ok(styles.includes('shadow-[0_18px_45px_rgba(15,23,42,0.07)]'), 'shared cards must use the quiet elevation rule');
+  assert.ok(styles.includes('border-slate-200'), 'shared cards must use a thin solid border rule');
+  assert.ok(!styles.includes('backdrop-blur-2xl'), 'shared cards must avoid excessive glass blur');
+  assert.ok(styles.includes('shadow-[0_10px_28px_rgba(15,23,42,0.055)]'), 'shared cards must use the quiet elevation rule');
   assert.ok(card.includes('dashboardSurfaceClass'), 'legacy Card imports must inherit shared surface rules');
 });
 

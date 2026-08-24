@@ -33,7 +33,8 @@ test('tutor and student dashboards consume allocation-scoped data', () => {
 
   assert.match(tutorRepo, /from\('tutor_student_allocations'\)\.select\('\*'\)\.eq\('tutor_id', tutor\.id\)\.eq\('status', 'active'\)/);
   assert.match(tutorRepo, /allocatedStudents:/);
-  assert.match(tutorRoute, /Allocated students/);
+  assert.match(tutorRoute, /Learners needing attention/);
+  assert.match(tutorRoute, /learnerProgress/);
   // The student read is deliberately narrowed to a SECURITY DEFINER RPC (NOT a
   // direct table read) so the tutor's `rate_override` pay rate and other
   // sensitive allocation/tutor fields never reach a student's dashboard

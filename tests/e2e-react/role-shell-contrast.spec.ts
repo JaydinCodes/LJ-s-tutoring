@@ -6,11 +6,11 @@ type SmokeRole = 'admin' | 'ngo_partner' | 'parent' | 'student' | 'tutor';
 
 const password = process.env.VITE_E2E_AUTH_PASSWORD ?? 'ProjectOdysseus!23';
 
-const roles: Record<SmokeRole, { email: string; dashboard: string; heading: string; section: string }> = {
+const roles: Record<SmokeRole, { email: string; dashboard: string; heading: string | RegExp; section: string }> = {
   admin: {
     email: 'admin.e2e@projectodysseus.test',
     dashboard: '/dashboard/admin',
-    heading: 'Admin Dashboard',
+    heading: /Good (morning|afternoon|evening), Admin/,
     section: 'admin',
   },
   ngo_partner: {
@@ -28,13 +28,13 @@ const roles: Record<SmokeRole, { email: string; dashboard: string; heading: stri
   student: {
     email: 'student.e2e@projectodysseus.test',
     dashboard: '/dashboard/student',
-    heading: 'Today',
+    heading: /Good (morning|afternoon|evening), Student/,
     section: 'student',
   },
   tutor: {
     email: 'tutor.e2e@projectodysseus.test',
     dashboard: '/dashboard/tutor',
-    heading: 'Tutor Dashboard',
+    heading: /Good (morning|afternoon|evening), Tutor/,
     section: 'tutor',
   },
 };

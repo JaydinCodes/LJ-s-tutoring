@@ -663,6 +663,16 @@ export interface AdminDashboardView {
   payments: Array<Payment & { student_label?: string }>;
   tutorPayments: Array<TutorPayment & { tutor_label?: string }>;
   ngoPartners: NgoPartner[];
+  sessions: Array<{
+    id: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+    status: string;
+    tutor_name?: string;
+    student_name?: string;
+    topics_covered?: string | null;
+  }>;
   team: Array<{ name: string; role: string; focus: string }>;
 }
 

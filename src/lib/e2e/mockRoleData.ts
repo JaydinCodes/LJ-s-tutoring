@@ -116,6 +116,104 @@ const e2eSubmission: AssignmentSubmission & { assignment_title?: string; student
   student_name: e2eStudent.full_name,
 };
 
+// Student-only Smart Task Queue fixtures exercise every learner-facing lane.
+// They never leave E2E mock mode and do not alter production metrics or data.
+const e2eSmartQueueAssignments: Assignment[] = [
+  {
+    ...e2eAssignment,
+    id: 'e2e-assignment-returned',
+    title: 'Algebra diagnostic corrections',
+    description: 'Review the released feedback, correct questions 3 and 5, and upload your revised working.',
+    due_date: '2030-06-12T15:00:00.000Z',
+  },
+  {
+    ...e2eAssignment,
+    id: 'e2e-assignment-overdue',
+    title: 'English evidence paragraph',
+    description: 'Write one evidence-based paragraph using the supplied extract.',
+    subject_id: 'e2e-subject-english',
+    subject: 'English',
+    due_date: '2025-06-10T16:00:00.000Z',
+  },
+  {
+    ...e2eAssignment,
+    id: 'e2e-assignment-submitted',
+    title: 'Geometry proof set',
+    description: 'Complete the proof set and show each reason clearly.',
+    due_date: '2030-06-18T14:00:00.000Z',
+  },
+  {
+    ...e2eAssignment,
+    id: 'e2e-assignment-marked',
+    title: 'Photosynthesis lab review',
+    description: 'Review the released result and tutor feedback.',
+    subject_id: 'e2e-subject-biology',
+    subject: 'Biology',
+    due_date: '2026-06-02T12:00:00.000Z',
+  },
+  {
+    ...e2eAssignment,
+    id: 'e2e-assignment-no-date',
+    title: 'Ancient Greece source reflection',
+    description: 'Compare the two sources and identify one limitation in each.',
+    subject_id: 'e2e-subject-history',
+    subject: 'History',
+    due_date: null,
+  },
+  {
+    ...e2eAssignment,
+    id: 'e2e-assignment-archived',
+    title: 'Study skills journal',
+    description: 'An older reflection retained for reference.',
+    subject_id: null,
+    subject: 'Study skills',
+    due_date: null,
+    status: 'archived',
+  },
+];
+
+const e2eSmartQueueSubmissions: AssignmentSubmission[] = [
+  {
+    ...e2eSubmission,
+    id: 'e2e-submission-returned',
+    assignment_id: 'e2e-assignment-returned',
+    original_filename: 'algebra-diagnostic-v1.pdf',
+    status: 'returned',
+    feedback: 'Questions 3 and 5 need corrected substitution steps.',
+    feedback_released: true,
+    released_at: '2026-06-09T10:00:00.000Z',
+  },
+  {
+    ...e2eSubmission,
+    id: 'e2e-submission-waiting',
+    assignment_id: 'e2e-assignment-submitted',
+    original_filename: 'geometry-proofs.pdf',
+    status: 'submitted',
+  },
+  {
+    ...e2eSubmission,
+    id: 'e2e-submission-marked',
+    assignment_id: 'e2e-assignment-marked',
+    original_filename: 'photosynthesis-lab.pdf',
+    status: 'marked',
+    marks_awarded: 88,
+    feedback: 'Strong explanation of how light intensity affected the observed rate.',
+    marks_released: true,
+    feedback_released: true,
+    released_at: '2026-06-08T13:00:00.000Z',
+  },
+];
+
+export type E2EStudentTaskQueueState = 'populated' | 'empty' | 'submitted-only' | 'marked-only' | 'null-due' | 'loading' | 'error';
+
+export function getE2EStudentTaskQueueState(): E2EStudentTaskQueueState {
+  if (typeof window === 'undefined') return 'populated';
+  const value = window.localStorage.getItem('project-odysseus:e2e-task-queue-state');
+  return value === 'empty' || value === 'submitted-only' || value === 'marked-only' || value === 'null-due' || value === 'loading' || value === 'error'
+    ? value
+    : 'populated';
+}
+
 const e2eAllocation: TutorStudentAllocation = {
   id: 'e2e-allocation-1',
   tutor_id: 'e2e-tutor-1',
@@ -150,6 +248,25 @@ const e2eProgress: StudentProgress[] = [
 ];
 
 export function getE2EStudentDashboard(): StudentDashboardView {
+  const taskQueueState = getE2EStudentTaskQueueState();
+  if (taskQueueState === 'error') throw new Error('The task queue could not be loaded.');
+  const smartQueueAssignments = taskQueueState === 'empty'
+    ? []
+    : taskQueueState === 'submitted-only'
+      ? [e2eSmartQueueAssignments[2]]
+      : taskQueueState === 'marked-only'
+        ? [e2eSmartQueueAssignments[3]]
+        : taskQueueState === 'null-due'
+          ? [e2eSmartQueueAssignments[4]]
+          : [e2eAssignment, ...e2eSmartQueueAssignments];
+  const smartQueueSubmissions = taskQueueState === 'submitted-only'
+    ? [e2eSmartQueueSubmissions[1]]
+    : taskQueueState === 'marked-only'
+      ? [e2eSmartQueueSubmissions[2]]
+      : taskQueueState === 'empty' || taskQueueState === 'null-due'
+        ? []
+        : e2eSmartQueueSubmissions;
+
   return {
     profile: {
       name: 'Student E2E',
@@ -164,7 +281,7 @@ export function getE2EStudentDashboard(): StudentDashboardView {
       { label: 'Open assignments', value: '1', helper: 'Work still requiring action.', tone: 'amber' },
       { label: 'Classes', value: '1', helper: 'Current classes for this learner.', tone: 'blue' },
     ],
-    assignments: [e2eAssignment],
+    assignments: smartQueueAssignments,
     progress: e2eProgress,
     classes: [e2eClass],
     sessions: [{
@@ -187,7 +304,7 @@ export function getE2EStudentDashboard(): StudentDashboardView {
         email: 'tutor.e2e@projectodysseus.test',
       },
     ],
-    submissions: [],
+    submissions: smartQueueSubmissions,
     recommendedNext: {
       title: 'Open the quadratic worksheet',
       description: 'Read the brief and upload working for review.',
@@ -314,6 +431,16 @@ export function getE2EAdminDashboard(): AdminDashboardView {
       location: 'Cape Town',
       notes: 'E2E smoke partner.',
       created_at: now,
+    }],
+    sessions: [{
+      id: 'e2e-admin-session-1',
+      date: '2030-06-10',
+      start_time: '16:00',
+      end_time: '17:00',
+      status: 'submitted',
+      tutor_name: 'Tutor E2E',
+      student_name: 'Student E2E',
+      topics_covered: 'Quadratic functions',
     }],
     team: [
       { name: 'Academic operations', role: 'Admin', focus: 'Students, tutors, classes, assignments' },

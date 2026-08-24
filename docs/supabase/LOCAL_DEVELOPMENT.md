@@ -77,6 +77,16 @@ Apply or reset local schema/RLS/RPC:
 npm run supabase:reset
 ```
 
+Seed the local dashboard accounts used by the login page:
+
+```bash
+npm run supabase:seed:auth
+```
+
+The local demo password is `ProjectOdysseus!23` for `admin@example.com`,
+`student@example.com`, and `tutor@example.com`. These accounts are created only
+in the local Supabase stack.
+
 This destroys only the local database, replays every committed migration in
 timestamp order, and loads configured local seed data. It must never be used
 with `--linked` against production.

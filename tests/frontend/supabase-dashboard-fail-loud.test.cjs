@@ -14,13 +14,16 @@ test('core Supabase dashboards throw query errors instead of rendering plausible
   const storage = read('src/lib/supabase/storage.ts');
 
   assert.match(student, /authError[\s\S]*throw authError/);
-  assert.match(student, /\[assignmentsResult, progressResult, competencyEvidenceResult, enrollmentsResult, submissionsResult, assignedTutorsResult, sessionsResult\][\s\S]*throw result\.error/);
+  assert.match(student, /\[assignmentsResult, progressResult, competencyEvidenceResult, enrollmentsResult, submissionsResult, assignedTutorsResult, sessionsResult, learningRecommendationsResult\][\s\S]*throw result\.error/);
   for (const result of ['profileResult', 'studentResult', 'classesResult', 'subjectsResult']) {
     assert.match(student, new RegExp(`if \\(${result}\\.error\\) \\{[\\s\\S]*?throw ${result}\\.error`));
   }
   assert.match(student, /rpc\('get_student_assigned_tutors'\)/);
+  assert.match(student, /rpc\('get_my_learning_recommendations'\)/);
   assert.doesNotMatch(student, /from\('tutor_student_allocations'\)/);
   assert.doesNotMatch(student, /from\('tutors'\)/);
+  assert.doesNotMatch(student, /from\('learning_recommendations'\)/);
+  assert.doesNotMatch(student, /from\('learner_skill_state'\)/);
 
   assert.match(tutor, /loadTutorAllocatedStudents\(client\)/);
   assert.match(tutorOperations, /rpc\('get_tutor_allocated_students'\)[\s\S]*if \(result\.error\) \{[\s\S]*?throw result\.error/);

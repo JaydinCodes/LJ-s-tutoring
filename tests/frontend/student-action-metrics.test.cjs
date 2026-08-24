@@ -18,7 +18,8 @@ test('student dashboard replaces flat stats with a focused today flow', () => {
     assert.ok(route.includes(`<${component}`), `${component} must be rendered by the dashboard route`);
   }
 
-  assert.ok(source.includes("Today's Odyssey") || source.includes('Today&apos;s Odyssey'), 'dashboard must lead with the Today Odyssey surface');
+  assert.ok(source.includes("Today's learning plan") || source.includes('Today&apos;s learning plan'), 'dashboard must lead with today’s learning plan');
+  assert.ok(source.includes('Continue learning'), 'dashboard must expose one obvious primary action');
   assert.ok(source.includes('What should I do today?'), 'dashboard must frame the main learner question');
   assert.ok(source.includes('Progress by subject'), 'dashboard must render subject progress bands');
   assert.ok(route.includes('battlePlan={battlePlan}'), 'dashboard route must pass learner state into Today Odyssey');

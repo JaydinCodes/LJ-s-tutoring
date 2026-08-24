@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-03-25T09:36:33.898Z",
-  "releaseId": "release-2026-03-25",
+  "generatedAt": "2026-08-24T22:26:22.471Z",
+  "releaseId": "release-2026-08-24",
   "ci": {
     "runId": "local",
     "ref": "local",

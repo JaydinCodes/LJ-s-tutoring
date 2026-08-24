@@ -37,6 +37,7 @@ jobs:
         uses: github/codeql-action/init@c3400c2f38909e0dcf3c3a41f2030a8217be5d3e # v3
         with:
           languages: ${{ matrix.language }}
+          config-file: ./.github/codeql-config.yml
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@c3400c2f38909e0dcf3c3a41f2030a8217be5d3e # v3
@@ -44,11 +45,33 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@c3400c2f38909e0dcf3c3a41f2030a8217be5d3e # v3
 
+  edge-function-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.5.4
+
+      - name: Type-check Supabase Edge Functions
+        run: |
+          deno check --no-lock --node-modules-dir=none \
+            supabase/functions/admin-invite-user/index.ts \
+            supabase/functions/cleanup-submission-assets/index.ts \
+            supabase/functions/complete-temporary-password/index.ts \
+            supabase/functions/dispatch-notification-outbox/index.ts \
+            supabase/functions/grade-submission/index.ts \
+            supabase/functions/odie-careers-chat-stream/index.ts \
+            supabase/functions/process-privacy-deletion/index.ts \
+            supabase/functions/process-tutor-deletion/index.ts \
+            supabase/functions/refresh-stale-weekly-reports/index.ts
+
   dependency-policy:
-    # The actual production dependency audit remains a blocking check in App
-    # CI and Release Gates. Keep GitHub's dependency-review report visible,
-    # but do not let GitHub's optional metadata service block a release.
-    continue-on-error: true
+    # Dependency review is a required PR check. It complements the runtime
+    # production-dependency audit in App CI and Release Gates by rejecting
+    # risky changes before they reach the default branch.
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     permissions:

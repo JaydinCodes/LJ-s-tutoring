@@ -21,7 +21,7 @@ test('streaming Odie career chat is Groq-backed via a Supabase Edge Function and
   const edgeHelper = read('src', 'lib', 'supabase', 'edgeFunctions.ts');
   const careersRoute = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
 
-  assert.ok(fn.includes('https://api.groq.com/openai/v1/chat/completions'), 'streaming function must call Groq');
+  assert.match(fn, /fetch\('https:\/\/api\.groq\.com\/openai\/v1\/chat\/completions'/, 'streaming function must call Groq');
   assert.ok(fn.includes("Accept: 'text/event-stream'"), 'Groq request must ask for streaming events');
   assert.ok(fn.includes("error: 'groq_not_configured'"), 'missing Groq configuration must be explicit');
   assert.ok(fn.includes("req.signal.addEventListener('abort'"), 'client disconnect must stop generation');

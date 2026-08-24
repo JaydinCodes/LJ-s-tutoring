@@ -56,7 +56,21 @@ export interface NormalizedStudentData {
   submittedAssignmentIds: Set<string>;
   assignmentBuckets: Map<string, AssignmentItem[]>;
   dueTasks: PriorityQueue<StudentTask>;
+  smartTaskQueue: Map<SmartTaskQueueGroup, SmartTaskQueueItem[]>;
 }
+
+export type SmartTaskQueueGroup = 'needs-attention' | 'upcoming' | 'waiting-feedback' | 'recently-marked';
+
+export interface SmartTaskQueueItem extends StudentTask {
+  group: SmartTaskQueueGroup;
+}
+
+export const smartTaskQueueGroupOrder: SmartTaskQueueGroup[] = [
+  'needs-attention',
+  'upcoming',
+  'waiting-feedback',
+  'recently-marked',
+];
 
 export interface NormalizedStudentResults {
   resultsById: Map<string, ResultsItem>;
@@ -103,7 +117,70 @@ export function normalizeStudentData(
     submittedAssignmentIds,
     assignmentBuckets: selectAssignmentStatusBuckets(assignmentsById, submissionsByAssignmentId, now),
     dueTasks: selectDueTaskQueue(assignmentsById, submissionsByAssignmentId, now),
+    smartTaskQueue: selectSmartTaskQueue(assignmentsById, submissionsByAssignmentId, now),
   };
+}
+
+export function selectSmartTaskQueue(
+  assignmentsById: Map<string, AssignmentItem>,
+  submissionsByAssignmentId: Map<string, AssignmentSubmission>,
+  now = new Date(),
+) {
+  const groups = new Map<SmartTaskQueueGroup, SmartTaskQueueItem[]>();
+  for (const group of smartTaskQueueGroupOrder) groups.set(group, []);
+
+  for (const assignment of assignmentsById.values()) {
+    const submission = submissionsByAssignmentId.get(assignment.id);
+    const status = calculateAssignmentStatus({ assignment, submission, now });
+    const group = getSmartTaskQueueGroup(status);
+    if (!group) continue;
+
+    groups.get(group)?.push({
+      assignmentId: assignment.id,
+      assignment,
+      submission,
+      status,
+      group,
+      priority: getSmartTaskPriority(status),
+      dueAt: parseDate(assignment.due_date)?.getTime() ?? Number.MAX_SAFE_INTEGER,
+    });
+  }
+
+  for (const [group, items] of groups) {
+    groups.set(group, [...items].sort(compareSmartTaskQueueItems));
+  }
+  return groups;
+}
+
+export function getSmartTaskQueueGroup(status: AssignmentLifecycleStatus): SmartTaskQueueGroup | null {
+  if (status === 'missing' || status === 'due_soon' || status === 'returned_for_correction') return 'needs-attention';
+  if (status === 'not_started') return 'upcoming';
+  if (status === 'submitted' || status === 'under_review' || status === 'late_submitted') return 'waiting-feedback';
+  if (status === 'marked') return 'recently-marked';
+  return null;
+}
+
+export function getSmartTaskPriority(status: AssignmentLifecycleStatus) {
+  if (status === 'returned_for_correction') return 0;
+  if (status === 'missing') return 1;
+  if (status === 'due_soon') return 2;
+  if (status === 'not_started') return 3;
+  if (status === 'submitted' || status === 'under_review' || status === 'late_submitted') return 4;
+  if (status === 'marked') return 5;
+  return 6;
+}
+
+function compareSmartTaskQueueItems(left: SmartTaskQueueItem, right: SmartTaskQueueItem) {
+  return left.priority - right.priority
+    || left.dueAt - right.dueAt
+    || left.assignment.title.localeCompare(right.assignment.title)
+    || left.assignmentId.localeCompare(right.assignmentId);
+}
+
+export function selectNextActionableAssignment(data: NormalizedStudentData) {
+  return data.smartTaskQueue.get('needs-attention')?.[0]
+    || data.smartTaskQueue.get('upcoming')?.[0]
+    || null;
 }
 
 export type AssignmentStatusBucket = 'due-now' | 'submitted' | 'marked' | 'archived';

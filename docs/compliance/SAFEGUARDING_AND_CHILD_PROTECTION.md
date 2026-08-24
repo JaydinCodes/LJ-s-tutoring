@@ -42,7 +42,11 @@ We are a small team (5 people, all under 23) and current tutors are **family and
 
 ## 4. Vetting standard (the gate)
 
-No one may be allocated to a learner or class until their vetting status is recorded as **`passed`** in the system (enforced in the allocation RPC — see [TUTOR_AND_VOLUNTEER_MODEL.md](../product/TUTOR_AND_VOLUNTEER_MODEL.md) §5). Volunteers meet the **same** standard as paid tutors — unpaid changes nothing.
+No one may be allocated to a learner or class until their vetting status is
+recorded as **`approved`** and unexpired in `tutor_vetting_records` (enforced
+by database triggers, not the UI). The record stores only a restricted-system
+case reference; source documents remain outside the application database.
+Volunteers meet the **same** standard as paid tutors — unpaid changes nothing.
 
 Vetting components (confirm exact statutory requirements with counsel — §10):
 1. Identity verification (SA ID / passport).

@@ -3,7 +3,7 @@ import { isE2EAuthMockEnabled } from '../../lib/e2e/mockAuth';
 import { getE2EAdminDashboard } from '../../lib/e2e/mockRoleData';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase/client';
 import { resolveSignedUrls } from '../../lib/supabase/storage';
-import type { AdminDashboardView, Assignment, AssignmentSubmission, Guardian, NgoPartner, Payment, Profile, Student, StudentGuardian, Tutor, TutorPayment } from '../../types/lms';
+import type { AdminDashboardView, Assignment, AssignmentSubmission, Guardian, NgoPartner, Payment, Profile, SessionRecord, Student, StudentGuardian, Tutor, TutorPayment } from '../../types/lms';
 
 // Single-stack migration: the legacy /admin/dashboard API is retired. When
 // Supabase is unavailable we render an empty dashboard rather than calling the
@@ -24,6 +24,7 @@ function emptyAdminDashboard(): AdminDashboardView {
     payments: [],
     tutorPayments: [],
     ngoPartners: [],
+    sessions: [],
     team: [
       { name: 'Founder / Academic Lead', role: 'Admin', focus: 'Curriculum, tutor quality, learner outcomes' },
       { name: 'Operations Coordinator', role: 'Admin', focus: 'Approvals, schedules, payments, reporting' },
@@ -63,7 +64,12 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
   const submissions = (submissionsResult.data || []) as AssignmentSubmission[];
   const payments = (paymentsResult.data || []) as Payment[];
   const tutorPayments = (tutorPaymentsResult.data || []) as TutorPayment[];
+  const sessionsResult = await supabase.from('sessions').select('id, tutor_id, student_id, date, start_time, end_time, status, topics_covered').order('date', { ascending: true }).order('start_time', { ascending: true }).limit(50);
+  if (sessionsResult.error) {
+    throw sessionsResult.error;
+  }
   const ngoPartners = (ngoResult.data || []) as NgoPartner[];
+  const sessions = (sessionsResult.data || []) as SessionRecord[];
   const profileIds = Array.from(new Set([
     ...students.map((student) => student.profile_id),
     ...tutors.map((tutor) => tutor.profile_id),
@@ -88,6 +94,7 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
   const studentNameById = new Map(students.map((student) => [student.id, [student.grade, student.school].filter(Boolean).join(' | ') || student.id]));
   const studentDisplayNameById = new Map(students.map((student) => [student.id, profileById.get(student.profile_id)?.full_name || [student.grade, student.school].filter(Boolean).join(' | ') || student.id]));
   const tutorNameById = new Map(tutors.map((tutor) => [tutor.id, [tutor.subjects?.join(', '), tutor.grades?.join(', ')].filter(Boolean).join(' | ') || tutor.id]));
+  const tutorDisplayNameById = new Map(tutors.map((tutor) => [tutor.id, profileById.get(tutor.profile_id)?.full_name || tutorNameById.get(tutor.id)]));
   const ngoById = new Map(ngoPartners.map((ngo) => [ngo.id, ngo.name]));
 
   return {
@@ -136,6 +143,16 @@ async function loadFromSupabase(): Promise<AdminDashboardView | null> {
       tutor_label: tutorNameById.get(payment.tutor_id),
     })),
     ngoPartners,
+    sessions: sessions.map((session) => ({
+      id: session.id,
+      date: session.date,
+      start_time: session.start_time,
+      end_time: session.end_time,
+      status: session.status,
+      tutor_name: tutorDisplayNameById.get(session.tutor_id),
+      student_name: studentDisplayNameById.get(session.student_id),
+      topics_covered: session.topics_covered,
+    })),
     team: [
       { name: 'Academic operations', role: 'Admin', focus: 'Students, tutors, classes, assignments' },
       { name: 'Finance operations', role: 'Admin', focus: 'Student payments and tutor payouts' },

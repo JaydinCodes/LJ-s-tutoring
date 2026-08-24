@@ -10,7 +10,10 @@
 
 We put adults in contact with minors — in homes (private), schools, NGO cohorts, and volunteer classes at churches, mosques, and community venues in under-privileged areas. **The single highest risk in this whole business is a safeguarding failure with a child.** It outranks every technical concern in `AUDIT.md`. This model exists to make it structurally impossible to assign an un-vetted adult to a learner.
 
-**Non-negotiable rule (enforced in data, not just policy):** a tutor or volunteer **cannot be allocated to any learner or class until their vetting status is recorded as `passed`.**
+**Non-negotiable rule (enforced in data, not just policy):** a tutor or
+volunteer **cannot receive an active learner allocation or class until an
+admin-only `tutor_vetting_records` row is recorded as `approved`, unexpired,
+and linked to a restricted-system evidence reference.**
 
 ### Current state vs. future (be honest about where we are)
 
@@ -72,9 +75,12 @@ Applied → Screening → Interview → Vetting (§3) → Induction → Active
 - **Induction** — safeguarding training + platform onboarding.
 - **Active** — eligible for allocation to learners/classes.
 
-Supabase already has a tutor **application + approval workflow**, qualification
-metadata, and private document handling. The remaining work is to add the formal
-vetting record and make every allocation/class-assignment RPC enforce it.
+Supabase has a tutor **application + approval workflow**, qualification
+metadata, private document handling, and the formal `tutor_vetting_records`
+gate. Database triggers enforce approved, unexpired vetting for active learner
+allocations and active classes. Existing tutors start as `pending` until a
+platform admin records a real verification; the migration never fabricates a
+clearance.
 
 ---
 
@@ -84,7 +90,13 @@ Builds on [ADR-0002](../architecture/MULTI_ORG_MODEL_PLAN.md); keep the canonica
 
 - **Membership & role:** `organization_members (organization_id, profile_id, org_role='tutor', status)`.
 - **Engagement type per membership:** add `engagement_type enum ('paid','volunteer')` to `organization_members` (a person can be paid in one org, volunteer in another).
-- **Vetting status (gates allocation):** a `tutor_vetting` record per person —
+- **Vetting status (historical target; implemented variant below):** this older
+  `tutor_vetting` sketch is retained for policy discussion only. The live
+  implementation uses one admin-only `tutor_vetting_records` row per `tutors`
+  record, with `pending` / `approved` / `rejected` / `expired` state,
+  `reviewed_at`, `expires_at`, `reviewed_by_profile_id`, and an
+  `evidence_reference` to the restricted register. It stores no source checking
+  document. —
   ```sql
   create table public.tutor_vetting (
     id uuid primary key default gen_random_uuid(),
@@ -103,13 +115,20 @@ Builds on [ADR-0002](../architecture/MULTI_ORG_MODEL_PLAN.md); keep the canonica
     updated_at timestamptz not null default now()
   );
   ```
-- **The hard gate:** allocation (`tutor_student_allocations`) and class assignment RPCs must check `tutor_vetting.status = 'passed'` and `expires_at > now()` for the tutor **before** creating the link. Enforce in the SECURITY DEFINER RPC, not just the UI.
+- **The hard gate:** database triggers on `tutor_student_allocations` and
+  `classes` require `tutor_vetting_records.status = 'approved'` and
+  `expires_at > now()` before an active placement can be created. A record
+  cannot be downgraded while an active placement remains. This protects direct
+  database writes as well as UI/RPC paths.
 - **Volunteer hours:** Supabase `volunteer_events` and `volunteer_logs` plus their
   secured RPCs provide the current event/log foundation. A future monthly rollup
   must enforce and report the 6–10 hours/month operational commitment without
   exposing cross-tutor details.
 
-**RLS:** `tutor_vetting` is **platform-admin-only** (it contains sensitive check data) — not visible to coordinators, tutors, or the tutor themselves beyond a boolean "cleared" status surfaced via a safe view/RPC.
+**RLS:** `tutor_vetting_records` is **platform-admin-only**. It contains only
+the verification state and restricted-register reference, and is not visible to
+coordinators, tutors, or learners. Do not add a document URL or check content to
+this table.
 
 ---
 

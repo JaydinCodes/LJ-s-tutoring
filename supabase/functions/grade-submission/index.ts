@@ -83,6 +83,21 @@ type StoredAsset =
   | { kind: 'binary'; mimeType: string; base64: string }
   | { kind: 'unsupported'; mimeType: string | null; reason: string };
 
+type StorageSigningClient = {
+  storage: {
+    from: (bucket: 'assignment-submissions') => {
+      createSignedUrl: (path: string, expiresIn: number) => Promise<{
+        data: { signedUrl?: string | null } | null;
+        error: Error | null;
+      }>;
+    };
+  };
+};
+
+type RpcCapableClient = {
+  rpc: unknown;
+};
+
 function timeoutSignal(timeoutMs: number) {
   if (typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal) {
     return AbortSignal.timeout(timeoutMs);
@@ -172,7 +187,7 @@ function statusForError(message: string): number {
 }
 
 async function readStorageAsset(
-  admin: ReturnType<typeof createClient>,
+  admin: StorageSigningClient,
   bucket: 'assignment-submissions',
   path: string,
   label: string,
@@ -294,7 +309,7 @@ function buildUserParts(args: {
 }
 
 async function markFailure(
-  admin: ReturnType<typeof createClient>,
+  admin: RpcCapableClient,
   submission: AiJobRow,
   errorMessage: string,
   retryAfterMinutes = DEFAULT_RETRY_AFTER_MINUTES,
@@ -326,7 +341,7 @@ async function markFailure(
 }
 
 async function markSuccess(
-  admin: ReturnType<typeof createClient>,
+  admin: RpcCapableClient,
   submission: AiJobRow,
   payload: {
     aiMarksAwarded: number;

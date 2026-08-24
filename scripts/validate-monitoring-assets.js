@@ -46,12 +46,12 @@ const uptime = read('.github/workflows/uptime-check.yml');
 for (const variable of ['HEALTHCHECK_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY']) {
   mustInclude(uptime, new RegExp(`secrets\\.${variable}`), `${variable} repository secret`);
 }
-for (const endpoint of [
-  '/health.json',
-  '/auth/v1/health',
-  '/rest/v1/rpc/monitoring_health_probe',
+for (const [endpointPattern, description] of [
+  [/\/health\.json/, '/health.json probe'],
+  [/\/auth\/v1\/health/, '/auth/v1/health probe'],
+  [/\/rest\/v1\/rpc\/monitoring_health_probe/, '/rest/v1/rpc/monitoring_health_probe probe'],
 ]) {
-  mustInclude(uptime, new RegExp(endpoint.replace(/[?]/g, '\\?')), `${endpoint} probe`);
+  mustInclude(uptime, endpointPattern, description);
 }
 mustInclude(uptime, /content-type:.*application\/json/i, 'web JSON content-type assertion');
 mustInclude(uptime, /if: failure\(\)/, 'failed-probe notification step');

@@ -255,6 +255,20 @@ async function seedAcademicJourney(request, profiles) {
     },
   });
 
+  // The production schema refuses active learner/class placement until the
+  // tutor has a dated safeguarding verification. This disposable local fixture
+  // models a verified record without storing a real document or person data.
+  await request('/rest/v1/tutor_vetting_records', {
+    method: 'POST',
+    body: {
+      tutor_id: tutor.id,
+      status: 'approved',
+      reviewed_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      evidence_reference: 'local-e2e-safeguarding-fixture',
+    },
+  });
+
   const [subject] = await request('/rest/v1/subjects?on_conflict=name%2Cgrade%2Ccurriculum&select=*', {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=representation',
@@ -394,7 +408,13 @@ async function main() {
     VITE_SUPABASE_URL: status.API_URL,
     VITE_SUPABASE_ANON_KEY: status.ANON_KEY,
   };
-  execFileSync(process.execPath, [playwrightCli, 'test', '--config', 'playwright.supabase.config.ts'], {
+  const playwrightArgs = [playwrightCli, 'test', '--config', 'playwright.supabase.config.ts'];
+  // A targeted runtime journey is useful when diagnosing one disposable local
+  // role fixture without changing the canonical full-suite command.
+  if (process.env.E2E_SUPABASE_GREP) {
+    playwrightArgs.push('--grep', process.env.E2E_SUPABASE_GREP);
+  }
+  execFileSync(process.execPath, playwrightArgs, {
     env,
     stdio: 'inherit',
   });
