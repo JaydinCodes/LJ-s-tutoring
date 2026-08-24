@@ -1,10 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
-import { QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
-import { SmoothScroll } from '../components/animations/SmoothScroll';
-import { queryClient } from '../lib/query/client';
 import { initErrorReporting } from '../lib/monitoring/errorReporting';
 import '../styles/tailwind.css';
 
@@ -33,16 +30,12 @@ rootNode.classList.remove('app-booting');
 
 ReactDOM.createRoot(rootNode).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <SmoothScroll>
-        <BrowserRouter>
-          <ErrorBoundary>
-            <Suspense fallback={<AppBootFallback />}>
-              {isPortalRoute(window.location.pathname) ? <PortalApp /> : <PublicApp />}
-            </Suspense>
-          </ErrorBoundary>
-        </BrowserRouter>
-      </SmoothScroll>
-    </QueryClientProvider>
+    <BrowserRouter>
+      <ErrorBoundary>
+        <Suspense fallback={<AppBootFallback />}>
+          {isPortalRoute(window.location.pathname) ? <PortalApp /> : <PublicApp />}
+        </Suspense>
+      </ErrorBoundary>
+    </BrowserRouter>
   </React.StrictMode>,
 );

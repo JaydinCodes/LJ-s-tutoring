@@ -26,11 +26,11 @@ test('student routes use cached TanStack Query hooks', () => {
 });
 
 test('student queries use scoped keys and assignment mutation invalidates only dashboard data', () => {
-  const main = read('src', 'app', 'main.tsx');
+  const portalApp = read('src', 'app', 'PortalApp.tsx');
   const client = read('src', 'lib', 'query', 'client.ts');
   const queries = read('src', 'features', 'students', 'studentQueries.ts');
 
-  assert.ok(main.includes('QueryClientProvider'), 'React root must install QueryClientProvider');
+  assert.ok(portalApp.includes('QueryClientProvider'), 'Authenticated portal must install QueryClientProvider');
   assert.ok(client.includes('retry: 2'), 'student reads must preserve automatic retries');
   assert.ok(queries.includes("dashboard: (studentScope: string)"), 'dashboard key must be learner scoped');
   assert.ok(queries.includes("results: (studentScope: string)"), 'results key must be learner scoped');
