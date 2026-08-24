@@ -68,6 +68,10 @@ export default defineConfig(({ command, mode }) => {
           if (normalizedId.includes('/node_modules/lucide-react/')) {
             return 'lucide-icons';
           }
+          const supabasePackage = normalizedId.match(/\/node_modules\/@supabase\/([^/]+)\//)?.[1];
+          if (supabasePackage) {
+            return `supabase-${supabasePackage}`;
+          }
           return undefined;
         },
         entryFileNames: 'react-app-[hash].js',

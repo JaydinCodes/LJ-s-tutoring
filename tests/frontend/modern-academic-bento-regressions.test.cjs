@@ -29,11 +29,11 @@ test('all role shells use a five-destination mobile nav with an accessible More 
 
 test('saved theme is restored after refresh and Tailwind honours explicit theme classes', () => {
   const preferences = read('src', 'features', 'settings', 'portalPreferences.ts');
-  const main = read('src', 'app', 'main.tsx');
+  const portalApp = read('src', 'app', 'PortalApp.tsx');
   const tailwind = read('tailwind.config.js');
   assert.match(preferences, /readPreferences\(auth\.profile\?\.id\)\.theme/);
   assert.match(preferences, /applyTheme\(preference\)/);
-  assert.match(main, /<PortalThemeRestorer \/>/);
+  assert.match(portalApp, /<PortalThemeRestorer \/>/);
   assert.match(tailwind, /darkMode: 'class'/);
 });
 

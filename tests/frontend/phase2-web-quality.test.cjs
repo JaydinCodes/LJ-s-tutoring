@@ -143,6 +143,7 @@ test('public copy avoids migration language and unsupported marketing statistics
 
 test('major route modules load through real production code-split boundaries', () => {
   const app = read('src/app/App.tsx');
+  const main = read('src/app/main.tsx');
   const viteConfig = read('vite.app.config.ts');
   const buildStatic = read('scripts/build-static.js');
   const performanceBudget = read('scripts/check-frontend-performance-budget.cjs');
@@ -154,6 +155,9 @@ test('major route modules load through real production code-split boundaries', (
   assert.match(app, /lazy\(\(\) => import\('\.\.\/features\/admin\/AdminDashboardRoute'\)/);
   assert.match(app, /lazy\(\(\) => import\('\.\.\/features\/tutors\/TutorDashboardRoute'\)/);
   assert.match(app, /<Suspense fallback=\{<RouteLoadingFallback \/>\}>/);
+  assert.match(main, /const PortalApp = lazy/);
+  assert.match(main, /const PublicApp = lazy/);
+  assert.match(main, /isPortalRoute\(window\.location\.pathname\)/);
   assert.match(viteConfig, /formats: \['es'\]/);
   assert.match(viteConfig, /preserveEntrySignatures: false/);
   assert.match(viteConfig, /entryFileNames: 'react-app-\[hash\]\.js'/);
@@ -163,6 +167,6 @@ test('major route modules load through real production code-split boundaries', (
   assert.match(performanceBudget, /assertGzipSizeIfBuiltPath\(reactEntry, 'react-app-dist\/react-app-<hash>\.js', 320_000\)/);
   assert.match(performanceBudget, /assertGeneratedJsBudget\('react-app-dist', 3_000_000, 150_000\)/);
   assert.match(performanceBudget, /assertGzipSizeIfBuiltPath\(reactCss, 'react-app-dist\/react-app-<hash>\.css', 55_000\)/);
-  assert.match(performanceDocs, /eager entry: 1,399,096 bytes raw \/ 310,874 bytes gzip/);
-  assert.match(performanceDocs, /all generated JavaScript: 2,848,202 bytes across 61 files/);
+  assert.match(performanceDocs, /eager public entry: 645,847 bytes raw \/ 159,486 bytes gzip/);
+  assert.match(performanceDocs, /deferred Supabase Auth: 257,030 bytes raw \/ 51,430 bytes gzip/);
 });

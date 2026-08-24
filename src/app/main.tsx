@@ -1,15 +1,23 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
-import { App } from './App';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
-import { AuthProvider } from '../features/auth/AuthProvider';
 import { SmoothScroll } from '../components/animations/SmoothScroll';
 import { queryClient } from '../lib/query/client';
 import { initErrorReporting } from '../lib/monitoring/errorReporting';
 import '../styles/tailwind.css';
-import { PortalThemeRestorer } from '../features/settings/portalPreferences';
+
+const PortalApp = lazy(() => import('./PortalApp').then((module) => ({ default: module.PortalApp })));
+const PublicApp = lazy(() => import('./PublicApp').then((module) => ({ default: module.PublicApp })));
+
+function isPortalRoute(pathname: string) {
+  return /^(?:\/dashboard|\/student|\/login|\/onboarding)(?:\/|$)/.test(pathname);
+}
+
+function AppBootFallback() {
+  return <main className="min-h-screen bg-brand-parchment dark:bg-slate-950" aria-busy="true"><p className="sr-only" role="status">Loading Project Odysseus</p></main>;
+}
 
 initErrorReporting();
 
@@ -29,10 +37,9 @@ ReactDOM.createRoot(rootNode).render(
       <SmoothScroll>
         <BrowserRouter>
           <ErrorBoundary>
-            <AuthProvider>
-              <PortalThemeRestorer />
-              <App />
-            </AuthProvider>
+            <Suspense fallback={<AppBootFallback />}>
+              {isPortalRoute(window.location.pathname) ? <PortalApp /> : <PublicApp />}
+            </Suspense>
           </ErrorBoundary>
         </BrowserRouter>
       </SmoothScroll>
