@@ -105,7 +105,10 @@ function StudentBentoGrid({ data, battlePlan }: { data: StudentDashboardView; ba
     .filter((assignment) => assignment.status !== 'archived')
     .sort((left, right) => String(left.due_date || '9999').localeCompare(String(right.due_date || '9999')))
     .slice(0, 2);
-  const suggestedPractice = assignments.length < 2 ? battlePlan.find((item) => item.kind !== 'assignment') : undefined;
+  // Keep one adaptive next step visible even on a busy assignment day. Hiding
+  // it whenever two assignments exist made genuine recommendation evidence
+  // disappear from the learner's dashboard.
+  const suggestedPractice = battlePlan.find((item) => item.kind !== 'assignment');
   const latestFeedback = [...data.submissions]
     .filter((submission) => Boolean(submission.feedback))
     .sort((left, right) => String(right.released_at || right.submitted_at || '').localeCompare(String(left.released_at || left.submitted_at || '')))[0];
