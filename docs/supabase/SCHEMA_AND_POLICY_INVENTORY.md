@@ -94,7 +94,7 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20260826120612_grade9_evidence_learning_system.sql` | `752383e1a8f649fa3b6226e3ce19ecd438292e250b27fe68c99ef3b19159cb74` |
 | `20260826123020_grade9_instructional_pilot_vertical.sql` | `95f36be42b156c020d93aee1625b08ec90b7d9cc203f5ed3d5392eb7401956d4` |
 | `20260826125819_grade9_instructional_validation_workflow.sql` | `dae8f8f9bbaedd52eeddbc18337c66304ae053f4053c535e7c8fc3b9f3dd5ce6` |
-| `20260826134817_grade9_gold_standard_second_pass_revisions.sql` | `7e92398212874f15aaff8568b8205bc2983a63b9ed818170f2805793eec309be` |
+| `20260826134817_grade9_gold_standard_second_pass_revisions.sql` | `6d0b357a3037e38e182c398eaba583e8fc88af886cd41bd6d377ed422fc2e431` |
 
 ## Regeneration
 
