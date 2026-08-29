@@ -91,6 +91,10 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20260824212208_align_grade12_taxonomy_to_atp.sql` | `8a42b1ad873416499ca86a87342c50a61c545cb4742868b2e68b2e5082b9a6a4` |
 | `20260824213658_seed_grades_8_to_11_maths_taxonomy.sql` | `e0f3e03d8a7a3f61f69ed9ad4ef0b705b28d73e79b11184b93d39d4302a1d005` |
 | `20260824215910_enable_profile_identity_rls.sql` | `fd7e4eafd103decac8b90de44e49366f681ad37458f301adc6863aa171f87010` |
+| `20260826120612_grade9_evidence_learning_system.sql` | `752383e1a8f649fa3b6226e3ce19ecd438292e250b27fe68c99ef3b19159cb74` |
+| `20260826123020_grade9_instructional_pilot_vertical.sql` | `95f36be42b156c020d93aee1625b08ec90b7d9cc203f5ed3d5392eb7401956d4` |
+| `20260826125819_grade9_instructional_validation_workflow.sql` | `dae8f8f9bbaedd52eeddbc18337c66304ae053f4053c535e7c8fc3b9f3dd5ce6` |
+| `20260826134817_grade9_gold_standard_second_pass_revisions.sql` | `7e92398212874f15aaff8568b8205bc2983a63b9ed818170f2805793eec309be` |
 
 ## Regeneration
 

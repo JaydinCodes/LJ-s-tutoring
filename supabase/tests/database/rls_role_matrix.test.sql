@@ -2224,5 +2224,304 @@ select is((select count(*) from public.get_my_learning_recommendations()), 0::bi
 
 reset role;
 
+-- Grade 9 evidence-learning pilot: item attempts are learner-scoped; answer
+-- keys/content workflow remain private; tutors are constrained to allocations.
+set local role service_role;
+insert into public.question_items (id, curriculum_version_id, item_code, source_tier)
+select '91000000-0000-0000-0000-000000000001', id, 'Q.RLS.PILOT.001', 'Odysseus_authored'
+from public.curriculum_versions where skill_code = 'CAPS-MATH-G9-2026';
+insert into public.question_versions (
+  id, question_item_id, version_number, review_status, activity_type,
+  cognitive_level, representation, calculator_policy, prompt, answer_config,
+  marks, reviewed_by, reviewed_at, review_notes
+) values (
+  '92000000-0000-0000-0000-000000000001',
+  '91000000-0000-0000-0000-000000000001', 1, 'approved', 'independent_practice',
+  'routine', 'symbolic', 'not_allowed', 'Expand 3(x + 4).',
+  '{"accepted_answers":["3x + 12"]}'::jsonb, 2,
+  '10000000-0000-0000-0000-000000000001', now(), 'Runtime RLS test approval'
+);
+insert into public.question_version_skill_links (question_version_id, skill_id, relationship_type)
+select '92000000-0000-0000-0000-000000000001', id, 'primary'
+from public.curriculum_skills 
+where skill_code = 'G9.ALG.DISTRIBUTIVE';
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
+set local role authenticated;
+select lives_ok(
+  $$
+    select public.record_learning_attempt(
+      '20000000-0000-0000-0000-000000000001',
+      '92000000-0000-0000-0000-000000000001',
+      '{"answer":"3x + 12"}'::jsonb,
+      4::smallint,
+      75::integer
+    )
+  $$,
+  'student records an item-level attempt only through the controlled RPC'
+);
+select is(
+  (select count(*) from public.learning_attempts),
+  1::bigint,
+  'student reads exactly their own learning attempt'
+);
+select throws_ok(
+  $$select public.review_question_version((select id from public.question_versions limit 1), 'approved'::public.question_review_status, 'forged')$$,
+  '42501',
+  'not_authorized_or_invalid_review_transition',
+  'student cannot approve content'
+);
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000006');
+set local role authenticated;
+select is(
+  (select count(*) from public.learning_attempts),
+  0::bigint,
+  'student cannot read another learner evidence'
+);
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000003');
+set local role authenticated;
+select lives_ok(
+  $$
+    select public.evaluate_learning_attempt(
+      (select id from public.learning_attempts where student_id = '20000000-0000-0000-0000-000000000001'),
+      true,
+      2,
+      'Independent expansion correct.'
+    )
+  $$,
+  'allocated tutor evaluates learner evidence'
+);
+select is(
+  (select count(*) from public.learning_attempt_skill_evidence),
+  1::bigint,
+  'hint-free success is preserved as one item-to-skill evidence record'
+);
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000007');
+set local role authenticated;
+select is(
+  (select count(*) from public.learning_attempts),
+  0::bigint,
+  'unallocated tutor cannot read another tutor learner evidence'
+);
+reset role;
+
+-- Instructional pilot seed integrity: the actual graph is queryable, the
+-- reference activity is composed, and diagnostic scoring metadata is present.
+select ok(
+  exists (
+    select 1
+    from public.skill_prerequisites edge
+    join public.curriculum_skills dependent on dependent.id = edge.skill_id
+    join public.curriculum_skills prerequisite on prerequisite.id = edge.prerequisite_skill_id
+    where dependent.skill_code = 'G9.ALG.FACTOR.DOTS'
+      and prerequisite.skill_code = 'G9.ALG.EXPAND.BINOMIAL'
+  ),
+  'difference of two squares has a real binomial-expansion prerequisite edge'
+);
+select ok(
+  exists (
+    select 1
+    from public.skill_prerequisites edge
+    join public.curriculum_skills dependent on dependent.id = edge.skill_id
+    join public.curriculum_skills prerequisite on prerequisite.id = edge.prerequisite_skill_id
+    where dependent.skill_code = 'G9.EQN.FACTORISED'
+      and prerequisite.skill_code = 'G9.EQN.ZERO_PRODUCT'
+  ),
+  'factorised equations require zero-product knowledge'
+);
+select is(
+  (select count(*) from public.learning_activity_stages stage join public.learning_activity_templates activity on activity.id = stage.learning_activity_template_id where activity.skill_code = 'ACT.G9.ALG.FACTOR.DOTS.FOUNDATIONS'),
+  10::bigint,
+  'difference-of-two-squares activity has the full staged sequence'
+);
+select is(
+  (select count(*) from public.diagnostic_blueprint_questions question join public.diagnostic_blueprints blueprint on blueprint.id = question.diagnostic_blueprint_id where blueprint.skill_code = 'DIAG.G9.MATH.VERTICAL.V1'),
+  18::bigint,
+  'vertical diagnostic has deterministic item-level probes'
+);
+select ok(
+  cardinality(public.validate_question_version_for_approval((select version.id from public.question_versions version join public.question_items item on item.id = version.question_item_id where item.item_code = 'Q.G9.DIAG.07'))) = 0,
+  'a seeded diagnostic item satisfies approval content validation before human review'
+);
+select is(
+  (
+    select count(*)
+    from public.question_versions version
+    join public.question_items item on item.id = version.question_item_id
+    where (item.item_scode like 'Q.G9.DIAG.%' or item.item_code like 'Q.G9.DOTS.%' or item.item_code like 'Q.G9.VERTICAL.%')
+      and cardinality(public.validate_question_version_for_approval(version.id)) = 0
+  ),
+  52::bigint,
+  'all 52 pilot items are structurally review-ready without claiming human mathematical approval'
+);
+
+-- Review lifecycle, approved-only delivery, and request-id idempotency use
+-- explicit runtime fixtures; no production draft item is presented as reviewed.
+set local role service_role;
+insert into public.question_items (id, curriculum_version_id, item_code, source_tier)
+select '91000000-0000-0000-0000-000000000002', id, 'Q.RLS.REVIEW.001', 'Odysseus_authored'
+from public.curriculum_versions where code = 'CAPS-MATH-G9-2026';
+insert into public.question_items (id, curriculum_version_id, item_code, source_tier)
+select '91000000-0000-0000-0000-000000000003', id, 'Q.RLS.REVIEW.002', 'Odysseus_authored'
+from public.curriculum_versions where skill_code = 'CAPS-MATH-G9-2026';
+insert into public.question_versions (
+  id, question_item_id, version_number, review_status, activity_type,
+  cognitive_level, representation, calculator_policy, prompt, answer_config,
+  solution, marks
+) values (
+  '92000000-0000-0000-0000-000000000002',
+  '91000000-0000-0000-0000-000000000002', 1, 'draft', 'diagnostic',
+  'routine', 'symbolic', 'not_allowed', 'Solve: x + 2 = 5.',
+  '{"accepted_answers":["x = 3"]}'::jsonb, 'Subtract 2 from both sides.', 1
+);
+insert into public.question_versions (
+  id, question_item_id, version_number, review_status, activity_type,
+  cognitive_level, representation, calculator_policy, prompt, answer_config,
+  solution, marks
+) values (
+  '92000000-0000-0000-0000-000000000003',
+  '91000000-0000-0000-0000-000000000003', 1, 'draft', 'independent_practice',
+  'routine', 'symbolic', 'not_allowed', 'Simplify: 2x + 3x.',
+  '{"accepted_answers":["5x"]}'::jsonb, 'Combine the like terms.', 1
+);
+insert into public.question_version_skill_links (question_version_id, skill_id, relationship_type)
+select '92000000-0000-0000-0000-000000000002', id, 'primary'
+from public.curriculum_skills where skill_code = 'G9.EQN.ONE_STEP';
+insert into public.question_version_skill_links (question_version_id, skill_id, relationship_type)
+select '92000000-0000-0000-0000-000000000003', id, 'primary'
+from public.curriculum_skills where skill_code = 'G9.ALG.LIKE_TERMS';
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
+set local role authenticated;
+select is(
+  (select count(*) from public.get_learning_question('92000000-0000-0000-0000-000000000002')),
+  0::bigint,
+  'draft content cannot be served to a learner'
+);
+select is(
+  (select count(*) from public.get_approved_diagnostic_blueprint('DIAG.G9.MATH.VERTICAL.V1')),
+  0::bigint,
+  'draft diagnostic blueprint cannot be served to a learner'
+);
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000001', 'aal2');
+set local role authenticated;
+select lives_ok(
+  $$select public.review_question_version_action('92000000-0000-0000-0000-000000000002', 'submit_for_review', 'Ready for mathematics review')$$,
+  'admin submits a draft item for review'
+);
+reset role;
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
+set local role authenticated;
+select is(
+  (select count(*) from public.get_learning_question('92000000-0000-0000-0000-000000000002')),
+  0::bigint,
+  'in-review content cannot be served to a learner'
+);
+reset role;
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000003');
+set local role authenticated;
+select throws_ok(
+  $$select public.review_question_version_action('92000000-0000-0000-0000-000000000002', 'approve', 'tutor must not approve')$$,
+  '42501',
+  'not_authorized',
+  'tutors cannot perform the admin-only approval action'
+);
+reset role;
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000001', 'aal2');
+set local role authenticated;
+select lives_ok(
+  $$select public.review_question_version_action('92000000-0000-0000-0000-000000000002', 'approve', 'Checked in explicit test fixture')$$,
+  'admin approves a structurally valid review fixture'
+);
+select is(
+  (select count(*) from public.question_review_events where question_version_id = '92000000-0000-0000-0000-000000000002'),
+  2::bigint,
+  'review transition history is append-only and queryable'
+);
+select ok(
+  public.get_question_version_review_bundle('92000000-0000-0000-0000-000000000002') ? 'solution',
+  'admin review bundle includes the memo without exposing it to learners'
+);
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
+set local role authenticated;
+select is(
+  (select count(*) from public.get_learning_question('92000000-0000-0000-0000-000000000002')),
+  1::bigint,
+  'approved active content can be served to the authorised learner role'
+);
+select is(
+  (select count(*) from jsonb_object_keys((select to_jsonb(question) from public.get_learning_question('92000000-0000-0000-0000-000000000002') question)) where jsonb_object_keys in ('answer_config', 'solution')),
+  0::bigint,
+  'learner question payload excludes answer configuration and solution'
+);
+select is(
+  public.record_learning_attempt(
+    '20000000-0000-0000-0000-000000000001',
+    '92000000-0000-0000-0000-000000000002',
+    '{"answer":"x = 3"}'::jsonb, 3::smallint, 30::integer, null::uuid, null::uuid, 'formative'::public.evidence_context,
+    'f1000000-0000-0000-0000-000000000001'::uuid
+  ),
+  public.record_learning_attempt(
+    '20000000-0000-0000-0000-000000000001',
+    '92000000-0000-0000-0000-000000000002',
+    '{"answer":"x = 3"}'::jsonb, 3::smallint, 30::integer, null::uuid, null::uuid, 'formative'::public.evidence_context,
+    'f1000000-0000-0000-0000-000000000001'::uuid
+  ),
+  'a retry with the same request id returns the original logical attempt'
+);
+select is(
+  (select count(*) from public.learning_attempts where question_version_id = '92000000-0000-0000-0000-000000000002'),
+  1::bigint,
+  'idempotent retry does not create extra mastery evidence'
+);
+select throws_ok(
+  $$select public.record_learning_attempt('20000000-0000-0000-0000-000000000001'::uuid, '92000000-0000-0000-0000-000000000002'::uuid, '{"answer":"x = 4"}'::jsonb, 3::smallint, 30::integer, null::uuid, null::uuid, 'formative'::public.evidence_context, 'f1000000-0000-0000-0000-000000000001'::uuid)$$,
+  '23514',
+  'idempotency_key_reused_with_different_response',
+  'a request id cannot be reused for a different answer'
+);
+reset role;
+
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000001', 'aal2');
+set local role authenticated;
+select lives_ok(
+  $$select public.review_question_version_action('92000000-0000-0000-0000-000000000002', 'retire', 'Fixture retired after test')$$,
+  'admin retires approved content without deleting history'
+);
+select lives_ok(
+  $$select public.review_question_version_action('92000000-0000-0000-0000-000000000003', 'submit_for_review', 'Reject workflow fixture')$$,
+  'admin submits a reject workflow fixture'
+);
+select lives_ok(
+  $$select public.review_question_version_action('92000000-0000-0000-0000-000000000003', 'reject', 'Needs mathematical revision')$$,
+  'admin rejects a review fixture'
+);
+reset role;
+select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000002');
+set local role authenticated;
+select is(
+  (select count(*) from public.get_learning_question('92000000-0000-0000-0000-000000000002')),
+  0::bigint,
+  'retired content cannot begin a new learner activity'
+);
+select is(
+  (select count(*) from public.get_learning_question('92000000-0000-0000-0000-000000000003')),
+  0::bigint,
+  'rejected content cannot be served to a learner'
+);
+reset role;
+
 select * from finish();
 rollback;
