@@ -2229,7 +2229,7 @@ reset role;
 set local role service_role;
 insert into public.question_items (id, curriculum_version_id, item_code, source_tier)
 select '91000000-0000-0000-0000-000000000001', id, 'Q.RLS.PILOT.001', 'Odysseus_authored'
-from public.curriculum_versions where skill_code = 'CAPS-MATH-G9-2026';
+from public.curriculum_versions where code = 'CAPS-MATH-G9-2026';
 insert into public.question_versions (
   id, question_item_id, version_number, review_status, activity_type,
   cognitive_level, representation, calculator_policy, prompt, answer_config,
@@ -2337,29 +2337,59 @@ select ok(
   'factorised equations require zero-product knowledge'
 );
 select is(
-  (select count(*) from public.learning_activity_stages stage join public.learning_activity_templates activity on activity.id = stage.learning_activity_template_id where activity.skill_code = 'ACT.G9.ALG.FACTOR.DOTS.FOUNDATIONS'),
+  (select count(*) from public.learning_activity_stages stage join public.learning_activity_templates activity on activity.id = stage.learning_activity_template_id where activity.code = 'ACT.G9.ALG.FACTOR.DOTS.FOUNDATIONS'),
   10::bigint,
   'difference-of-two-squares activity has the full staged sequence'
 );
 select is(
-  (select count(*) from public.diagnostic_blueprint_questions question join public.diagnostic_blueprints blueprint on blueprint.id = question.diagnostic_blueprint_id where blueprint.skill_code = 'DIAG.G9.MATH.VERTICAL.V1'),
+  (select count(*) from public.diagnostic_blueprint_questions question join public.diagnostic_blueprints blueprint on blueprint.id = question.diagnostic_blueprint_id where blueprint.code = 'DIAG.G9.MATH.VERTICAL.V1'),
   18::bigint,
   'vertical diagnostic has deterministic item-level probes'
 );
 select ok(
-  cardinality(public.validate_question_version_for_approval((select version.id from public.question_versions version join public.question_items item on item.id = version.question_item_id where item.item_code = 'Q.G9.DIAG.07'))) = 0,
-  'a seeded diagnostic item satisfies approval content validation before human review'
+  cardinality(
+    public.validate_question_version_for_approval(
+      (
+        select version.id
+        from public.question_versions version
+        join public.question_items item
+          on item.id = version.question_item_id
+        join public.curriculum_versions curriculum
+          on curriculum.id = item.curriculum_version_id
+        where item.item_code = 'Q.G9.DIAG.07'
+          and curriculum.code = 'CAPS-MATH-G9-2026'
+        order by version.version_number desc
+        limit 1
+      )
+    )
+  ) = 0,
+  'the current seeded diagnostic item satisfies approval content validation before human review'
 );
 select is(
   (
     select count(*)
-    from public.question_versions version
-    join public.question_items item on item.id = version.question_item_id
-    where (item.item_scode like 'Q.G9.DIAG.%' or item.item_code like 'Q.G9.DOTS.%' or item.item_code like 'Q.G9.VERTICAL.%')
-      and cardinality(public.validate_question_version_for_approval(version.id)) = 0
+    from public.question_items item
+    join public.curriculum_versions curriculum
+      on curriculum.id = item.curriculum_version_id
+    join lateral (
+      select version.id
+      from public.question_versions version
+      where version.question_item_id = item.id
+      order by version.version_number desc
+      limit 1
+    ) current_version on true
+    where curriculum.code = 'CAPS-MATH-G9-2026'
+      and (
+        item.item_code like 'Q.G9.DIAG.%'
+        or item.item_code like 'Q.G9.DOTS.%'
+        or item.item_code like 'Q.G9.VERTICAL.%'
+      )
+      and cardinality(
+        public.validate_question_version_for_approval(current_version.id)
+      ) = 0
   ),
   52::bigint,
-  'all 52 pilot items are structurally review-ready without claiming human mathematical approval'
+  'all 52 current pilot items are structurally review-ready without claiming human mathematical approval'
 );
 
 -- Review lifecycle, approved-only delivery, and request-id idempotency use
@@ -2370,7 +2400,7 @@ select '91000000-0000-0000-0000-000000000002', id, 'Q.RLS.REVIEW.001', 'Odysseus
 from public.curriculum_versions where code = 'CAPS-MATH-G9-2026';
 insert into public.question_items (id, curriculum_version_id, item_code, source_tier)
 select '91000000-0000-0000-0000-000000000003', id, 'Q.RLS.REVIEW.002', 'Odysseus_authored'
-from public.curriculum_versions where skill_code = 'CAPS-MATH-G9-2026';
+from public.curriculum_versions where code = 'CAPS-MATH-G9-2026';
 insert into public.question_versions (
   id, question_item_id, version_number, review_status, activity_type,
   cognitive_level, representation, calculator_policy, prompt, answer_config,

@@ -44,8 +44,13 @@ begin
   join public.question_items item on item.id = version.question_item_id
   join public.curriculum_versions curriculum on curriculum.id = item.curriculum_version_id
   where version.id = p_question_version_id
-    and curriculum.is_active is true
-    and item.retired_at is null;
+  and curriculum.is_active is true
+  and curriculum.valid_from <= current_date
+  and (
+    curriculum.valid_until is null
+    or curriculum.valid_until >= current_date
+  )
+  and item.retired_at is null;
 
   if not found then return array['INACTIVE_OR_MISSING_CURRICULUM_VERSION']; end if;
   if not exists (
@@ -55,8 +60,7 @@ begin
     where link.question_version_id = p_question_version_id
       and link.relationship_type = 'primary'
       and skill.is_active
-      and skill.valid_from <= current_date
-      and (skill.valid_until is null or skill.valid_until >= current_date)
+      
   ) then v_errors := array_append(v_errors, 'MISSING_OR_RETIRED_PRIMARY_SKILL'); end if;
   if jsonb_typeof(v_answer -> 'accepted_answers') <> 'array' or jsonb_array_length(coalesce(v_answer -> 'accepted_answers', '[]'::jsonb)) = 0 then
     v_errors := array_append(v_errors, 'MISSING_DETERMINISTIC_EXPECTED_ANSWER');
@@ -187,19 +191,25 @@ begin
     coalesce(jsonb_agg(jsonb_build_object('id', h.id, 'hint_level', h.hint_level, 'prompt', h.prompt) order by h.hint_level) filter (where h.id is not null), '[]'::jsonb)
   from public.question_versions qv
   join public.question_items item on item.id = qv.question_item_id and item.retired_at is null
-  join public.curriculum_versions curriculum on curriculum.id = item.curriculum_version_id and curriculum.is_active
+  join public.curriculum_versions curriculum
+  on curriculum.id = item.curriculum_version_id
+  and curriculum.is_active
+  and curriculum.valid_from <= current_date
+  and (
+    curriculum.valid_until is null
+    or curriculum.valid_until >= current_date
+  )
   left join public.question_hints h on h.question_version_id = qv.id
   where qv.id = p_question_version_id
     and qv.review_status = 'approved'
     and exists (
-      select 1 from public.question_version_skill_links link
-      join public.curriculum_skills skill on skill.id = link.skill_id
-      where link.question_version_id = qv.id
-        and link.relationship_type = 'primary'
-        and skill.is_active
-        and skill.valid_from <= current_date
-        and (skill.valid_until is null or skill.valid_until >= current_date)
-    )
+  select 1
+  from public.question_version_skill_links link
+  join public.curriculum_skills skill on skill.id = link.skill_id
+  where link.question_version_id = qv.id
+    and link.relationship_type = 'primary'
+    and skill.is_active
+)
   group by qv.id;
 end;
 $$;
@@ -269,14 +279,19 @@ begin
 end;
 $$;
 
-create or replace function public.get_question_version_review_bundle(p_question_version_id uuid)
+create or replace function public.get_question_version_review_bundle(
+  p_question_version_id uuid
+)
 returns jsonb
 language plpgsql
 security definer
 set search_path = ''
 as $$
 begin
-  if not public.is_platform_admin() then raise exception 'not_authorized' using errcode = '42501'; end if;
+  if not public.is_platform_admin() then
+    raise exception 'not_authorized' using errcode = '42501';
+  end if;
+
   return (
     select jsonb_build_object(
       'id', version.id,
@@ -293,16 +308,92 @@ begin
       'representation', version.representation,
       'calculatorPolicy', version.calculator_policy,
       'difficulty', version.difficulty,
-      'primarySkill', (select skill.skill_code from public.question_version_skill_links link join public.curriculum_skills skill on skill.id = link.skill_id where link.question_version_id = version.id and link.relationship_type = 'primary'),
-      'supportingSkills', coalesce((select jsonb_agg(skill.skill_code order by skill.skill_code) from public.question_version_skill_links link join public.curriculum_skills skill on skill.id = link.skill_id where link.question_version_id = version.id and link.relationship_type = 'supporting'), '[]'::jsonb),
-      'misconceptions', coalesce((select jsonb_agg(jsonb_build_object('code', misconception.code, 'name', misconception.name) order by misconception.code) from public.question_version_misconceptions link join public.misconceptions misconception on misconception.id = link.misconception_id where link.question_version_id = version.id), '[]'::jsonb),
-      'hints', coalesce((select jsonb_agg(jsonb_build_object('level', hint.hint_level, 'prompt', hint.prompt) order by hint.hint_level) from public.question_hints hint where hint.question_version_id = version.id), '[]'::jsonb),
-      'validationErrors', public.validate_question_version_for_approval(version.id),
-      'reviewHistory', coalesce((select jsonb_agg(jsonb_build_object('action', event.action, 'fromStatus', event.from_status, 'toStatus', event.to_status, 'reviewerId', event.reviewer_id, 'notes', event.review_notes, 'at', event.created_at) order by event.created_at) from public.question_review_events event where event.question_version_id = version.id), '[]'::jsonb)
+
+      'primarySkill',
+      (
+        select skill.skill_code
+        from public.question_version_skill_links link
+        join public.curriculum_skills skill
+          on skill.id = link.skill_id
+        where link.question_version_id = version.id
+          and link.relationship_type = 'primary'
+      ),
+
+      'supportingSkills',
+      coalesce(
+        (
+          select jsonb_agg(
+            skill.skill_code
+            order by skill.skill_code
+          )
+          from public.question_version_skill_links link
+          join public.curriculum_skills skill
+            on skill.id = link.skill_id
+          where link.question_version_id = version.id
+            and link.relationship_type = 'supporting'
+        ),
+        '[]'::jsonb
+      ),
+
+      'misconceptions',
+      coalesce(
+        (
+          select jsonb_agg(
+            jsonb_build_object(
+              'code', misconception.code,
+              'name', misconception.name
+            )
+            order by misconception.code
+          )
+          from public.question_version_misconceptions link
+          join public.misconceptions misconception
+            on misconception.id = link.misconception_id
+          where link.question_version_id = version.id
+        ),
+        '[]'::jsonb
+      ),
+
+      'hints',
+      coalesce(
+        (
+          select jsonb_agg(
+            jsonb_build_object(
+              'level', hint.hint_level,
+              'prompt', hint.prompt
+            )
+            order by hint.hint_level
+          )
+          from public.question_hints hint
+          where hint.question_version_id = version.id
+        ),
+        '[]'::jsonb
+      ),
+
+      'reviewHistory',
+      coalesce(
+        (
+          select jsonb_agg(
+            jsonb_build_object(
+              'action', event.action,
+              'fromStatus', event.from_status,
+              'toStatus', event.to_status,
+              'reviewerId', event.reviewer_id,
+              'notes', event.review_notes,
+              'at', event.created_at
+            )
+            order by event.created_at
+          )
+          from public.question_review_events event
+          where event.question_version_id = version.id
+        ),
+        '[]'::jsonb
+      )
     )
     from public.question_versions version
-    join public.question_items item on item.id = version.question_item_id
-    join public.curriculum_versions curriculum on curriculum.id = item.curriculum_version_id
+    join public.question_items item
+      on item.id = version.question_item_id
+    join public.curriculum_versions curriculum
+      on curriculum.id = item.curriculum_version_id
     where version.id = p_question_version_id
   );
 end;
