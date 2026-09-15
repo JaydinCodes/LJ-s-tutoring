@@ -51,14 +51,35 @@ type DashboardNavGroup = {
 const navigation = {
   student: [
     {
-      label: 'Learning',
-      items: [
-        { to: '/dashboard/student', label: 'Today', icon: Home },
-        { to: '/dashboard/student/assignments', label: 'Tasks', icon: ClipboardList },
-        { to: '/dashboard/student/results', label: 'Results', icon: Trophy },
-        { to: '/dashboard/student/progress', label: 'Progress', icon: TrendingUp },
-      ],
+  label: 'Learning',
+  items: [
+    {
+      to: '/dashboard/student',
+      label: 'Today',
+      icon: Home,
     },
+    {
+      to: '/dashboard/student/assignments',
+      label: 'Tasks',
+      icon: ClipboardList,
+    },
+    {
+      to: '/dashboard/student/learning',
+      label: 'Learning',
+      icon: Brain,
+    },
+    {
+      to: '/dashboard/student/results',
+      label: 'Results',
+      icon: Trophy,
+    },
+    {
+      to: '/dashboard/student/progress',
+      label: 'Progress',
+      icon: TrendingUp,
+    },
+  ],
+},
     {
       label: 'Support',
       items: [
@@ -161,7 +182,7 @@ export type DashboardIdentity = {
 };
 
 const mobilePrimaryLabels: Partial<Record<DashboardSection, string[]>> = {
-  student: ['Today', 'Tasks', 'Results', 'Progress'],
+  student: ['Today', 'Tasks', 'Learning', 'Progress'],
   tutor: ['Today', 'Learners', 'Teach', 'Assess'],
   admin: ['Today', 'Learners & guardians', 'Learning quality', 'Finance'],
 };
