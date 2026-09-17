@@ -6231,6 +6231,27 @@ export type Database = {
           representation: Database["public"]["Enums"]["math_representation"]
         }[]
       }
+      get_my_approved_diagnostic_state: {
+        Args: { p_code: string }
+        Returns: {
+          attempt_id: string
+          attempt_status: Database["public"]["Enums"]["attempt_status"]
+          purpose: string
+          question_version_id: string
+          sequence_number: number
+          submitted_at: string
+        }[]
+      }
+      get_my_available_learning_diagnostics: {
+        Args: never
+        Returns: {
+          completed_questions: number
+          diagnostic_code: string
+          diagnostic_description: string
+          diagnostic_name: string
+          total_questions: number
+        }[]
+      }
       get_my_learning_recommendations: {
         Args: never
         Returns: {
@@ -7070,6 +7091,21 @@ export type Database = {
         }
         Returns: {
           submission_id: string
+        }[]
+      }
+      submit_my_learning_attempt: {
+        Args: {
+          p_confidence?: number
+          p_diagnostic_code: string
+          p_hint_ids?: string[]
+          p_idempotency_key?: string
+          p_question_version_id: string
+          p_response: Json
+          p_time_spent_seconds?: number
+        }
+        Returns: {
+          attempt_id: string
+          attempt_status: Database["public"]["Enums"]["attempt_status"]
         }[]
       }
       submit_session: {

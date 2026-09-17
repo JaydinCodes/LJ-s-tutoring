@@ -1,5 +1,5 @@
 import type { FormEvent, ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef} from 'react';
 import { Link } from 'react-router-dom';
 import { Reveal, StaggerReveal } from '../../components/animations/Reveal';
 import { SplitHeroTitle } from '../../components/animations/SplitHeroTitle';
@@ -660,13 +660,153 @@ function PublicLayout({ children }: { children: ReactNode }) {
 }
 
 function TutorSection() {
+  const mobileCarouselRef = useRef<HTMLDivElement>(null);
+
+  const [activeTutor, setActiveTutor] = useState(0);
+  const [isInteracting, setIsInteracting] = useState(false);
+
+  useEffect(() => {
+    if (isInteracting) return;
+
+    const interval = window.setInterval(() => {
+      setActiveTutor((current) => {
+        const nextIndex = (current + 1) % tutors.length;
+
+        const container = mobileCarouselRef.current;
+        const card = container?.children[nextIndex] as HTMLElement | undefined;
+
+        if (card) {
+          container?.scrollTo({
+            left: card.offsetLeft,
+            behavior: "smooth",
+          });
+        }
+
+        return nextIndex;
+      });
+    }, 3500);
+
+    return () => window.clearInterval(interval);
+  }, [isInteracting]);
+
+  useEffect(() => {
+    const container = mobileCarouselRef.current;
+
+    if (!container) return;
+
+    let scrollTimeout: number;
+
+    const handleScroll = () => {
+      window.clearTimeout(scrollTimeout);
+
+      scrollTimeout = window.setTimeout(() => {
+        const cards = Array.from(container.children) as HTMLElement[];
+
+        const containerCenter =
+          container.scrollLeft + container.clientWidth / 2;
+
+        let closestIndex = 0;
+        let closestDistance = Infinity;
+
+        cards.forEach((card, index) => {
+          const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+          const distance = Math.abs(containerCenter - cardCenter);
+
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestIndex = index;
+          }
+        });
+
+        setActiveTutor(closestIndex);
+      }, 100);
+
+      setIsInteracting(true);
+
+      window.clearTimeout(resumeTimeout);
+      resumeTimeout = window.setTimeout(() => {
+        setIsInteracting(false);
+      }, 4000);
+    };
+
+    let resumeTimeout: number;
+
+    container.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
+
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+      window.clearTimeout(scrollTimeout);
+      window.clearTimeout(resumeTimeout);
+    };
+  }, []);
+
   return (
     <Reveal as="section" id="tutors" className="bg-brand-parchment py-16">
       <div className="mx-auto max-w-7xl px-6">
         <SectionIntro title="Meet the tutors" eyebrow="Academic support">
-          Meet the people who turn difficult topics into clear explanations, useful practice, and achievable next steps.
+          Meet the people who turn difficult topics into clear explanations,
+          useful practice, and achievable next steps.
         </SectionIntro>
-        <StaggerReveal className="mt-10 grid gap-4 md:grid-cols-3">
+
+        {/* Mobile carousel */}
+        <div
+          ref={mobileCarouselRef}
+          className="
+            mt-10 flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4
+            [-ms-overflow-style:none]
+            [scrollbar-width:none]
+            [&::-webkit-scrollbar]:hidden
+            sm:hidden
+          "
+        >
+          {tutors.map((tutor) => (
+            <div
+              key={tutor.name}
+              className="w-[85%] shrink-0 snap-center"
+            >
+              <TutorCard tutor={tutor} />
+            </div>
+          ))}
+        </div>
+
+        {/* Mobile carousel indicators */}
+        <div className="mt-4 flex justify-center gap-1.5 sm:hidden">
+          {tutors.map((tutor, index) => (
+            <button
+              key={tutor.name}
+              type="button"
+              aria-label={`Show ${tutor.name}`}
+              onClick={() => {
+                const container = mobileCarouselRef.current;
+                const card = container?.children[index] as HTMLElement | undefined;
+
+                if (!card) return;
+
+                container?.scrollTo({
+                  left: card.offsetLeft,
+                  behavior: "smooth",
+                });
+
+                setActiveTutor(index);
+                setIsInteracting(true);
+
+                window.setTimeout(() => {
+                  setIsInteracting(false);
+                }, 4000);
+              }}
+              className={`h-1.5 rounded-full transition-all ${
+                index === activeTutor
+                  ? "w-6 bg-brand-blue"
+                  : "w-1.5 bg-slate-300"
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Tablet + desktop grid */}
+        <StaggerReveal className="mt-10 hidden gap-4 sm:grid sm:grid-cols-2 lg:grid-cols-3">
           {tutors.map((tutor) => (
             <TutorCard key={tutor.name} tutor={tutor} />
           ))}

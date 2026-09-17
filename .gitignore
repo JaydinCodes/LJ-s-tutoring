@@ -57,3 +57,6 @@ supabase/.temp/
 .agents/skills/
 .claude/skills/
 .playwright-mcp/
+
+# Lighthouse CI local reports
+.lighthouseci/
