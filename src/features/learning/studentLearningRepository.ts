@@ -182,7 +182,7 @@ export async function submitLearningAttempt(
       p_response: {
         answer: input.answer.trim(),
       },
-      p_confidence: input.confidence,
+      p_confidence: input.confidence ?? undefined,
       p_time_spent_seconds: Math.max(
         0,
         Math.floor(input.timeSpentSeconds),

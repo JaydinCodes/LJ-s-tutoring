@@ -54,19 +54,9 @@ const ProgramsRoute = lazy(() => import('./routes/PublicRoutes').then((module) =
 const PublicHomeRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.PublicHomeRoute })));
 const TermsRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.TermsRoute })));
 const NotFoundRoute = lazy(() => import('./routes/NotFoundRoute').then((module) => ({ default: module.NotFoundRoute })));
-const StudentLearningRoute = lazy(() =>
-  import('../features/learning/StudentLearningRoute')
-    .then((module) => ({
-      default: module.StudentLearningRoute,
-    }))
-);
+const StudentLearningRoute = lazy(() => import('../features/learning/StudentLearningRoute').then((module) => ({ default: module.StudentLearningRoute })));
+const StudentDiagnosticRoute = lazy(() => import('../features/learning/StudentDiagnosticRoute').then((module) => ({ default: module.StudentDiagnosticRoute })));
 
-const StudentDiagnosticRoute = lazy(() =>
-  import('../features/learning/StudentDiagnosticRoute')
-    .then((module) => ({
-      default: module.StudentDiagnosticRoute,
-    }))
-);
 function RouteLoadingFallback() {
   return (
     <main className="min-h-screen bg-brand-parchment px-4 py-5 text-brand-obsidian dark:bg-slate-950 dark:text-brand-parchment" aria-busy="true">
@@ -141,31 +131,8 @@ export function App() {
         <Route path="/dashboard/tutor/reports" element={<ProtectedRoute roles={['tutor']}><TutorReportsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/risk" element={<ProtectedRoute roles={['tutor']}><TutorRiskRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/settings" element={<ProtectedRoute roles={['tutor']}><PortalSettingsRoute role="tutor" /></ProtectedRoute>} />
-        <Route
-  path="/dashboard/student"
-  element={
-    <ProtectedRoute roles={['student']}>
-      <StudentDashboardRoute />
-    </ProtectedRoute>
-  }
-/>
-        <Route
-  path="/dashboard/student/learning"
-  element={
-    <ProtectedRoute roles={['student']}>
-      <StudentLearningRoute />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/dashboard/student/learning/diagnostic/:diagnosticCode"
-  element={
-    <ProtectedRoute roles={['student']}>
-      <StudentDiagnosticRoute />
-    </ProtectedRoute>
-  }
-/>
+        <Route path="/dashboard/student/learning" element={<ProtectedRoute roles={['student']}><StudentLearningRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/student/learning/diagnostic/:diagnosticCode" element={<ProtectedRoute roles={['student']}><StudentDiagnosticRoute /></ProtectedRoute>} />
           <Route path="*" element={<NotFoundRoute />} />
         </Routes>
       </Suspense>

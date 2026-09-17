@@ -293,10 +293,10 @@ export function PublicHomeRoute() {
 
       <TutorSection />
       <GreekDivider background="white" tone="gold" />
-      
+      <GuideSection />
       <FaqSection />
       <GreekDivider background="slate" tone="gold" />
-     
+      <BecomeTutorSection />
       <EnquirySection />
     </PublicLayout>
   );
@@ -867,7 +867,29 @@ function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
   );
 }
 
+function GuideSection() {
+  return (
+    <Reveal as="section" className="bg-white py-16">
+      <div className="mx-auto max-w-7xl px-6">
+        <SectionIntro title="Matric maths guide" eyebrow="Free resource">Practical checks to make every test and exam response clearer.</SectionIntro>
+        <Link className="mt-6 inline-flex rounded-lg bg-brand-navy px-4 py-2 text-sm font-semibold text-white" to="/guides/matric-maths-mistakes-guide">Open guide</Link>
+      </div>
+    </Reveal>
+  );
+}
 
+function BecomeTutorSection() {
+  const tutorEmailHref = `mailto:${contactEmail}?subject=${encodeURIComponent('Tutor application')}`;
+  return (
+    <Reveal as="section" id="become-a-tutor" className="bg-slate-950 py-16 text-white">
+      <div className="mx-auto max-w-7xl px-6">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-gold">Join our team</p>
+        <h2 className="mt-3 text-4xl font-semibold tracking-tight">Passionate about maths? Teach with us.</h2>
+        <a className="mt-6 inline-flex rounded-lg bg-brand-gold px-4 py-2 text-sm font-semibold text-brand-obsidian" href={tutorEmailHref}>Apply by email</a>
+      </div>
+    </Reveal>
+  );
+}
 
 function FaqSection() {
   return (
