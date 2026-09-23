@@ -134,8 +134,6 @@ test('accessibility and link checks use pinned local tools and canonical routes'
     '/',
     '/about',
     '/programs',
-    '/guides',
-    '/guides/matric-maths-mistakes-guide',
     '/privacy',
     '/terms',
     '/dashboard/login',

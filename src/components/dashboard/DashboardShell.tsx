@@ -98,6 +98,7 @@ const navigation = {
         { to: '/dashboard/tutor/risk', label: 'Learners', icon: UsersRound },
         { to: '/dashboard/tutor/sessions', label: 'Teach', icon: Clock },
         { to: '/dashboard/tutor/submissions', label: 'Assess', icon: ScrollText },
+        { to: '/dashboard/tutor/learning', label: 'Learning evidence', icon: Brain },
         { to: '/dashboard/tutor/reports', label: 'Insights', icon: TrendingUp },
       ],
     },
@@ -131,6 +132,7 @@ const navigation = {
       label: 'Teaching',
       items: [
         { to: '/dashboard/admin/results', label: 'Learning quality', shortLabel: 'Teaching', icon: Brain },
+        { to: '/dashboard/admin/learning-content', label: 'Learning content', icon: BookOpen },
         { to: '/dashboard/admin/classes', label: 'Classes', icon: BookOpen },
         { to: '/dashboard/admin/approvals', label: 'Session approvals', icon: ShieldCheck },
         { to: '/dashboard/admin/ai-grading', label: 'AI grading', icon: Sparkles },

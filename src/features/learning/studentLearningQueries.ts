@@ -8,8 +8,13 @@ import { useStudentScope } from '../students/studentQueries';
 
 import {
   loadAvailableLearningDiagnostics,
+  loadActivityProgress,
   loadDiagnosticProgress,
+  loadLearnerActivity,
   loadLearnerQuestion,
+  loadLearnerMasterySummary,
+  loadDueRetentionStep,
+  loadNextLearningStep,
   submitLearningAttempt,
   type SubmitLearningAttemptInput,
 } from './studentLearningRepository';
@@ -45,7 +50,38 @@ export const studentLearningQueryKeys = {
       'question',
       questionVersionId,
     ] as const,
+
+  nextStep: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'next-step'] as const,
+  activity: (studentScope: string, code: string) => [...studentLearningQueryKeys.all, studentScope, 'activity', code] as const,
+  activityProgress: (studentScope: string, code: string) => [...studentLearningQueryKeys.activity(studentScope, code), 'progress'] as const,
+  mastery: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'mastery'] as const,
+  retention: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'retention'] as const,
 };
+
+export function useDueRetentionStep() {
+  const studentScope = useStudentScope();
+  return useQuery({ queryKey: studentLearningQueryKeys.retention(studentScope), queryFn: loadDueRetentionStep, staleTime: 10_000 });
+}
+
+export function useLearnerMasterySummary() {
+  const studentScope = useStudentScope();
+  return useQuery({ queryKey: studentLearningQueryKeys.mastery(studentScope), queryFn: loadLearnerMasterySummary, staleTime: 10_000 });
+}
+
+export function useNextLearningStep() {
+  const studentScope = useStudentScope();
+  return useQuery({ queryKey: studentLearningQueryKeys.nextStep(studentScope), queryFn: loadNextLearningStep, staleTime: 10_000 });
+}
+
+export function useLearnerActivity(activityCode: string) {
+  const studentScope = useStudentScope();
+  return useQuery({ queryKey: studentLearningQueryKeys.activity(studentScope, activityCode), queryFn: () => loadLearnerActivity(activityCode), enabled: Boolean(activityCode), staleTime: 60_000 });
+}
+
+export function useActivityProgress(activityCode: string) {
+  const studentScope = useStudentScope();
+  return useQuery({ queryKey: studentLearningQueryKeys.activityProgress(studentScope, activityCode), queryFn: () => loadActivityProgress(activityCode), enabled: Boolean(activityCode), staleTime: 5_000 });
+}
 
 export function useAvailableLearningDiagnostics() {
   const studentScope = useStudentScope();
@@ -116,9 +152,7 @@ export function useLearnerQuestion(
   });
 }
 
-export function useSubmitLearningAttemptMutation(
-  diagnosticCode: string,
-) {
+export function useSubmitLearningAttemptMutation(diagnosticCode: string, activityCode?: string) {
   const queryClient = useQueryClient();
   const studentScope = useStudentScope();
 
@@ -137,6 +171,12 @@ export function useSubmitLearningAttemptMutation(
             ),
           exact: true,
         }),
+        ...(activityCode ? [
+          queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.activityProgress(studentScope, activityCode), exact: true }),
+          queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.nextStep(studentScope), exact: true }),
+          queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.mastery(studentScope), exact: true }),
+          queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.retention(studentScope), exact: true }),
+        ] : []),
 
         queryClient.invalidateQueries({
           queryKey:

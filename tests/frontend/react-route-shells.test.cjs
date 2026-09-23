@@ -47,8 +47,6 @@ const publicRoutes = [
   '/login',
   '/about',
   '/programs',
-  '/guides',
-  '/guides/matric-maths-mistakes-guide',
   '/privacy',
   '/terms',
   '/dashboard/login',

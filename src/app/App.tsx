@@ -21,6 +21,7 @@ const AdminResultsRoute = lazy(() => import('../features/admin/AdminResultsRoute
 const AdminStudentsRoute = lazy(() => import('../features/admin/AdminStudentsRoute').then((module) => ({ default: module.AdminStudentsRoute })));
 const AdminTutorsRoute = lazy(() => import('../features/admin/AdminTutorsRoute').then((module) => ({ default: module.AdminTutorsRoute })));
 const AdminUsersRoute = lazy(() => import('../features/admin/AdminUsersRoute').then((module) => ({ default: module.AdminUsersRoute })));
+const AdminLearningContentRoute = lazy(() => import('../features/admin/AdminLearningContentRoute').then((module) => ({ default: module.AdminLearningContentRoute })));
 const LoginRoute = lazy(() => import('../features/auth/LoginRoute').then((module) => ({ default: module.LoginRoute })));
 const NgoReportsRoute = lazy(() => import('../features/ngo/NgoReportsRoute').then((module) => ({ default: module.NgoReportsRoute })));
 const OnboardingRoute = lazy(() => import('../features/onboarding/OnboardingRoute').then((module) => ({ default: module.OnboardingRoute })));
@@ -41,14 +42,13 @@ const TutorClassesRoute = lazy(() => import('../features/tutors/TutorClassesRout
 const TutorAssignmentsRoute = lazy(() => import('../features/tutors/TutorAssignmentsRoute').then((module) => ({ default: module.TutorAssignmentsRoute })));
 const TutorDashboardRoute = lazy(() => import('../features/tutors/TutorDashboardRoute').then((module) => ({ default: module.TutorDashboardRoute })));
 const TutorLearnerBriefRoute = lazy(() => import('../features/tutors/TutorLearnerBriefRoute').then((module) => ({ default: module.TutorLearnerBriefRoute })));
+const TutorLearningRoute = lazy(() => import('../features/tutors/TutorLearningRoute').then((module) => ({ default: module.TutorLearningRoute })));
 const TutorReportsRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorReportsRoute })));
 const TutorRiskRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorRiskRoute })));
 const TutorSessionsRoute = lazy(() => import('../features/tutors/TutorOperationsRoutes').then((module) => ({ default: module.TutorSessionsRoute })));
 const TutorSubmissionsRoute = lazy(() => import('../features/tutors/TutorSubmissionsRoute').then((module) => ({ default: module.TutorSubmissionsRoute })));
 const PortalSettingsRoute = lazy(() => import('../features/settings/PortalSettingsRoute').then((module) => ({ default: module.PortalSettingsRoute })));
 const AboutRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.AboutRoute })));
-const GuidesIndexRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.GuidesIndexRoute })));
-const MatricMathsMistakesGuideRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.MatricMathsMistakesGuideRoute })));
 const PrivacyRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.PrivacyRoute })));
 const ProgramsRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.ProgramsRoute })));
 const PublicHomeRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.PublicHomeRoute })));
@@ -67,6 +67,7 @@ const StudentDiagnosticRoute = lazy(() =>
       default: module.StudentDiagnosticRoute,
     }))
 );
+const StudentActivityRoute = lazy(() => import('../features/learning/StudentActivityRoute').then((module) => ({ default: module.StudentActivityRoute })));
 function RouteLoadingFallback() {
   return (
     <main className="min-h-screen bg-brand-parchment px-4 py-5 text-brand-obsidian dark:bg-slate-950 dark:text-brand-parchment" aria-busy="true">
@@ -92,8 +93,6 @@ export function App() {
         <Route path="/student/results/:resultId" element={<ProtectedRoute roles={['student']}><StudentResultDetailRoute /></ProtectedRoute>} />
         <Route path="/about" element={<AboutRoute />} />
         <Route path="/programs" element={<ProgramsRoute />} />
-        <Route path="/guides" element={<GuidesIndexRoute />} />
-        <Route path="/guides/matric-maths-mistakes-guide" element={<MatricMathsMistakesGuideRoute />} />
         <Route path="/privacy" element={<PrivacyRoute />} />
         <Route path="/terms" element={<TermsRoute />} />
         <Route path="/login" element={<LoginRoute />} />
@@ -130,6 +129,7 @@ export function App() {
         <Route path="/dashboard/admin/privacy-requests" element={<ProtectedRoute roles={['admin']}><AdminPrivacyRequestsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/retention" element={<ProtectedRoute roles={['admin']}><AdminRetentionRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/results" element={<ProtectedRoute roles={['admin']}><AdminResultsRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/admin/learning-content" element={<ProtectedRoute roles={['admin']}><AdminLearningContentRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/ops-runbook" element={<ProtectedRoute roles={['admin']}><AdminOpsRunbookRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/reports" element={<ProtectedRoute roles={['admin']}><AdminReportsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor" element={<ProtectedRoute roles={['tutor']}><TutorDashboardRoute /></ProtectedRoute>} />
@@ -139,6 +139,7 @@ export function App() {
         <Route path="/dashboard/tutor/sessions" element={<ProtectedRoute roles={['tutor']}><TutorSessionsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/submissions" element={<ProtectedRoute roles={['tutor']}><TutorSubmissionsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/reports" element={<ProtectedRoute roles={['tutor']}><TutorReportsRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/tutor/learning" element={<ProtectedRoute roles={['tutor']}><TutorLearningRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/risk" element={<ProtectedRoute roles={['tutor']}><TutorRiskRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/settings" element={<ProtectedRoute roles={['tutor']}><PortalSettingsRoute role="tutor" /></ProtectedRoute>} />
         <Route
@@ -166,6 +167,7 @@ export function App() {
     </ProtectedRoute>
   }
 />
+<Route path="/dashboard/student/learning/activity/:activityCode" element={<ProtectedRoute roles={['student']}><StudentActivityRoute /></ProtectedRoute>} />
           <Route path="*" element={<NotFoundRoute />} />
         </Routes>
       </Suspense>

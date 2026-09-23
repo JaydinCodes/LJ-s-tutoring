@@ -73,6 +73,11 @@ enabled = true
 verify_jwt = true
 entrypoint = "./functions/grade-submission/index.ts"
 
+[functions.evaluate-learning-attempt]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/evaluate-learning-attempt/index.ts"
+
 [functions.cleanup-submission-assets]
 enabled = true
 verify_jwt = true

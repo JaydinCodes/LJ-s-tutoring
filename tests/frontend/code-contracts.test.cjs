@@ -25,7 +25,7 @@ test('CODE-02 route manifest drives static output and validates portal ingress a
   const reactHelper = read('src/app/routeManifest.ts');
 
   assert.ok(manifest.routes.some((route) => route.path === '/dashboard/admin'));
-  assert.ok(manifest.routes.some((route) => route.public && route.path === '/guides'));
+  assert.ok(!manifest.routes.some((route) => route.path === '/guides'));
   assert.ok(manifest.rootAssets.includes('/sw.js'));
   assert.match(staticBuild, /route-manifest\.json/);
   assert.match(staticBuild, /routeManifest\.routes/);

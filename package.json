@@ -109,7 +109,7 @@
     "qa:serve": "http-server dist -p 8080 -c-1 --silent",
     "qa:wait": "wait-on http://localhost:8080/ --timeout 60000",
     "qa:html": "html-validate \"dist/**/*.html\" --config .htmlvalidate.js",
-    "qa:links": "linkinator http://localhost:8080/ http://localhost:8080/about http://localhost:8080/programs http://localhost:8080/guides http://localhost:8080/guides/matric-maths-mistakes-guide http://localhost:8080/privacy http://localhost:8080/terms http://localhost:8080/dashboard/login --recurse --timeout 10000 --concurrency 4 --skip \"^mailto:|^tel:|^https?:\\/\\/(?!localhost:8080)\"",
+    "qa:links": "linkinator http://localhost:8080/ http://localhost:8080/about http://localhost:8080/programs http://localhost:8080/privacy http://localhost:8080/terms http://localhost:8080/dashboard/login --recurse --timeout 10000 --concurrency 4 --skip \"^mailto:|^tel:|^https?:\\/\\/(?!localhost:8080)\"",
     "qa:a11y": "pa11y-ci",
     "prepare": "husky || echo husky-not-installed"
   }
