@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -2883,6 +2883,162 @@ export type Database = {
           },
         ]
       }
+      learning_retention_check_events: {
+        Row: {
+          event_type: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          retention_check_id: string
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          retention_check_id: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          retention_check_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_retention_check_events_retention_check_id_fkey"
+            columns: ["retention_check_id"]
+            isOneToOne: false
+            referencedRelation: "learning_retention_checks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_retention_checks: {
+        Row: {
+          activity_template_id: string | null
+          completed_at: string | null
+          created_at: string
+          due_at: string
+          id: string
+          learning_attempt_id: string | null
+          outcome: string | null
+          rule_set_id: string
+          skill_id: string
+          source_mastery_evaluation_id: string
+          stage: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          activity_template_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_at: string
+          id?: string
+          learning_attempt_id?: string | null
+          outcome?: string | null
+          rule_set_id: string
+          skill_id: string
+          source_mastery_evaluation_id: string
+          stage: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          activity_template_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_at?: string
+          id?: string
+          learning_attempt_id?: string | null
+          outcome?: string | null
+          rule_set_id?: string
+          skill_id?: string
+          source_mastery_evaluation_id?: string
+          stage?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_retention_checks_activity_template_id_fkey"
+            columns: ["activity_template_id"]
+            isOneToOne: false
+            referencedRelation: "learning_activity_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_retention_checks_learning_attempt_id_fkey"
+            columns: ["learning_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "learning_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_retention_checks_rule_set_id_fkey"
+            columns: ["rule_set_id"]
+            isOneToOne: false
+            referencedRelation: "learning_retention_rule_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_retention_checks_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_retention_checks_source_mastery_evaluation_id_fkey"
+            columns: ["source_mastery_evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "skill_mastery_evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_retention_checks_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_retention_rule_sets: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          long_delay_days: number
+          medium_delay_days: number
+          short_delay_days: number
+          version: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          long_delay_days: number
+          medium_delay_days: number
+          short_delay_days: number
+          version: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          long_delay_days?: number
+          medium_delay_days?: number
+          short_delay_days?: number
+          version?: number
+        }
+        Relationships: []
+      }
       mastery_rule_sets: {
         Row: {
           code: string
@@ -5684,6 +5840,10 @@ export type Database = {
         Args: { p_activity_code: string }
         Returns: undefined
       }
+      complete_my_learning_retention_check: {
+        Args: { p_activity_code: string; p_retention_check_id: string }
+        Returns: string
+      }
       confirm_assignment_submission_attempt: {
         Args: {
           p_assignment_id: string
@@ -6275,6 +6435,10 @@ export type Database = {
           submission_id: string
         }[]
       }
+      get_admin_learning_aggregate: {
+        Args: { p_from?: string; p_to?: string }
+        Returns: Json
+      }
       get_admin_payroll_view: { Args: { p_week_start: string }; Returns: Json }
       get_admin_progress_reports: { Args: never; Returns: Json }
       get_ai_grading_queue_metrics: {
@@ -6384,6 +6548,7 @@ export type Database = {
           total_questions: number
         }[]
       }
+      get_my_due_learning_retention_step: { Args: never; Returns: Json }
       get_my_learning_activity: {
         Args: { p_activity_code: string }
         Returns: Json
@@ -6410,6 +6575,7 @@ export type Database = {
           state: Database["public"]["Enums"]["mastery_state"]
         }[]
       }
+      get_my_learning_progress_summary: { Args: never; Returns: Json }
       get_my_learning_recommendations: {
         Args: never
         Returns: {
@@ -6452,6 +6618,7 @@ export type Database = {
           object_name: string
         }[]
       }
+      get_parent_learning_progress_summary: { Args: never; Returns: Json }
       get_parent_learning_updates: {
         Args: never
         Returns: {
@@ -6754,6 +6921,10 @@ export type Database = {
       mark_tutor_deletion_storage_deleted: {
         Args: { p_files_removed: number; p_request_id: string }
         Returns: undefined
+      }
+      materialize_learning_retention_checks: {
+        Args: { p_as_of?: string }
+        Returns: number
       }
       moderate_community_text: {
         Args: { p_content: string }
@@ -8073,4 +8244,3 @@ export const Constants = {
     },
   },
 } as const
-
