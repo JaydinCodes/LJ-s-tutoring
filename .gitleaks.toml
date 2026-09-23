@@ -1,0 +1,4 @@
+[allowlist]
+description = "Grade 9 investigation response-part labels are public curriculum content, not credentials."
+paths = ['''supabase/migrations/20260917204157_fix_grade9_mojibake_v3\.sql''']
+regexes = ['''(equal_cost_distance|lower_cost_at_3km|lower_cost_at_10km|reasoning)''']

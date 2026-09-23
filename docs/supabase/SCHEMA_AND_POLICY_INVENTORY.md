@@ -94,8 +94,16 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20260826120612_grade9_evidence_learning_system.sql` | `752383e1a8f649fa3b6226e3ce19ecd438292e250b27fe68c99ef3b19159cb74` |
 | `20260826123020_grade9_instructional_pilot_vertical.sql` | `95f36be42b156c020d93aee1625b08ec90b7d9cc203f5ed3d5392eb7401956d4` |
 | `20260826125819_grade9_instructional_validation_workflow.sql` | `02af3701da3c2d21d25ebe5c33e98c8d950ff3e5355e3462bad02de732f2b46c` |
-| `20260826134817_grade9_gold_standard_second_pass_revisions.sql` | `6d0b357a3037e38e182c398eaba583e8fc88af886cd41bd6d377ed422fc2e431` |
+| `20260826134817_grade9_gold_standard_second_pass_revisions.sql` | `8aedf156b39edade6be4ba70c289b3fb521628fb8011d40699a0b06c68aac88f` |
 | `20260830014000_student_learning_runner.sql` | `103f5be193e4b6b630c9e77df3d41570ddf59cc48dc9b4929fa6bf3727e559a7` |
+| `20260917204157_fix_grade9_mojibake_v3.sql` | `79efb8466154feba1f9dd6f556b1a99b1446d295c4e434922fe72223266fd293` |
+| `20260917205040_blueprint_approvals.sql` | `6075795feaa14373aab8df2a8de6fdf7cd604e8a73b8f7ad9185c5111515d570` |
+| `20260923154636_sprint2_automatic_learning_pipeline.sql` | `7e7dc87680da8b1e7bd544c7d097e1af5d95c539703ef98c3fa6c5573fc0b116` |
+| `20260923162220_sprint3_learner_activities.sql` | `577b279c4b7d0e872d4a012282d948ac654f64ed62be52327c062b4b86e2d706` |
+| `20260923162534_sprint3_activity_progress_and_manual_review.sql` | `78806a8d3cc5d31bf955339ba36426e124dda417288557cea6fbf166e0392ac7` |
+| `20260923170000_sprint3_tutor_learning_insights.sql` | `abfe0f119b3cf581b4283a1a201fddc4a1fd4ebce9758d3fdcdda1b0f56ef139` |
+| `20260923202257_sprint4_learning_content_authoring.sql` | `d25b5e8698cbfb0e8171f6838322ab89b60ac25e4236516a12af8909083482ba` |
+| `20260923205016_sprint5_learning_retention_reporting.sql` | `fd1163cd62811fd1417cd3518282a65d411e266c254225c7305e10e971c3d6b3` |
 
 ## Regeneration
 

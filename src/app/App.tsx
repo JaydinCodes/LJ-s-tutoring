@@ -60,9 +60,6 @@ const StudentLearningRoute = lazy(() =>
       default: module.StudentLearningRoute,
     }))
 );
-const StudentLearningRoute = lazy(() => import('../features/learning/StudentLearningRoute').then((module) => ({ default: module.StudentLearningRoute })));
-const StudentDiagnosticRoute = lazy(() => import('../features/learning/StudentDiagnosticRoute').then((module) => ({ default: module.StudentDiagnosticRoute })));
-
 const StudentDiagnosticRoute = lazy(() =>
   import('../features/learning/StudentDiagnosticRoute')
     .then((module) => ({
@@ -144,31 +141,6 @@ export function App() {
         <Route path="/dashboard/tutor/learning" element={<ProtectedRoute roles={['tutor']}><TutorLearningRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/risk" element={<ProtectedRoute roles={['tutor']}><TutorRiskRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/settings" element={<ProtectedRoute roles={['tutor']}><PortalSettingsRoute role="tutor" /></ProtectedRoute>} />
-        <Route
-  path="/dashboard/student"
-  element={
-    <ProtectedRoute roles={['student']}>
-      <StudentDashboardRoute />
-    </ProtectedRoute>
-  }
-/>
-        <Route
-  path="/dashboard/student/learning"
-  element={
-    <ProtectedRoute roles={['student']}>
-      <StudentLearningRoute />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/dashboard/student/learning/diagnostic/:diagnosticCode"
-  element={
-    <ProtectedRoute roles={['student']}>
-      <StudentDiagnosticRoute />
-    </ProtectedRoute>
-  }
-/>
 <Route path="/dashboard/student/learning/activity/:activityCode" element={<ProtectedRoute roles={['student']}><StudentActivityRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/learning" element={<ProtectedRoute roles={['student']}><StudentLearningRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/learning/diagnostic/:diagnosticCode" element={<ProtectedRoute roles={['student']}><StudentDiagnosticRoute /></ProtectedRoute>} />
