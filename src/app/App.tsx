@@ -60,6 +60,8 @@ const StudentLearningRoute = lazy(() =>
       default: module.StudentLearningRoute,
     }))
 );
+const StudentLearningRoute = lazy(() => import('../features/learning/StudentLearningRoute').then((module) => ({ default: module.StudentLearningRoute })));
+const StudentDiagnosticRoute = lazy(() => import('../features/learning/StudentDiagnosticRoute').then((module) => ({ default: module.StudentDiagnosticRoute })));
 
 const StudentDiagnosticRoute = lazy(() =>
   import('../features/learning/StudentDiagnosticRoute')
@@ -168,6 +170,8 @@ export function App() {
   }
 />
 <Route path="/dashboard/student/learning/activity/:activityCode" element={<ProtectedRoute roles={['student']}><StudentActivityRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/student/learning" element={<ProtectedRoute roles={['student']}><StudentLearningRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/student/learning/diagnostic/:diagnosticCode" element={<ProtectedRoute roles={['student']}><StudentDiagnosticRoute /></ProtectedRoute>} />
           <Route path="*" element={<NotFoundRoute />} />
         </Routes>
       </Suspense>

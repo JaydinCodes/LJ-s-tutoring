@@ -15,6 +15,8 @@ import {
   loadLearnerMasterySummary,
   loadDueRetentionStep,
   loadNextLearningStep,
+  loadDiagnosticProgress,
+  loadLearnerQuestion,
   submitLearningAttempt,
   type SubmitLearningAttemptInput,
 } from './studentLearningRepository';
@@ -82,6 +84,8 @@ export function useActivityProgress(activityCode: string) {
   const studentScope = useStudentScope();
   return useQuery({ queryKey: studentLearningQueryKeys.activityProgress(studentScope, activityCode), queryFn: () => loadActivityProgress(activityCode), enabled: Boolean(activityCode), staleTime: 5_000 });
 }
+
+};
 
 export function useAvailableLearningDiagnostics() {
   const studentScope = useStudentScope();
@@ -153,6 +157,9 @@ export function useLearnerQuestion(
 }
 
 export function useSubmitLearningAttemptMutation(diagnosticCode: string, activityCode?: string) {
+export function useSubmitLearningAttemptMutation(
+  diagnosticCode: string,
+) {
   const queryClient = useQueryClient();
   const studentScope = useStudentScope();
 
@@ -188,4 +195,5 @@ export function useSubmitLearningAttemptMutation(diagnosticCode: string, activit
       ]);
     },
   });
+}
 }

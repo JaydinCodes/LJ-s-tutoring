@@ -16,6 +16,7 @@ import {
 } from '../../components/dashboard/DashboardDesignSystem';
 
 import { useAvailableLearningDiagnostics, useDueRetentionStep, useLearnerMasterySummary, useNextLearningStep } from './studentLearningQueries';
+import { useAvailableLearningDiagnostics } from './studentLearningQueries';
 
 export function StudentLearningRoute() {
   const diagnosticsQuery =
@@ -25,6 +26,8 @@ export function StudentLearningRoute() {
   const masteryQuery = useLearnerMasterySummary();
 
   if (diagnosticsQuery.isPending || nextStepQuery.isPending || retentionQuery.isPending || masteryQuery.isPending) {
+
+  if (diagnosticsQuery.isPending) {
     return (
       <PageShell
         title="Learning"
@@ -38,6 +41,7 @@ export function StudentLearningRoute() {
   }
 
   if (diagnosticsQuery.isError || nextStepQuery.isError || retentionQuery.isError || masteryQuery.isError) {
+  if (diagnosticsQuery.isError) {
     return (
       <PageShell
         title="Learning"
@@ -204,4 +208,5 @@ export function StudentLearningRoute() {
       )}
     </PageShell>
   );
+}
 }

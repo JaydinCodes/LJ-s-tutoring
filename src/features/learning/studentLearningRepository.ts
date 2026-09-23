@@ -39,6 +39,7 @@ export type LearnerQuestion = {
 export type SubmitLearningAttemptInput = {
   diagnosticCode?: string;
   activityCode?: string;
+  diagnosticCode: string;
   questionVersionId: string;
   answer: string;
   confidence: LearnerConfidence | null;
@@ -226,11 +227,16 @@ export async function submitLearningAttempt(
       ...(input.activityCode
         ? { p_activity_code: input.activityCode }
         : { p_diagnostic_code: input.diagnosticCode }),
+  const { data, error } = await client.rpc(
+    'submit_my_learning_attempt',
+    {
+      p_diagnostic_code: input.diagnosticCode,
       p_question_version_id: input.questionVersionId,
       p_response: {
         answer: input.answer.trim(),
       },
       p_confidence: input.confidence,
+      p_confidence: input.confidence ?? undefined,
       p_time_spent_seconds: Math.max(
         0,
         Math.floor(input.timeSpentSeconds),
@@ -238,6 +244,7 @@ export async function submitLearningAttempt(
       p_idempotency_key: input.idempotencyKey,
       p_hint_ids: input.hintIds,
     } },
+    },
   );
 
   if (error) {
@@ -245,6 +252,7 @@ export async function submitLearningAttempt(
   }
 
   const row = data;
+  const row = data?.[0];
 
   if (!row) {
     throw new Error(
@@ -330,4 +338,7 @@ export async function loadLearnerMasterySummary(): Promise<LearnerMasterySummary
     state: row.state,
     determinedAt: row.determined_at,
   }));
+}
+    status: row.attempt_status,
+  };
 }
