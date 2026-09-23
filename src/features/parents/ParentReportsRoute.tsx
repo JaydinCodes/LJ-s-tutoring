@@ -54,6 +54,7 @@ function ParentStudentReport({ student }: { student: ParentReportStudent }) {
           <p className="mt-1"><span className="font-semibold">{student.latest_topic.topic}</span> is the current focus area ({student.latest_topic.score}%). Ask your child to explain one worked example, then encourage a short independent practice block.</p>
         </section>
       ) : null}
+      {student.learning_progress?.length ? <section className="mt-4 rounded-lg bg-slate-50 p-4 text-sm"><p className="font-semibold text-slate-950">Learning progress</p><p className="mt-1 text-slate-600">{student.completed_learning_activities ?? 0} learning activit{student.completed_learning_activities === 1 ? 'y' : 'ies'} completed.</p><div className="mt-3 grid gap-2 sm:grid-cols-2">{student.learning_progress.slice(0, 4).map((skill) => <div className="rounded-lg bg-white p-3" key={skill.skillName}><p className="font-medium text-slate-950">{skill.skillName}</p><p className="text-slate-600">{parentMasteryLabel(skill.state)}</p></div>)}</div></section> : null}
       <section className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-slate-200 p-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Recent engagement</p><p className="mt-2 font-semibold text-slate-950">{student.session_count} session{student.session_count === 1 ? '' : 's'} · {student.attendance_rate == null ? 'attendance pending' : `${student.attendance_rate}% attendance`}</p><p className="mt-1 text-sm text-slate-600">{student.completed_work_count} task{student.completed_work_count === 1 ? '' : 's'} submitted in the past two weeks.</p></div>
         <div className="rounded-lg border border-slate-200 p-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Next tutoring session</p><p className="mt-2 font-semibold text-slate-950">{student.next_session_date ? formatDate(student.next_session_date) : 'Not scheduled yet'}</p><p className="mt-1 text-sm text-slate-600">{student.latest_student_summary || 'Ask your child: “What is the one thing you are fixing next?”'}</p></div>
@@ -72,6 +73,10 @@ function ParentStudentReport({ student }: { student: ParentReportStudent }) {
       </div>
     </Card>
   );
+}
+
+function parentMasteryLabel(state: string) {
+  return ({ unassessed: 'Not assessed yet', emerging: 'Building foundations', developing: 'Making progress', secure: 'Confident', retained: 'Secure over time' } as Record<string, string>)[state] ?? 'Learning in progress';
 }
 
 function formatAverage(values: number[]) {

@@ -16,7 +16,6 @@ test('static build prerenders crawlable public content without exposing dashboar
   const home = readDist('index.html');
   const about = readDist('about/index.html');
   const programs = readDist('programs/index.html');
-  const guide = readDist('guides/matric-maths-mistakes-guide/index.html');
   const dashboard = readDist('dashboard/student/index.html');
 
   assert.match(home, /<title>Maths Tutoring Cape Town and South Africa \| Project Odysseus<\/title>/);
@@ -27,7 +26,7 @@ test('static build prerenders crawlable public content without exposing dashboar
   assert.match(home, /<section id="enquiry">/);
   assert.match(about, /<main data-prerendered-page="about">/);
   assert.match(programs, /<main data-prerendered-page="programs">/);
-  assert.match(guide, /<main data-prerendered-page="matric-maths-mistakes-guide">/);
+  assert.equal(fs.existsSync(path.join(root, 'dist', 'guides')), false, 'retired guide shells must not be rebuilt');
   assert.doesNotMatch(dashboard, /data-prerendered-page=/);
   assert.match(dashboard, /<div id="root" class="app-booting"><\/div>/);
 });

@@ -67,8 +67,6 @@ for (const target of assetCopyTargets) {
   'login',
   'about',
   'programs',
-  'guides',
-  'guides/matric-maths-mistakes-guide',
   'privacy',
   'terms',
   'admin/login',
@@ -211,21 +209,6 @@ function publicPrerender(route) {
         <p>Build confidence with functions, trigonometry, analytical geometry, and exam-style application.</p>
         <h2>Grade 12 exam preparation</h2>
         <p>Target weak topics, sharpen exam technique, and practise under realistic time pressure.</p>
-      </main>`,
-    guides: `
-      <main data-prerendered-page="guides">
-        <h1>Learning guides</h1>
-        <p>Short, practical resources for learners and parents.</p>
-        <p><a href="/guides/matric-maths-mistakes-guide/">Read the Matric Maths Mistakes Guide</a></p>
-      </main>`,
-    'guides/matric-maths-mistakes-guide': `
-      <main data-prerendered-page="matric-maths-mistakes-guide">
-        <h1>Matric Maths Mistakes Guide</h1>
-        <p>A concise Grade 12 maths guide for avoiding common exam mistakes and making revision more consistent.</p>
-        <h2>Misreading the question</h2>
-        <p>Underline command words and rewrite the ask before calculating.</p>
-        <h2>Skipping algebra steps</h2>
-        <p>Show transformations line by line so method marks are still earned when arithmetic slips happen.</p>
       </main>`,
     privacy: `
       <main data-prerendered-page="privacy">

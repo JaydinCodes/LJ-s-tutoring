@@ -13,7 +13,7 @@ test('programs and login routes expose the required form and heading semantics',
   const publicRoutes = read('src/app/routes/PublicRoutes.tsx');
   const programsRoute = publicRoutes.slice(
     publicRoutes.indexOf('export function ProgramsRoute'),
-    publicRoutes.indexOf('export function GuidesIndexRoute'),
+    publicRoutes.indexOf('export function PrivacyRoute'),
   );
   const loginRoute = read('src/features/auth/LoginRoute.tsx');
 

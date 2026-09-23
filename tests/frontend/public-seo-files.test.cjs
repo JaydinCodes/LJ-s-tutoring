@@ -8,8 +8,6 @@ const publicRoutes = [
   'https://projectodysseus.live/',
   'https://projectodysseus.live/about/',
   'https://projectodysseus.live/programs/',
-  'https://projectodysseus.live/guides/',
-  'https://projectodysseus.live/guides/matric-maths-mistakes-guide/',
   'https://projectodysseus.live/privacy/',
   'https://projectodysseus.live/terms/',
 ];

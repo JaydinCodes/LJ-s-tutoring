@@ -15,13 +15,16 @@ import {
   SkeletonCard,
 } from '../../components/dashboard/DashboardDesignSystem';
 
-import { useAvailableLearningDiagnostics } from './studentLearningQueries';
+import { useAvailableLearningDiagnostics, useDueRetentionStep, useLearnerMasterySummary, useNextLearningStep } from './studentLearningQueries';
 
 export function StudentLearningRoute() {
   const diagnosticsQuery =
     useAvailableLearningDiagnostics();
+  const nextStepQuery = useNextLearningStep();
+  const retentionQuery = useDueRetentionStep();
+  const masteryQuery = useLearnerMasterySummary();
 
-  if (diagnosticsQuery.isPending) {
+  if (diagnosticsQuery.isPending || nextStepQuery.isPending || retentionQuery.isPending || masteryQuery.isPending) {
     return (
       <PageShell
         title="Learning"
@@ -34,7 +37,7 @@ export function StudentLearningRoute() {
     );
   }
 
-  if (diagnosticsQuery.isError) {
+  if (diagnosticsQuery.isError || nextStepQuery.isError || retentionQuery.isError || masteryQuery.isError) {
     return (
       <PageShell
         title="Learning"
@@ -46,6 +49,9 @@ export function StudentLearningRoute() {
           description="Check your connection and try again."
           onRetry={() => {
             void diagnosticsQuery.refetch();
+            void nextStepQuery.refetch();
+            void retentionQuery.refetch();
+            void masteryQuery.refetch();
           }}
         />
       </PageShell>
@@ -54,6 +60,10 @@ export function StudentLearningRoute() {
 
   const diagnostics =
     diagnosticsQuery.data ?? [];
+  const dueRetention = retentionQuery.data;
+  // A due retrieval takes precedence, and the section below is guarded.
+  const nextStep = nextStepQuery.data ?? dueRetention!;
+  const mastery = masteryQuery.data ?? [];
 
   return (
     <PageShell
@@ -61,6 +71,15 @@ export function StudentLearningRoute() {
       subtitle="Short diagnostic and practice activities help your tutor understand what to work on next."
       section="student"
     >
+      {(dueRetention ?? nextStep) ? (
+        <section className="rounded-[2rem] border border-brand-gold/30 bg-brand-navy p-6 text-brand-parchment shadow-xl sm:p-8" aria-labelledby="next-step-title">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-gold">Your next step</p>
+          <h2 id="next-step-title" className="mt-3 text-2xl font-semibold">{dueRetention?.name ?? nextStep?.name}</h2>
+          <p className="mt-3 max-w-2xl leading-7 text-brand-marble">{dueRetention?.learnerReason ?? nextStep?.learnerReason}</p>
+          <p className="mt-3 text-sm text-brand-marble">About {nextStep.estimatedMinutes} minutes · {nextStep.targetSkillName}</p>
+          <Link className="academy-btn-primary mt-6 inline-flex min-h-11 items-center gap-2 rounded-full px-5" to={`/dashboard/student/learning/activity/${encodeURIComponent((dueRetention ?? nextStep)!.activityCode)}${dueRetention ? `?retentionCheck=${encodeURIComponent(dueRetention.retentionCheckId)}` : ''}`}>{dueRetention ? 'Start quick review' : 'Start practice'} <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+        </section>
+      ) : null}
       <GreekHeroCard
         eyebrow="Evidence-driven learning"
         title="Learn one step at a time."
@@ -80,6 +99,8 @@ export function StudentLearningRoute() {
           </span>
         </div>
       </GreekHeroCard>
+
+      {mastery.length ? <section aria-labelledby="skills-heading"><h2 id="skills-heading" className="text-xl font-semibold">Current learning progress</h2><div className="mt-4 grid gap-3 sm:grid-cols-2">{mastery.map((item) => <article className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900" key={item.skillCode}><span className="font-medium">{item.skillName}</span><span className="rounded-full bg-brand-aegean/10 px-3 py-1 text-sm capitalize text-brand-aegean">{item.state}</span></article>)}</div></section> : null}
 
       {diagnostics.length   === 0 ? (
         <EmptyState

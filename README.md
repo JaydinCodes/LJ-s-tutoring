@@ -74,7 +74,7 @@ npm run build:react
 
 Important unified React routes:
 
-- Public: `/`, `/about`, `/programs`, `/guides`, `/guides/matric-maths-mistakes-guide`, `/privacy`, `/terms`
+- Public: `/`, `/about`, `/programs`, `/privacy`, `/terms`
 - Auth/onboarding: `/dashboard/login`, `/onboarding/student`, `/onboarding/tutor`
 - Student: `/dashboard/student`, `/dashboard/student/assignments`, `/dashboard/student/progress`, `/dashboard/student/results`, `/dashboard/student/careers`, `/dashboard/student/reports`, `/dashboard/student/community`
 - Admin: `/dashboard/admin`, `/dashboard/admin/users`, `/dashboard/admin/students`, `/dashboard/admin/tutors`, `/dashboard/admin/allocations`, `/dashboard/admin/classes`, `/dashboard/admin/assignments`, `/dashboard/admin/approvals`, `/dashboard/admin/payments`, `/dashboard/admin/payroll`, `/dashboard/admin/reconciliation`, `/dashboard/admin/reports`, `/dashboard/admin/results`, `/dashboard/admin/audit`, `/dashboard/admin/privacy-requests`, `/dashboard/admin/retention`, `/dashboard/admin/ops-runbook`
@@ -204,7 +204,6 @@ dist/
     admin/
     tutor/
   onboarding/
-  guides/
 ```
 
 ## Operations Docs

@@ -25,6 +25,8 @@ export interface ParentReportStudent {
   completed_work_count: number;
   latest_student_summary?: string | null;
   next_session_date?: string | null;
+  learning_progress?: Array<{ skillName: string; state: string; determinedAt: string }>;
+  completed_learning_activities?: number;
 }
 
 type ParentLearningUpdate = Pick<ParentReportStudent, 'student_id' | 'session_count' | 'attendance_rate' | 'completed_work_count' | 'latest_student_summary' | 'next_session_date'>;
@@ -35,12 +37,13 @@ export async function loadParentProgressReports(): Promise<{ students: ParentRep
   }
 
   const client = requireSupabase();
-  const [result, updatesResult] = await Promise.all([
+  const [result, updatesResult, learningResult] = await Promise.all([
     client.rpc('get_parent_progress_reports'),
     (client as unknown as { rpc: (name: 'get_parent_learning_updates') => Promise<{ data: ParentLearningUpdate[] | null; error: Error | null }> }).rpc('get_parent_learning_updates'),
+    (client as unknown as { rpc: (name: 'get_parent_learning_progress_summary') => Promise<{ data: unknown; error: Error | null }> }).rpc('get_parent_learning_progress_summary'),
   ]);
-  if (result.error || updatesResult.error) {
-    const error = result.error || updatesResult.error;
+  if (result.error || updatesResult.error || learningResult.error) {
+    const error = result.error || updatesResult.error || learningResult.error;
     captureAppError(error, {
       featureArea: 'parent',
       action: 'parent_reports.rpc_failed',
@@ -83,10 +86,18 @@ export async function loadParentProgressReports(): Promise<{ students: ParentRep
   }
 
   const updateByStudentId = new Map(((updatesResult.data || []) as ParentLearningUpdate[]).map((update) => [update.student_id, update]));
+  const learningRows = Array.isArray(learningResult.data) ? learningResult.data : [];
+  const learningByStudent = new Map(learningRows.flatMap((row) => {
+    if (!row || typeof row !== 'object') return [];
+    const value = row as Record<string, unknown>;
+    return typeof value.studentId === 'string' ? [[value.studentId, value] as const] : [];
+  }));
   const students = Array.from(grouped.values()).map((student) => ({
     ...student,
     average_mark: average(student.released_results.map((resultRow) => resultRow.marks_awarded)),
     ...updateByStudentId.get(student.student_id),
+    learning_progress: Array.isArray(learningByStudent.get(student.student_id)?.skills) ? learningByStudent.get(student.student_id)?.skills as ParentReportStudent['learning_progress'] : [],
+    completed_learning_activities: Number(learningByStudent.get(student.student_id)?.completedActivities ?? 0),
   }));
 
   return { students };

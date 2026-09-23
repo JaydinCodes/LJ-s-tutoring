@@ -37,13 +37,59 @@ export type LearnerQuestion = {
 };
 
 export type SubmitLearningAttemptInput = {
-  diagnosticCode: string;
+  diagnosticCode?: string;
+  activityCode?: string;
   questionVersionId: string;
   answer: string;
   confidence: LearnerConfidence | null;
   timeSpentSeconds: number;
   idempotencyKey: string;
   hintIds: string[];
+};
+
+export type LearnerActivityStage = {
+  id: string;
+  sequence: number;
+  type: string;
+  instruction: string;
+  questionVersionIds: string[];
+};
+
+export type LearnerActivity = {
+  activityCode: string;
+  name: string;
+  description: string;
+  targetSkillCode: string;
+  stages: LearnerActivityStage[];
+};
+
+export type NextLearningStep = {
+  activityCode: string;
+  name: string;
+  description: string;
+  targetSkillCode: string;
+  targetSkillName: string;
+  estimatedMinutes: number;
+  learnerReason: string;
+};
+
+export type DueRetentionStep = NextLearningStep & {
+  retentionCheckId: string;
+};
+
+export type ActivityProgressItem = DiagnosticProgressItem & {
+  stageId: string;
+  stageSequence: number;
+  stageType: string;
+  stageInstruction: string;
+  questionSequence: number;
+};
+
+export type LearnerMasterySummary = {
+  skillCode: string;
+  skillName: string;
+  state: 'unassessed' | 'emerging' | 'developing' | 'secure' | 'retained';
+  determinedAt: string;
 };
 
 export type SubmitLearningAttemptResult = {
@@ -174,10 +220,13 @@ export async function submitLearningAttempt(
 ): Promise<SubmitLearningAttemptResult> {
   const client = requireSupabase();
 
-  const { data, error } = await client.rpc(
-    'submit_my_learning_attempt',
+  const { data, error } = await client.functions.invoke(
+    'evaluate-learning-attempt',
     {
-      p_diagnostic_code: input.diagnosticCode,
+      body: {
+      ...(input.activityCode
+        ? { p_activity_code: input.activityCode }
+        : { p_diagnostic_code: input.diagnosticCode }),
       p_question_version_id: input.questionVersionId,
       p_response: {
         answer: input.answer.trim(),
@@ -189,6 +238,7 @@ export async function submitLearningAttempt(
       ),
       p_idempotency_key: input.idempotencyKey,
       p_hint_ids: input.hintIds,
+      },
     },
   );
 
@@ -196,7 +246,7 @@ export async function submitLearningAttempt(
     throw error;
   }
 
-  const row = data?.[0];
+  const row = data;
 
   if (!row) {
     throw new Error(
@@ -206,6 +256,80 @@ export async function submitLearningAttempt(
 
   return {
     attemptId: row.attempt_id,
-    status: row.attempt_status,
+    status: row.attempt_status ?? 'submitted',
   };
+}
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+export async function loadNextLearningStep(): Promise<NextLearningStep | null> {
+  const { data, error } = await requireSupabase().rpc('get_my_next_learning_step');
+  if (error) throw error;
+  const row = objectValue(data);
+  if (!row || typeof row.activityCode !== 'string') return null;
+  return row as NextLearningStep;
+}
+
+export async function loadDueRetentionStep(): Promise<DueRetentionStep | null> {
+  const client = requireSupabase() as unknown as { rpc: (name: 'get_my_due_learning_retention_step') => Promise<{ data: unknown; error: Error | null }> };
+  const { data, error } = await client.rpc('get_my_due_learning_retention_step');
+  if (error) throw error;
+  const row = objectValue(data);
+  if (!row || typeof row.activityCode !== 'string' || typeof row.retentionCheckId !== 'string') return null;
+  return row as DueRetentionStep;
+}
+
+export async function loadLearnerActivity(activityCode: string): Promise<LearnerActivity> {
+  const client = requireSupabase();
+  const { error: startError } = await client.rpc('start_my_learning_activity', { p_activity_code: activityCode });
+  if (startError) throw startError;
+  const { data, error } = await client.rpc('get_my_learning_activity', { p_activity_code: activityCode });
+  if (error) throw error;
+  const row = objectValue(data);
+  if (!row || !Array.isArray(row.stages)) throw new Error('This activity is not currently available.');
+  return row as LearnerActivity;
+}
+
+export async function loadActivityProgress(activityCode: string): Promise<ActivityProgressItem[]> {
+  const { data, error } = await requireSupabase().rpc('get_my_learning_activity_state', { p_activity_code: activityCode });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    questionVersionId: row.question_version_id,
+    sequenceNumber: Number(row.stage_sequence) * 100 + Number(row.question_sequence),
+    stageId: row.stage_id,
+    stageSequence: Number(row.stage_sequence),
+    stageType: row.stage_type,
+    stageInstruction: row.stage_instruction,
+    questionSequence: Number(row.question_sequence),
+    attemptId: row.attempt_id,
+    attemptStatus: row.attempt_status,
+    submittedAt: null,
+  }));
+}
+
+export async function completeLearnerActivity(activityCode: string) {
+  const { error } = await requireSupabase().rpc('complete_my_learning_activity', { p_activity_code: activityCode });
+  if (error) throw error;
+}
+
+export async function completeLearnerRetentionCheck(retentionCheckId: string, activityCode: string) {
+  const { error } = await requireSupabase().functions.invoke('evaluate-learning-attempt', {
+    body: { p_complete_retention: true, p_retention_check_id: retentionCheckId, p_activity_code: activityCode },
+  });
+  if (error) throw error;
+}
+
+export async function loadLearnerMasterySummary(): Promise<LearnerMasterySummary[]> {
+  const { data, error } = await requireSupabase().rpc('get_my_learning_mastery_summary');
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    skillCode: row.skill_code,
+    skillName: row.skill_name,
+    state: row.state,
+    determinedAt: row.determined_at,
+  }));
 }

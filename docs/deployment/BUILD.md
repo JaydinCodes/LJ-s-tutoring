@@ -6,7 +6,7 @@
 
 Generated/copied output includes:
 
-- React shells for `/`, `/about`, `/programs`, `/guides`, `/privacy`, `/terms`, `/dashboard/*`, and `/onboarding/*`
+- React shells for `/`, `/about`, `/programs`, `/privacy`, `/terms`, `/dashboard/*`, and `/onboarding/*`
 - `react-app-dist/`
 - `assets/analytics.js`
 - `assets/analytics-module.js`

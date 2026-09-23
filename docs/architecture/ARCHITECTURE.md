@@ -62,7 +62,7 @@ Routes are registered in `src/app/App.tsx`.
 
 | Route family | Access | Notes |
 |---|---|---|
-| `/`, `/about`, `/programs`, `/guides`, `/privacy`, `/terms` | Public | Marketing and informational pages. |
+| `/`, `/about`, `/programs`, `/privacy`, `/terms` | Public | Marketing and informational pages. |
 | `/login`, `/dashboard/login` | Public | Supabase Auth login surface. |
 | `/onboarding/student`, `/onboarding/tutor` | Public entry, controlled writes | Self-service onboarding for non-admin roles only. |
 | `/dashboard/student/*` | Student only | Dashboard, assignments, progress, results, careers, reports, community, settings. |

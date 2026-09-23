@@ -1919,6 +1919,48 @@ export type Database = {
           },
         ]
       }
+      learner_activity_progress: {
+        Row: {
+          completed_at: string | null
+          id: string
+          learning_activity_template_id: string
+          started_at: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          learning_activity_template_id: string
+          started_at?: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          learning_activity_template_id?: string
+          started_at?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learner_activity_progress_learning_activity_template_id_fkey"
+            columns: ["learning_activity_template_id"]
+            isOneToOne: false
+            referencedRelation: "learning_activity_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learner_activity_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learner_misconception_evidence: {
         Row: {
           created_at: string
@@ -2374,6 +2416,54 @@ export type Database = {
           },
         ]
       }
+      learning_attempt_reviews: {
+        Row: {
+          created_at: string
+          explanation_code: string
+          feedback_note: string | null
+          id: string
+          learning_attempt_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          explanation_code: string
+          feedback_note?: string | null
+          id?: string
+          learning_attempt_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          explanation_code?: string
+          feedback_note?: string | null
+          id?: string
+          learning_attempt_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_attempt_reviews_learning_attempt_id_fkey"
+            columns: ["learning_attempt_id"]
+            isOneToOne: true
+            referencedRelation: "learning_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_attempt_reviews_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learning_attempt_skill_evidence: {
         Row: {
           cognitive_level: Database["public"]["Enums"]["caps_cognitive_level"]
@@ -2792,6 +2882,162 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      learning_retention_check_events: {
+        Row: {
+          event_type: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          retention_check_id: string
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          retention_check_id: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          retention_check_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_retention_check_events_retention_check_id_fkey"
+            columns: ["retention_check_id"]
+            isOneToOne: false
+            referencedRelation: "learning_retention_checks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_retention_checks: {
+        Row: {
+          activity_template_id: string | null
+          completed_at: string | null
+          created_at: string
+          due_at: string
+          id: string
+          learning_attempt_id: string | null
+          outcome: string | null
+          rule_set_id: string
+          skill_id: string
+          source_mastery_evaluation_id: string
+          stage: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          activity_template_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_at: string
+          id?: string
+          learning_attempt_id?: string | null
+          outcome?: string | null
+          rule_set_id: string
+          skill_id: string
+          source_mastery_evaluation_id: string
+          stage: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          activity_template_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_at?: string
+          id?: string
+          learning_attempt_id?: string | null
+          outcome?: string | null
+          rule_set_id?: string
+          skill_id?: string
+          source_mastery_evaluation_id?: string
+          stage?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_retention_checks_activity_template_id_fkey"
+            columns: ["activity_template_id"]
+            isOneToOne: false
+            referencedRelation: "learning_activity_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_retention_checks_learning_attempt_id_fkey"
+            columns: ["learning_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "learning_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_retention_checks_rule_set_id_fkey"
+            columns: ["rule_set_id"]
+            isOneToOne: false
+            referencedRelation: "learning_retention_rule_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_retention_checks_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_retention_checks_source_mastery_evaluation_id_fkey"
+            columns: ["source_mastery_evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "skill_mastery_evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_retention_checks_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_retention_rule_sets: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          long_delay_days: number
+          medium_delay_days: number
+          short_delay_days: number
+          version: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          long_delay_days: number
+          medium_delay_days: number
+          short_delay_days: number
+          version: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          long_delay_days?: number
+          medium_delay_days?: number
+          short_delay_days?: number
+          version?: number
+        }
+        Relationships: []
       }
       mastery_rule_sets: {
         Row: {
@@ -3377,6 +3623,7 @@ export type Database = {
           item_code: string
           retired_at: string | null
           retired_by: string | null
+          source_notes: string | null
           source_tier: Database["public"]["Enums"]["curriculum_source_tier"]
         }
         Insert: {
@@ -3387,6 +3634,7 @@ export type Database = {
           item_code: string
           retired_at?: string | null
           retired_by?: string | null
+          source_notes?: string | null
           source_tier?: Database["public"]["Enums"]["curriculum_source_tier"]
         }
         Update: {
@@ -3397,6 +3645,7 @@ export type Database = {
           item_code?: string
           retired_at?: string | null
           retired_by?: string | null
+          source_notes?: string | null
           source_tier?: Database["public"]["Enums"]["curriculum_source_tier"]
         }
         Relationships: [
@@ -3951,6 +4200,7 @@ export type Database = {
       }
       skill_mastery_evaluations: {
         Row: {
+          automatic_evidence_fingerprint: string | null
           created_at: string
           determined_at: string
           determined_by: string | null
@@ -3963,6 +4213,7 @@ export type Database = {
           student_id: string
         }
         Insert: {
+          automatic_evidence_fingerprint?: string | null
           created_at?: string
           determined_at?: string
           determined_by?: string | null
@@ -3975,6 +4226,7 @@ export type Database = {
           student_id: string
         }
         Update: {
+          automatic_evidence_fingerprint?: string | null
           created_at?: string
           determined_at?: string
           determined_by?: string | null
@@ -5351,6 +5603,23 @@ export type Database = {
     }
     Functions: {
       anonymize_student: { Args: { p_student_id: string }; Returns: Json }
+      apply_automatic_learning_evaluation: {
+        Args: {
+          p_is_correct: boolean
+          p_learning_attempt_id: string
+          p_marks_awarded: number
+          p_misconception_codes?: string[]
+        }
+        Returns: undefined
+      }
+      approve_diagnostic_blueprint: {
+        Args: { p_blueprint_id: string; p_reviewer_id: string }
+        Returns: undefined
+      }
+      approve_learning_activity_template: {
+        Args: { p_reviewer_id: string; p_template_id: string }
+        Returns: undefined
+      }
       approve_session: {
         Args: { p_session_id: string }
         Returns: {
@@ -5567,6 +5836,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      complete_my_learning_activity: {
+        Args: { p_activity_code: string }
+        Returns: undefined
+      }
+      complete_my_learning_retention_check: {
+        Args: { p_activity_code: string; p_retention_check_id: string }
+        Returns: string
+      }
       confirm_assignment_submission_attempt: {
         Args: {
           p_assignment_id: string
@@ -5593,6 +5870,7 @@ export type Database = {
           submission_id: string
         }[]
       }
+      content_admin_required: { Args: never; Returns: undefined }
       create_adjustment: {
         Args: {
           p_amount: number
@@ -5765,6 +6043,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      create_learning_question_revision: {
+        Args: { p_material_change_note?: string; p_question_version_id: string }
+        Returns: string
       }
       create_learning_recommendation: {
         Args: {
@@ -6153,6 +6435,10 @@ export type Database = {
           submission_id: string
         }[]
       }
+      get_admin_learning_aggregate: {
+        Args: { p_from?: string; p_to?: string }
+        Returns: Json
+      }
       get_admin_payroll_view: { Args: { p_week_start: string }; Returns: Json }
       get_admin_progress_reports: { Args: never; Returns: Json }
       get_ai_grading_queue_metrics: {
@@ -6218,6 +6504,16 @@ export type Database = {
       }
       get_grade9_gold_standard_review_set: { Args: never; Returns: Json }
       get_grade9_learning_pilot_report: { Args: never; Returns: Json }
+      get_learning_activity_content_catalog: { Args: never; Returns: Json }
+      get_learning_content_catalog: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_status?: Database["public"]["Enums"]["question_review_status"]
+        }
+        Returns: Json
+      }
       get_learning_question: {
         Args: { p_question_version_id: string }
         Returns: {
@@ -6252,6 +6548,34 @@ export type Database = {
           total_questions: number
         }[]
       }
+      get_my_due_learning_retention_step: { Args: never; Returns: Json }
+      get_my_learning_activity: {
+        Args: { p_activity_code: string }
+        Returns: Json
+      }
+      get_my_learning_activity_state: {
+        Args: { p_activity_code: string }
+        Returns: {
+          attempt_id: string
+          attempt_status: Database["public"]["Enums"]["attempt_status"]
+          question_sequence: number
+          question_version_id: string
+          stage_id: string
+          stage_instruction: string
+          stage_sequence: number
+          stage_type: Database["public"]["Enums"]["learning_activity_stage_type"]
+        }[]
+      }
+      get_my_learning_mastery_summary: {
+        Args: never
+        Returns: {
+          determined_at: string
+          skill_code: string
+          skill_name: string
+          state: Database["public"]["Enums"]["mastery_state"]
+        }[]
+      }
+      get_my_learning_progress_summary: { Args: never; Returns: Json }
       get_my_learning_recommendations: {
         Args: never
         Returns: {
@@ -6266,6 +6590,7 @@ export type Database = {
           skill_topic: string
         }[]
       }
+      get_my_next_learning_step: { Args: never; Returns: Json }
       get_or_create_pay_period: {
         Args: { p_period_start_date: string }
         Returns: {
@@ -6293,6 +6618,7 @@ export type Database = {
           object_name: string
         }[]
       }
+      get_parent_learning_progress_summary: { Args: never; Returns: Json }
       get_parent_learning_updates: {
         Args: never
         Returns: {
@@ -6422,6 +6748,28 @@ export type Database = {
       }
       get_tutor_deletion_storage_manifest: {
         Args: { p_request_id: string }
+        Returns: Json
+      }
+      get_tutor_learning_insights: { Args: never; Returns: Json }
+      get_tutor_learning_review_queue: {
+        Args: never
+        Returns: {
+          attempt_id: string
+          confidence: number
+          explanation_code: string
+          hint_count: number
+          learner_response: Json
+          question_prompt: string
+          review_id: string
+          student_id: string
+          student_name: string
+          submitted_at: string
+          target_skill: string
+          time_spent_seconds: number
+        }[]
+      }
+      import_learning_question_drafts: {
+        Args: { p_dry_run?: boolean; p_records: Json }
         Returns: Json
       }
       insert_session_history: {
@@ -6574,6 +6922,10 @@ export type Database = {
         Args: { p_files_removed: number; p_request_id: string }
         Returns: undefined
       }
+      materialize_learning_retention_checks: {
+        Args: { p_as_of?: string }
+        Returns: number
+      }
       moderate_community_text: {
         Args: { p_content: string }
         Returns: {
@@ -6602,6 +6954,25 @@ export type Database = {
         Returns: Json
       }
       payroll_week_start: { Args: { p_date: string }; Returns: string }
+      persist_automatic_learning_decision: {
+        Args: {
+          p_evidence_ids: string[]
+          p_fingerprint: string
+          p_mastery_rule_set_id: string
+          p_reason: string
+          p_reason_codes: string[]
+          p_recommendation_reason?: string
+          p_recommendation_reason_codes?: string[]
+          p_recommendation_rule_set_id?: string
+          p_recommendation_skill_id?: string
+          p_recommendation_type?: Database["public"]["Enums"]["intervention_type"]
+          p_recommended_sequence?: string[]
+          p_skill_id: string
+          p_state: Database["public"]["Enums"]["mastery_state"]
+          p_student_id: string
+        }
+        Returns: string
+      }
       post_room_message: {
         Args: { p_content: string; p_room_id: string }
         Returns: {
@@ -6621,6 +6992,10 @@ export type Database = {
         }
       }
       process_privacy_request: { Args: { p_request_id: string }; Returns: Json }
+      queue_learning_attempt_review: {
+        Args: { p_explanation_code: string; p_learning_attempt_id: string }
+        Returns: undefined
+      }
       recompute_career_progress_snapshot: {
         Args: {
           p_goal_id: string
@@ -7036,6 +7411,19 @@ export type Database = {
         Args: { p_reason?: string; p_submission_id: string }
         Returns: boolean
       }
+      review_learning_activity_action: {
+        Args: { p_action: string; p_activity_id: string; p_notes?: string }
+        Returns: undefined
+      }
+      review_learning_attempt: {
+        Args: {
+          p_feedback_note?: string
+          p_marks_awarded: number
+          p_outcome: string
+          p_review_id: string
+        }
+        Returns: string
+      }
       review_question_version: {
         Args: {
           p_question_version_id: string
@@ -7054,6 +7442,14 @@ export type Database = {
       }
       run_retention_cleanup: { Args: { p_apply?: boolean }; Returns: Json }
       run_retention_cleanup_scheduled: { Args: never; Returns: Json }
+      save_learning_activity_draft: {
+        Args: { p_activity_id?: string; p_payload: Json }
+        Returns: string
+      }
+      save_learning_question_draft: {
+        Args: { p_payload: Json; p_question_version_id?: string }
+        Returns: string
+      }
       session_date_pay_period_locked: {
         Args: { p_date: string }
         Returns: boolean
@@ -7078,6 +7474,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      start_my_learning_activity: {
+        Args: { p_activity_code: string }
+        Returns: string
+      }
       submit_assignment_submission: {
         Args: {
           p_assignment_id: string
@@ -7091,6 +7491,21 @@ export type Database = {
         }
         Returns: {
           submission_id: string
+        }[]
+      }
+      submit_my_activity_attempt: {
+        Args: {
+          p_activity_code: string
+          p_confidence?: number
+          p_hint_ids?: string[]
+          p_idempotency_key?: string
+          p_question_version_id: string
+          p_response: Json
+          p_time_spent_seconds?: number
+        }
+        Returns: {
+          attempt_id: string
+          attempt_status: Database["public"]["Enums"]["attempt_status"]
         }[]
       }
       submit_my_learning_attempt: {
@@ -7371,6 +7786,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      validate_learning_answer_config: {
+        Args: { p_config: Json }
+        Returns: string[]
       }
       validate_question_version_for_approval: {
         Args: { p_question_version_id: string }
