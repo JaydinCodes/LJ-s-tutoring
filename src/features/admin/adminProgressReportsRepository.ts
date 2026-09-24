@@ -3,6 +3,7 @@
 import { requireSupabase } from '../../lib/supabase/client';
 import { callRpc } from '../../lib/supabase/rpc';
 import { jsonArray, jsonObject } from '../../lib/schema/json';
+import type { Json } from '../../../supabase/types/public.generated';
 
 export interface ReportGuardianRecipient {
   id: string;
@@ -75,4 +76,24 @@ export async function loadAdminProgressReports(): Promise<AdminProgressReportsVi
   jsonArray(report.students, 'admin progress report.students');
   jsonArray(report.ngoReports, 'admin progress report.ngoReports');
   return JSON.parse(JSON.stringify(report)) as AdminProgressReportsView;
+}
+
+export type AdminLearningAggregate = {
+  masteryDistribution: Record<string, number>;
+  activitiesCompleted: number;
+  manualReviewsPending: number;
+  retention: { due: number; completed: number; passed: number; failed: number };
+};
+
+export async function loadAdminLearningAggregate(): Promise<AdminLearningAggregate> {
+  const client = requireSupabase() as unknown as { rpc: (name: 'get_admin_learning_aggregate') => Promise<{ data: unknown; error: Error | null }> };
+  const { data, error } = await client.rpc('get_admin_learning_aggregate');
+  if (error) throw error;
+  const value = jsonObject(data as Json | undefined, 'admin learning aggregate');
+  return {
+    masteryDistribution: typeof value.masteryDistribution === 'object' && value.masteryDistribution && !Array.isArray(value.masteryDistribution) ? value.masteryDistribution as Record<string, number> : {},
+    activitiesCompleted: Number(value.activitiesCompleted ?? 0),
+    manualReviewsPending: Number(value.manualReviewsPending ?? 0),
+    retention: typeof value.retention === 'object' && value.retention && !Array.isArray(value.retention) ? value.retention as AdminLearningAggregate['retention'] : { due: 0, completed: 0, passed: 0, failed: 0 },
+  };
 }

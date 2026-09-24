@@ -104,6 +104,7 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20260923170000_sprint3_tutor_learning_insights.sql` | `abfe0f119b3cf581b4283a1a201fddc4a1fd4ebce9758d3fdcdda1b0f56ef139` |
 | `20260923202257_sprint4_learning_content_authoring.sql` | `d25b5e8698cbfb0e8171f6838322ab89b60ac25e4236516a12af8909083482ba` |
 | `20260923205016_sprint5_learning_retention_reporting.sql` | `fd1163cd62811fd1417cd3518282a65d411e266c254225c7305e10e971c3d6b3` |
+| `20260924125412_stabilization_learning_pipeline_and_reporting.sql` | `630d4dd1aa1d6653cf7fdc4fbb33d06006bd1aeffe3eb7291fd0fc40f9b7c1e9` |
 
 ## Regeneration
 
