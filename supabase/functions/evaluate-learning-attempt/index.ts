@@ -23,8 +23,6 @@ function rules(c:any){const p=(s:string,k:string)=>c[s][k]??c[s][k.replace(/[A-Z
 
 async function recalculate(admin:any,studentId:string){
  const {data:masteryRule}=await admin.from('mastery_rule_sets').select('id,configuration').eq('is_active',true).single(); const {data:recommendationRule}=await admin.from('recommendation_rule_sets').select('id').eq('is_active',true).single();
- const {error:misconceptionError}=await admin.rpc('reconcile_automatic_learner_misconceptions',{p_student_id:studentId});
- if(misconceptionError)throw misconceptionError;
  const {data:rows}=await admin.from('learning_attempt_skill_evidence').select('id,skill_id,independence,is_target_skill,cognitive_level,correct,learning_attempts!inner(occurred_at)').eq('learning_attempts.student_id',studentId); if(!masteryRule||!recommendationRule||!rows)return;
  for(const skillId of [...new Set(rows.map((r:any)=>r.skill_id))] as string[]){
   const evidence=rows.filter((r:any)=>r.skill_id===skillId).map((r:any)=>({id:r.id,occurredAt:r.learning_attempts.occurred_at,independent:r.independence==='independent',isTargetSkill:r.is_target_skill,cognitiveLevel:r.cognitive_level,correct:r.correct}));
