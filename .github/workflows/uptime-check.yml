@@ -11,7 +11,9 @@ permissions:
 
 jobs:
   healthcheck:
-    environment: production
+    # Do not attach this scheduled probe to the protected production environment.
+    # Protected environments can require deployment approval, which leaves cron
+    # runs waiting until GitHub eventually expires them instead of probing uptime.
     runs-on: ubuntu-latest
     steps:
       - name: Check out monitoring probes
@@ -25,10 +27,13 @@ jobs:
       - name: Check health endpoint
         id: health
         env:
-          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          PRODUCTION_ORIGINS: ${{ vars.PRODUCTION_ORIGINS }}
+          # Repository variables can override these public production defaults.
+          # The Supabase anon key is browser-public and already committed in the
+          # deployment config, so a repository secret/variable is optional here.
+          HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL || 'https://projectodysseus.live' }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL || 'https://jscrgpwyniphagitliuz.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzY3JncHd5bmlwaGFnaXRsaXV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MjAwMDgsImV4cCI6MjA5NTM5NjAwOH0.W--APZ5jnNK7tzUtlwl91YJnt8ZL6_Op5AYQ8GysPsM' }}
+          PRODUCTION_ORIGINS: ${{ vars.PRODUCTION_ORIGINS || 'https://projectodysseus.live,https://admin.projectodysseus.live,https://tutor.projectodysseus.live,https://student.projectodysseus.live' }}
         run: |
           missing=()
           for name in HEALTHCHECK_URL SUPABASE_URL SUPABASE_ANON_KEY PRODUCTION_ORIGINS; do
@@ -37,7 +42,7 @@ jobs:
             fi
           done
           if [ "${#missing[@]}" -ne 0 ]; then
-            echo "Missing required repository variables: ${missing[*]}" >&2
+            echo "Missing required production configuration: ${missing[*]}" >&2
             exit 1
           fi
 
@@ -82,7 +87,7 @@ jobs:
             const title = 'Uptime check failed';
             const body = `The scheduled uptime check failed at ${new Date().toISOString()}.
 
-            Please verify the exact /health.json contract, Supabase Auth health, and the data-free PostgREST monitoring RPC.
+            Please verify the exact /health.json contract, Supabase Auth health, the data-free PostgREST monitoring RPC, and production repository configuration.
 
             Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const { data: issues } = await github.rest.issues.listForRepo({

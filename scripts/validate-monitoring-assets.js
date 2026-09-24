@@ -25,6 +25,12 @@ function mustInclude(source, pattern, description) {
   }
 }
 
+function mustNotInclude(source, pattern, description) {
+  if (pattern.test(source)) {
+    fail(`unexpected ${description}`);
+  }
+}
+
 let health;
 try {
   health = JSON.parse(read('health.json'));
@@ -43,9 +49,15 @@ if (
 }
 
 const uptime = read('.github/workflows/uptime-check.yml');
-for (const variable of ['HEALTHCHECK_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY']) {
-  mustInclude(uptime, new RegExp(`secrets\\.${variable}`), `${variable} repository secret`);
+for (const variable of ['HEALTHCHECK_URL', 'SUPABASE_URL']) {
+  mustInclude(uptime, new RegExp(`vars\\.${variable}`), `${variable} repository variable`);
 }
+mustInclude(uptime, /secrets\.SUPABASE_ANON_KEY/, 'SUPABASE_ANON_KEY repository secret fallback');
+mustNotInclude(
+  uptime,
+  /^\s*environment:\s*production\s*$/m,
+  'protected production environment on scheduled uptime job',
+);
 for (const [endpointPattern, description] of [
   [/\/health\.json/, '/health.json probe'],
   [/\/auth\/v1\/health/, '/auth/v1/health probe'],
