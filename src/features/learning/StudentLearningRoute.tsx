@@ -62,7 +62,7 @@ export function StudentLearningRoute() {
     diagnosticsQuery.data ?? [];
   const dueRetention = retentionQuery.data;
   // A due retrieval takes precedence, and the section below is guarded.
-  const nextStep = nextStepQuery.data ?? dueRetention!;
+  const nextStep = dueRetention ?? nextStepQuery.data!;
   const mastery = masteryQuery.data ?? [];
 
   return (

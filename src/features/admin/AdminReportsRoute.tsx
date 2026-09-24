@@ -12,10 +12,11 @@ import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { formatDate } from '../../lib/utils/format';
 import type { DashboardMetric } from '../../types/lms';
 import type { NgoProgressReport, StudentProgressReport } from './adminProgressReportsRepository';
-import { loadAdminProgressReports } from './adminProgressReportsRepository';
+import { loadAdminLearningAggregate, loadAdminProgressReports } from './adminProgressReportsRepository';
 
 export function AdminReportsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminProgressReports, []);
+  const learning = useAsyncResource(loadAdminLearningAggregate, []);
   const [studentId, setStudentId] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
 
@@ -38,6 +39,7 @@ export function AdminReportsRoute() {
           {metrics(data.summary).map((metric) => <StatCard key={metric.label} metric={metric} />)}
         </section>
       ) : null}
+      {learning.data ? <LearningAggregateCard aggregate={learning.data} /> : null}
 
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -68,6 +70,11 @@ export function AdminReportsRoute() {
       {data ? <NgoReportsSection rows={data.ngoReports} /> : null}
     </DashboardShell>
   );
+}
+
+function LearningAggregateCard({ aggregate }: { aggregate: Awaited<ReturnType<typeof loadAdminLearningAggregate>> }) {
+  const states = Object.entries(aggregate.masteryDistribution).sort(([left], [right]) => left.localeCompare(right));
+  return <Card><h2 className="text-xl font-semibold text-slate-950">Evidence-driven learning</h2><p className="mt-1 text-sm text-slate-600">Observed learning evidence and retention activity. These are descriptive counts, not causal impact claims.</p><div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><ReportStat label="Activities completed" value={String(aggregate.activitiesCompleted)} /><ReportStat label="Manual reviews waiting" value={String(aggregate.manualReviewsPending)} /><ReportStat label="Retention due" value={String(aggregate.retention.due)} /><ReportStat label="Retention passed" value={String(aggregate.retention.passed)} /></div><div className="mt-4 flex flex-wrap gap-2">{states.length ? states.map(([state, count]) => <span className="rounded-full bg-slate-100 px-3 py-1 text-sm capitalize" key={state}>{state}: {count}</span>) : <span className="text-sm text-slate-600">No mastery evaluations yet.</span>}</div></Card>;
 }
 
 function StudentReportCard({ report }: { report: StudentProgressReport }) {

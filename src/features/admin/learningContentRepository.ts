@@ -54,11 +54,13 @@ export async function loadReviewBundle(questionVersionId:string) {
   return data as Record<string, unknown>;
 }
 
-export async function dryRunImport(records: Json[]) {
-  const { data, error } = await requireSupabase().rpc('import_learning_question_drafts', { p_records: records, p_dry_run: true });
+export async function importLearningQuestionDrafts(records: Json[], dryRun = true) {
+  const { data, error } = await requireSupabase().rpc('import_learning_question_drafts', { p_records: records, p_dry_run: dryRun });
   if (error) throw error;
   return data;
 }
+
+export const dryRunImport = (records: Json[]) => importLearningQuestionDrafts(records, true);
 
 export async function loadLearningActivityContentCatalog() {
   const { data, error } = await requireSupabase().rpc('get_learning_activity_content_catalog');

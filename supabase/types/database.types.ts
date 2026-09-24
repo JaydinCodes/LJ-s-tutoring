@@ -2783,6 +2783,33 @@ export type Database = {
           },
         ]
       }
+      learning_misconception_rule_sets: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          minimum_independent_correct_attempts: number
+          version: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          minimum_independent_correct_attempts: number
+          version: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          minimum_independent_correct_attempts?: number
+          version?: number
+        }
+        Relationships: []
+      }
       learning_recommendation_reasons: {
         Row: {
           reason_code: string
@@ -7149,6 +7176,10 @@ export type Database = {
           p_student_id: string
         }
         Returns: string
+      }
+      reconcile_automatic_learner_misconceptions: {
+        Args: { p_student_id: string }
+        Returns: number
       }
       record_learning_attempt: {
         Args: {
