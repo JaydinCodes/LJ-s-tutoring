@@ -25,8 +25,8 @@ jobs:
       - name: Check health endpoint
         id: health
         env:
-          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           PRODUCTION_ORIGINS: ${{ vars.PRODUCTION_ORIGINS }}
         run: |
@@ -37,7 +37,7 @@ jobs:
             fi
           done
           if [ "${#missing[@]}" -ne 0 ]; then
-            echo "Missing required repository variables: ${missing[*]}" >&2
+            echo "Missing required production configuration: ${missing[*]}" >&2
             exit 1
           fi
 
@@ -82,7 +82,7 @@ jobs:
             const title = 'Uptime check failed';
             const body = `The scheduled uptime check failed at ${new Date().toISOString()}.
 
-            Please verify the exact /health.json contract, Supabase Auth health, and the data-free PostgREST monitoring RPC.
+            Please verify the exact /health.json contract, Supabase Auth health, the data-free PostgREST monitoring RPC, and production repository/environment configuration.
 
             Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const { data: issues } = await github.rest.issues.listForRepo({
