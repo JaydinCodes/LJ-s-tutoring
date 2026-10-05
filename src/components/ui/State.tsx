@@ -102,28 +102,45 @@ export function ErrorState({
 export function PermissionDeniedState({
   description = 'Your account does not have access to this part of the portal.',
   dashboardHref = '/dashboard',
+  actionLabel = 'Go back to dashboard',
+  secondaryActionLabel,
+  secondaryActionHref,
+  onSecondaryAction,
 }: {
   description?: string;
   dashboardHref?: string;
+  actionLabel?: string;
+  secondaryActionLabel?: string;
+  secondaryActionHref?: string;
+  onSecondaryAction?: () => void;
 }) {
   return (
     <EmptyState
       title="Access denied"
       description={description}
-      actionLabel="Go back to dashboard"
+      actionLabel={actionLabel}
       actionHref={dashboardHref}
+      secondaryActionLabel={secondaryActionLabel}
+      secondaryActionHref={secondaryActionHref}
+      onSecondaryAction={onSecondaryAction}
       icon={Lock}
     />
   );
 }
 
-export function MissingProfileState() {
+export function MissingProfileState({
+  onSignOut,
+}: {
+  onSignOut?: () => void;
+} = {}) {
   return (
     <EmptyState
       title="Profile missing"
       description="Your account setup is incomplete. Please contact support so we can finish linking your profile."
       actionLabel="Back to sign in"
       actionHref="/dashboard/login"
+      secondaryActionLabel={onSignOut ? 'Sign out' : undefined}
+      onSecondaryAction={onSignOut}
       icon={UserRound}
     />
   );

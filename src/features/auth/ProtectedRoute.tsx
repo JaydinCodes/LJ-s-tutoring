@@ -7,6 +7,7 @@ import { captureAppMessage } from '../../lib/monitoring/errorReporting';
 import { AdminMfaGate } from './AdminMfaGate';
 import { TemporaryPasswordGate } from './TemporaryPasswordGate';
 import { useAuth } from './AuthProvider';
+import { signOut } from './authService';
 import { formatRoleList, getDashboardPath, normalizeUserRole, type SupportedDashboardRole } from './roles';
 
 export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardRole[]; children: ReactNode }) {
@@ -14,6 +15,13 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
   const location = useLocation();
   const currentRole = normalizeUserRole(auth.profile?.role);
   const dashboardHref = getDashboardPath(currentRole);
+
+  const handleSignOut = () => {
+    void (async () => {
+      await signOut();
+      await auth.refresh();
+    })();
+  };
 
   if (auth.loading) {
     return <GuardShell><LoadingState title="Checking access" description="Loading your account access..." /></GuardShell>;
@@ -33,7 +41,7 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
   }
 
   if (auth.status === 'missing_profile' || !auth.profile) {
-    return <GuardShell><GuardMonitoringEvent action="auth.missing_profile_route" route={location.pathname} /><MissingProfileState /></GuardShell>;
+    return <GuardShell><GuardMonitoringEvent action="auth.missing_profile_route" route={location.pathname} /><MissingProfileState onSignOut={handleSignOut} /></GuardShell>;
   }
 
   if (auth.status === 'invalid_role' || !currentRole) {
@@ -56,6 +64,8 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
         />
         <PermissionDeniedState
           dashboardHref={dashboardHref}
+          secondaryActionLabel="Sign out"
+          onSecondaryAction={handleSignOut}
           description={`This route requires ${formatRoleList(roles)} access. Your current role is ${currentRole}.`}
         />
       </GuardShell>
@@ -64,31 +74,34 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
 
   const requiresOperationalAccess = currentRole === 'student' || currentRole === 'tutor';
   if (
-  requiresOperationalAccess &&
-  auth.operationalAccess !== 'allowed'
-) {
-  return (
-    <GuardShell>
-      <GuardMonitoringEvent
-        action="auth.operational_access_denied"
-        role={currentRole}
-        route={location.pathname}
-        metadata={{
-          operational_access: auth.operationalAccess,
-        }}
-      />
+    requiresOperationalAccess &&
+    auth.operationalAccess !== 'allowed'
+  ) {
+    return (
+      <GuardShell>
+        <GuardMonitoringEvent
+          action="auth.operational_access_denied"
+          role={currentRole}
+          route={location.pathname}
+          metadata={{
+            operational_access: auth.operationalAccess,
+          }}
+        />
 
-      <PermissionDeniedState
-        dashboardHref="/"
-        description={
-          currentRole === 'tutor'
-            ? 'Your tutor account is not currently approved and active for portal access. Please contact an administrator.'
-            : 'Your learner account is not currently active for portal access. Please contact an administrator.'
-        }
-      />
-    </GuardShell>
-  );
-}
+        <PermissionDeniedState
+          dashboardHref="/"
+          actionLabel="Go to home"
+          secondaryActionLabel="Sign out"
+          onSecondaryAction={handleSignOut}
+          description={
+            currentRole === 'tutor'
+              ? 'Your tutor account is not currently approved and active for portal access. Please contact an administrator.'
+              : 'Your learner account is not currently active for portal access. Please contact an administrator.'
+          }
+        />
+      </GuardShell>
+    );
+  }
   if (currentRole === 'admin') {
     return <AdminMfaGate>{children}</AdminMfaGate>;
   }

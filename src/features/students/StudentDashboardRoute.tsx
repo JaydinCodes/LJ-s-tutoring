@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import {
+  AlertTriangle,
   CalendarDays,
   ChevronRight,
   Clock,
@@ -16,16 +17,42 @@ import { normalizeStudentData, selectDueTasks } from './studentData';
 import { selectTodayBattlePlan, type BattlePlanItem } from './studentBattlePlan';
 import { selectDailyInsight } from './studentDailyInsight';
 import { useStudentDashboardQuery } from './studentQueries';
+import { useDueRetentionStep, useLearnerMasterySummary, useNextLearningStep } from '../learning/studentLearningQueries';
 import { daysUntil } from '../assignments/assignmentStatus';
 import { formatDate } from '../../lib/utils/format';
 import type { Assignment, AssignmentSubmission, StudentDashboardView, StudentProgress } from '../../types/lms';
 
 export function StudentDashboardRoute() {
   const { data, loading, error, refetching, reload } = useStudentDashboardQuery();
+  const nextStepQuery = useNextLearningStep();
+  const retentionQuery = useDueRetentionStep();
+  const masteryQuery = useLearnerMasterySummary();
+  const nextStep = retentionQuery.data ?? nextStepQuery.data;
+
   const studentData = useMemo(() => data ? normalizeStudentData(data) : null, [data]);
   const nextAssignment = studentData ? selectDueTasks(studentData, 1)[0]?.assignment : undefined;
   const dailyInsight = useMemo(() => data && studentData ? selectDailyInsight(data, studentData) : null, [data, studentData]);
   const battlePlan = useMemo(() => data && studentData ? selectTodayBattlePlan(data, studentData) : [], [data, studentData]);
+
+  const needsAttentionItem = useMemo(() => {
+    if (!data) return null;
+    const emergingSkill = masteryQuery.data?.find((s) => s.state === 'emerging');
+    if (emergingSkill) {
+      return {
+        topic: emergingSkill.skillName,
+        reason: 'Identified as needing conceptual foundation practice in recent diagnostic checks.',
+      };
+    }
+    const weakest = summarizeProgress(data.progress);
+    if (weakest && weakest.weakestScore !== undefined && weakest.weakestScore < 70) {
+      return {
+        topic: weakest.weakestTopic,
+        score: weakest.weakestScore,
+        reason: 'Recent scores suggest focused practice here will build solid mastery.',
+      };
+    }
+    return null;
+  }, [data, masteryQuery.data]);
 
   return (
     <PageShell
@@ -44,10 +71,15 @@ export function StudentDashboardRoute() {
               <TodayOdyssey
                 nextAssignment={nextAssignment}
                 battlePlan={battlePlan}
+                nextStep={nextStep}
               />
             </div>
             <NextSessionCard data={data} />
           </section>
+
+          {needsAttentionItem ? (
+            <NeedsAttentionBanner item={needsAttentionItem} />
+          ) : null}
 
           <StudentBentoGrid data={data} battlePlan={battlePlan} />
 
@@ -129,7 +161,7 @@ function StudentBentoGrid({ data, battlePlan }: { data: StudentDashboardView; ba
             ))}
             {suggestedPractice ? <SuggestedPracticeRow item={suggestedPractice} /> : null}
           </div>
-        ) : <CompactEmpty title="Nothing due" detail="Your visible assignment queue is clear." />}
+        ) : <CompactEmpty title="Nothing due" detail="You are up to date on all assignments." />}
         <Link className="mt-auto flex min-h-12 items-center justify-between border-t border-[#e7dfd1] pt-4 text-sm font-semibold text-academy-aegean dark:border-white/10 dark:text-academy-gold" to="/dashboard/student/assignments">
           View all assignments <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </Link>
@@ -144,6 +176,12 @@ function StudentBentoGrid({ data, battlePlan }: { data: StudentDashboardView; ba
               <p className="font-display text-4xl font-semibold text-academy-navy dark:text-white">{progressSummary.average}%</p>
             </div>
             <ProgressTrendChart points={progressSummary.points} />
+            {progressSummary.bestImprovement ? (
+              <div className="mt-2.5 flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <span>Recent improvement:</span>
+                <span>{progressSummary.bestImprovement.topic} ↑ {progressSummary.bestImprovement.delta}%</span>
+              </div>
+            ) : null}
             <p className="mt-2 text-sm text-academy-muted">{progressSummary.label} · Next focus: {progressSummary.weakestTopic}</p>
             <Link className="mt-auto flex min-h-12 items-center justify-between border-t border-[#e7dfd1] pt-4 text-sm font-semibold text-academy-aegean dark:border-white/10 dark:text-academy-gold" to="/dashboard/student/progress">
               View full progress <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -253,6 +291,44 @@ function CompactEmpty({ title, detail }: { title: string; detail: string }) {
   return <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-3 dark:border-white/15"><p className="text-sm font-semibold text-academy-navy dark:text-white">{title}</p><p className="mt-1 text-xs leading-5 text-academy-muted">{detail}</p></div>;
 }
 
+function NeedsAttentionBanner({ item }: { item: { topic: string; score?: number; reason?: string } }) {
+  return (
+    <section aria-label="Needs attention" className="rounded-sheet border border-amber-300/80 bg-gradient-to-r from-amber-50/90 via-amber-50/50 to-white p-5 shadow-sm dark:border-amber-900/50 dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3.5">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500 text-white shadow-sm">
+            <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
+                Needs attention
+              </span>
+              {typeof item.score === 'number' ? (
+                <span className="rounded-full bg-amber-200/80 px-2.5 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900/60 dark:text-amber-200">
+                  {item.score}% accuracy
+                </span>
+              ) : null}
+            </div>
+            <h3 className="mt-1 font-display text-lg font-semibold text-academy-navy dark:text-white sm:text-xl">
+              {item.topic}
+            </h3>
+            <p className="mt-0.5 text-sm text-academy-muted">
+              {item.reason || 'Recent checks show a pattern to reinforce before moving on to new topics.'}
+            </p>
+          </div>
+        </div>
+        <Link
+          className="academy-btn inline-flex min-h-11 items-center gap-2 self-start rounded-full border border-amber-400 bg-white px-5 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-50 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-200 dark:hover:bg-slate-800 sm:self-center"
+          to="/dashboard/student/learning"
+        >
+          Practise this skill <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function summarizeProgress(progress: StudentProgress[]) {
   const maths = progress.filter((item) => /math/i.test(item.subject || ''));
   const items = maths.length ? maths : progress;
@@ -266,8 +342,30 @@ function summarizeProgress(progress: StudentProgress[]) {
   const recentAverage = recent.length ? recent.reduce((sum, point) => sum + point, 0) / recent.length : average;
   const earlierAverage = earlier.length ? earlier.reduce((sum, point) => sum + point, 0) / earlier.length : recentAverage;
   const delta = Math.round(recentAverage - earlierAverage);
-  const weakestTopic = [...items].sort((left, right) => Number(left.score || 0) - Number(right.score || 0))[0]?.topic || 'Keep practising';
-  return { average, points, label: points.length > 1 ? `${delta >= 0 ? '+' : ''}${delta}% recent trend` : 'Baseline', weakestTopic };
+  const weakestItem = [...items].sort((left, right) => Number(left.score || 0) - Number(right.score || 0))[0];
+  const weakestTopic = weakestItem?.topic || 'Keep practising';
+
+  const byTopic = new Map<string, number[]>();
+  for (const item of items) {
+    const list = byTopic.get(item.topic) || [];
+    list.push(Number(item.score || 0));
+    byTopic.set(item.topic, list);
+  }
+  const improvements = [...byTopic.entries()].map(([topic, scores]) => {
+    const start = scores[0] || 0;
+    const end = scores.at(-1) || 0;
+    return { topic, delta: Math.round(end - start) };
+  });
+  const bestImprovement = improvements.filter((t) => t.delta > 0).sort((a, b) => b.delta - a.delta)[0] || null;
+
+  return {
+    average,
+    points,
+    label: points.length > 1 ? `${delta >= 0 ? '+' : ''}${delta}% recent trend` : 'Baseline',
+    weakestTopic,
+    weakestScore: weakestItem ? Math.round(Number(weakestItem.score || 0)) : undefined,
+    bestImprovement,
+  };
 }
 
 function formatSessionDate(date: string) {

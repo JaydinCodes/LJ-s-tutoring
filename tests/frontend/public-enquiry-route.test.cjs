@@ -29,6 +29,8 @@ test('React public route excludes the retired guide and tutor-recruitment panels
   assert.ok(publicRoutes.includes('FaqSection'), 'React public home must preserve FAQ content');
   assert.ok(!publicRoutes.includes('GuideSection'), 'React public home must not restore the retired guide panel');
   assert.ok(!publicRoutes.includes('BecomeTutorSection'), 'React public home must not restore the retired tutor-recruitment panel');
+  assert.ok(!publicRoutes.includes('/#become-a-tutor'), 'React public navigation must not link to retired tutor panel anchor');
+  assert.ok(publicRoutes.includes('to="/dashboard/login"'), 'React public navigation must offer portal sign in link');
 });
 
 test('React public routes exclude retired guide pages', () => {

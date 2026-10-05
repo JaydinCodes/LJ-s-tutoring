@@ -280,12 +280,20 @@ export function EmptyState({
   description,
   actionLabel,
   actionHref,
+  onAction,
+  secondaryActionLabel,
+  secondaryActionHref,
+  onSecondaryAction,
   icon: Icon = Sparkles,
 }: {
   title: string;
   description: string;
   actionLabel?: string;
   actionHref?: string;
+  onAction?: () => void;
+  secondaryActionLabel?: string;
+  secondaryActionHref?: string;
+  onSecondaryAction?: () => void;
   icon?: LucideIcon;
 }) {
   return (
@@ -296,13 +304,41 @@ export function EmptyState({
       </div>
       <h3 className="relative mt-4 text-base font-semibold text-brand-obsidian dark:text-brand-parchment">{title}</h3>
       <p className="relative mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-brand-marble">{description}</p>
-      {actionLabel && actionHref ? (
-        <Link
-          className="relative mt-4 inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-brand-navy shadow-sm transition hover:border-brand-aegean dark:border-white/10 dark:bg-slate-950 dark:text-brand-parchment"
-          to={actionHref}
-        >
-          {actionLabel}
-        </Link>
+      {actionLabel || secondaryActionLabel ? (
+        <div className="relative mt-5 flex flex-wrap items-center justify-center gap-3">
+          {actionLabel && actionHref ? (
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-brand-navy shadow-sm transition hover:border-brand-aegean dark:border-white/10 dark:bg-slate-950 dark:text-brand-parchment"
+              to={actionHref}
+            >
+              {actionLabel}
+            </Link>
+          ) : actionLabel && onAction ? (
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-brand-navy shadow-sm transition hover:border-brand-aegean dark:border-white/10 dark:bg-slate-950 dark:text-brand-parchment"
+              type="button"
+              onClick={onAction}
+            >
+              {actionLabel}
+            </button>
+          ) : null}
+          {secondaryActionLabel && secondaryActionHref ? (
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+              to={secondaryActionHref}
+            >
+              {secondaryActionLabel}
+            </Link>
+          ) : secondaryActionLabel && onSecondaryAction ? (
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+              type="button"
+              onClick={onSecondaryAction}
+            >
+              {secondaryActionLabel}
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

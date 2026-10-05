@@ -28,32 +28,49 @@ import { useRecoverPendingStudentAssignmentMutation, useSubmitStudentAssignmentM
 export function TodayOdyssey({
   nextAssignment,
   battlePlan,
+  nextStep,
 }: {
   nextAssignment?: Assignment;
   battlePlan: BattlePlanItem[];
+  nextStep?: {
+    activityCode: string;
+    name: string;
+    description?: string;
+    targetSkillName?: string;
+    estimatedMinutes?: number;
+    learnerReason?: string;
+  } | null;
 }) {
   const firstAction = battlePlan[0];
-  const actionTitle = firstAction?.title || nextAssignment?.title || 'Review your next learning step';
-  const estimatedMinutes = firstAction?.estimatedMinutes || 20;
+  const actionTitle = nextStep?.name || firstAction?.title || nextAssignment?.title || 'Review your next learning step';
+  const estimatedMinutes = nextStep?.estimatedMinutes || firstAction?.estimatedMinutes || 20;
+  const reasonText = nextStep?.learnerReason || (nextStep?.targetSkillName ? `Focus skill: ${nextStep.targetSkillName}` : null);
+  const primaryHref = nextStep?.activityCode
+    ? `/dashboard/student/learning/activity/${encodeURIComponent(nextStep.activityCode)}`
+    : firstAction?.to || '/dashboard/student/assignments';
 
   return (
     <section className="academy-major-surface relative min-h-[20rem] overflow-hidden bg-cover bg-center" data-testid="student-primary-plan" style={{ backgroundImage: "url('/images/dashboard/student-learning-plan-classical.webp')" }}>
       <div className="absolute inset-0 bg-gradient-to-r from-academy-navy via-academy-navy/90 to-transparent" aria-hidden="true" />
       <div className="relative flex min-h-[16.5rem] max-w-[40rem] flex-col justify-between">
         <div>
-          <h2 className="font-display text-2xl font-semibold text-white sm:text-3xl">Today&apos;s learning plan</h2>
-          <span className="mt-3 block h-0.5 w-8 bg-academy-gold" aria-hidden="true" />
+          <span className="inline-block rounded-full border border-academy-gold/40 bg-academy-gold/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-academy-gold">
+            Your next step
+          </span>
+          <h2 className="mt-2 font-display text-2xl font-semibold text-white sm:text-3xl">Today&apos;s learning plan</h2>
+          <span className="mt-2 block h-0.5 w-8 bg-academy-gold" aria-hidden="true" />
         </div>
-        <div className="mt-6 flex items-center gap-5">
+        <div className="mt-5 flex items-center gap-5">
           <span className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-academy-gold text-academy-navy shadow-[0_8px_24px_rgba(244,197,24,0.22)]">
             <BookOpen className="h-10 w-10" aria-hidden="true" />
           </span>
           <div className="min-w-0">
             <h3 className="font-display text-2xl font-semibold leading-tight text-white sm:text-3xl">{actionTitle}</h3>
-            <p className="mt-2 inline-flex items-center gap-2 text-base text-academy-parchment"><Clock className="h-5 w-5" aria-hidden="true" />{estimatedMinutes} min</p>
+            {reasonText ? <p className="mt-1 line-clamp-1 text-sm text-academy-parchment/80">{reasonText}</p> : null}
+            <p className="mt-1.5 inline-flex items-center gap-2 text-base text-academy-parchment"><Clock className="h-5 w-5" aria-hidden="true" />{estimatedMinutes} min</p>
           </div>
         </div>
-        <Link className="academy-btn academy-btn-gold mt-7 w-full rounded-xl px-8 sm:w-fit sm:min-w-72" data-testid="student-primary-action" to={firstAction?.to || '/dashboard/student/assignments'}>
+        <Link className="academy-btn academy-btn-gold mt-6 w-full rounded-xl px-8 sm:w-fit sm:min-w-72" data-testid="student-primary-action" to={primaryHref}>
           Continue learning <ArrowRight className="h-5 w-5" aria-hidden="true" />
         </Link>
       </div>

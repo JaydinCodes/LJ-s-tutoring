@@ -142,8 +142,10 @@ export function selectTodayBattlePlan(
     {
       id: 'study:assignment-check',
       kind: 'assignment',
-      title: 'Check the assignment queue',
-      description: `${studentData.assignmentsById.size} visible assignment${studentData.assignmentsById.size === 1 ? '' : 's'} are connected to this dashboard.`,
+      title: 'Check upcoming assignments',
+      description: studentData.assignmentsById.size > 0
+        ? `Review ${studentData.assignmentsById.size} active assignment${studentData.assignmentsById.size === 1 ? '' : 's'} and homework tasks.`
+        : 'Review your upcoming homework and scheduled class tasks.',
       estimatedMinutes: 10,
       to: '/dashboard/student/assignments',
       priority: 70,
@@ -151,8 +153,10 @@ export function selectTodayBattlePlan(
     {
       id: 'study:progress-review',
       kind: 'topic',
-      title: 'Review progress signals',
-      description: `${data.progress.length} progress record${data.progress.length === 1 ? '' : 's'} can guide the next practice block.`,
+      title: 'Review learning progress',
+      description: data.progress.length > 0
+        ? `Review your scores and topic mastery across ${data.progress.length} assessed area${data.progress.length === 1 ? '' : 's'}.`
+        : 'Review your recent topic mastery and diagnostic results.',
       estimatedMinutes: 15,
       to: '/dashboard/student/progress',
       priority: 71,
