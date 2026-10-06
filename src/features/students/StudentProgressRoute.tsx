@@ -57,7 +57,7 @@ export function StudentProgressRoute() {
       <div className="space-y-6">
         {/* Hero Header */}
         <section className="relative overflow-hidden rounded-[2rem] bg-brand-navy p-6 text-brand-parchment shadow-xl sm:p-8">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-gold">CAPS Learning Mastery</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-gold">CAPS Learning Progress</p>
           <h2 className="mt-3 font-display text-3xl font-semibold sm:text-4xl">
             {skills.length ? `${skills.length} core skill${skills.length === 1 ? '' : 's'} tracked` : 'Progress is starting'}
           </h2>
@@ -116,7 +116,7 @@ export function StudentProgressRoute() {
         {!skills.length ? (
           <EmptyState
             icon={Brain}
-            title="No topic mastery yet"
+            title="No progress recorded yet"
             description="Complete a diagnostic or practice activity to begin building your evidence-based learning profile."
             actionLabel="Open learning"
             actionHref="/dashboard/student/learning"
@@ -167,7 +167,7 @@ export function StudentProgressRoute() {
           <section className="mt-8 border-t border-slate-200/80 pt-6 dark:border-white/10">
             <h2 className="text-xl font-semibold text-brand-navy dark:text-brand-parchment">School progress context</h2>
             <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">
-              Formal assessment scores from homework and school tests, shown alongside the diagnostic mastery above.
+              Formal assessment scores from homework and school tests, shown alongside the diagnostic progress above.
             </p>
             <SubjectFilterChips subjects={subjects} activeSubject={activeSubject} onSelect={setActiveSubject} />
             <TopicProgressList progress={filteredProgress} />

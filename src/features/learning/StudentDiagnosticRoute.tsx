@@ -35,6 +35,8 @@ import type {
   LearnerConfidence,
 } from './studentLearningRepository';
 
+import { QuestionResponseInput } from './QuestionResponseInput';
+
 function errorMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
@@ -453,18 +455,12 @@ export function StudentDiagnosticRoute() {
             Your answer
           </label>
 
-          <textarea
-            id="learning-answer"
+          <QuestionResponseInput
+            questionType={question.questionType}
+            options={question.options}
             value={answer}
+            onChange={setAnswer}
             disabled={uncertainSubmission}
-            onChange={(event) =>
-              setAnswer(
-                event.target.value,
-              )
-            }
-            rows={4}
-            className="mt-2 min-h-32 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-brand-obsidian outline-none transition focus:border-brand-aegean focus:ring-4 focus:ring-brand-aegean/10 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white/15 dark:bg-slate-950 dark:text-brand-parchment"
-            placeholder="Write your answer here"
           />
         </div>
 

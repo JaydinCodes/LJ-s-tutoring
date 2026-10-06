@@ -62,7 +62,7 @@ test('student empty states are premium, differentiated, and action-oriented', ()
   assert.ok(!design.match(/EmptyState[\s\S]*backdrop-blur-2xl[\s\S]*export function ErrorState/), 'EmptyState must use a solid surface');
   assert.ok(design.includes('via-brand-gold/[0.45]'), 'EmptyState must keep the Greek accent without a loud dashed card');
 
-  for (const title of ['No actionable work', 'No released marks yet', 'No topic mastery yet', 'No quiz recommendation yet', 'No careers match those filters']) {
+  for (const title of ['No actionable work', 'No released marks yet', 'No progress recorded yet', 'No quiz recommendation yet', 'No careers match those filters']) {
     assert.ok(joined.includes(title), `${title} empty state must be present`);
   }
 

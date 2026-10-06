@@ -30,6 +30,18 @@ export type LearnerQuestion = {
   id: string;
   prompt: string;
   marks: number;
+  questionType:
+    | 'numeric'
+    | 'fraction'
+    | 'multiple_choice'
+    | 'coordinate'
+    | 'linear_equation_solution'
+    | 'algebraic_expression'
+    | 'factorised_expression';
+  options?: Array<{
+    value: string;
+    label: string;
+  }>;
   activityType: string;
   representation: string;
   calculatorPolicy: string;
@@ -222,6 +234,8 @@ export async function loadLearnerQuestion(
     id: row.question_version_id,
     prompt: row.prompt,
     marks: Number(row.marks),
+    questionType: row.question_type as LearnerQuestion['questionType'],
+    options: row.options as LearnerQuestion['options'],
     activityType: row.activity_type,
     representation: row.representation,
     calculatorPolicy: row.calculator_policy,
