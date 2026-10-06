@@ -6552,6 +6552,8 @@ export type Database = {
           prompt: string
           question_version_id: string
           representation: Database["public"]["Enums"]["math_representation"]
+          question_type: string
+          options: Json
         }[]
       }
       get_my_approved_diagnostic_state: {
