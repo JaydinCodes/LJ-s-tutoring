@@ -94,8 +94,6 @@ jobs:
       - name: Run Lighthouse CI
         id: lighthouse
         continue-on-error: true
-        env:
-          LHCI_CHROME_PATH: ${{ env.CHROME_PATH }}
         run: |
           set +e
           npm run perf:lighthouse
@@ -124,32 +122,21 @@ jobs:
         if: always()
         id: parse
         run: |
-          # Find the most recent manifest file
-          MANIFEST=$(find .lighthouseci -name "manifest.json" | head -n 1)
+          # LHCI 0.15 writes lhr-*.json reports directly, without a manifest.
+          REPORT=$(find .lighthouseci -name "lhr-*.json" -print -quit)
           
-          if [ -f "$MANIFEST" ]; then
-            # Extract scores from the first URL's latest run
-            REPORT=$(jq -r '.[0].jsonPath' "$MANIFEST" | head -n 1)
+          if [ -f "$REPORT" ]; then
+            PERF=$(jq -r '.categories.performance.score * 100 | floor' "$REPORT")
+            A11Y=$(jq -r '.categories.accessibility.score * 100 | floor' "$REPORT")
+            PRACTICES=$(jq -r '.categories["best-practices"].score * 100 | floor' "$REPORT")
+            SEO=$(jq -r '.categories.seo.score * 100 | floor' "$REPORT")
             
-            if [ -f "$REPORT" ]; then
-              PERF=$(jq -r '.categories.performance.score * 100 | floor' "$REPORT")
-              A11Y=$(jq -r '.categories.accessibility.score * 100 | floor' "$REPORT")
-              PRACTICES=$(jq -r '.categories["best-practices"].score * 100 | floor' "$REPORT")
-              SEO=$(jq -r '.categories.seo.score * 100 | floor' "$REPORT")
-              
-              echo "performance=$PERF" >> $GITHUB_OUTPUT
-              echo "accessibility=$A11Y" >> $GITHUB_OUTPUT
-              echo "best_practices=$PRACTICES" >> $GITHUB_OUTPUT
-              echo "seo=$SEO" >> $GITHUB_OUTPUT
-            else
-              echo "No report found"
-              echo "performance=0" >> $GITHUB_OUTPUT
-              echo "accessibility=0" >> $GITHUB_OUTPUT
-              echo "best_practices=0" >> $GITHUB_OUTPUT
-              echo "seo=0" >> $GITHUB_OUTPUT
-            fi
+            echo "performance=$PERF" >> $GITHUB_OUTPUT
+            echo "accessibility=$A11Y" >> $GITHUB_OUTPUT
+            echo "best_practices=$PRACTICES" >> $GITHUB_OUTPUT
+            echo "seo=$SEO" >> $GITHUB_OUTPUT
           else
-            echo "No manifest found"
+            echo "No Lighthouse report found"
             echo "performance=0" >> $GITHUB_OUTPUT
             echo "accessibility=0" >> $GITHUB_OUTPUT
             echo "best_practices=0" >> $GITHUB_OUTPUT
