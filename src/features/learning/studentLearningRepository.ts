@@ -212,7 +212,7 @@ export async function loadLearnerQuestion(
   const client = requireSupabase();
 
   const { data, error } = await client.rpc(
-    'get_learning_question',
+    'get_learning_question_display',
     {
       p_question_version_id: questionVersionId,
     },

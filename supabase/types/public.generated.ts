@@ -6552,8 +6552,21 @@ export type Database = {
           prompt: string
           question_version_id: string
           representation: Database["public"]["Enums"]["math_representation"]
-          question_type: string
+        }[]
+      }
+      get_learning_question_display: {
+        Args: { p_question_version_id: string }
+        Returns: {
+          activity_type: Database["public"]["Enums"]["question_activity_type"]
+          calculator_policy: Database["public"]["Enums"]["calculator_policy"]
+          cognitive_level: Database["public"]["Enums"]["caps_cognitive_level"]
+          hints: Json
+          marks: number
           options: Json
+          prompt: string
+          question_type: string
+          question_version_id: string
+          representation: Database["public"]["Enums"]["math_representation"]
         }[]
       }
       get_my_approved_diagnostic_state: {

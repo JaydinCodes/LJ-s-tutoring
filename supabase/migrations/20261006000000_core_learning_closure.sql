@@ -1,7 +1,9 @@
 -- Core Learning Closure Migration
--- Fixes get_learning_question to return safe questionType and options.
+-- Adds a display-focused question RPC without changing the return type of the
+-- established get_learning_question(uuid) contract. PostgreSQL does not allow
+-- CREATE OR REPLACE FUNCTION to change a function's OUT parameters.
 
-create or replace function public.get_learning_question(p_question_version_id uuid)
+create function public.get_learning_question_display(p_question_version_id uuid)
 returns table (
   question_version_id uuid, 
   activity_type public.question_activity_type,
@@ -65,3 +67,5 @@ begin
 end;
 $$;
 
+revoke all on function public.get_learning_question_display(uuid) from public;
+grant execute on function public.get_learning_question_display(uuid) to authenticated;

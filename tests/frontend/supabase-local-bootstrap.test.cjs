@@ -14,8 +14,11 @@ test('local Supabase bootstrap scripts are cross-platform and separated from pro
   const pkg = JSON.parse(read('package.json'));
   const envExample = read('.env.example');
   const docs = read('docs/supabase/LOCAL_DEVELOPMENT.md');
+  const startScript = read('scripts/start-local-supabase.cjs');
 
-  assert.equal(pkg.scripts['supabase:start'], 'npx supabase start');
+  assert.equal(pkg.scripts['supabase:start'], 'node scripts/start-local-supabase.cjs');
+  assert.match(startScript, /\['supabase', 'start'\]/);
+  assert.match(startScript, /const maxAttempts = 3/);
   assert.equal(pkg.scripts['supabase:reset'], 'npx supabase db reset --local');
   assert.doesNotMatch(pkg.scripts['supabase:reset'], /sync-supabase-migration|legacy-baseline|overwrite/);
   assert.match(pkg.scripts['test:rls'], /supabase-schema-policy\.test\.cjs/);
