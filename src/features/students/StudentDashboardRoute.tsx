@@ -38,21 +38,31 @@ export function StudentDashboardRoute() {
     if (!data) return null;
     const emergingSkill = masteryQuery.data?.find((s) => s.state === 'emerging');
     if (emergingSkill) {
+      let to = '/dashboard/student/progress';
+      if (nextStep?.activityCode) {
+        to = `/dashboard/student/learning/activity/${encodeURIComponent(nextStep.activityCode)}`;
+      }
       return {
         topic: emergingSkill.skillName,
         reason: 'Identified as needing conceptual foundation practice in recent diagnostic checks.',
+        to,
       };
     }
     const weakest = summarizeProgress(data.progress);
     if (weakest && weakest.weakestScore !== undefined && weakest.weakestScore < 70) {
+      let to = '/dashboard/student/progress';
+      if (nextStep?.activityCode) {
+        to = `/dashboard/student/learning/activity/${encodeURIComponent(nextStep.activityCode)}`;
+      }
       return {
         topic: weakest.weakestTopic,
         score: weakest.weakestScore,
         reason: 'Recent scores suggest focused practice here will build solid mastery.',
+        to,
       };
     }
     return null;
-  }, [data, masteryQuery.data]);
+  }, [data, masteryQuery.data, nextStep]);
 
   return (
     <PageShell
@@ -291,7 +301,7 @@ function CompactEmpty({ title, detail }: { title: string; detail: string }) {
   return <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-3 dark:border-white/15"><p className="text-sm font-semibold text-academy-navy dark:text-white">{title}</p><p className="mt-1 text-xs leading-5 text-academy-muted">{detail}</p></div>;
 }
 
-function NeedsAttentionBanner({ item }: { item: { topic: string; score?: number; reason?: string } }) {
+function NeedsAttentionBanner({ item }: { item: { topic: string; score?: number; reason?: string; to?: string } }) {
   return (
     <section aria-label="Needs attention" className="rounded-sheet border border-amber-300/80 bg-gradient-to-r from-amber-50/90 via-amber-50/50 to-white p-5 shadow-sm dark:border-amber-900/50 dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -320,9 +330,9 @@ function NeedsAttentionBanner({ item }: { item: { topic: string; score?: number;
         </div>
         <Link
           className="academy-btn inline-flex min-h-11 items-center gap-2 self-start rounded-full border border-amber-400 bg-white px-5 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-50 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-200 dark:hover:bg-slate-800 sm:self-center"
-          to="/dashboard/student/learning"
+          to={item.to || '/dashboard/student/progress'}
         >
-          Practise this skill <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          Practise {item.topic.toLowerCase()} <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </Link>
       </div>
     </section>

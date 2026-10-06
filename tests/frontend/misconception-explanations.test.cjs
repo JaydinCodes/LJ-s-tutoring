@@ -71,7 +71,7 @@ test('misconception dictionary provides safe fallbacks for arbitrary or malforme
   assert.ok(fallback.guidance.length > 0);
 
   const dotsFallback = getMisconceptionExplanation('custom_dots_variant');
-  assert.equal(dotsFallback.title, 'Difference of Squares vs. Square of a Binomial');
+  assert.equal(dotsFallback.title, 'Mathematical Concept Review');
 });
 
 test('confidence matrix generates pedagogically calibrated feedback', () => {

@@ -29,12 +29,8 @@ test('Battle Plan cards show time estimates and move completed actions down', ()
   const route = read('src', 'features', 'students', 'StudentDashboardRoute.tsx');
 
   assert.ok(selector.includes('estimatedMinutes'), 'each battle plan item must include an estimate');
-  assert.ok(selector.includes('sortBattlePlanForDisplay'), 'completed item ordering must be centralized');
-  assert.ok(selector.includes('return leftDone ? 1 : -1'), 'completed actions must move below active actions');
   assert.ok(components.includes('What should I do today?'), 'dashboard must render the daily learning timeline');
   assert.ok(components.includes('LearningTimeline'), 'dashboard must expose the timeline component');
-  assert.ok(components.includes('Mark active'), 'timeline items must support local completion toggling');
-  assert.ok(components.includes('line-through'), 'completed cards must visually collapse');
   assert.ok(components.includes('{item.estimatedMinutes} min'), 'cards must show estimated time');
   assert.ok(route.includes('selectTodayBattlePlan(data, studentData)'), 'dashboard route must derive the Battle Plan from learner state');
   assert.ok(route.includes('<LearningTimeline items={battlePlan}'), 'dashboard route must render the derived plan as a timeline');

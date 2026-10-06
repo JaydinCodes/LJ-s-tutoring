@@ -34,6 +34,7 @@ import {
   getMisconceptionExplanation,
   type MisconceptionDetail,
 } from './misconceptionExplanations';
+import { QuestionResponseInput } from './QuestionResponseInput';
 
 interface QuestionFeedbackState {
   questionId: string;
@@ -141,44 +142,20 @@ export function StudentActivityRoute() {
                 Your answers and confidence evidence have been processed by the learning engine. Your mastery profile and recommended next actions are updated.
               </p>
 
-              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
                   <p className="text-2xl font-bold text-white">{totalQuestions}</p>
                   <p className="mt-1 text-xs text-brand-marble">Questions completed</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
                   <p className="text-2xl font-bold text-emerald-400">
-                    {sessionResults.length > 0 ? `${Math.round((correctCount / sessionResults.length) * 100)}%` : '100%'}
+                    Completed
                   </p>
-                  <p className="mt-1 text-xs text-brand-marble">First-pass accuracy</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
-                  <p className="text-2xl font-bold text-brand-gold">{reviewedMisconceptions.length}</p>
-                  <p className="mt-1 text-xs text-brand-marble">Concepts reinforced</p>
+                  <p className="mt-1 text-xs text-brand-marble">Practice status</p>
                 </div>
               </div>
             </div>
           </section>
-
-          {reviewedMisconceptions.length > 0 ? (
-            <section aria-labelledby="reinforced-heading" className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-900 sm:p-8">
-              <h3 id="reinforced-heading" className="flex items-center gap-2 text-lg font-semibold text-brand-navy dark:text-brand-parchment">
-                <Sparkles className="h-5 w-5 text-brand-aegean dark:text-brand-gold" />
-                Concepts addressed in this session
-              </h3>
-              <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">
-                Reviewing these patterns now prevents small misconceptions from compounding in later topics.
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {reviewedMisconceptions.map((misconception, idx) => (
-                  <div key={`${misconception.code}-${idx}`} className="rounded-2xl border border-amber-200/60 bg-amber-50/50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
-                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{misconception.title}</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-slate-300">{misconception.guidance}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : null}
 
           <section className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:p-8">
             <div>
@@ -296,8 +273,8 @@ export function StudentActivityRoute() {
             <div className="mt-6 space-y-5" aria-live="polite">
               {(() => {
                 const isCorrect = activeFeedback.status === 'correct';
-                const confidenceInsight = getConfidenceFeedback(isCorrect, activeFeedback.confidence);
                 const misconception = activeFeedback.misconception;
+                const confidenceInsight = getConfidenceFeedback(isCorrect, activeFeedback.confidence, !!misconception);
 
                 if (isCorrect) {
                   return (
@@ -407,12 +384,11 @@ export function StudentActivityRoute() {
               <label className="block text-sm font-semibold text-brand-navy dark:text-brand-parchment" htmlFor="activity-answer">
                 Your answer
               </label>
-              <textarea
-                id="activity-answer"
-                className="mt-2 min-h-32 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-medium shadow-sm transition focus:border-brand-aegean focus:outline-none focus:ring-2 focus:ring-brand-aegean/20 dark:border-white/15 dark:bg-slate-950 dark:text-white"
-                placeholder="Type your mathematical answer or expression here..."
+              <QuestionResponseInput
+                questionType={question.representation || question.activityType}
                 value={answer}
-                onChange={(event) => setAnswer(event.target.value)}
+                onChange={setAnswer}
+                disabled={submit.isPending}
               />
 
               {hintIds.map((id) => {
