@@ -225,6 +225,7 @@ export function getMisconceptionExplanation(code: string): MisconceptionDetail {
   const matched = MISCONCEPTION_DICTIONARY[normalised];
   if (matched) return matched;
 
+
   return {
     code,
     title: 'Mathematical Concept Review',
@@ -302,3 +303,4 @@ export function getConfidenceFeedback(
     message: 'Check the guidance below to see what step needs adjusting before you continue.',
   };
 }
+
