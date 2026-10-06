@@ -8,7 +8,6 @@ import {
   MessageSquareText,
   ScrollText,
   Sparkles,
-  TrendingUp,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ErrorState, PageShell, SkeletonCard } from '../../components/dashboard/DashboardDesignSystem';
@@ -21,6 +20,15 @@ import { useDueRetentionStep, useLearnerMasterySummary, useNextLearningStep } fr
 import { daysUntil } from '../assignments/assignmentStatus';
 import { formatDate } from '../../lib/utils/format';
 import type { Assignment, AssignmentSubmission, StudentDashboardView, StudentProgress } from '../../types/lms';
+import type { LearnerMasterySummary } from '../learning/studentLearningRepository';
+
+const masteryLabels: Record<LearnerMasterySummary['state'], string> = {
+  unassessed: 'Not assessed yet',
+  emerging: 'Starting',
+  developing: 'Making progress',
+  secure: 'Strong understanding',
+  retained: 'Remembered over time',
+};
 
 export function StudentDashboardRoute() {
   const { data, loading, error, refetching, reload } = useStudentDashboardQuery();
@@ -48,17 +56,14 @@ export function StudentDashboardRoute() {
         to,
       };
     }
-    const weakest = summarizeProgress(data.progress);
-    if (weakest && weakest.weakestScore !== undefined && weakest.weakestScore < 70) {
-      let to = '/dashboard/student/progress';
-      if (nextStep?.activityCode && nextStep.targetSkillName === weakest.weakestTopic) {
-        to = `/dashboard/student/learning/activity/${encodeURIComponent(nextStep.activityCode)}`;
-      }
+    const lowestResult = findLowestRecordedResult(data.progress);
+    if (lowestResult && lowestResult.score < 70) {
       return {
-        topic: weakest.weakestTopic,
-        score: weakest.weakestScore,
-        reason: 'Recent scores suggest focused practice here will build solid understanding.',
-        to,
+        source: 'school-result' as const,
+        topic: lowestResult.topic,
+        score: lowestResult.score,
+        reason: `Your latest recorded result was ${lowestResult.score}%.`,
+        to: '/dashboard/student/progress',
       };
     }
     return null;
@@ -91,7 +96,7 @@ export function StudentDashboardRoute() {
             <NeedsAttentionBanner item={needsAttentionItem} />
           ) : null}
 
-          <StudentBentoGrid data={data} battlePlan={battlePlan} />
+          <StudentBentoGrid data={data} battlePlan={battlePlan} mastery={masteryQuery.data ?? []} />
 
           <section aria-label="Extended learning detail" className="grid min-w-0 gap-5 border-t border-academy-gold/20 pt-7 xl:grid-cols-[minmax(0,1.2fr)_minmax(19rem,0.8fr)]">
             <LearningTimeline items={battlePlan} />
@@ -142,7 +147,7 @@ function NextSessionCard({ data }: { data: StudentDashboardView }) {
   );
 }
 
-function StudentBentoGrid({ data, battlePlan }: { data: StudentDashboardView; battlePlan: BattlePlanItem[] }) {
+function StudentBentoGrid({ data, battlePlan, mastery }: { data: StudentDashboardView; battlePlan: BattlePlanItem[]; mastery: LearnerMasterySummary[] }) {
   const assignments = [...data.assignments]
     .filter((assignment) => assignment.status !== 'archived')
     .sort((left, right) => String(left.due_date || '9999').localeCompare(String(right.due_date || '9999')))
@@ -155,7 +160,8 @@ function StudentBentoGrid({ data, battlePlan }: { data: StudentDashboardView; ba
     .filter((submission) => Boolean(submission.feedback))
     .sort((left, right) => String(right.released_at || right.submitted_at || '').localeCompare(String(left.released_at || left.submitted_at || '')))[0];
   const streakDays = data.dailyInsightContext?.streakDays || 0;
-  const progressSummary = summarizeProgress(data.progress);
+  const masterySummary = summarizeMastery(mastery);
+  const latestSchoolResult = findLatestSchoolResult(data.progress);
 
   return (
     <section aria-label="Today at a glance" className="grid min-w-0 gap-5 xl:grid-cols-12">
@@ -178,27 +184,36 @@ function StudentBentoGrid({ data, battlePlan }: { data: StudentDashboardView; ba
       </article>
 
       <article className="student-bento-card xl:col-span-4">
-        <EditorialHeading icon={TrendingUp} title="Your progress" />
-        {progressSummary ? (
+        <EditorialHeading icon={Sparkles} title="Learning progress" />
+        {masterySummary.length ? (
           <div className="mt-4 flex flex-1 flex-col">
             <div className="flex items-end justify-between gap-3">
-              <p className="font-display text-xl font-semibold text-academy-navy dark:text-white">Mathematics</p>
-              <p className="font-display text-4xl font-semibold text-academy-navy dark:text-white">{progressSummary.average}%</p>
+              <p className="font-display text-xl font-semibold text-academy-navy dark:text-white">{mastery.length} skill{mastery.length === 1 ? '' : 's'} tracked</p>
             </div>
-            <ProgressTrendChart points={progressSummary.points} />
-            {progressSummary.bestImprovement ? (
-              <div className="mt-2.5 flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                <span>Recent improvement:</span>
-                <span>{progressSummary.bestImprovement.topic} ↑ {progressSummary.bestImprovement.delta}%</span>
-              </div>
-            ) : null}
-            <p className="mt-2 text-sm text-academy-muted">{progressSummary.label} · Next focus: {progressSummary.weakestTopic}</p>
+            <div className="mt-4 grid gap-2 text-sm text-academy-muted">
+              {masterySummary.map(({ state, count }) => <p key={state}><span className="font-semibold text-academy-navy dark:text-white">{count}</span> {masteryLabels[state]}</p>)}
+            </div>
+            <p className="mt-4 text-sm text-academy-muted">Focus next: {mastery.find((skill) => skill.state === 'emerging' || skill.state === 'developing')?.skillName || 'Keep building independent evidence.'}</p>
             <Link className="mt-auto flex min-h-12 items-center justify-between border-t border-[#e7dfd1] pt-4 text-sm font-semibold text-academy-aegean dark:border-white/10 dark:text-academy-gold" to="/dashboard/student/progress">
-              View full progress <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              View learning progress <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
-        ) : <CompactEmpty title="No progress yet" detail="Released marks will establish your learning baseline." />}
+        ) : <CompactEmpty title="No learning evidence yet" detail="Complete a diagnostic or practice activity to begin tracking learning progress." />}
       </article>
+
+      {latestSchoolResult ? (
+        <article className="student-bento-card xl:col-span-3">
+          <EditorialHeading icon={ScrollText} title="Latest school result" />
+          <div className="mt-4 flex flex-1 flex-col">
+            <p className="font-display text-xl font-semibold text-academy-navy dark:text-white">{latestSchoolResult.subject || 'School assessment'}</p>
+            <p className="mt-1 font-display text-4xl font-semibold text-academy-navy dark:text-white">{latestSchoolResult.score}%</p>
+            <p className="mt-2 text-sm text-academy-muted">{latestSchoolResult.topic}</p>
+            <Link className="mt-auto flex min-h-12 items-center justify-between border-t border-[#e7dfd1] pt-4 text-sm font-semibold text-academy-aegean dark:border-white/10 dark:text-academy-gold" to="/dashboard/student/results">
+              View school results <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </article>
+      ) : null}
 
       <div className="grid min-w-0 gap-5 xl:col-span-3">
         {streakDays > 0 ? <StreakCard days={streakDays} /> : null}
@@ -244,26 +259,6 @@ function SuggestedPracticeRow({ item }: { item: BattlePlanItem }) {
   );
 }
 
-function ProgressTrendChart({ points }: { points: number[] }) {
-  const safePoints = points.length > 1 ? points : [points[0] || 0, points[0] || 0];
-  const coordinates = safePoints.map((point, index) => {
-    const x = 8 + (index / Math.max(1, safePoints.length - 1)) * 304;
-    const y = 116 - (Math.max(0, Math.min(100, point)) / 100) * 98;
-    return `${x},${y}`;
-  }).join(' ');
-
-  return (
-    <svg aria-label={`Recent mathematics progress ending at ${Math.round(safePoints.at(-1) || 0)} percent`} className="mt-4 h-36 w-full" role="img" viewBox="0 0 320 132">
-      {[18, 50, 82, 116].map((y) => <line key={y} x1="0" x2="320" y1={y} y2={y} stroke="currentColor" className="text-slate-200 dark:text-white/10" strokeWidth="1" />)}
-      <polyline fill="none" points={coordinates} stroke="#1F6F8B" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
-      {safePoints.map((point, index) => {
-        const [x, y] = coordinates.split(' ')[index].split(',');
-        return <circle key={`${index}-${point}`} cx={x} cy={y} fill="#fffbf2" r={index === safePoints.length - 1 ? 5 : 3} stroke="#1F6F8B" strokeWidth="2" />;
-      })}
-    </svg>
-  );
-}
-
 function StreakCard({ days }: { days: number }) {
   return (
     <article className="relative min-h-[8.5rem] overflow-hidden rounded-sheet border border-white/10 bg-academy-navy p-5 text-white shadow-[0_14px_32px_rgba(15,23,42,0.16)]">
@@ -301,7 +296,7 @@ function CompactEmpty({ title, detail }: { title: string; detail: string }) {
   return <div className="mt-4 rounded-2xl border border-dashed border-slate-300 p-3 dark:border-white/15"><p className="text-sm font-semibold text-academy-navy dark:text-white">{title}</p><p className="mt-1 text-xs leading-5 text-academy-muted">{detail}</p></div>;
 }
 
-function NeedsAttentionBanner({ item }: { item: { topic: string; score?: number; reason?: string; to?: string } }) {
+function NeedsAttentionBanner({ item }: { item: { source?: 'school-result'; topic: string; score?: number; reason?: string; to?: string } }) {
   return (
     <section aria-label="Needs attention" className="rounded-sheet border border-amber-300/80 bg-gradient-to-r from-amber-50/90 via-amber-50/50 to-white p-5 shadow-sm dark:border-amber-900/50 dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -312,11 +307,11 @@ function NeedsAttentionBanner({ item }: { item: { topic: string; score?: number;
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
-                Needs attention
+                {item.source === 'school-result' ? 'Review suggested' : 'Needs attention'}
               </span>
               {typeof item.score === 'number' ? (
                 <span className="rounded-full bg-amber-200/80 px-2.5 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900/60 dark:text-amber-200">
-                  {item.score}% accuracy
+                  {item.score}% {item.source === 'school-result' ? 'result' : 'accuracy'}
                 </span>
               ) : null}
             </div>
@@ -339,43 +334,24 @@ function NeedsAttentionBanner({ item }: { item: { topic: string; score?: number;
   );
 }
 
-function summarizeProgress(progress: StudentProgress[]) {
-  const maths = progress.filter((item) => /math/i.test(item.subject || ''));
-  const items = maths.length ? maths : progress;
-  if (!items.length) return null;
-  const chronological = [...items].sort((left, right) => String(left.recorded_at).localeCompare(String(right.recorded_at)));
-  const points = chronological.slice(-8).map((item) => Number(item.score || 0));
-  const average = Math.round(points.at(-1) ?? points.reduce((sum, point) => sum + point, 0) / points.length);
-  const midpoint = Math.ceil(points.length / 2);
-  const recent = points.slice(midpoint);
-  const earlier = points.slice(0, midpoint);
-  const recentAverage = recent.length ? recent.reduce((sum, point) => sum + point, 0) / recent.length : average;
-  const earlierAverage = earlier.length ? earlier.reduce((sum, point) => sum + point, 0) / earlier.length : recentAverage;
-  const delta = Math.round(recentAverage - earlierAverage);
-  const weakestItem = [...items].sort((left, right) => Number(left.score || 0) - Number(right.score || 0))[0];
-  const weakestTopic = weakestItem?.topic || 'Keep practising';
+function summarizeMastery(mastery: LearnerMasterySummary[]) {
+  const counts = new Map<LearnerMasterySummary['state'], number>();
+  for (const skill of mastery) counts.set(skill.state, (counts.get(skill.state) ?? 0) + 1);
+  return [...counts.entries()]
+    .map(([state, count]) => ({ state, count }))
+    .sort((left, right) => left.state.localeCompare(right.state));
+}
 
-  const byTopic = new Map<string, number[]>();
-  for (const item of items) {
-    const list = byTopic.get(item.topic) || [];
-    list.push(Number(item.score || 0));
-    byTopic.set(item.topic, list);
-  }
-  const improvements = [...byTopic.entries()].map(([topic, scores]) => {
-    const start = scores[0] || 0;
-    const end = scores.at(-1) || 0;
-    return { topic, delta: Math.round(end - start) };
-  });
-  const bestImprovement = improvements.filter((t) => t.delta > 0).sort((a, b) => b.delta - a.delta)[0] || null;
+function findLatestSchoolResult(progress: StudentProgress[]) {
+  return [...progress]
+    .filter((item) => Number.isFinite(Number(item.score)))
+    .sort((left, right) => String(right.recorded_at || '').localeCompare(String(left.recorded_at || '')))[0];
+}
 
-  return {
-    average,
-    points,
-    label: points.length > 1 ? `${delta >= 0 ? '+' : ''}${delta}% recent trend` : 'Baseline',
-    weakestTopic,
-    weakestScore: weakestItem ? Math.round(Number(weakestItem.score || 0)) : undefined,
-    bestImprovement,
-  };
+function findLowestRecordedResult(progress: StudentProgress[]) {
+  return [...progress]
+    .filter((item) => Number.isFinite(Number(item.score)))
+    .sort((left, right) => Number(left.score) - Number(right.score))[0];
 }
 
 function formatSessionDate(date: string) {

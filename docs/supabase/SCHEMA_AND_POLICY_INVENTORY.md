@@ -106,6 +106,7 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20260923205016_sprint5_learning_retention_reporting.sql` | `fd1163cd62811fd1417cd3518282a65d411e266c254225c7305e10e971c3d6b3` |
 | `20260924125412_stabilization_learning_pipeline_and_reporting.sql` | `630d4dd1aa1d6653cf7fdc4fbb33d06006bd1aeffe3eb7291fd0fc40f9b7c1e9` |
 | `20261006000000_core_learning_closure.sql` | `bbf42d3fefe68f9602e1eb359480c90e8d406be8ae705ec315030de162233d2f` |
+| `20261006000100_backfill_approved_learning_question_types.sql` | `0da8ecf30318d716bc35aeb04afd0958fdc71f0d79fc152ffd91e83aacfddacd` |
 
 ## Regeneration
 
