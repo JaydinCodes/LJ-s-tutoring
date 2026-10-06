@@ -142,20 +142,16 @@ export function StudentActivityRoute() {
                 Your answers and confidence evidence have been processed by the learning engine. Your mastery profile and recommended next actions are updated.
               </p>
 
-              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
                   <p className="text-2xl font-bold text-white">{totalQuestions}</p>
                   <p className="mt-1 text-xs text-brand-marble">Questions completed</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
                   <p className="text-2xl font-bold text-emerald-400">
-                    {sessionResults.length > 0 ? `${Math.round((correctCount / sessionResults.length) * 100)}%` : '100%'}
+                    Completed
                   </p>
-                  <p className="mt-1 text-xs text-brand-marble">First-pass accuracy</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
-                  <p className="text-2xl font-bold text-brand-gold">{reviewedMisconceptions.length}</p>
-                  <p className="mt-1 text-xs text-brand-marble">Concepts reinforced</p>
+                  <p className="mt-1 text-xs text-brand-marble">Activity status</p>
                 </div>
               </div>
             </div>
