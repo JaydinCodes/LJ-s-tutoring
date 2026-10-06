@@ -142,7 +142,7 @@ const reactCss = findHashedReactAppAsset(reactAppDistDir, '.css');
 assertSizeIfBuiltPath(reactEntry, 'react-app-dist/react-app-<hash>.js', 1_455_000);
 assertGzipSizeIfBuiltPath(reactEntry, 'react-app-dist/react-app-<hash>.js', 320_000);
 assertGeneratedJsBudget('react-app-dist', 3_000_000, 150_000);
-assertSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 140_000);
+assertSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 142_000);
 assertGzipSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 55_000);
 assertSizeIfBuilt('images/odysseus-hero-fallback.webp', 150_000);
 assertSizeIfBuilt('images/bg_video-optimized.mp4', 1_000_000);

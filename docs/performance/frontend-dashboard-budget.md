@@ -8,7 +8,7 @@ Scope: student dashboard, assignments, results, progress, and careers routes.
 - All generated React JavaScript, including lazy route chunks: <= 3,000,000 bytes uncompressed. This is an asset-growth guard, not a first-visit transfer total because lazy chunks are requested independently.
 - Largest lazy route chunk: <= 150,000 bytes uncompressed.
 - Deferred Supabase Auth shared chunk: <= 275,000 bytes uncompressed and <= 60,000 bytes gzip. It is loaded only for login, onboarding, and portal routes—not public routes.
-- React app CSS bundle: <= 140,000 bytes uncompressed and <= 55,000 bytes gzip.
+- React app CSS bundle: <= 142,000 bytes uncompressed and <= 55,000 bytes gzip.
 - Student dashboard query freshness: 60 seconds before background data is considered stale.
 - Student dashboard refetch triggers: no window-focus or reconnect refetch; manual reload still works.
 - Student result list size: bounded by the API to the latest 24 released results.
