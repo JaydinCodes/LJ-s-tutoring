@@ -13,8 +13,20 @@ test('dashboard separates mastery evidence from school-result context and has no
   assert.match(dashboard, /Learning progress/);
   assert.match(dashboard, /Latest school result/);
   assert.match(dashboard, /findLatestSchoolResult/);
+  assert.match(dashboard, /Your lowest recorded result was/);
+  assert.doesNotMatch(dashboard, /Your latest recorded result was/);
   assert.doesNotMatch(dashboard, /ProgressTrendChart|summarizeProgress|recent trend|recent improvement/i);
   assert.doesNotMatch(dashboard, /\+\$?\{.*\}% learning progress/i);
+});
+
+test('dashboard renders one school-result surface in the 5 + 4 + 3 bento row', () => {
+  const dashboard = read('src', 'features', 'students', 'StudentDashboardRoute.tsx');
+  const bentoGrid = dashboard.slice(dashboard.indexOf('function StudentBentoGrid'), dashboard.indexOf('function AssignmentRow'));
+
+  assert.equal((bentoGrid.match(/title="Latest school result"/g) || []).length, 1);
+  assert.match(bentoGrid, /student-bento-card xl:col-span-5/);
+  assert.match(bentoGrid, /student-bento-card xl:col-span-4/);
+  assert.match(bentoGrid, /grid min-w-0 gap-5 xl:col-span-3/);
 });
 
 test('learner-facing labels keep school results distinct from mastery states', () => {
