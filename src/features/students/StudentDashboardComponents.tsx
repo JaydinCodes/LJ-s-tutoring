@@ -148,7 +148,7 @@ export function SubjectProgressBands({ progress }: { progress: StudentProgress[]
           <div className="py-4">
             <EmptyState
               title="No progress snapshot yet"
-              description="Topic mastery appears here as soon as marks or progress records are available."
+              description="Topic progress appears here as soon as marks or progress records are available."
               actionLabel="Open assignments"
               actionHref="/dashboard/student/assignments"
               icon={BookOpen}
@@ -337,7 +337,7 @@ export function ProgressSummaryCards({
       <ActionMetricCard
         label="Weakest Topic"
         value={weakestTopic?.topic || 'Pending'}
-        explanation={weakestTopic ? `${weakestTopic.score}% mastery. Start here if you only have one focused study block today.` : 'Progress records will identify the best topic to practise first.'}
+        explanation={weakestTopic ? `${weakestTopic.score}% recent result. Start here if you only have one focused study block today.` : 'Progress records will identify the best topic to practise first.'}
         action="Open progress"
         to="/dashboard/student/progress"
         icon={Brain}

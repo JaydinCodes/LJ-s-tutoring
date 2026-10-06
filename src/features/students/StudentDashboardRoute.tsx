@@ -39,7 +39,7 @@ export function StudentDashboardRoute() {
     const emergingSkill = masteryQuery.data?.find((s) => s.state === 'emerging');
     if (emergingSkill) {
       let to = '/dashboard/student/progress';
-      if (nextStep?.activityCode) {
+      if (nextStep?.activityCode && nextStep.targetSkillCode === emergingSkill.skillCode) {
         to = `/dashboard/student/learning/activity/${encodeURIComponent(nextStep.activityCode)}`;
       }
       return {
@@ -51,13 +51,13 @@ export function StudentDashboardRoute() {
     const weakest = summarizeProgress(data.progress);
     if (weakest && weakest.weakestScore !== undefined && weakest.weakestScore < 70) {
       let to = '/dashboard/student/progress';
-      if (nextStep?.activityCode) {
+      if (nextStep?.activityCode && nextStep.targetSkillName === weakest.weakestTopic) {
         to = `/dashboard/student/learning/activity/${encodeURIComponent(nextStep.activityCode)}`;
       }
       return {
         topic: weakest.weakestTopic,
         score: weakest.weakestScore,
-        reason: 'Recent scores suggest focused practice here will build solid mastery.',
+        reason: 'Recent scores suggest focused practice here will build solid understanding.',
         to,
       };
     }

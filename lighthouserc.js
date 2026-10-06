@@ -11,7 +11,7 @@ module.exports = {
       settings: {
         // @lhci/cli forwards this field as a single command-line string;
         // an array is coerced with commas and Chromium ignores the flags.
-        chromeFlags: '--no-sandbox --disable-setuid-sandbox',
+        chromeFlags: '--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage',
       },
     },
     upload: {

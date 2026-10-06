@@ -139,7 +139,7 @@ export function StudentActivityRoute() {
                 Great effort on {activity.name}
               </h2>
               <p className="mt-3 max-w-2xl text-base leading-relaxed text-brand-marble">
-                Your answers and confidence evidence have been processed by the learning engine. Your mastery profile and recommended next actions are updated.
+                Your answers and confidence evidence have been saved. Your progress and recommended next actions are updated.
               </p>
 
               <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -405,7 +405,8 @@ export function StudentActivityRoute() {
                 Your answer
               </label>
               <QuestionResponseInput
-                questionType={question.representation || question.activityType}
+                questionType={question.questionType}
+                options={question.options}
                 value={answer}
                 onChange={setAnswer}
                 disabled={submit.isPending}
