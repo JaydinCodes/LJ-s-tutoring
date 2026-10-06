@@ -142,7 +142,7 @@ export function getDailyInsight(input: DailyInsightInput): DailyInsight {
       message: chooseDaily(input, [
         `${input.weakestTopic} is your clearest improvement opportunity at ${input.weakestTopicScore}%. A short focused practice block will move the right metric.`,
         `Your current weak spot is ${input.weakestTopic} at ${input.weakestTopicScore}%. Review one worked example, then solve a similar question independently.`,
-        `Prioritise ${input.weakestTopic} today. Its ${input.weakestTopicScore}% mastery score makes it the best place to spend your next practice block.`,
+        `Prioritise ${input.weakestTopic} today. Its latest recorded result was ${input.weakestTopicScore}%, so it is a useful place to spend your next practice block.`,
       ]),
       action: `Spend 25 focused minutes on ${input.weakestTopic}.`,
     };

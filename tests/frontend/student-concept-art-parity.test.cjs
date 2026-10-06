@@ -19,7 +19,7 @@ test('student dashboard uses the concept-art composition and decorative assets',
   assert.match(route, /xl:col-span-7/);
   assert.match(route, /student-session-voyage\.webp/);
   assert.match(route, /Assignments/);
-  assert.match(route, /Your progress/);
+  assert.match(route, /Learning progress/);
   assert.match(route, /Recent feedback/);
   assert.match(components, /student-learning-plan-classical\.webp/);
   assert.match(components, /student-primary-action/);

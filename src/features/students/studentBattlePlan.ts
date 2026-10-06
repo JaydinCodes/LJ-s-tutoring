@@ -91,7 +91,7 @@ export function selectTodayBattlePlan(
       id: `topic:${weakestTopic.id}`,
       kind: 'topic',
       title: `Strengthen ${weakestTopic.topic}`,
-      description: `${weakestTopic.score}% mastery. Review one worked example, then solve one similar question independently.`,
+      description: `Latest recorded score: ${weakestTopic.score}%. Review one worked example, then solve one similar question independently.`,
       estimatedMinutes: 25,
       to: '/dashboard/student/progress',
       priority: 40 + Math.max(0, Math.min(100, Number(weakestTopic.score))),
@@ -155,8 +155,8 @@ export function selectTodayBattlePlan(
       kind: 'topic',
       title: 'Review learning progress',
       description: data.progress.length > 0
-        ? `Review your scores and topic mastery across ${data.progress.length} assessed area${data.progress.length === 1 ? '' : 's'}.`
-        : 'Review your recent topic mastery and diagnostic results.',
+        ? `Review your recent school results and learning progress across ${data.progress.length} assessed area${data.progress.length === 1 ? '' : 's'}.`
+        : 'Review your learning progress and diagnostic results.',
       estimatedMinutes: 15,
       to: '/dashboard/student/progress',
       priority: 71,
