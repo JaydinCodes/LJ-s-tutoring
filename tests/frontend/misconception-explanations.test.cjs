@@ -71,22 +71,22 @@ test('misconception dictionary provides safe fallbacks for arbitrary or malforme
   assert.ok(fallback.guidance.length > 0);
 
   const dotsFallback = getMisconceptionExplanation('custom_dots_variant');
-  assert.equal(dotsFallback.title, 'Difference of Squares vs. Square of a Binomial');
+  assert.equal(dotsFallback.title, 'Mathematical Concept Review');
 });
 
 test('confidence matrix generates pedagogically calibrated feedback', () => {
   // Correct + High Confidence
   const highConfCorrect = getConfidenceFeedback(true, 4);
   assert.equal(highConfCorrect.tone, 'confident_success');
-  assert.ok(highConfCorrect.badge.includes('High confidence'));
+  assert.ok(highConfCorrect.badge.includes('Correct · High confidence'));
 
   // Correct + Low Confidence
   const lowConfCorrect = getConfidenceFeedback(true, 1);
   assert.equal(lowConfCorrect.tone, 'hesitant_success');
-  assert.ok(lowConfCorrect.badge.includes('Growing confidence'));
+  assert.ok(lowConfCorrect.badge.includes('Correct'));
 
   // Incorrect + High Confidence (Misconception signal)
-  const highConfIncorrect = getConfidenceFeedback(false, 4);
+  const highConfIncorrect = getConfidenceFeedback(false, 4, true);
   assert.equal(highConfIncorrect.tone, 'confident_misconception');
   assert.ok(highConfIncorrect.badge.includes('Diagnostic insight'));
 
@@ -102,4 +102,3 @@ test('confidence matrix generates pedagogically calibrated feedback', () => {
   const neutralIncorrect = getConfidenceFeedback(false, null);
   assert.equal(neutralIncorrect.tone, 'review');
 });
-

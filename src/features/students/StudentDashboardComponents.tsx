@@ -79,21 +79,6 @@ export function TodayOdyssey({
 }
 
 export function LearningTimeline({ items }: { items: BattlePlanItem[] }) {
-  const [completedIds, setCompletedIds] = useState<Set<string>>(() => new Set());
-  const visibleItems = useMemo(() => sortBattlePlanForDisplay(items, completedIds), [items, completedIds]);
-
-  function toggleComplete(itemId: string) {
-    setCompletedIds((current) => {
-      const next = new Set(current);
-      if (next.has(itemId)) {
-        next.delete(itemId);
-      } else {
-        next.add(itemId);
-      }
-      return next;
-    });
-  }
-
   return (
     <section aria-labelledby="learning-timeline-title" className="space-y-3">
       <div className="flex items-end justify-between gap-4">
@@ -109,7 +94,7 @@ export function LearningTimeline({ items }: { items: BattlePlanItem[] }) {
       <div className="relative">
         <div className="absolute left-4 top-5 hidden h-[calc(100%-2.5rem)] w-px bg-gradient-to-b from-academy-gold via-academy-aegean/[0.35] to-transparent sm:block" aria-hidden="true" />
         <div className="space-y-2">
-          {!visibleItems.length ? (
+          {!items.length ? (
             <EmptyState
               title="No learning path yet"
               description="Once assignments, marks, or topic progress arrive, this becomes a short ordered plan for the day."
@@ -118,27 +103,23 @@ export function LearningTimeline({ items }: { items: BattlePlanItem[] }) {
               icon={Brain}
             />
           ) : null}
-          {visibleItems.map((item, index) => {
-            const isCompleted = completedIds.has(item.id);
+          {items.map((item, index) => {
             return (
-              <article key={item.id} className={`relative rounded-ios-lg border border-transparent py-3 pl-0 transition duration-fluid ease-ios sm:pl-10 ${isCompleted ? 'opacity-60' : ''}`}>
-                <span className={`mb-2 grid h-8 w-8 place-items-center rounded-full border text-xs font-bold sm:absolute sm:left-0 sm:top-4 ${isCompleted ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200' : 'border-academy-gold/30 bg-academy-gold/[0.12] text-academy-navy dark:text-academy-gold'}`}>
-                  {isCompleted ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : index + 1}
+              <article key={item.id} className="relative rounded-ios-lg border border-transparent py-3 pl-0 transition duration-fluid ease-ios sm:pl-10">
+                <span className="mb-2 grid h-8 w-8 place-items-center rounded-full border text-xs font-bold sm:absolute sm:left-0 sm:top-4 border-academy-gold/30 bg-academy-gold/[0.12] text-academy-navy dark:text-academy-gold">
+                  {index + 1}
                 </span>
                 <div className="rounded-ios-lg border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">{item.kind}</p>
-                      <h3 className={`mt-1 text-lg font-semibold text-academy-ink dark:text-academy-parchment ${isCompleted ? 'line-through' : ''}`}>{item.title}</h3>
+                      <h3 className="mt-1 text-lg font-semibold text-academy-ink dark:text-academy-parchment">{item.title}</h3>
                     </div>
                     <span className="rounded-full bg-slate-950/[0.04] px-3 py-1 text-xs font-semibold text-academy-muted dark:bg-white/[0.06]">{item.estimatedMinutes} min</span>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-academy-muted">{isCompleted ? 'Marked complete for this page load.' : item.description}</p>
+                  <p className="mt-2 text-sm leading-6 text-academy-muted">{item.description}</p>
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <Link className="academy-btn academy-btn-outline min-h-10 px-4" to={item.to}>Open</Link>
-                    <button className="academy-btn academy-btn-primary min-h-10 px-4" type="button" onClick={() => toggleComplete(item.id)}>
-                      {isCompleted ? 'Mark active' : 'Done'}
-                    </button>
                   </div>
                 </div>
               </article>
@@ -441,21 +422,6 @@ function ActionMetricCard({
 }
 
 export function TodayBattlePlan({ items }: { items: BattlePlanItem[] }) {
-  const [completedIds, setCompletedIds] = useState<Set<string>>(() => new Set());
-  const visibleItems = useMemo(() => sortBattlePlanForDisplay(items, completedIds), [items, completedIds]);
-
-  function toggleComplete(itemId: string) {
-    setCompletedIds((current) => {
-      const next = new Set(current);
-      if (next.has(itemId)) {
-        next.delete(itemId);
-      } else {
-        next.add(itemId);
-      }
-      return next;
-    });
-  }
-
   return (
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -465,13 +431,13 @@ export function TodayBattlePlan({ items }: { items: BattlePlanItem[] }) {
             Today's Battle Plan
           </p>
           <h2 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-100">3 to 5 focused actions, in order</h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-brand-marble">Start at the top. Completed actions move down so the next useful step stays visible.</p>
+          <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-brand-marble">Start at the top. Completed actions automatically refresh as you learn.</p>
         </div>
         <p className="rounded-full border border-white/70 bg-white/[0.62] px-3 py-1 text-xs font-semibold text-brand-obsidian shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment">{items.length} actions</p>
       </div>
 
       <StaggerGrid className="mt-5 grid gap-3">
-        {!visibleItems.length ? (
+        {!items.length ? (
           <EmptyState
             title="No quiz recommendation yet"
             description="Quiz suggestions appear when the dashboard has a weak topic or revision target. Start with assignments or progress so recommendations stay grounded in real data."
@@ -480,30 +446,22 @@ export function TodayBattlePlan({ items }: { items: BattlePlanItem[] }) {
             icon={Brain}
           />
         ) : null}
-        {visibleItems.map((item, index) => {
-          const isCompleted = completedIds.has(item.id);
+        {items.map((item, index) => {
           return (
             <StaggerItem key={item.id}>
-              <article className={`rounded-2xl border p-4 backdrop-blur-xl transition ${isCompleted ? 'border-white/50 bg-white/40 opacity-70 dark:border-white/10 dark:bg-white/[0.03]' : 'border-white/70 bg-white/[0.62] shadow-[0_18px_45px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-white/[0.05]'}`}>
+              <article className="rounded-2xl border border-white/70 bg-white/[0.62] p-4 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05]">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-aegean dark:text-brand-gold">Step {index + 1} - {item.kind}</p>
-                    <h3 className={`mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100 ${isCompleted ? 'line-through' : ''}`}>{item.title}</h3>
+                    <h3 className="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">{item.title}</h3>
                   </div>
                   <span className="rounded-full border border-white/70 bg-white/[0.62] px-3 py-1 text-xs font-semibold text-brand-obsidian shadow-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment">{item.estimatedMinutes} min</span>
                 </div>
-                {!isCompleted ? (
-                  <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-brand-marble">{item.description}</p>
-                ) : (
-                  <p className="mt-3 text-sm font-semibold text-slate-500 dark:text-brand-marble">Marked complete for this page load.</p>
-                )}
+                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-brand-marble">{item.description}</p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <Link className="rounded-full border border-white/70 bg-white/[0.65] px-4 py-2 text-sm font-semibold text-brand-navy shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment dark:hover:bg-white/[0.08]" to={item.to}>
+                  <Link className="rounded-full bg-brand-navy px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-deepBlue dark:bg-brand-aegean" to={item.to}>
                     Open action
                   </Link>
-                  <button className="rounded-full bg-brand-navy px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-deepBlue dark:bg-brand-aegean" type="button" onClick={() => toggleComplete(item.id)}>
-                    {isCompleted ? 'Mark active' : 'Mark complete'}
-                  </button>
                 </div>
               </article>
             </StaggerItem>
