@@ -441,7 +441,7 @@ export function StudentActivityRoute() {
                   How confident are you in this answer?
                 </legend>
                 <p className="mt-1 px-1 text-xs leading-5 text-slate-500 dark:text-brand-marble">
-                  This helps the diagnostic engine tailor feedback and helps your tutor understand how the question felt.
+                  This helps tailor feedback and helps your tutor understand how the question felt.
                 </p>
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {(

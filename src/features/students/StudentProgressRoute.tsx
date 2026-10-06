@@ -9,10 +9,10 @@ import type { StudentProgress } from '../../types/lms';
 
 const labels: Record<string, string> = {
   unassessed: 'Not assessed yet',
-  emerging: 'Building foundations',
+  emerging: 'Starting',
   developing: 'Making progress',
-  secure: 'Confident & independent',
-  retained: 'Secure over time',
+  secure: 'Strong understanding',
+  retained: 'Remembered over time',
 };
 
 const badgeTones: Record<string, string> = {
@@ -68,19 +68,19 @@ export function StudentProgressRoute() {
           {/* Mastery scale explainer */}
           <div className="mt-6 grid grid-cols-2 gap-2 border-t border-white/10 pt-6 sm:grid-cols-4">
             <div className="rounded-xl bg-white/5 p-3">
-              <span className="block text-xs font-bold uppercase tracking-wider text-amber-300">Emerging</span>
-              <span className="mt-1 block text-xs text-brand-marble">Building foundations</span>
+              <span className="block text-xs font-bold uppercase tracking-wider text-amber-300">Starting</span>
+              <span className="mt-1 block text-xs text-brand-marble">Beginning independent evidence</span>
             </div>
             <div className="rounded-xl bg-white/5 p-3">
-              <span className="block text-xs font-bold uppercase tracking-wider text-sky-300">Developing</span>
+              <span className="block text-xs font-bold uppercase tracking-wider text-sky-300">Making progress</span>
               <span className="mt-1 block text-xs text-brand-marble">Making progress</span>
             </div>
             <div className="rounded-xl bg-white/5 p-3">
-              <span className="block text-xs font-bold uppercase tracking-wider text-emerald-300">Secure</span>
+              <span className="block text-xs font-bold uppercase tracking-wider text-emerald-300">Strong understanding</span>
               <span className="mt-1 block text-xs text-brand-marble">Consistent & independent</span>
             </div>
             <div className="rounded-xl bg-white/5 p-3">
-              <span className="block text-xs font-bold uppercase tracking-wider text-brand-gold">Retained</span>
+              <span className="block text-xs font-bold uppercase tracking-wider text-brand-gold">Remembered over time</span>
               <span className="mt-1 block text-xs text-brand-marble">Verified over time</span>
             </div>
           </div>
@@ -140,7 +140,7 @@ export function StudentProgressRoute() {
                     </div>
                     <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${tone}`}>
                       {isSecure ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> : null}
-                      {skill.state}
+                      {labels[skill.state] ?? 'Learning in progress'}
                     </span>
                   </div>
 
