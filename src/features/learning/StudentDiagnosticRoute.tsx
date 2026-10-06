@@ -450,7 +450,7 @@ export function StudentDiagnosticRoute() {
         <div className="mt-7">
           <label
             className="block text-sm font-semibold text-brand-navy dark:text-brand-parchment"
-            htmlFor="learning-answer"
+            htmlFor="activity-answer"
           >
             Your answer
           </label>
