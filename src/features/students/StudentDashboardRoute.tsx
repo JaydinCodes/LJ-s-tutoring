@@ -201,21 +201,20 @@ function StudentBentoGrid({ data, battlePlan, mastery }: { data: StudentDashboar
         ) : <CompactEmpty title="No learning evidence yet" detail="Complete a diagnostic or practice activity to begin tracking learning progress." />}
       </article>
 
-      {latestSchoolResult ? (
-        <article className="student-bento-card xl:col-span-3">
-          <EditorialHeading icon={ScrollText} title="Latest school result" />
-          <div className="mt-4 flex flex-1 flex-col">
-            <p className="font-display text-xl font-semibold text-academy-navy dark:text-white">{latestSchoolResult.subject || 'School assessment'}</p>
-            <p className="mt-1 font-display text-4xl font-semibold text-academy-navy dark:text-white">{latestSchoolResult.score}%</p>
-            <p className="mt-2 text-sm text-academy-muted">{latestSchoolResult.topic}</p>
-            <Link className="mt-auto flex min-h-12 items-center justify-between border-t border-[#e7dfd1] pt-4 text-sm font-semibold text-academy-aegean dark:border-white/10 dark:text-academy-gold" to="/dashboard/student/results">
-              View school results <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </div>
-        </article>
-      ) : null}
-
       <div className="grid min-w-0 gap-5 xl:col-span-3">
+        {latestSchoolResult ? (
+          <article className="student-bento-card">
+            <EditorialHeading icon={ScrollText} title="Latest school result" />
+            <div className="mt-4 flex flex-1 flex-col">
+              <p className="font-display text-xl font-semibold text-academy-navy dark:text-white">{latestSchoolResult.subject || 'School assessment'}</p>
+              <p className="mt-1 font-display text-4xl font-semibold text-academy-navy dark:text-white">{latestSchoolResult.score}%</p>
+              <p className="mt-2 text-sm text-academy-muted">{latestSchoolResult.topic}</p>
+              <Link className="mt-auto flex min-h-12 items-center justify-between border-t border-[#e7dfd1] pt-4 text-sm font-semibold text-academy-aegean dark:border-white/10 dark:text-academy-gold" to="/dashboard/student/results">
+                View school results <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+          </article>
+        ) : null}
         {streakDays > 0 ? <StreakCard days={streakDays} /> : null}
         <FeedbackCard feedback={latestFeedback} compact={streakDays > 0} />
       </div>
