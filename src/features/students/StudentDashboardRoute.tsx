@@ -62,7 +62,7 @@ export function StudentDashboardRoute() {
         source: 'school-result' as const,
         topic: lowestResult.topic,
         score: lowestResult.score,
-        reason: `Your latest recorded result was ${lowestResult.score}%.`,
+        reason: `Your lowest recorded result was ${lowestResult.score}%.`,
         to: '/dashboard/student/progress',
       };
     }

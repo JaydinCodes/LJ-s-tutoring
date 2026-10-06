@@ -13,6 +13,8 @@ test('dashboard separates mastery evidence from school-result context and has no
   assert.match(dashboard, /Learning progress/);
   assert.match(dashboard, /Latest school result/);
   assert.match(dashboard, /findLatestSchoolResult/);
+  assert.match(dashboard, /Your lowest recorded result was/);
+  assert.doesNotMatch(dashboard, /Your latest recorded result was/);
   assert.doesNotMatch(dashboard, /ProgressTrendChart|summarizeProgress|recent trend|recent improvement/i);
   assert.doesNotMatch(dashboard, /\+\$?\{.*\}% learning progress/i);
 });
