@@ -4,7 +4,8 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
 import { FormField, TextInput } from '../../components/ui/FormField';
 import { useAuth } from './AuthProvider';
-import { getDashboardPath, sendMagicLink, signInWithPassword } from './authService';
+import { getDashboardPath, sendMagicLink, signInWithPassword, signOut } from './authService';
+import { normalizeUserRole } from './roles';
 
 export function LoginRoute() {
   const auth = useAuth();
@@ -20,13 +21,20 @@ export function LoginRoute() {
     ? String(location.state.from)
     : null;
 
+  const currentRole = auth.profile ? normalizeUserRole(auth.profile.role) : null;
+  const isOperationalBlocked = Boolean(
+    auth.profile &&
+    (currentRole === 'student' || currentRole === 'tutor') &&
+    auth.operationalAccess === 'blocked'
+  );
+
   useEffect(() => {
-    if (auth.profile) {
+    if (auth.profile && !isOperationalBlocked) {
       navigate(requestedPath || getDashboardPath(auth.profile.role), { replace: true });
     }
-  }, [auth.profile, navigate, requestedPath]);
+  }, [auth.profile, isOperationalBlocked, navigate, requestedPath]);
 
-  if (auth.profile) {
+  if (auth.profile && !isOperationalBlocked) {
     return <Navigate to={requestedPath || getDashboardPath(auth.profile.role)} replace />;
   }
 
@@ -71,30 +79,61 @@ export function LoginRoute() {
           </p>
         </section>
         <Card className="text-slate-950 dark:!border-white/20 dark:!bg-white/[0.94] dark:!text-slate-950 dark:[&_input]:!border-brand-marble dark:[&_input]:!bg-white dark:[&_input]:!text-brand-obsidian dark:[&_label>span]:!text-slate-800">
-          <h2 className="text-2xl font-semibold tracking-tight">Dashboard access</h2>
-          {!auth.configured ? (
-            <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-800">
-              Sign-in is temporarily unavailable. Please contact support if you need urgent access.
-            </p>
-          ) : null}
-          <form className="mt-5 grid gap-4" onSubmit={(event) => void submitPassword(event)}>
-            <FormField label="Email">
-              <TextInput autoComplete="email" inputMode="email" name="email" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
-            </FormField>
-            <FormField label="Password">
-              <TextInput autoComplete="current-password" name="password" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password" />
-            </FormField>
-            <div className="flex flex-wrap items-center gap-3">
-              <button disabled={busy || !auth.configured} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
-                {busy ? 'Signing in...' : 'Sign in'}
-              </button>
-              <button disabled={busy || !auth.configured || !email.trim()} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => void submitMagicLink()}>
-                Send magic link
-              </button>
+          {isOperationalBlocked ? (
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">Account access restricted</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-700">
+                You are currently signed in as <strong className="font-semibold">{auth.session?.user?.email ?? 'your account'}</strong>, but this account is not currently active for portal access.
+              </p>
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  onClick={() => {
+                    void (async () => {
+                      await signOut();
+                      await auth.refresh();
+                    })();
+                  }}
+                >
+                  Sign out
+                </button>
+                <Link
+                  to="/"
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                >
+                  Return to home
+                </Link>
+              </div>
             </div>
-            {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
-            {error || auth.error ? <p className="text-sm font-semibold text-red-700">{error || auth.error}</p> : null}
-          </form>
+          ) : (
+            <>
+              <h2 className="text-2xl font-semibold tracking-tight">Dashboard access</h2>
+              {!auth.configured ? (
+                <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-800">
+                  Sign-in is temporarily unavailable. Please contact support if you need urgent access.
+                </p>
+              ) : null}
+              <form className="mt-5 grid gap-4" onSubmit={(event) => void submitPassword(event)}>
+                <FormField label="Email">
+                  <TextInput autoComplete="email" inputMode="email" name="email" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
+                </FormField>
+                <FormField label="Password">
+                  <TextInput autoComplete="current-password" name="password" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password" />
+                </FormField>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button disabled={busy || !auth.configured} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
+                    {busy ? 'Signing in...' : 'Sign in'}
+                  </button>
+                  <button disabled={busy || !auth.configured || !email.trim()} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => void submitMagicLink()}>
+                    Send magic link
+                  </button>
+                </div>
+                {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
+                {error || auth.error ? <p className="text-sm font-semibold text-red-700">{error || auth.error}</p> : null}
+              </form>
+            </>
+          )}
         </Card>
       </div>
     </main>

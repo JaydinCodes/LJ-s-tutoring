@@ -92,9 +92,23 @@ export type LearnerMasterySummary = {
   determinedAt: string;
 };
 
+export type SubmitLearningAttemptEvaluation = {
+  status: 'correct' | 'incorrect' | 'needs_review';
+  marksAwarded: number | null;
+  marksAvailable: number;
+  misconceptionMatches: Array<{
+    code: string;
+    confidence: string;
+    skillCode: string | null;
+    evidence: string;
+  }>;
+  explanationCode: string;
+};
+
 export type SubmitLearningAttemptResult = {
   attemptId: string;
   status: string;
+  evaluation?: SubmitLearningAttemptEvaluation | null;
 };
 
 function parseHints(value: unknown): LearnerHint[] {
@@ -257,6 +271,7 @@ export async function submitLearningAttempt(
   return {
     attemptId: row.attempt_id,
     status: row.attempt_status ?? 'submitted',
+    evaluation: (row.evaluation as SubmitLearningAttemptEvaluation) ?? null,
   };
 }
 
