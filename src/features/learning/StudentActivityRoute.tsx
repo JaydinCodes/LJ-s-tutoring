@@ -142,20 +142,44 @@ export function StudentActivityRoute() {
                 Your answers and confidence evidence have been processed by the learning engine. Your mastery profile and recommended next actions are updated.
               </p>
 
-              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
                   <p className="text-2xl font-bold text-white">{totalQuestions}</p>
                   <p className="mt-1 text-xs text-brand-marble">Questions completed</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
                   <p className="text-2xl font-bold text-emerald-400">
-                    Completed
+                    {sessionResults.length > 0 ? `${Math.round((correctCount / sessionResults.length) * 100)}%` : '100%'}
                   </p>
-                  <p className="mt-1 text-xs text-brand-marble">Practice status</p>
+                  <p className="mt-1 text-xs text-brand-marble">First-pass accuracy</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+                  <p className="text-2xl font-bold text-brand-gold">{reviewedMisconceptions.length}</p>
+                  <p className="mt-1 text-xs text-brand-marble">Concepts reinforced</p>
                 </div>
               </div>
             </div>
           </section>
+
+          {reviewedMisconceptions.length > 0 ? (
+            <section aria-labelledby="reinforced-heading" className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-900 sm:p-8">
+              <h3 id="reinforced-heading" className="flex items-center gap-2 text-lg font-semibold text-brand-navy dark:text-brand-parchment">
+                <Sparkles className="h-5 w-5 text-brand-aegean dark:text-brand-gold" />
+                Concepts addressed in this session
+              </h3>
+              <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">
+                Reviewing these patterns now prevents small misconceptions from compounding in later topics.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {reviewedMisconceptions.map((misconception, idx) => (
+                  <div key={`${misconception.code}-${idx}`} className="rounded-2xl border border-amber-200/60 bg-amber-50/50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{misconception.title}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-slate-300">{misconception.guidance}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:p-8">
             <div>

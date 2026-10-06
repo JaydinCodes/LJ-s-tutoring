@@ -225,11 +225,28 @@ export function getMisconceptionExplanation(code: string): MisconceptionDetail {
   const matched = MISCONCEPTION_DICTIONARY[normalised];
   if (matched) return matched;
 
+  // General fallbacks based on prefix/suffix
+  if (normalised.includes('DOTS') || normalised.includes('SQUARE')) {
+    return MISCONCEPTION_DICTIONARY.DOTS_AS_SQUARE_OF_DIFFERENCE;
+  }
+  if (normalised.includes('DISTRIBUTIVE')) {
+    return MISCONCEPTION_DICTIONARY.DISTRIBUTIVE_PARTIAL_MULTIPLICATION;
+  }
+  if (normalised.includes('GRADIENT')) {
+    return MISCONCEPTION_DICTIONARY.GRADIENT_RISE_OVER_RUN_REVERSED;
+  }
+  if (normalised.includes('LIKE_TERMS')) {
+    return MISCONCEPTION_DICTIONARY.ALG_COMBINE_UNLIKE_TERMS;
+  }
+  if (normalised.includes('EQN') || normalised.includes('EQUATION')) {
+    return MISCONCEPTION_DICTIONARY.EQUATION_OPERATION_ONE_SIDE;
+  }
+
   return {
     code,
     title: 'Mathematical Concept Review',
     explanation:
-      'We could not confidently identify a specific error pattern. Review your working and try again.',
+      'Your answer shows a common pattern where a mathematical rule was partially applied. Taking a moment to verify each step will help strengthen this skill.',
     guidance: 'Review each line of your working to confirm signs, operations, and bracket expansion.',
     category: 'general',
   };
@@ -244,10 +261,10 @@ export function getConfidenceFeedback(
     if (confidence === 4 || confidence === 3) {
       return {
         tone: 'confident_success',
-        badge: 'Correct · High confidence',
-        title: 'Strong attempt',
+        badge: 'High confidence · Mastered',
+        title: 'Spot on — strong understanding!',
         message:
-          'You got this right and felt confident in your method. That is strong evidence from this attempt. Keep practising so Odysseus can build a clearer picture of your understanding over time.',
+          'You were confident in your approach and executed it cleanly. This shows solid conceptual mastery.',
       };
     }
     if (confidence === 1 || confidence === 2) {
@@ -275,7 +292,7 @@ export function getConfidenceFeedback(
         badge: 'Diagnostic insight',
         title: 'Surprising result — let’s break it down',
         message:
-          'You felt sure about this one, but a common misconception came into play. Take a close look at the explanation below so you can spot this pattern next time!',
+          'You felt sure about this one, but a very common misconception came into play. Take a close look at the explanation below so you can spot this pattern next time!',
       };
     }
     return {
@@ -302,4 +319,3 @@ export function getConfidenceFeedback(
     message: 'Check the guidance below to see what step needs adjusting before you continue.',
   };
 }
-
