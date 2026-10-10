@@ -14,7 +14,7 @@ if (!['127.0.0.1', 'localhost', '::1'].includes(new URL(supabaseUrl).hostname)) 
 
 export default defineConfig({
   testDir: './tests/e2e-react',
-  testMatch: 'supabase-role-journeys.spec.ts',
+  testMatch: /(?:supabase-role-journeys|golden-demo-journey)\.spec\.ts/,
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,

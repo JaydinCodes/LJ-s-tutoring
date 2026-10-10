@@ -8,6 +8,10 @@ const migration = fs.readFileSync(
   path.join(root, 'supabase', 'migrations', '20261009000000_golden_demo_learner.sql'),
   'utf8',
 );
+const integrityMigration = fs.readFileSync(
+  path.join(root, 'supabase', 'migrations', '20261010000000_golden_demo_rehearsal_integrity.sql'),
+  'utf8',
+);
 
 test('golden demo is a real short activity targeting Difference of Two Squares', () => {
   assert.match(migration, /ACT\.G9\.ALG\.FACTOR\.DOTS\.CONTRASTING-PRACTICE/);
@@ -22,6 +26,17 @@ test('golden misconception is persisted and retries preserve the original attemp
   assert.match(migration, /"response":"\(x - 5\)\^2"/);
   assert.match(migration, /and attempt\.status = 'evaluated'\s+and attempt\.is_correct/);
   assert.match(migration, /delete from public\.learning_attempts where student_id = v_student/);
+});
+
+test('repeated misconception and secure prerequisite reasons use real fixture evidence', () => {
+  assert.match(integrityMigration, /Q\.G9\.DEMO\.HISTORY\.DOTS\.01/);
+  assert.match(integrityMigration, /Q\.G9\.DEMO\.HISTORY\.DOTS\.02/);
+  assert.match(integrityMigration, /\(x - 5\)\^2', false, 4::smallint/);
+  assert.match(integrityMigration, /\(y - 7\)\^2', false, 3::smallint/);
+  assert.match(integrityMigration, /cardinality\(v_dots_attempts\), 0\) <> 2/);
+  assert.match(integrityMigration, /'G9\.ALG\.FACTOR\.COMMON', 'secure'/);
+  assert.match(integrityMigration, /'G9\.ALG\.EXPAND\.BINOMIAL', 'secure'/);
+  assert.match(integrityMigration, /email = 'admin@example\.com' and role = 'admin'/);
 });
 
 test('demo reset is service-role-only and the script refuses non-local projects', () => {

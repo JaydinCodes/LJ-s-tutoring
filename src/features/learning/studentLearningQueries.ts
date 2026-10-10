@@ -175,7 +175,9 @@ export function useSubmitLearningAttemptMutation(
           exact: true,
         }),
         ...(activityCode ? [
-          queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.activityProgress(studentScope, activityCode), exact: true }),
+          // The runner advances activity progress only after the learner has
+          // read the feedback and chooses Continue. Refetching here would
+          // replace the current question before that feedback can render.
           queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.nextStep(studentScope), exact: true }),
           queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.mastery(studentScope), exact: true }),
           queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.retention(studentScope), exact: true }),
