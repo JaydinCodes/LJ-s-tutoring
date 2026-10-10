@@ -7457,6 +7457,10 @@ export type Database = {
         Args: { p_reason?: string; p_submission_id: string }
         Returns: boolean
       }
+      reset_local_golden_demo: {
+        Args: { p_demo_email?: string }
+        Returns: Json
+      }
       review_learning_activity_action: {
         Args: { p_action: string; p_activity_id: string; p_notes?: string }
         Returns: undefined

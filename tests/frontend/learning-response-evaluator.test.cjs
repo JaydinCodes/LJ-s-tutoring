@@ -49,6 +49,28 @@ test('known Grade 9 misconception patterns are evidence, not diagnoses', () => {
   assert.equal(gradient.misconceptionMatches[0].code, 'GRADIENT_RISE_OVER_RUN_REVERSED');
 });
 
+test('golden Difference of Two Squares response detects the configured misconception deterministically', () => {
+  const answerConfig = {
+    type: 'factorised_expression',
+    accepted_answers: ['(x - 5)(x + 5)'],
+    required_form: 'factorised',
+    skill_code: 'G9.ALG.FACTOR.DOTS',
+    misconception_rules: [{
+      code: 'DOTS_AS_SQUARE_OF_DIFFERENCE',
+      response: '(x - 5)^2',
+      confidence: 'likely',
+    }],
+  };
+
+  const incorrect = evaluate('factorised_expression', answerConfig, '(x - 5)^2');
+  assert.equal(incorrect.status, 'incorrect');
+  assert.equal(incorrect.misconceptionMatches[0].code, 'DOTS_AS_SQUARE_OF_DIFFERENCE');
+
+  const retry = evaluate('factorised_expression', answerConfig, '(x - 5)(x + 5)');
+  assert.equal(retry.status, 'correct');
+  assert.equal(retry.misconceptionMatches.length, 0);
+});
+
 test('unsupported and hostile-looking input cannot execute code', () => {
   assert.equal(evaluate('open_response', { expected: 3 }, 'process.exit()').status, 'needs_review');
   assert.equal(evaluate('algebraic_expression', { accepted: ['x+1'] }, 'globalThis.pwned=1').status, 'needs_review');

@@ -386,13 +386,6 @@ export function StudentActivityRoute() {
                         <RotateCcw className="h-4 w-4" aria-hidden="true" />
                         Try again with this insight
                       </button>
-                      <button
-                        type="button"
-                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-transparent px-5 text-sm font-semibold text-slate-600 transition hover:text-slate-900 dark:text-brand-marble dark:hover:text-white"
-                        onClick={() => void handleContinue()}
-                      >
-                        Continue anyway <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                      </button>
                     </div>
                   </div>
                 );

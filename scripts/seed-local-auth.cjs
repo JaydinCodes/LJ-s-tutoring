@@ -4,6 +4,7 @@ const password = 'ProjectOdysseus!23';
 const users = [
   { email: 'admin@example.com', fullName: 'Local Admin', role: 'admin' },
   { email: 'student@example.com', fullName: 'Local Student', role: 'student' },
+  { email: 'lethabo.mokoena@example.com', fullName: 'Lethabo Mokoena', role: 'student', grade: 'Grade 9', school: 'Project Odysseus Demo School' },
   { email: 'tutor@example.com', fullName: 'Local Tutor', role: 'tutor' },
 ];
 
@@ -98,8 +99,8 @@ async function main() {
         prefer: 'resolution=merge-duplicates,return=minimal',
         body: {
           profile_id: profile.id,
-          grade: 'Grade 12',
-          school: 'Local Demo School',
+          grade: fixture.grade || 'Grade 12',
+          school: fixture.school || 'Local Demo School',
           status: 'active',
           organization_id: organization.id,
         },
@@ -121,8 +122,14 @@ async function main() {
     }
   }
 
+  await request('/rest/v1/rpc/reset_local_golden_demo', {
+    method: 'POST',
+    body: { p_demo_email: 'lethabo.mokoena@example.com' },
+  });
+
   console.log('Seeded local dashboard users:');
   for (const fixture of users) console.log(`  ${fixture.email} / ${password}`);
+  console.log('Golden demo reset: Lethabo Mokoena is ready for rehearsal.');
 }
 
 main().catch((error) => {
