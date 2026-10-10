@@ -1,4 +1,5 @@
 const { execFileSync } = require('node:child_process');
+const path = require('node:path');
 
 const supabaseCli = require.resolve('supabase/dist/supabase.js');
 const playwrightCli = require.resolve('@playwright/test/cli');
@@ -81,7 +82,13 @@ async function removePreviousFixtures(request) {
     ...await selectIds(request, 'guardians', `profile_id=${inFilter(profileIds.length ? profileIds : ['00000000-0000-0000-0000-000000000000'])}`),
     ...await selectIds(request, 'guardians', `email=eq.${encodeURIComponent(users.parent.email)}`),
   ])];
-  const assignmentIds = await selectIds(request, 'assignments', `title=eq.${encodeURIComponent(fixtureTitle)}`);
+  // The role journey can update the fixture assignment's title. Treat every
+  // assignment owned by a known fixture profile as part of the disposable
+  // fixture graph as well, so a completed run can be safely run again.
+  const assignmentIds = [...new Set([
+    ...await selectIds(request, 'assignments', `title=eq.${encodeURIComponent(fixtureTitle)}`),
+    ...await selectIds(request, 'assignments', `created_by=${inFilter(profileIds.length ? profileIds : ['00000000-0000-0000-0000-000000000000'])}`),
+  ])];
   const classIds = await selectIds(request, 'classes', `name=eq.${encodeURIComponent(fixtureClassName)}`);
 
   // Delete the fixture graph from leaves to owners. Several foreign keys use
@@ -397,6 +404,13 @@ async function main() {
   const profiles = await createAuthAndProfiles(request);
   const seededJourney = await seedAcademicJourney(request, profiles);
   await verifyConcurrentAiJobClaim(request, seededJourney);
+  // Keep the Golden Demo in the same real local-Supabase browser gate as the
+  // role journeys. The reset script rejects non-local targets and invokes the
+  // service-role-only reset RPC; no learner-facing reset path is introduced.
+  execFileSync(process.execPath, [path.join(__dirname, 'reset-golden-demo.cjs')], {
+    cwd: process.cwd(),
+    stdio: 'inherit',
+  });
 
   const env = {
     ...process.env,
