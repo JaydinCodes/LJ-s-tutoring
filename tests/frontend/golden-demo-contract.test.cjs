@@ -12,6 +12,9 @@ const integrityMigration = fs.readFileSync(
   path.join(root, 'supabase', 'migrations', '20261010000000_golden_demo_rehearsal_integrity.sql'),
   'utf8',
 );
+const reactPlaywrightConfig = fs.readFileSync(path.join(root, 'playwright.react.config.ts'), 'utf8');
+const supabasePlaywrightConfig = fs.readFileSync(path.join(root, 'playwright.supabase.config.ts'), 'utf8');
+const goldenDemoJourney = fs.readFileSync(path.join(root, 'tests', 'e2e-react', 'golden-demo-journey.spec.ts'), 'utf8');
 
 test('golden demo is a real short activity targeting Difference of Two Squares', () => {
   assert.match(migration, /ACT\.G9\.ALG\.FACTOR\.DOTS\.CONTRASTING-PRACTICE/);
@@ -19,6 +22,12 @@ test('golden demo is a real short activity targeting Difference of Two Squares',
   for (const code of ['Q.G9.DEMO.DOTS.01', 'Q.G9.DEMO.DOTS.02', 'Q.G9.DEMO.DOTS.03', 'Q.G9.DEMO.DOTS.04']) {
     assert.ok(migration.includes(code), `missing ${code}`);
   }
+});
+
+test('golden demo browser journey only runs against local Supabase fixtures', () => {
+  assert.match(reactPlaywrightConfig, /testIgnore:\s*'golden-demo-journey\.spec\.ts'/);
+  assert.match(supabasePlaywrightConfig, /golden-demo-journey/);
+  assert.match(goldenDemoJourney, /Good \(morning\|afternoon\|evening\), Lethabo/);
 });
 
 test('golden misconception is persisted and retries preserve the original attempt', () => {

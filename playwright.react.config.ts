@@ -5,6 +5,9 @@ const webBaseUrl = process.env.REACT_E2E_BASE_URL ?? `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: './tests/e2e-react',
+  // The Golden Demo uses the real local Supabase fixture and is covered by
+  // playwright.supabase.config.ts. Keep the mock-only smoke suite isolated.
+  testIgnore: 'golden-demo-journey.spec.ts',
   timeout: 60_000,
   fullyParallel: true,
   retries: process.env.CI ? 1 : 0,

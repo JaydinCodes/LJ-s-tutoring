@@ -85,7 +85,7 @@ test('Golden Demo learner completes the real DOTS journey and returns to a deter
 
   await page.goto('/dashboard/student');
   await page.reload();
-  await expect(page.getByRole('heading', { name: /Good afternoon, Lethabo/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Good (morning|afternoon|evening), Lethabo/ })).toBeVisible();
 
   for (const width of [1440, 1366, 1024, 768, 390]) {
     await page.setViewportSize({ width, height: 960 });
