@@ -4,6 +4,11 @@ on:
   # This remains available if a free preview provider is configured later, but
   # it does not run automatically or create noisy no-job notifications.
   workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: Pull request number to receive the preview URL (optional)
+        required: false
+        type: string
 
 concurrency:
   group: preview-${{ github.workflow }}-${{ github.ref }}
@@ -16,35 +21,51 @@ permissions:
 jobs:
   preview:
     # Netlify previews are optional and this repository intentionally does not
-    # require a paid preview provider. Avoid a red build when those secrets are
-    # not configured.
-    if: >-
-      github.event.pull_request.head.repo.fork == false &&
-      secrets.NETLIFY_AUTH_TOKEN != '' &&
-      secrets.NETLIFY_SITE_ID != ''
+    # require a paid preview provider. Secrets cannot be used in a job-level
+    # `if`, so the workflow reports a successful skip when they are absent.
     runs-on: ubuntu-latest
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      PULL_REQUEST_NUMBER: ${{ inputs.pull_request_number }}
     steps:
+      - name: Check preview configuration
+        id: preview_configuration
+        shell: bash
+        run: |
+          if [[ -n "$NETLIFY_AUTH_TOKEN" && -n "$NETLIFY_SITE_ID" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Netlify preview deployment skipped because its repository secrets are not configured."
+          fi
+
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: steps.preview_configuration.outputs.configured == 'true'
 
       - name: Use Node.js 24
+        if: steps.preview_configuration.outputs.configured == 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
+        if: steps.preview_configuration.outputs.configured == 'true'
         run: HUSKY=0 npm ci
 
       - name: Build
+        if: steps.preview_configuration.outputs.configured == 'true'
         run: npm run build
 
       - name: Deploy preview
+        if: steps.preview_configuration.outputs.configured == 'true'
         id: deploy
         run: |
-          alias=pr-${{ github.event.pull_request.number }}
+          alias=manual-${{ github.run_id }}
+          if [[ -n "$PULL_REQUEST_NUMBER" ]]; then
+            alias="pr-$PULL_REQUEST_NUMBER"
+          fi
           npx netlify-cli deploy \
             --dir=dist \
             --site "$NETLIFY_SITE_ID" \
@@ -55,10 +76,15 @@ jobs:
           echo "deploy_url=$(node -e \"const fs=require('fs');const o=JSON.parse(fs.readFileSync('netlify-output.json','utf8'));console.log(o.deploy_url || o.url || '');\")" >> $GITHUB_OUTPUT
 
       - name: Comment preview URL
+        if: steps.preview_configuration.outputs.configured == 'true' && inputs.pull_request_number != ''
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const url = '${{ steps.deploy.outputs.deploy_url }}';
+            const pullRequestNumber = Number.parseInt(process.env.PULL_REQUEST_NUMBER ?? '', 10);
+            if (!Number.isSafeInteger(pullRequestNumber) || pullRequestNumber < 1) {
+              throw new Error('A valid pull_request_number input is required to comment on a preview deployment.');
+            }
             const body = url
               ? `## Preview Deploy\n\n✅ Preview ready: ${url}`
               : '## Preview Deploy\n\n⚠️ Preview completed, but URL was not detected. Check the workflow logs.';
@@ -66,7 +92,7 @@ jobs:
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: pullRequestNumber,
             });
 
             const botComment = comments.find(comment =>
@@ -84,7 +110,7 @@ jobs:
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
+                issue_number: pullRequestNumber,
                 body,
               });
             }
