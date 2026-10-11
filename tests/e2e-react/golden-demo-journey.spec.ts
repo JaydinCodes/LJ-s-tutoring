@@ -31,7 +31,7 @@ async function capturePitchScreen(page: Page, testInfo: TestInfo, name: string) 
   await page.screenshot({ path: testInfo.outputPath(`golden-${name}.png`), fullPage: false });
 }
 
-test('Golden Demo learner completes the real DOTS journey and returns to a deterministic reset state', async ({ page }, testInfo) => {
+test('Golden Demo learner completes the real DOTS journey', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 960 });
   await signIn(page);
 
@@ -94,4 +94,27 @@ test('Golden Demo learner completes the real DOTS journey and returns to a deter
     await confirmNoHorizontalOverflow(page);
     await page.screenshot({ path: testInfo.outputPath(`golden-dashboard-${width}.png`), fullPage: false });
   }
+});
+
+test('Golden Demo reset restores Lethabo to Question 1, Starting, and the original recommendation', async ({ page }) => {
+  test.skip(
+    process.env.E2E_GOLDEN_DEMO_RESET_VERIFICATION !== 'true',
+    'requires the runtime harness to reset the completed Golden Demo fixture first',
+  );
+
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await signIn(page);
+
+  const recommendation = page.getByLabel('Needs attention');
+  await expect(recommendation).toContainText(/Difference of two squares/i);
+  await expect(recommendation.getByRole('link')).toHaveAttribute('href', activityPath);
+
+  await page.goto('/dashboard/student/progress');
+  const dotsProgress = page.getByRole('article').filter({ hasText: /Difference of two squares/i });
+  await expect(dotsProgress).toBeVisible();
+  await expect(dotsProgress.locator('span').filter({ hasText: /^Starting$/ })).toBeVisible();
+
+  await page.goto(activityPath);
+  await expect(page.getByText('Question 1 of 4', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Factorise:\s*x.*16\./)).toBeVisible();
 });

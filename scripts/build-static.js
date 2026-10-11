@@ -167,15 +167,14 @@ function publicPrerender(route) {
     '': `
       <main data-prerendered-page="home">
         <section>
-          <p>Grade 8-12 CAPS tutoring</p>
-          <h1>Project Odysseus</h1>
-          <p>Targeted CAPS support for Mathematics, Mathematical Literacy, and Physical Sciences, from core concepts to exam preparation.</p>
-          <p>We identify learning gaps, rebuild confidence, and keep every session focused on what each learner needs next.</p>
-          <p><a href="#enquiry">Join our tutoring programme</a> <a href="#tutors">Meet our tutors</a></p>
+          <p>Grade 8-12 CAPS tutoring and learning intelligence</p>
+          <h1>Tutoring that understands more than the mark.</h1>
+          <p>CAPS-aligned Mathematics, Mathematical Literacy, and Physical Sciences tutoring that helps learners build confidence, close gaps, and know what to work on next.</p>
+          <p><a href="#enquiry">Ask about tutoring</a> <a href="#tutors">Meet our tutors</a></p>
         </section>
         <section>
-          <h2>Tutoring that feels connected, not scattered</h2>
-          <p>Students get direct support, parents get clarity, and tutors keep each learner's next steps focused and measurable.</p>
+          <h2>Focused support for the work that matters next.</h2>
+          <p>We combine clear human teaching, targeted practice, and a simple view of learner progress so each session can stay focused on what needs attention.</p>
         </section>
         <section id="tutors">
           <h2>Meet the tutors</h2>

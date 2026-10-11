@@ -18,11 +18,12 @@ test('static build prerenders crawlable public content without exposing dashboar
   const programs = readDist('programs/index.html');
   const dashboard = readDist('dashboard/student/index.html');
 
-  assert.match(home, /<title>Maths Tutoring Cape Town and South Africa \| Project Odysseus<\/title>/);
+  assert.match(home, /<title>CAPS Tutoring and Learning Intelligence \| Project Odysseus<\/title>/);
   assert.match(home, /<meta name="description" content="[^"]+">/);
   assert.match(home, /<main data-prerendered-page="home">/);
-  assert.match(home, /<h1>Project Odysseus<\/h1>/);
-  assert.match(home, /Targeted CAPS support for Mathematics, Mathematical Literacy, and Physical Sciences/);
+  assert.match(home, /<h1>Tutoring that understands more than the mark\.<\/h1>/);
+  assert.match(home, /CAPS-aligned Mathematics, Mathematical Literacy, and Physical Sciences tutoring/);
+  assert.match(home, /Focused support for the work that matters next/);
   assert.match(home, /<section id="enquiry">/);
   assert.match(about, /<main data-prerendered-page="about">/);
   assert.match(programs, /<main data-prerendered-page="programs">/);
