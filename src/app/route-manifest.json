@@ -3,9 +3,9 @@
   "rootAssets": ["/assets", "/react-app-dist", "/images", "/favicon.svg", "/sw.js", "/health.json", "/robots.txt", "/sitemap.xml"],
   "portalHosts": ["admin.projectodysseus.live", "tutor.projectodysseus.live", "student.projectodysseus.live"],
   "routes": [
-    { "path": "/", "shell": true, "public": true, "title": "Maths Tutoring Cape Town and South Africa", "description": "Project Odysseus provides focused Grade 8-12 CAPS Mathematics, Mathematical Literacy, and Physical Sciences tutoring in Cape Town." },
+    { "path": "/", "shell": true, "public": true, "title": "CAPS Tutoring and Learning Intelligence", "description": "Project Odysseus combines Grade 8-12 CAPS tutoring with learning intelligence that helps tutors identify misconceptions, target intervention, and review progress over time." },
     { "path": "/login", "shell": true, "public": true },
-    { "path": "/about", "shell": true, "public": true, "title": "About Project Odysseus", "description": "Learn about the Project Odysseus tutoring approach and the people helping Grade 8-12 learners build confidence and stronger study habits." },
+    { "path": "/about", "shell": true, "public": true, "title": "About Project Odysseus", "description": "Learn about Project Odysseus, where CAPS tutoring and learning evidence work together to support Grade 8-12 learners." },
     { "path": "/programs", "shell": true, "public": true, "title": "Grade 8-12 Maths Programs", "description": "CAPS tutoring programmes for Grade 8-12 learners who need stronger foundations, clearer methods, or focused exam preparation." },
     { "path": "/privacy", "shell": true, "public": true, "title": "Privacy", "description": "Project Odysseus privacy information for tutoring operations, learner data, tutor workflows, and portal access." },
     { "path": "/terms", "shell": true, "public": true, "title": "Terms", "description": "Project Odysseus terms for tutoring services, learning workflows, and role-based LMS features." },

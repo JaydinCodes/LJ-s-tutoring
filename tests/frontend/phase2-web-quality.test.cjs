@@ -69,7 +69,7 @@ test('sign-out failures stay visible and retryable, and the dead legacy bell is 
   assert.doesNotMatch(dashboard, /aria-label="Dashboard alerts"/);
 });
 
-test('public media uses optimized sources and avoids costly hero video for constrained users', () => {
+test('public media keeps tutor portraits lazy and avoids a costly hero video', () => {
   const publicRoutes = read('src/app/routes/PublicRoutes.tsx');
 
   for (const asset of [
@@ -77,17 +77,14 @@ test('public media uses optimized sources and avoids costly hero video for const
     'nicholas-dreyer.webp',
     'liam-newton.webp',
     'logan-petrus.webp',
-    'odysseus-hero-fallback.webp',
-    'bg_video-optimized.mp4',
   ]) {
     assert.ok(publicRoutes.includes(asset), `${asset} must be referenced by the public route`);
   }
 
   assert.match(publicRoutes, /loading="lazy"/);
   assert.match(publicRoutes, /decoding="async"/);
-  assert.match(publicRoutes, /connection\?\.saveData !== true/);
-  assert.match(publicRoutes, /matchMedia\('\(min-width: 640px\)'\)/);
-  assert.match(publicRoutes, /heroVideoEnabled \? \(/);
+  assert.match(publicRoutes, /function WhyOdysseusSection/);
+  assert.doesNotMatch(publicRoutes, /bg_video-optimized\.mp4/);
 });
 
 test('public enquiries and browser policy support the configured Formspree path', () => {

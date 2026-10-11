@@ -1,8 +1,7 @@
 import type { FormEvent, ReactNode } from 'react';
-import { useEffect, useState, useRef} from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Reveal, StaggerReveal } from '../../components/animations/Reveal';
-import { SplitHeroTitle } from '../../components/animations/SplitHeroTitle';
 import { StructuredData } from '../../components/seo/StructuredData';
 import { GreekDivider } from '../../components/ui/GreekDivider';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
@@ -89,40 +88,6 @@ const whatsappEnquiryHref = `https://wa.me/${whatsappNumber}?text=${encodeURICom
 const enquiryThrottleKey = 'po_react_enquiry_last_submit';
 const enquiryThrottleMs = 30000;
 const businessUrl = 'https://projectodysseus.live';
-const heroFallbackImage = '/images/odysseus-hero-fallback.webp';
-const heroVideo = '/images/bg_video-optimized.mp4';
-
-type NavigatorWithConnection = Navigator & {
-  connection?: EventTarget & { saveData?: boolean };
-};
-
-function useHeroVideoEnabled(prefersReducedMotion: boolean) {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    if (prefersReducedMotion) {
-      setEnabled(false);
-      return;
-    }
-
-    const desktopViewport = window.matchMedia('(min-width: 640px)');
-    const connection = (navigator as NavigatorWithConnection).connection;
-    const updatePreference = () => {
-      setEnabled(desktopViewport.matches && connection?.saveData !== true);
-    };
-
-    updatePreference();
-    desktopViewport.addEventListener('change', updatePreference);
-    connection?.addEventListener('change', updatePreference);
-
-    return () => {
-      desktopViewport.removeEventListener('change', updatePreference);
-      connection?.removeEventListener('change', updatePreference);
-    };
-  }, [prefersReducedMotion]);
-
-  return enabled;
-}
 
 const localBusinessSchema = {
   '@context': 'https://schema.org',
@@ -130,7 +95,7 @@ const localBusinessSchema = {
   '@id': `${businessUrl}/#business`,
   name: 'Project Odysseus Tutoring',
   description:
-    'CAPS tutoring support for Grade 8-12 learners in Cape Town, including Mathematics, Mathematical Literacy, and Physical Sciences.',
+    'CAPS-aligned tutoring and learning intelligence for Grade 8-12 learners in Cape Town, including Mathematics, Mathematical Literacy, and Physical Sciences.',
   url: businessUrl,
   image: `${businessUrl}/images/og-image-placeholder.svg`,
   email: contactEmail,
@@ -187,103 +152,60 @@ const initialEnquiryForm: EnquiryFormState = {
 };
 
 export function PublicHomeRoute() {
-  const prefersReducedMotion = usePrefersReducedMotion();
-  const heroVideoEnabled = useHeroVideoEnabled(prefersReducedMotion);
-
   return (
     <PublicLayout>
       <StructuredData data={[localBusinessSchema, faqPageSchema]} />
-      <section className="relative isolate overflow-hidden bg-brand-navy text-white">
-        <img
-          className="absolute inset-0 h-full w-full object-cover object-[63%_center]"
-          src={heroFallbackImage}
-          alt=""
-          aria-hidden="true"
-          decoding="async"
-          fetchPriority="high"
-          height={768}
-          width={1376}
-        />
-        {heroVideoEnabled ? (
-          <video
-            className="absolute inset-0 h-full w-full object-cover object-[60%_center] opacity-35"
-            src={heroVideo}
-            poster={heroFallbackImage}
-            autoPlay
-            muted
-            loop
-            playsInline
-            aria-hidden="true"
-          />
-        ) : null}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.88)_48%,_rgba(15,23,42,0.62)_100%)] sm:bg-[linear-gradient(90deg,_rgba(15,23,42,0.98)_0%,_rgba(15,23,42,0.88)_48%,_rgba(15,23,42,0.62)_100%)]" />
-        <div className="relative mx-auto flex min-h-[calc(100svh-4rem)] max-w-7xl flex-col justify-center px-4 pb-12 pt-16 sm:px-6 sm:py-20 lg:min-h-[86svh]">
-          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-brand-gold">GRADE 8–12 CAPS TUTORING</p>
-          <SplitHeroTitle className="greek-display mt-4 max-w-4xl text-5xl font-semibold tracking-tight sm:mt-5 sm:text-7xl md:text-8xl">Project Odysseus</SplitHeroTitle>
-          <Reveal variant="oracle" delay={0.45} className="mt-5 max-w-2xl text-base leading-7 text-brand-parchment sm:mt-6 sm:text-lg sm:leading-8">
-              Targeted CAPS support for Mathematics, Mathematical Literacy, and Physical Sciences, from core concepts to exam prep.
-              We identify learning gaps, rebuild confidence, and keep every session focused on what each learner needs next.
-          </Reveal>
-          <Reveal variant="oracle" delay={0.6} className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
-            <a className="inline-flex justify-center rounded-full bg-brand-gold px-5 py-3 text-sm font-semibold text-brand-obsidian shadow-lg shadow-black/20 transition hover:bg-[#f7d24f] sm:text-base" href="#enquiry">Join Our Tutoring Programme</a>
-            <a className="inline-flex justify-center rounded-full border border-brand-aegean/70 bg-brand-aegean px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-brand-deepBlue sm:text-base" href="#tutors">Meet Our Tutors</a>
-            <Link className="inline-flex justify-center rounded-full border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20 sm:text-base" to="/programs">View programs</Link>
-          </Reveal>
+      <section className="relative isolate overflow-hidden bg-brand-navy py-14 text-white sm:py-20 lg:py-24">
+        <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_15%_15%,rgba(244,197,24,.35),transparent_20rem),radial-gradient(circle_at_85%_70%,rgba(31,111,139,.6),transparent_24rem)]" />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-brand-gold sm:text-sm">Grade 8-12 CAPS tutoring + learning intelligence</p>
+            <h1 className="greek-display mt-4 max-w-3xl text-5xl font-semibold leading-[0.94] tracking-tight sm:text-6xl lg:text-7xl">Tutoring that understands more than the mark.</h1>
+            <Reveal variant="oracle" delay={0.2} className="mt-6 max-w-2xl text-base leading-7 text-brand-parchment sm:text-lg sm:leading-8">
+              CAPS-aligned Mathematics, Mathematical Literacy, and Physical Sciences tutoring that helps learners build confidence, close gaps, and know what to work on next.
+            </Reveal>
+            <Reveal variant="oracle" delay={0.3} className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <a className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-gold px-5 text-sm font-semibold text-brand-obsidian shadow-lg shadow-black/20 transition hover:bg-[#f7d24f]" href="#enquiry">Ask about tutoring</a>
+              <a className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/30 bg-white/10 px-5 text-sm font-semibold text-white transition hover:bg-white/20" href="#tutors">Meet our tutors</a>
+              <Link className="inline-flex min-h-12 items-center justify-center rounded-full px-5 text-sm font-semibold text-brand-parchment underline-offset-4 transition hover:text-white hover:underline" to="/programs">View programmes</Link>
+            </Reveal>
+          </div>
         </div>
       </section>
 
       <GreekDivider background="parchment" tone="gold" />
-
-      <Reveal as="section" className="bg-brand-parchment py-16">
-        <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
-          <div>
-            <SectionIntro title="Tutoring that feels connected, not scattered" eyebrow="A clearer learning journey">
-              Students get direct support, families get clear updates, and tutors can keep each learner's next steps focused and measurable.
-            </SectionIntro>
-            <StaggerReveal className="mt-10 grid gap-4 md:grid-cols-3">
-              {[
-                ['Diagnose gaps', 'Baseline weak topics and turn them into focused study goals.'],
-                ['Assign focused work', 'Publish tasks, track submissions, and reduce homework ambiguity.'],
-                ['Track progress', 'Surface marks, feedback, attendance, and momentum in one place.'],
-              ].map(([title, description], index) => (
-                <article key={title} data-reveal-child className="rounded-[1.5rem] border border-brand-marble bg-white/90 p-6 shadow-lg shadow-slate-200/60">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-brand-aegean">Step {index + 1}</p>
-                  <h3 className="mt-3 text-xl font-semibold text-brand-obsidian">{title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
-                </article>
-              ))}
-            </StaggerReveal>
-          </div>
-          
-        </div>
-      </Reveal>
-
-      <GreekDivider background="white" />
-
-      <Reveal as="section" variant="marble" className="bg-white py-16">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
-            <div>
-              <SectionIntro title="Built for learners who need maths to make sense" eyebrow="Why families choose us">
-                The work is practical: identify the gap, explain the method, practise under pressure, and make the next school task easier to face.
-              </SectionIntro>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <a className="rounded-full bg-brand-navy px-5 py-3 text-sm font-semibold text-white" href="#enquiry">Book a first conversation</a>
-              </div>
-            </div>
-          
-          </div>
-        </div>
-      </Reveal>
-
+      <WhyOdysseusSection />
       <TutorSection />
       <GreekDivider background="white" tone="gold" />
-      
       <FaqSection />
       <GreekDivider background="slate" tone="gold" />
-     
       <EnquirySection />
     </PublicLayout>
+  );
+}
+
+function WhyOdysseusSection() {
+  return (
+    <Reveal as="section" className="bg-brand-parchment py-16 sm:py-20">
+      <div className="mx-auto max-w-7xl px-6">
+        <SectionIntro eyebrow="Why Project Odysseus" title="Focused support for the work that matters next.">
+          Good tutoring is more than another worksheet. We combine clear human teaching, targeted practice, and a simple view of learner progress so each session can stay focused on what needs attention.
+        </SectionIntro>
+        <StaggerReveal className="mt-10 grid gap-4 md:grid-cols-3">
+          {[
+            ['Clear explanations', 'Tutors break difficult ideas into manageable steps.'],
+            ['Focused practice', 'Each learner works on the skills that need attention.'],
+            ['Progress with context', 'Marks and learner work help shape the next session.'],
+          ].map(([title, description]) => (
+            <article key={title} data-reveal-child className="rounded-[1.5rem] border border-brand-marble bg-white p-6 shadow-sm shadow-slate-200/50">
+              <h2 className="text-xl font-semibold text-brand-obsidian">{title}</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+            </article>
+          ))}
+        </StaggerReveal>
+        <p className="mt-8 max-w-3xl text-sm leading-7 text-slate-600">Technology helps tutors keep useful learning evidence in view. It supports the teaching; it does not replace the tutor.</p>
+        </div>
+    </Reveal>
   );
 }
 
@@ -293,9 +215,9 @@ export function AboutRoute() {
       <section className="bg-slate-950 px-6 py-20 text-white">
         <div className="mx-auto max-w-4xl">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand-gold">About</p>
-          <h1 className="mt-4 text-5xl font-semibold tracking-tight">Focused tutoring built around each learner.</h1>
+          <h1 className="mt-4 text-5xl font-semibold tracking-tight">Tutoring and learning evidence, working together.</h1>
           <p className="mt-6 text-lg leading-8 text-slate-200">
-            Project Odysseus helps Grade 8-12 learners strengthen foundations, prepare for assessments, and approach difficult work with a clearer plan.
+            Project Odysseus helps Grade 8-12 learners strengthen foundations, prepare for assessments, and approach difficult work with a clearer next step for learner and tutor.
           </p>
         </div>
       </section>
@@ -552,7 +474,7 @@ function PublicLayout({ children }: { children: ReactNode }) {
           </Link>
           <div className="hidden items-center gap-2 text-sm font-semibold md:flex">
             <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/about">About</Link>
-            <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/programs">Programs</Link>
+            <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/programs">Programmes</Link>
             <a className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" href="/#faq">FAQ</a>
             <Link className="rounded-full border border-brand-navy/20 bg-brand-navy px-4 py-2 text-white transition hover:bg-brand-navy/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/dashboard/login">Sign in</Link>
           </div>
@@ -577,7 +499,7 @@ function PublicLayout({ children }: { children: ReactNode }) {
           >
             <div className="mx-auto grid max-w-7xl gap-1 text-sm font-semibold">
               <Link className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/about" onClick={closeMenu}>About</Link>
-              <Link className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/programs" onClick={closeMenu}>Programs</Link>
+              <Link className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/programs" onClick={closeMenu}>Programmes</Link>
               <a className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" href="/#faq" onClick={closeMenu}>FAQ</a>
               <Link className="rounded-lg px-4 py-3 font-semibold text-brand-navy hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/dashboard/login" onClick={closeMenu}>Portal Sign In</Link>
             </div>
@@ -599,9 +521,11 @@ function PublicLayout({ children }: { children: ReactNode }) {
       </a>
       <footer className="border-t border-slate-200 bg-white px-6 py-8">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 text-sm text-slate-600">
-          <p>Project Odysseus</p>
+          <p>Project Odysseus - CAPS tutoring and learning intelligence</p>
           <div className="flex flex-wrap gap-4">
             <Link to="/dashboard/login">Portal Sign In</Link>
+            <Link to="/about">About</Link>
+            <Link to="/programs">Tutoring programmes</Link>
             <Link to="/privacy">Privacy</Link>
             <a href="/privacy#privacy-requests">POPIA requests</a>
             <Link to="/terms">Terms</Link>
@@ -826,7 +750,7 @@ function FaqSection() {
     <Reveal as="section" id="faq" variant="marble" className="bg-white py-16">
       <div className="mx-auto max-w-4xl px-6">
         <SectionIntro title="Frequently asked questions" eyebrow="Tutoring details">
-          Find quick answers about sessions, subjects, rescheduling, online support, and our first-session promise.
+          Find quick answers about sessions, subjects, rescheduling, and online support.
         </SectionIntro>
         <StaggerReveal className="mt-10 grid gap-3" staggerBy={0.08}>
           {faqs.map((faq, index) => <FaqItem key={faq.question} faq={faq} index={index} />)}
