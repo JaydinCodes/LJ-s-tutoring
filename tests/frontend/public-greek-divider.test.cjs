@@ -24,9 +24,8 @@ test('public home route uses Greek dividers at selected major transitions', () =
   const publicRoutes = read('src/app/routes/PublicRoutes.tsx');
   const placements = publicRoutes.match(/<GreekDivider\b/g) || [];
 
-  assert.equal(placements.length, 4);
+  assert.equal(placements.length, 3);
   assert.ok(publicRoutes.includes('<GreekDivider background="parchment" tone="gold" />'));
-  assert.ok(publicRoutes.includes('<GreekDivider background="white" />'));
   assert.ok(publicRoutes.includes('<GreekDivider background="white" tone="gold" />'));
   assert.ok(publicRoutes.includes('<GreekDivider background="slate" tone="gold" />'));
 });

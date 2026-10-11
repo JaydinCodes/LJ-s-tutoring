@@ -28,6 +28,13 @@ test('golden demo browser journey only runs against local Supabase fixtures', ()
   assert.match(reactPlaywrightConfig, /testIgnore:\s*'golden-demo-journey\.spec\.ts'/);
   assert.match(supabasePlaywrightConfig, /golden-demo-journey/);
   assert.match(goldenDemoJourney, /Good \(morning\|afternoon\|evening\), Lethabo/);
+  assert.match(goldenDemoJourney, /Golden Demo reset restores Lethabo to Question 1, Starting, and the original recommendation/);
+  assert.match(goldenDemoJourney, /Question 1 of 4/);
+  assert.match(goldenDemoJourney, /locator\('span'\)\.filter\(\{ hasText: \/\^Starting\$\//);
+  assert.match(goldenDemoJourney, /getByLabel\('Needs attention'\)/);
+  const runtimeJourney = fs.readFileSync(path.join(root, 'scripts', 'run-local-supabase-e2e.cjs'), 'utf8');
+  assert.match(runtimeJourney, /E2E_GOLDEN_DEMO_RESET_VERIFICATION/);
+  assert.match(runtimeJourney, /Golden Demo reset restores Lethabo/);
 });
 
 test('golden misconception is persisted and retries preserve the original attempt', () => {

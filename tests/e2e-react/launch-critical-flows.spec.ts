@@ -45,8 +45,8 @@ test.use({ viewport: { width: 390, height: 900 } });
 test('public homepage loads', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('link', { name: /Project Odysseus/i })).toBeVisible();
-  await expect(page.getByText(/Targeted CAPS support/i)).toBeVisible();
-  await expect(page.getByRole('link', { name: /View programs/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Tutoring that understands more than the mark/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Ask about tutoring/i }).first()).toBeVisible();
 });
 
 for (const role of Object.keys(users) as SmokeRole[]) {

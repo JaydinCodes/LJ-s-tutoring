@@ -432,6 +432,23 @@ async function main() {
     env,
     stdio: 'inherit',
   });
+
+  // A completed Golden Demo mutates the local learner's activity progress.
+  // Reapply the service-role-only reset, then verify the next rehearsal starts
+  // from the original learner-facing state in a fresh browser process.
+  if (!process.env.E2E_SUPABASE_GREP) {
+    execFileSync(process.execPath, [path.join(__dirname, 'reset-golden-demo.cjs')], {
+      cwd: process.cwd(),
+      stdio: 'inherit',
+    });
+    execFileSync(process.execPath, [playwrightCli, 'test', '--config', 'playwright.supabase.config.ts', '--grep', 'Golden Demo reset restores Lethabo'], {
+      env: {
+        ...env,
+        E2E_GOLDEN_DEMO_RESET_VERIFICATION: 'true',
+      },
+      stdio: 'inherit',
+    });
+  }
 }
 
 main().catch((error) => {
