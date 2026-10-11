@@ -74,6 +74,7 @@
     "supabase:start": "node scripts/start-local-supabase.cjs",
     "supabase:seed:auth": "node scripts/seed-local-auth.cjs",
     "demo:reset:local": "node scripts/reset-golden-demo.cjs",
+    "demo:capture:pitch": "node scripts/capture-pitch-screenshots.cjs",
     "supabase:legacy-baseline:overwrite": "node scripts/sync-supabase-migration.cjs --overwrite-frozen-baseline",
     "supabase:reset": "npx supabase db reset --local",
     "supabase:status": "npx supabase status",
