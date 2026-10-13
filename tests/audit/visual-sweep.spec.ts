@@ -49,7 +49,69 @@ async function signIn(page: Page, role: Exclude<Role, 'public'>) {
   await page.getByLabel('Email').fill(users[role]);
   await page.getByLabel('Password').fill(E2E_TEST_PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).not.toHaveURL(/\/dashboard\/login\/?$/);
+  const landing: Record<Exclude<Role, 'public'>, string> = {
+    student: '/dashboard/student',
+    tutor: '/dashboard/tutor',
+    admin: '/dashboard/admin',
+    parent: '/dashboard/parent/reports',
+    ngo: '/dashboard/ngo/reports',
+  };
+  await expect(page).toHaveURL(new RegExp(landing[role].replaceAll('/', '\\/') + '\\/?
+}
+
+for (const viewport of viewports) {
+  for (const role of Object.keys(routes) as Role[]) {
+    for (const route of routes[role]) {
+      test(`${viewport.name} / ${role} / ${route}`, async ({ page }, testInfo) => {
+        await page.setViewportSize({ width: viewport.width, height: viewport.height });
+
+        const browserErrors: string[] = [];
+        const failedRequests: string[] = [];
+        page.on('pageerror', error => browserErrors.push(error.message));
+        page.on('console', message => {
+          if (message.type() === 'error') browserErrors.push(message.text());
+        });
+        page.on('requestfailed', request => {
+          if (new URL(request.url()).hostname === '127.0.0.1') {
+            failedRequests.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText}`);
+          }
+        });
+
+        if (role !== 'public') await signIn(page, role);
+        const response = await page.goto(route, { waitUntil: 'domcontentloaded' });
+        await page.locator('body').waitFor({ state: 'visible' });
+        await page.evaluate(() => document.fonts.ready.then(() => true));
+
+        const geometry = await page.evaluate(() => ({
+          width: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth,
+        }));
+        const observation = {
+          role, route, viewport, finalPath: new URL(page.url()).pathname,
+          httpStatus: response?.status() ?? null,
+          title: await page.title(),
+          heading: (await page.locator('h1').first().textContent().catch(() => null))?.trim() ?? null,
+          horizontalOverflowPx: Math.max(0, geometry.scrollWidth - geometry.width),
+          browserErrors, failedRequests,
+        };
+        const screenshot = testInfo.outputPath('full-page.png');
+        await page.screenshot({ path: screenshot, fullPage: true, animations: 'disabled' });
+        await testInfo.attach('full-page', { path: screenshot, contentType: 'image/png' });
+        await testInfo.attach('observations', {
+          body: Buffer.from(JSON.stringify(observation, null, 2)),
+          contentType: 'application/json',
+        });
+
+        expect.soft(observation.httpStatus).toBeLessThan(400);
+        expect.soft(observation.horizontalOverflowPx).toBeLessThanOrEqual(1);
+        if (role !== 'public') {
+          expect.soft(observation.finalPath).not.toBe('/dashboard/login');
+        }
+      });
+    }
+  }
+}
+));
 }
 
 for (const viewport of viewports) {
