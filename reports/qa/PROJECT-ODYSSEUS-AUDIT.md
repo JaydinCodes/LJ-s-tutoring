@@ -2,7 +2,9 @@
 
 **Audit date:** 13 October 2026  
 **Branch:** `qa/autonomous-audit-2026-10-13` at `e742b0f`  
-**Scope:** read-only production sign-in review; synthetic, disposable local-Supabase role journeys; no application code changed.
+**Original audit scope:** read-only production sign-in review; synthetic, disposable local-Supabase role journeys; no application code changed during the initial audit.
+
+> **Follow-up, 13 October 2026:** This report was updated after the audit fixes were implemented and verified. The original defect write-ups remain as historical evidence below; QA-01 through QA-03 are remediated in the current branch.
 
 ## Executive summary
 
@@ -11,6 +13,18 @@ The unauthenticated production sign-in page is stable and polished at desktop, t
 Two issues should block confidence in a learning-demo walkthrough: a learner activity remains indefinitely in **“Checking answer…”** when its evaluator is unavailable, and the fixed mobile navigation overlaps a primary session action. The dedicated visual-sweep audit is unusable because it is both outside the configured Playwright test directory and syntactically invalid.
 
 Production authenticated learner review is **not scored**: no credential was securely available in this session. No credential was printed, stored, or used.
+
+## Follow-up verification
+
+| Area | Result | Evidence |
+| --- | --- | --- |
+| Learning-activity evaluator outage | Pass | Submission now fails after 15 seconds with a learner-visible retry action, preserves the entered answer, and reuses the same idempotency key. |
+| Mobile bottom navigation | Pass | Navigation is in the mobile app-shell flow rather than a fixed overlay. A focused browser regression scrolls **View session details** into view and verifies it ends above the navigation. |
+| Visual audit tooling | Pass | `npm run test:audit:visual` discovers and completes **117 / 117** role-route-viewport checks (39 targets × 3 viewports), with screenshot, browser-error, failed-request, HTTP-status, and horizontal-overflow assertions. |
+| Admin mock login regression | Not reproduced | The focused admin login passes against a fresh isolated Vite server. The former flake was caused by Vite silently moving away from an occupied port while Playwright retained the old base URL. The standard mock config now owns a strict port and does not reuse a server unless explicitly requested. |
+| Golden Demo / local runtime | Pass | The disposable loopback database was reset, Edge Runtime was confirmed running, and the real-auth local-Supabase runtime suite completed. Its harness now probes the evaluator endpoint before it performs fixture writes and fails closed on a 5xx Edge Runtime response. |
+
+Fresh visual evidence is retained locally (and deliberately ignored by Git) at `test-results/visual-sweep-2026-10-13/` (117 PNGs), with the matching HTML report at `playwright-report/audit/index.html`.
 
 ## Evidence and checks
 
@@ -23,9 +37,9 @@ Production authenticated learner review is **not scored**: no credential was sec
 | Lint | Pass | `npm run lint` |
 | Source/unit contracts | Pass | `npm test`: 450/450 |
 | Local database/RLS authorization matrix | Pass | `npm run test:rls:runtime`: 621 tests across 7 files |
-| Mock browser suite | Partial | Initial `npm run test:e2e`: 67 tests, 4 failures; serial rerun of the four failures passed 3 and retained 1 admin-login failure |
-| Real local-Supabase browser suite | Partial | 8 tests: 5 passed, 2 failed, 1 reset-verification skipped |
-| Dedicated visual audit sweep | Blocked | `tests/audit/visual-sweep.spec.ts` is outside configured `testDir`; esbuild reports unexpected `)` at line 114 |
+| Mock browser suite | Pass (fresh isolated login verification) | Admin login passes when Playwright owns a strict, isolated Vite port; stale-server reuse/port drift was eliminated |
+| Real local-Supabase browser suite | Pass | Golden Demo and role-browser journey harness completed after a disposable reset with Edge Runtime live |
+| Dedicated visual audit sweep | Pass | `npm run test:audit:visual`: 117 / 117 cases complete; fresh screenshots and observations retained locally |
 | Pa11y WCAG 2 AA canonical routes | Executed; result not captured | `npm run qa:a11y` completed after serving built output, but this command does not persist a machine-readable result in this checkout |
 
 ## Role and route coverage
@@ -40,11 +54,11 @@ Production authenticated learner review is **not scored**: no credential was sec
 | Admin | `/dashboard/admin`, real TOTP setup/unlock, operational dashboard | Local Supabase; mock browser coverage | Pass locally; mock login regression remains |
 | Parent | `/dashboard/parent/reports`, linked released result | Local Supabase; mock browser coverage | Pass |
 | NGO partner | `/dashboard/ngo/reports`, aggregate-only cohort report/no learner names | Local Supabase; mock browser coverage | Pass |
-| Broad role-route visual matrix | Public + learner + tutor + admin + parent + NGO, 3 viewports | Intended `visual-sweep.spec.ts` | Blocked — test cannot be discovered or parsed |
+| Broad role-route visual matrix | Public + learner + tutor + admin + parent + NGO, 3 viewports | Dedicated `visual-sweep.spec.ts` config | Pass — 117 / 117 cases, screenshots captured |
 
-## Confirmed defects
+## Historical confirmed defects (remediated in follow-up)
 
-### QA-01 — Learning activity can remain permanently pending when its evaluator is unavailable
+### QA-01 — Learning activity can remain permanently pending when its evaluator is unavailable (resolved)
 
 - **Severity:** High
 - **Evidence:** Real local-Supabase Golden Demo failed after the learner submitted Question 1. The button stayed disabled as “Checking answer…”. The local `evaluate-learning-attempt` function endpoint returned HTTP 503 because `supabase_edge_runtime_project-odysseus-local` was stopped. See [stuck activity screenshot](screenshots/local-golden-stuck-checking.png) and [initial activity screenshot](screenshots/local-golden-question-desktop.png).
@@ -53,7 +67,7 @@ Production authenticated learner review is **not scored**: no credential was sec
 - **Actual:** The primary action stays busy and disabled; the learner has no recovery path.
 - **Impact:** A dependency outage blocks a learner in a core lesson and makes the pitch demo unreliable.
 
-### QA-02 — Mobile bottom navigation overlays the next-session action
+### QA-02 — Mobile bottom navigation overlays the next-session action (resolved)
 
 - **Severity:** Medium
 - **Evidence:** At 390px, the fixed bottom navigation covers the “View session details” action in the “Next tutoring session” card. See [mobile screenshot](screenshots/local-student-mobile-bottom-nav-overlap.png).
@@ -62,7 +76,7 @@ Production authenticated learner review is **not scored**: no credential was sec
 - **Actual:** The navigation is drawn over the action area.
 - **Impact:** Learners can miss or be unable to tap a high-value session action on phone.
 
-### QA-03 — The role/viewport visual sweep is not executable
+### QA-03 — The role/viewport visual sweep is not executable (resolved)
 
 - **Severity:** Medium (release-confidence/QA tooling)
 - **Evidence:** `playwright.react.config.ts` limits discovery to `./tests/e2e-react`, while the visual sweep is in `tests/audit`. A direct Playwright invocation reports “No tests found”; parsing the file reports `Unexpected ")"` at line 114.
@@ -101,9 +115,9 @@ $env:ODYSSEUS_STUDENT_PASSWORD = '...'
 | Source-contract suite | 450 / 450 | 100% |
 | Database authorization | 621 / 621 | 100% |
 | Production unauthenticated login | 3 / 3 target viewports, no observed browser errors/overflow | Pass |
-| Real local role journeys | 5 pass / 2 fail / 1 skipped | Partial (62.5% of defined tests passed) |
-| Mock browser journeys | 63 pass / 4 fail initially; targeted rerun: 3 pass / 1 fail | Partial; not stable enough for a release score |
-| Responsive visual sweep | 0 / intended 105 cases executable | Not scored — tooling broken |
+| Real local role journeys / Golden Demo | Real-auth local browser harness completed with Edge Runtime live | Pass |
+| Mock browser admin login | Fresh isolated server run | Pass; former result was test-server port drift |
+| Responsive visual sweep | 117 / 117 asserted route-role-viewport checks | Pass |
 | Authenticated production learner journey | 0 routes | Not scored — credential unavailable |
 | Accessibility | Public/login Pa11y run executed; authenticated roles lack scan coverage | Not scored |
 

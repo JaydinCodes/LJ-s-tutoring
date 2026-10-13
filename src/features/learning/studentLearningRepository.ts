@@ -1,5 +1,24 @@
 import { requireSupabase } from '../../lib/supabase/client';
 
+const learningEvaluationTimeoutMs = 15_000;
+
+async function withEvaluationTimeout<T>(promise: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error('learning_evaluation_timed_out'));
+        }, learningEvaluationTimeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  }
+}
+
 export type LearnerConfidence = 1 | 2 | 3 | 4;
 
 export type AvailableLearningDiagnostic = {
@@ -248,26 +267,28 @@ export async function submitLearningAttempt(
 ): Promise<SubmitLearningAttemptResult> {
   const client = requireSupabase();
 
-  const { data, error } = await client.functions.invoke(
-    'evaluate-learning-attempt',
-    {
+  const { data, error } = await withEvaluationTimeout(
+    client.functions.invoke(
+      'evaluate-learning-attempt',
+      {
       body: {
-      ...(input.activityCode
-        ? { p_activity_code: input.activityCode }
-        : { p_diagnostic_code: input.diagnosticCode }),
-      p_question_version_id: input.questionVersionId,
-      p_response: {
-        answer: input.answer.trim(),
+        ...(input.activityCode
+          ? { p_activity_code: input.activityCode }
+          : { p_diagnostic_code: input.diagnosticCode }),
+        p_question_version_id: input.questionVersionId,
+        p_response: {
+          answer: input.answer.trim(),
+        },
+        p_confidence: input.confidence ?? undefined,
+        p_time_spent_seconds: Math.max(
+          0,
+          Math.floor(input.timeSpentSeconds),
+        ),
+        p_idempotency_key: input.idempotencyKey,
+        p_hint_ids: input.hintIds,
       },
-      p_confidence: input.confidence ?? undefined,
-      p_time_spent_seconds: Math.max(
-        0,
-        Math.floor(input.timeSpentSeconds),
-      ),
-      p_idempotency_key: input.idempotencyKey,
-      p_hint_ids: input.hintIds,
       },
-    },
+    ),
   );
 
   if (error) {

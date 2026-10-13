@@ -239,9 +239,10 @@ export function DashboardShell({ title, subtitle, section, children, identity }:
 
   return (
     <div className={`academy-app-bg overflow-x-clip ${section === 'student' ? 'student-parchment-bg' : ''}`}>
-      <div className={`mx-auto grid min-h-screen w-full max-w-[1720px] grid-cols-1 ${section === 'student' ? 'lg:grid-cols-[13.5rem_minmax(0,1fr)]' : 'lg:grid-cols-[16.5rem_minmax(0,1fr)]'}`} data-modal-background>
+      <div className={`mx-auto grid h-dvh min-h-0 w-full max-w-[1720px] grid-cols-1 lg:h-auto lg:min-h-screen ${section === 'student' ? 'lg:grid-cols-[13.5rem_minmax(0,1fr)]' : 'lg:grid-cols-[16.5rem_minmax(0,1fr)]'}`} data-modal-background>
         <DesktopSidebar groups={groups} homeHref={homeHref} role={section} onSignOut={() => void handleSignOut()} signingOut={isSigningOut} />
-        <main className={`min-w-0 px-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 lg:pb-8 lg:pt-5 ${section === 'student' ? 'lg:px-9 xl:px-12' : 'lg:px-7 xl:px-9'}`}>
+        <div className="flex min-h-0 flex-col lg:contents">
+        <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 lg:overflow-visible lg:pb-8 lg:pt-5 ${section === 'student' ? 'lg:px-9 xl:px-12' : 'lg:px-7 xl:px-9'}`}>
           <DashboardHeader
             title={displayTitle}
             subtitle={subtitle}
@@ -258,14 +259,15 @@ export function DashboardShell({ title, subtitle, section, children, identity }:
           ) : null}
           <div className="mt-5 min-w-0 space-y-4">{children}</div>
         </main>
+        <MobileRoleNavigation
+          homeHref={homeHref}
+          navItems={navItems}
+          onSignOut={() => void handleSignOut()}
+          signingOut={isSigningOut}
+          section={section}
+        />
+        </div>
       </div>
-      <MobileRoleNavigation
-        homeHref={homeHref}
-        navItems={navItems}
-        onSignOut={() => void handleSignOut()}
-        signingOut={isSigningOut}
-        section={section}
-      />
     </div>
   );
 }

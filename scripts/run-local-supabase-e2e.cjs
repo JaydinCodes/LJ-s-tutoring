@@ -30,6 +30,25 @@ function assertLoopback(name, value) {
   }
 }
 
+async function assertEdgeRuntimeReady(status) {
+  const response = await fetch(`${status.API_URL}/functions/v1/evaluate-learning-attempt`, {
+    method: 'POST',
+    headers: {
+      apikey: status.ANON_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: '{}',
+  });
+
+  // The function requires a bearer token, so 401 proves Kong reached the
+  // running Edge Runtime without evaluating learner data. A 5xx response is
+  // the local CLI's false-ready state: API services are up but functions are
+  // not available to the Golden Demo.
+  if (response.status >= 500) {
+    throw new Error(`Local Edge Runtime is unavailable (${response.status}); start the local functions container before running browser journeys.`);
+  }
+}
+
 function makeRequester(status) {
   return async function request(path, { body, method = 'GET', prefer } = {}) {
     const headers = {
@@ -398,6 +417,7 @@ async function main() {
   if (!status.ANON_KEY || !status.SERVICE_ROLE_KEY) {
     throw new Error('Local Supabase status did not provide anon and service-role keys.');
   }
+  await assertEdgeRuntimeReady(status);
 
   const request = makeRequester(status);
   await removePreviousFixtures(request);

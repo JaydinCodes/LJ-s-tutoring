@@ -91,6 +91,7 @@
     "verify:supabase:roles": "node scripts/verify-supabase-dashboard-access.cjs",
     "test:release:evidence": "node --test tests/release-evidence.test.cjs",
     "test:e2e": "playwright test --config playwright.react.config.ts",
+    "test:audit:visual": "playwright test --config playwright.audit.config.ts",
     "test:e2e:supabase": "node scripts/run-local-supabase-e2e.cjs",
     "test:e2e:install": "playwright install --with-deps chromium",
     "test:e2e:ui": "playwright test --config playwright.react.config.ts --ui",

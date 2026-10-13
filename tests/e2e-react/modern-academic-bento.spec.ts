@@ -48,6 +48,21 @@ for (const viewport of [
   }
 }
 
+test('student mobile navigation does not cover the next-session action', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginAs(page, 'student');
+  const action = page.getByRole('link', { name: 'View session details' });
+  await action.scrollIntoViewIfNeeded();
+  await expect(action).toBeVisible();
+  const [actionBox, navigationBox] = await Promise.all([
+    action.boundingBox(),
+    page.getByTestId('student-mobile-navigation').boundingBox(),
+  ]);
+  expect(actionBox).not.toBeNull();
+  expect(navigationBox).not.toBeNull();
+  expect(actionBox!.y + actionBox!.height).toBeLessThanOrEqual(navigationBox!.y);
+});
+
 for (const viewport of [
   { name: 'laptop', width: 1366, height: 768 },
   { name: 'desktop', width: 1440, height: 1000 },

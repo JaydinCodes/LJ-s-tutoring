@@ -22,9 +22,12 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   webServer: {
-    command: `npx vite --config vite.app.config.ts --host 127.0.0.1 --port ${port}`,
+    command: `npx vite --config vite.app.config.ts --host 127.0.0.1 --port ${port} --strictPort`,
     url: webBaseUrl,
-    reuseExistingServer: !process.env.CI,
+    // Reusing an arbitrary local Vite server can silently run the mock suite
+    // against different auth/environment flags. Opt in only for interactive
+    // debugging so each ordinary run owns its deterministic test server.
+    reuseExistingServer: process.env.PW_REUSE_SERVER === 'true',
     timeout: 120_000,
     env: {
       ...process.env,

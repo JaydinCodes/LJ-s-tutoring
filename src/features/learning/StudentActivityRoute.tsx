@@ -63,6 +63,7 @@ export function StudentActivityRoute() {
   const [confidence, setConfidence] = useState<LearnerConfidence | null>(null);
   const [hintIds, setHintIds] = useState<string[]>([]);
   const [submissionKey, setSubmissionKey] = useState<string | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [activeFeedback, setActiveFeedback] = useState<QuestionFeedbackState | null>(null);
   const [sessionResults, setSessionResults] = useState<QuestionFeedbackState[]>([]);
   const startedAt = useRef(Date.now());
@@ -72,6 +73,7 @@ export function StudentActivityRoute() {
     setConfidence(null);
     setHintIds([]);
     setSubmissionKey(null);
+    setSubmissionError(null);
     setActiveFeedback(null);
     startedAt.current = Date.now();
   }, [current?.questionVersionId]);
@@ -213,6 +215,7 @@ export function StudentActivityRoute() {
     if (!question || !answer.trim() || submit.isPending) return;
     const key = submissionKey ?? crypto.randomUUID();
     setSubmissionKey(key);
+    setSubmissionError(null);
 
     try {
       const result = await submit.mutateAsync({
@@ -247,12 +250,15 @@ export function StudentActivityRoute() {
       setSessionResults((prev) => [...prev, feedbackItem]);
       setSubmissionKey(null);
     } catch {
-      // In error state, keep submission key so retry is idempotent
+      // Keep the key so a late evaluator response and a learner retry cannot
+      // create duplicate attempt evidence.
+      setSubmissionError('We could not check your answer right now. Your answer is still here, so you can try again.');
     }
   }
 
   function handleTryAgain() {
     setActiveFeedback(null);
+    setSubmissionError(null);
     // Keep current answer in the textarea so learner can tweak it
   }
 
@@ -467,10 +473,18 @@ export function StudentActivityRoute() {
                 </div>
               </fieldset>
 
-              {submit.isError ? (
-                <p className="mt-4 text-sm text-red-700" role="alert">
-                  Your answer could not be saved. Check your connection and retry.
-                </p>
+              {submissionError ? (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-100" role="alert">
+                  <p>{submissionError}</p>
+                  <button
+                    className="min-h-11 rounded-full border border-current px-4 font-semibold"
+                    disabled={submit.isPending}
+                    onClick={() => void submitAnswer()}
+                    type="button"
+                  >
+                    Try again
+                  </button>
+                </div>
               ) : null}
 
               <div className="mt-7 flex items-center justify-between">

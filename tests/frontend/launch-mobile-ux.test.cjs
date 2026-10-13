@@ -17,7 +17,8 @@ test('LAUNCH-03 non-student role dashboards have mobile navigation and overflow 
   assert.match(shell, /overflowItems/);
   assert.match(shell, /aria-expanded=\{open\}/);
   const styles = read('src/styles/tailwind.css');
-  assert.match(styles, /bottom-\[calc\(0\.75rem\+env\(safe-area-inset-bottom\)\)\]/);
+  assert.match(styles, /mb-\[calc\(0\.75rem\+env\(safe-area-inset-bottom\)\)\]/);
+  assert.doesNotMatch(styles, /academy-bottom-nav\s*\{\s*@apply fixed/);
   assert.match(shell, /gridTemplateColumns: `repeat\(\$\{visibleItems\.length \+ \(showMore \? 1 : 0\)\}, minmax\(0, 1fr\)\)`/);
   assert.match(shell, /Sign out/);
   assert.match(shell, /getSectionHome/);
@@ -28,7 +29,8 @@ test('LAUNCH-03 mobile cards and table rows reserve space and tap targets', () =
   const styles = read('src/components/dashboard/dashboardStyles.ts');
   const dataTable = read('src/components/ui/DataTable.tsx');
 
-  assert.match(shell, /pb-\[calc\(6\.75rem\+env\(safe-area-inset-bottom\)\)\]/);
+  assert.match(shell, /h-dvh min-h-0/);
+  assert.match(shell, /overflow-y-auto overscroll-contain/);
   assert.match(shell, /break-words font-display/);
   assert.match(shell, /hidden min-w-0 sm:block/);
   assert.match(styles, /p-4/);
