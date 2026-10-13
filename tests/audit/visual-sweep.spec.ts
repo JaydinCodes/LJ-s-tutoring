@@ -56,7 +56,7 @@ async function signIn(page: Page, role: Exclude<Role, 'public'>) {
   await page.getByLabel('Email').fill(users[role]);
   await page.getByLabel('Password').fill(E2E_TEST_PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL(url => url.pathname.replace(/\\/+$/, '') === landing[role], { timeout: 15000 });
+  await page.waitForURL(url => (url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname) === landing[role], { timeout: 15000 });
 }
 
 for (const viewport of viewports) {
