@@ -45,10 +45,6 @@ const viewports = [
 ] as const;
 
 async function signIn(page: Page, role: Exclude<Role, 'public'>) {
-  await page.goto('/dashboard/login');
-  await page.getByLabel('Email').fill(users[role]);
-  await page.getByLabel('Password').fill(E2E_TEST_PASSWORD);
-  await page.getByRole('button', { name: 'Sign in' }).click();
   const landing: Record<Exclude<Role, 'public'>, string> = {
     student: '/dashboard/student',
     tutor: '/dashboard/tutor',
@@ -56,7 +52,11 @@ async function signIn(page: Page, role: Exclude<Role, 'public'>) {
     parent: '/dashboard/parent/reports',
     ngo: '/dashboard/ngo/reports',
   };
-  await expect(page).toHaveURL(new RegExp(landing[role].replaceAll('/', '\\/') + '\\/?
+  await page.goto('/dashboard/login');
+  await page.getByLabel('Email').fill(users[role]);
+  await page.getByLabel('Password').fill(E2E_TEST_PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL(url => url.pathname.replace(/\\/+$/, '') === landing[role], { timeout: 15000 });
 }
 
 for (const viewport of viewports) {
