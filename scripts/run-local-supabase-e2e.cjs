@@ -57,6 +57,17 @@ function makeRequester(status) {
   };
 }
 
+async function assertEdgeRuntimeAvailable(status) {
+  const response = await fetch(`${status.API_URL}/functions/v1/evaluate-learning-attempt`, {
+    method: 'OPTIONS',
+  });
+  if (response.status >= 500) {
+    throw new Error(
+      'The local Supabase Edge Functions runtime is unavailable. Run `npx supabase functions serve` in a separate terminal, then retry `npm run test:e2e:supabase`.',
+    );
+  }
+}
+
 function inFilter(ids) {
   return `in.(${ids.map((id) => encodeURIComponent(id)).join(',')})`;
 }
@@ -398,6 +409,8 @@ async function main() {
   if (!status.ANON_KEY || !status.SERVICE_ROLE_KEY) {
     throw new Error('Local Supabase status did not provide anon and service-role keys.');
   }
+
+  await assertEdgeRuntimeAvailable(status);
 
   const request = makeRequester(status);
   await removePreviousFixtures(request);
