@@ -35,6 +35,12 @@ test('golden demo browser journey only runs against local Supabase fixtures', ()
   const runtimeJourney = fs.readFileSync(path.join(root, 'scripts', 'run-local-supabase-e2e.cjs'), 'utf8');
   assert.match(runtimeJourney, /E2E_GOLDEN_DEMO_RESET_VERIFICATION/);
   assert.match(runtimeJourney, /Golden Demo reset restores Lethabo/);
+  assert.match(runtimeJourney, /assertEdgeRuntimeAvailable/);
+  assert.match(runtimeJourney, /supabase functions serve/);
+});
+
+test('mock browser suite bounds parallel workers to keep lazy-route compilation reliable', () => {
+  assert.match(reactPlaywrightConfig, /workers:\s*2/);
 });
 
 test('golden misconception is persisted and retries preserve the original attempt', () => {

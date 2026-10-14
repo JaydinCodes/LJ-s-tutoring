@@ -10,6 +10,12 @@ export default defineConfig({
   testIgnore: 'golden-demo-journey.spec.ts',
   timeout: 60_000,
   fullyParallel: true,
+  // Vite compiles lazy route chunks on demand. Letting Playwright use half of
+  // a high-core-count workstation can starve that first compilation and leave
+  // otherwise healthy pages in the route skeleton until the test timeout. Two
+  // workers keeps useful parallelism without turning browser QA into a local
+  // CPU-contention test.
+  workers: 2,
   retries: process.env.CI ? 1 : 0,
   reporter: [
     ['list'],
