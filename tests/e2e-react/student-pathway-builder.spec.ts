@@ -19,22 +19,25 @@ async function expectNoHorizontalPageOverflow(page: Page) {
   expect(dimensions.page).toBeLessThanOrEqual(dimensions.viewport);
 }
 
-test('career selection enters a shareable Pathway Builder without a forced wizard', async ({ page }) => {
+test('career exploration enters a shareable Pathway Builder without a forced wizard', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await loginAsStudent(page);
   await page.goto('/dashboard/student/careers');
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Pathway Builder' })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('heading', { name: 'Choose a career idea to build' })).toBeVisible();
-  await page.getByRole('button', { name: 'Build pathway' }).first().click();
-  await expect(page).toHaveURL(/career=/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Careers' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: 'Let’s explore your future together.' })).toBeVisible();
+  await page.getByRole('button', { name: /Search careers/ }).click();
+  await page.getByLabel('Search careers').fill('Software Developer');
+  await page.getByRole('button', { name: 'Open Software Developer' }).click();
+  await page.getByRole('button', { name: 'Explore my pathway' }).click();
+  await expect(page).toHaveURL(/view=pathway.*career=software-developer/);
   await expect(page.getByText('Your pathway', { exact: true })).toBeVisible();
   await expect(page.getByText('Career goal', { exact: true })).toBeVisible();
   await expect(page.getByText('Study routes', { exact: true })).toBeVisible();
   await expectNoHorizontalPageOverflow(page);
   await page.goBack();
-  await expect(page).not.toHaveURL(/career=/);
-  await expect(page.getByRole('heading', { name: 'Choose a career idea to build' })).toBeVisible();
+  await expect(page).toHaveURL(/view=career.*career=software-developer/);
+  await expect(page.getByRole('button', { name: 'Explore my pathway' })).toBeVisible();
 });
 
 test('missing learner results remain missing—not ineligible—and Odie waits for submit', async ({ page }) => {
