@@ -89,6 +89,8 @@ const emptyProfile: StudentCareerProfile = {
   savedCareers: [],
 };
 
+const E2E_CAREER_PROFILE_STORAGE_KEY = 'project-odysseus:e2e-career-profile';
+
 type CareerProfileRow = {
   interests_json?: unknown;
   preferred_subjects_json?: unknown;
@@ -120,18 +122,33 @@ async function currentStudentId(): Promise<string | null> {
   }
   // Capture the non-null client so narrowing survives the awaits below.
   const client = supabase;
-  const { data: auth } = await client.auth.getUser();
-  const authUserId = auth.user?.id;
-  if (!authUserId) {
-    return null;
+  const { data, error } = await client.rpc('current_student_id');
+  if (error) throw error;
+  return typeof data === 'string' ? data : null;
+}
+
+function loadE2ECareerProfile() {
+  if (typeof window === 'undefined') return emptyProfile;
+  try {
+    const value = JSON.parse(window.localStorage.getItem(E2E_CAREER_PROFILE_STORAGE_KEY) ?? 'null') as unknown;
+    if (!value || typeof value !== 'object') return emptyProfile;
+    const row = value as Partial<StudentCareerProfile>;
+    return {
+      interests: toStringArray(row.interests),
+      preferredSubjects: toStringArray(row.preferredSubjects),
+      targetCareers: toStringArray(row.targetCareers),
+      apsTarget: typeof row.apsTarget === 'number' ? row.apsTarget : null,
+      savedCareers: toStringArray(row.savedCareers),
+    };
+  } catch {
+    return emptyProfile;
   }
-  const profileResult = await client.from('profiles').select('id').eq('auth_user_id', authUserId).maybeSingle();
-  const profileId = (profileResult.data as { id?: string } | null)?.id;
-  if (!profileId) {
-    return null;
-  }
-  const studentResult = await client.from('students').select('id').eq('profile_id', profileId).maybeSingle();
-  return (studentResult.data as { id?: string } | null)?.id ?? null;
+}
+
+function saveE2ECareerProfile(profile: StudentCareerProfile) {
+  if (typeof window === 'undefined') throw new Error('e2e_storage_unavailable');
+  window.localStorage.setItem(E2E_CAREER_PROFILE_STORAGE_KEY, JSON.stringify(profile));
+  return profile;
 }
 
 // Single-stack migration: careers reference data (careers, institutions, subjects)
@@ -147,7 +164,7 @@ export async function loadCareersOverview() {
     profile: emptyProfile,
   };
   if (isE2EAuthMockEnabled()) {
-    return parseStudentCareersApiResponse(base, base);
+    return parseStudentCareersApiResponse({ ...base, profile: loadE2ECareerProfile() }, base);
   }
   if (!isSupabaseConfigured || !supabase) {
     return parseStudentCareersApiResponse(base, base);
@@ -165,6 +182,9 @@ export async function loadCareersOverview() {
 // per ADR-0001: a low-risk self-service record, RLS-scoped to the student),
 // replacing the legacy PUT /odie-careers/profile API.
 export async function saveCareerProfile(profile: StudentCareerProfile): Promise<{ profile: StudentCareerProfile }> {
+  if (isE2EAuthMockEnabled()) {
+    return { profile: saveE2ECareerProfile(profile) };
+  }
   if (!isSupabaseConfigured || !supabase) {
     throw new Error('supabase_not_configured');
   }

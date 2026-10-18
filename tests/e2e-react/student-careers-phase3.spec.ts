@@ -20,6 +20,11 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ fullPage: true, path: `artifacts/careers-phase-3/${name}.png` });
 }
 
+async function captureViewport(page: Page, name: string) {
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `artifacts/careers-phase-3/${name}.png` });
+}
+
 test('desktop Careers journey supports discovery, detail, pathway and saved careers', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsStudent(page);
@@ -51,9 +56,12 @@ test('desktop Careers journey supports discovery, detail, pathway and saved care
   await expect(page.getByRole('heading', { name: careerTitle ?? '' })).toBeVisible();
   await capture(page, 'desktop-pathway');
 
-  await page.getByRole('button', { name: 'Career overview' }).click();
+  await page.getByRole('button', { name: 'Career overview', exact: true }).click();
   await page.getByRole('button', { name: 'Explore careers' }).click();
   await page.getByRole('button', { name: 'Careers home' }).click();
+  await expect(page.getByRole('heading', { name: 'Your saved careers' })).toBeVisible();
+  await expect(page.getByText(careerTitle ?? '', { exact: true }).first()).toBeVisible();
+  await page.reload();
   await expect(page.getByRole('heading', { name: 'Your saved careers' })).toBeVisible();
   await expect(page.getByText(careerTitle ?? '', { exact: true }).first()).toBeVisible();
   await page.goto('/dashboard/student/careers?view=worlds');
@@ -74,6 +82,7 @@ test('mobile Careers screens are intentional, keyboard reachable and overflow-fr
   for (const [name, url, heading] of screens) {
     await page.goto(url);
     await expect(page.getByRole('heading', { name: heading }).first()).toBeVisible({ timeout: 15_000 });
+    await captureViewport(page, `mobile-viewport-${name}`);
     await capture(page, `mobile-${name}`);
   }
 

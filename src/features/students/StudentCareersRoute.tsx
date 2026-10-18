@@ -16,22 +16,16 @@ import {
   type SubjectEvidence,
 } from './careerPathway';
 import {
-  AlternativeRoutes,
-  ApsSummaryPanel,
   CareerSelectionState,
   CareerTargetControl,
-  ImprovementPanel,
-  OdiePathwayCallout,
-  PathwayJourney,
-  ProgrammeComparison,
 } from './StudentPathwayBuilderComponents';
 import {
   CareerCompass,
   CareerDetail,
   CareersHome,
   CareerWorlds,
-  PathwayStageNavigation,
 } from './StudentCareersExperienceComponents';
+import { StudentFuturePathway } from './StudentFuturePathway';
 import { saveCareerProfile, type CareerProgramme, type StudentCareerProfile } from './studentCareersRepository';
 import { useStudentCareersQuery, useStudentDashboardQuery, useStudentResultsQuery } from './studentQueries';
 
@@ -97,7 +91,7 @@ export function StudentCareersRoute() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [profile, setProfile] = useState<StudentCareerProfile>(emptyProfile);
   const [profileBusy, setProfileBusy] = useState(false);
-  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<{ message: string; failedProfile: StudentCareerProfile } | null>(null);
   const [odieOpen, setOdieOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -105,10 +99,15 @@ export function StudentCareersRoute() {
     { role: 'assistant', text: 'Ask me to explain a saved career, subject evidence, an APS target, or what to verify on a programme source.' },
   ]);
   const abortRef = useRef<AbortController | null>(null);
+  const confirmedProfileRef = useRef<StudentCareerProfile>(emptyProfile());
+  const profileSaveSequenceRef = useRef(0);
   const online = useOnlineStatus();
 
   useEffect(() => {
-    if (careersQuery.data?.profile) setProfile(careersQuery.data.profile);
+    if (careersQuery.data?.profile) {
+      confirmedProfileRef.current = careersQuery.data.profile;
+      setProfile(careersQuery.data.profile);
+    }
   }, [careersQuery.data?.profile]);
 
   useEffect(() => {
@@ -147,17 +146,31 @@ export function StudentCareersRoute() {
   );
 
   async function persistProfile(nextProfile: StudentCareerProfile) {
+    const saveSequence = ++profileSaveSequenceRef.current;
+    if (!online) {
+      setProfile(confirmedProfileRef.current);
+      setProfileError({ message: 'You are offline, so that change was not saved. Reconnect and try again.', failedProfile: nextProfile });
+      return;
+    }
     setProfile(nextProfile);
     setProfileBusy(true);
     setProfileError(null);
     try {
       const response = await saveCareerProfile(nextProfile);
+      if (saveSequence !== profileSaveSequenceRef.current) return;
+      confirmedProfileRef.current = response.profile;
       setProfile(response.profile);
       await careersQuery.reload();
-    } catch {
-      setProfileError('That Careers profile change is saved on this screen only. Reconnect and try again to keep it after refresh.');
+    } catch (error) {
+      if (saveSequence !== profileSaveSequenceRef.current) return;
+      setProfile(confirmedProfileRef.current);
+      const code = error instanceof Error ? error.message : '';
+      const message = code.includes('student_profile_missing')
+        ? 'Your student profile could not be verified, so no Careers changes were saved.'
+        : 'We could not save that Careers change. Your last confirmed profile is still safe.';
+      setProfileError({ message, failedProfile: nextProfile });
     } finally {
-      setProfileBusy(false);
+      if (saveSequence === profileSaveSequenceRef.current) setProfileBusy(false);
     }
   }
 
@@ -222,7 +235,7 @@ export function StudentCareersRoute() {
     <PageShell title="Careers" subtitle="Explore what you love, discover what you could become, and plan your next steps with Odie." section="student" identity={dashboardQuery.data ? { name: dashboardQuery.data.profile.name, meta: dashboardQuery.data.profile.grade || 'Student' } : undefined}>
       <section className="min-w-0 space-y-4">
         {!online ? <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/40 dark:text-amber-100" role="status">You are offline. Cached pathway information remains visible, but profile changes and Odie need a connection.</div> : null}
-        {profileError ? <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/40 dark:text-amber-100" role="alert">{profileError}</div> : null}
+        {profileError ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/40 dark:text-amber-100" role="alert"><span>{profileError.message}</span><button className="min-h-11 rounded-xl border border-current px-4 font-bold" disabled={profileBusy || !online} onClick={() => void persistProfile(profileError.failedProfile)} type="button">Retry save</button></div> : null}
         {careersQuery.loading ? <><SkeletonCard /><SkeletonCard /></> : null}
         {careersQuery.error && !careersQuery.data ? <ErrorState title="Careers is unavailable" description={careersQuery.error} onRetry={() => void careersQuery.reload()} /> : null}
         {!careersQuery.loading && careersQuery.data ? (
@@ -244,18 +257,7 @@ export function StudentCareersRoute() {
                     <div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="h-20 animate-pulse rounded-2xl bg-white/10 motion-reduce:animate-none" /><div className="h-20 animate-pulse rounded-2xl bg-white/10 motion-reduce:animate-none" /><div className="h-20 animate-pulse rounded-2xl bg-white/10 motion-reduce:animate-none" /></div>
                     <p className="sr-only" role="status">Loading released results and pathway evidence</p>
                   </section>
-                ) : <ApsSummaryPanel aps={aps} career={selectedCareer} relevantSubjects={relevantSubjects} targetAps={targetAps} targetBusy={profileBusy} onTargetChange={(value) => updateProfile({ apsTarget: normalizeApsTarget(value) })} />}
-                {!resultsQuery.loading ? <><PathwayStageNavigation /><PathwayJourney careerTitle={selectedCareer.title} hasResults={aps.enoughResults} hasProgrammes={programmes.length > 0} /></> : null}
-                {resultsQuery.loading ? <SkeletonCard /> : (
-                  <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(20rem,0.85fr)] xl:items-start">
-                    <ProgrammeComparison results={eligibility} />
-                    <aside className="min-w-0 space-y-4">
-                      <ImprovementPanel actions={improvementActions} />
-                      <AlternativeRoutes career={selectedCareer} />
-                      <OdiePathwayCallout onOpen={() => openOdie()} />
-                    </aside>
-                  </div>
-                )}
+                ) : <StudentFuturePathway career={selectedCareer} eligibility={eligibility} aps={aps} targetAps={targetAps} targetBusy={profileBusy} relevantSubjects={relevantSubjects} improvementActions={improvementActions} onTargetChange={(value) => updateProfile({ apsTarget: normalizeApsTarget(value) })} onAskOdie={openOdie} />}
               </>
             ) : (
               <>

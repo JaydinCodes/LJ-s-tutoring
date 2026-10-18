@@ -31,9 +31,9 @@ test('career exploration enters a shareable Pathway Builder without a forced wiz
   await page.getByRole('button', { name: 'Open Software Developer' }).click();
   await page.getByRole('button', { name: 'Explore my pathway' }).click();
   await expect(page).toHaveURL(/view=pathway.*career=software-developer/);
-  await expect(page.getByText('Your pathway', { exact: true })).toBeVisible();
-  await expect(page.getByText('Career goal', { exact: true })).toBeVisible();
-  await expect(page.getByText('Study routes', { exact: true })).toBeVisible();
+  await expect(page.getByText('My Future Pathway', { exact: true }).last()).toBeVisible();
+  await expect(page.getByRole('button', { name: /1\. Career overview/ })).toBeVisible();
+  await expect(page.getByText('Study routes', { exact: true }).first()).toBeVisible();
   await expectNoHorizontalPageOverflow(page);
   await page.goBack();
   await expect(page).toHaveURL(/view=career.*career=software-developer/);
@@ -74,14 +74,12 @@ test('mobile programme cards disclose details, keep the action visible, and neve
   expect((actionBox?.y ?? 0) + (actionBox?.height ?? 0)).toBeLessThanOrEqual(844);
   await expectNoHorizontalPageOverflow(page);
 
-  const details = page.getByRole('button', { name: 'View details' }).first();
-  const panelId = await details.getAttribute('aria-controls');
-  expect(panelId).toBeTruthy();
-  await expect(details).toHaveAttribute('aria-expanded', 'false');
+  await page.getByRole('button', { name: /4\. Entry requirements/ }).click();
+  await expect(page.locator('#pathway-overview')).toBeHidden();
+  await expect(page.locator('#pathway-requirements')).toBeVisible();
+  const details = page.getByText('View listed requirements', { exact: true }).first();
   await details.click();
-  await expect(page.locator(`[aria-controls="${panelId}"]`)).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.locator(`#${panelId}`)).toBeVisible();
-  await expect(page.locator(`#${panelId}`).getByText('Last-updated date: unavailable.')).toBeVisible();
+  await expect(page.getByText(/Last updated date: unavailable\./).first()).toBeVisible();
   await expectNoHorizontalPageOverflow(page);
 });
 
