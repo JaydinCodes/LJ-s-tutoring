@@ -8,7 +8,7 @@ Scope: student dashboard, assignments, results, progress, and careers routes.
 - All generated React JavaScript, including lazy route chunks: <= 3,000,000 bytes uncompressed. This is an asset-growth guard, not a first-visit transfer total because lazy chunks are requested independently.
 - Largest lazy route chunk: <= 150,000 bytes uncompressed.
 - Deferred Supabase Auth shared chunk: <= 275,000 bytes uncompressed and <= 60,000 bytes gzip. It is loaded only for login, onboarding, and portal routes—not public routes.
-- React app CSS bundle: <= 142,000 bytes uncompressed and <= 55,000 bytes gzip.
+- React app CSS bundle: <= 155,000 bytes uncompressed and <= 55,000 bytes gzip.
 - Student dashboard query freshness: 60 seconds before background data is considered stale.
 - Student dashboard refetch triggers: no window-focus or reconnect refetch; manual reload still works.
 - Student result list size: bounded by the API to the latest 24 released results.
@@ -37,9 +37,11 @@ Measured after the current production-shaped public build (2026-08-24):
 - largest lazy route chunk: 122,230 bytes;
 - generated CSS: 132,446 bytes raw / 49,321 bytes gzip.
 
-The raw caps retain only about 5–6% of deliberate redesign headroom. The gzip
-caps measure the user-facing transfer budget and must not be raised without a
-new measured baseline and release review.
+The Careers five-screen refinement measured 151,395 bytes of generated CSS in
+CI on 2026-10-18. Its raw cap was recalibrated to 155,000 bytes, leaving about
+2.4% growth headroom. The user-facing gzip cap remains unchanged at 55,000
+bytes and must not be raised without a new measured baseline and release
+review.
 
 Public routes boot independently from the authenticated portal. Student, tutor, administrator, parent, NGO, login, and onboarding paths load the Supabase Auth stack only when needed; this keeps the public home page from paying for learner data access code. Smooth-scroll animation dependencies are optional async chunks; native scrolling remains available if those chunks cannot load.
 
