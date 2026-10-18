@@ -37,6 +37,8 @@ test('icons, media, and Lighthouse tracking are covered by the performance budge
   assert.ok(shell.includes("from 'lucide-react'"), 'dashboard icons must use Lucide named imports');
   assert.ok(script.includes("findHashedReactAppAsset(reactAppDistDir, '.js')"), 'budget checker must inspect the built, content-hashed JS bundle when present');
   assert.ok(script.includes("findHashedReactAppAsset(reactAppDistDir, '.css')"), 'budget checker must inspect the built, content-hashed CSS bundle when present');
+  assert.ok(script.includes("reactCss, 'react-app-dist/react-app-<hash>.css', 155_000"), 'raw CSS growth must remain narrowly capped');
+  assert.ok(script.includes("reactCss, 'react-app-dist/react-app-<hash>.css', 55_000"), 'compressed CSS transfer must retain its existing cap');
   assert.ok(script.includes('images/odysseus-hero-fallback.webp'), 'budget checker must cap the hero poster');
   assert.ok(script.includes('images/bg_video-optimized.mp4'), 'budget checker must cap the hero video');
   assert.ok(script.includes("500_000, 'tutor portraits'"), 'budget checker must cap tutor portraits as a group');

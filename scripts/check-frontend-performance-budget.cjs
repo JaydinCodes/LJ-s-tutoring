@@ -131,18 +131,18 @@ assert(docs.includes('Lighthouse before'), 'Lighthouse before score must be trac
 assert(docs.includes('Lighthouse after'), 'Lighthouse after score must be tracked in docs');
 
 const reactAppDistDir = path.join(root, 'react-app-dist');
-// The current production-shaped dashboard build is 1,399,096 B for the eager
-// entry, 2,848,202 B in all emitted JS, and 132,446 B CSS. Keep a narrow raw
-// cap to detect asset growth, but also enforce the gzip transfer budget that
-// affects an actual first visit. Lazy-route files are not all transferred at
-// once, so their own chunk cap is retained instead of treating aggregate raw
-// size as an initial-page budget.
+// The Careers expansion intentionally raised the production-shaped CSS build
+// to 151,395 B while remaining below the existing 55 KB gzip transfer cap.
+// Keep a narrow raw cap to detect further asset growth, but retain the gzip
+// budget as the user-facing transfer constraint. Lazy-route files are not all
+// transferred at once, so their own chunk cap is retained instead of treating
+// aggregate raw size as an initial-page budget.
 const reactEntry = findHashedReactAppAsset(reactAppDistDir, '.js');
 const reactCss = findHashedReactAppAsset(reactAppDistDir, '.css');
 assertSizeIfBuiltPath(reactEntry, 'react-app-dist/react-app-<hash>.js', 1_455_000);
 assertGzipSizeIfBuiltPath(reactEntry, 'react-app-dist/react-app-<hash>.js', 320_000);
 assertGeneratedJsBudget('react-app-dist', 3_000_000, 150_000);
-assertSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 142_000);
+assertSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 155_000);
 assertGzipSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 55_000);
 assertSizeIfBuilt('images/odysseus-hero-fallback.webp', 150_000);
 assertSizeIfBuilt('images/bg_video-optimized.mp4', 1_000_000);
