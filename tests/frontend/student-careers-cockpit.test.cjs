@@ -9,11 +9,11 @@ function read(...segments) {
   return fs.readFileSync(path.join(root, ...segments), 'utf8');
 }
 
-test('careers page is a URL-backed Pathway Builder with the required student sections', () => {
+test('careers page is a URL-backed future plan with the required student sections', () => {
   const source = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
   const components = read('src', 'features', 'students', 'StudentPathwayBuilderComponents.tsx');
 
-  for (const label of ['Pathway Builder', 'Turn a career idea into subjects, APS targets and realistic study routes.']) {
+  for (const label of ['My Future Plan', 'Plan a way forward']) {
     assert.ok(source.includes(label), `${label} must be present`);
   }
   for (const label of ['Your pathway', 'Career goal', 'Subject and APS fit', 'Study routes', 'Programme eligibility', 'What to improve next', 'Alternative routes', 'Ask Odie to explain this pathway']) {

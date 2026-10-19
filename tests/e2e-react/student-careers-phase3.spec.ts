@@ -45,16 +45,22 @@ test('desktop Careers journey supports discovery, detail, pathway and saved care
   await page.getByRole('button', { name: /Explore career/ }).first().click();
   await expect(page).toHaveURL(/view=career/);
   const careerTitle = await page.locator('h2').first().textContent();
-  await expect(page.getByRole('button', { name: 'Explore my pathway' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open My Future Plan' })).toBeVisible();
   await capture(page, 'desktop-career-detail');
   await page.getByRole('button', { name: /Save career/ }).click();
   await expect(page.getByRole('button', { name: /Saved career/ })).toBeVisible();
-  await page.getByRole('button', { name: 'Explore my pathway' }).click();
+  await page.getByRole('button', { name: 'Open My Future Plan' }).click();
+  await page.getByRole('tab', { name: /Entry requirements/ }).click();
   await expect(page.getByText('Programme eligibility', { exact: true })).toBeVisible();
   await expect(page.getByText('Missing results', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Not currently eligible', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: careerTitle ?? '' })).toBeVisible();
   await capture(page, 'desktop-pathway');
+
+  await page.goBack();
+  await expect(page).toHaveURL(/view=career/);
+  await page.goForward();
+  await expect(page).toHaveURL(/view=pathway/);
 
   await page.getByRole('button', { name: 'Career overview', exact: true }).click();
   await page.getByRole('button', { name: 'Explore careers' }).click();
@@ -67,6 +73,25 @@ test('desktop Careers journey supports discovery, detail, pathway and saved care
   await page.goto('/dashboard/student/careers?view=worlds');
   await expect(page.getByRole('heading', { name: 'Explore career worlds' })).toBeVisible();
   await capture(page, 'desktop-career-worlds');
+});
+
+test('Compass skip preserves answers and Odie suggestions remain editable drafts', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginAsStudent(page);
+  await page.goto('/dashboard/student/careers?view=compass');
+  await page.getByRole('button', { name: 'Solving problems' }).click();
+  await page.getByRole('button', { name: /Continue/ }).click();
+  await page.getByRole('button', { name: 'Skip this question' }).click();
+  await expect(page.getByRole('heading', { name: 'Your career ideas' })).toBeVisible();
+
+  await page.goto('/dashboard/student/careers');
+  await expect(page.getByText('Solving problems', { exact: true })).toBeVisible();
+  const suggestion = page.getByRole('button', { name: 'What does a software developer actually do?' });
+  await suggestion.click();
+  const dialog = page.getByRole('dialog', { name: 'Odie career assistant' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel('Message')).toHaveValue('What does a software developer actually do?');
+  await expect(dialog.getByTestId('odie-career-transcript')).not.toContainText('What does a software developer actually do?');
 });
 
 test('mobile Careers screens are intentional, keyboard reachable and overflow-free', async ({ page }) => {
@@ -100,4 +125,16 @@ test('mobile Careers screens are intentional, keyboard reachable and overflow-fr
     await expect(page.getByRole('heading', { name: heading }).first()).toBeVisible({ timeout: 15_000 });
     await expectNoHorizontalOverflow(page);
   }
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/dashboard/student/careers?view=pathway&career=software-developer');
+  const panels = page.getByRole('tabpanel');
+  await expect(panels).toHaveCount(1);
+  const overviewTab = page.getByRole('tab', { name: /Career overview/ });
+  await overviewTab.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('tab', { name: /Subjects that matter/ })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('tab', { name: /Study routes/ }).click();
+  await expect(page.getByRole('tabpanel')).toHaveCount(1);
+  await expect(page.getByRole('tabpanel').getByRole('heading', { name: 'Study routes' })).toBeVisible();
 });

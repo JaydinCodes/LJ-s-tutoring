@@ -49,7 +49,7 @@ test('Careers redesign keeps every screen URL-backed and reuses trusted pathway 
   for (const view of ["view === 'home'", "view === 'compass'", "view === 'worlds'", "view === 'career'", "view === 'pathway'"]) {
     assert.ok(route.includes(view), `${view} must be routed`);
   }
-  for (const label of ['Discover with Odie', 'Search careers', 'Odie’s Career Compass', 'Explore career worlds', 'Explore my pathway']) {
+  for (const label of ['Discover with Odie', 'Browse careers', 'Odie’s Career Compass', 'Explore career worlds', 'Open My Future Plan']) {
     assert.ok(experience.includes(label), `${label} must be present`);
   }
   for (const label of ['Career overview', 'Subjects that matter', 'Study routes', 'Entry requirements', 'Next steps']) {
@@ -59,6 +59,11 @@ test('Careers redesign keeps every screen URL-backed and reuses trusted pathway 
   assert.ok(route.includes('classifyProgramme'));
   assert.ok(route.includes("streamSupabaseFunctionText('odie-careers-chat-stream'"));
   assert.ok(experience.includes('not a prediction of what you should become'));
+  assert.ok(experience.includes('onClick={advance}'), 'Continue and Skip must persist the complete Compass draft');
+  assert.ok(pathway.includes('role="tablist"'), 'pathway navigation must expose an accessible tab list');
+  assert.ok(pathway.includes('role="tabpanel"'), 'the active pathway section must be an associated tab panel');
+  assert.ok(pathway.includes('hidden={!active}'), 'inactive pathway panels must be hidden at every breakpoint');
+  assert.ok(!pathway.includes("md:block`} id={`pathway-"), 'desktop must not force inactive panels visible');
 });
 
 test('career profile persistence confirms server state and supports safe retry', () => {
@@ -70,4 +75,6 @@ test('career profile persistence confirms server state and supports safe retry',
   assert.ok(route.includes('confirmedProfileRef'));
   assert.ok(route.includes('Retry save'));
   assert.ok(route.includes('failedProfile'));
+  assert.ok(route.includes('createCareerProfileSaveQueue'));
+  assert.ok(route.includes('optimisticProfileRef.current'));
 });
