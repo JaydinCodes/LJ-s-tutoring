@@ -246,7 +246,12 @@ export function StudentCareersRoute() {
         setChat((current) => current.map((item, index) => index === current.length - 1 ? { ...item, text: item.text || 'Stopped. Your draft stays here until you decide what to ask next.' } : item));
       } else {
         const details = error instanceof Error ? error.message : '';
-        setChat((current) => current.map((item, index) => index === current.length - 1 ? { ...item, text: `I cannot connect to Odie right now. ${details.includes('groq_not_configured') ? 'Odie is not configured yet.' : 'Please check your connection and try again.'}` } : item));
+        const recoveryMessage = details.includes('groq_not_configured')
+          ? 'Odie is not configured yet.'
+          : details.includes('assistant_provider_timeout') || details.includes('request_failed:504')
+            ? 'Odie took too long to answer. Please try again in a moment.'
+            : 'Please check your connection and try again.';
+        setChat((current) => current.map((item, index) => index === current.length - 1 ? { ...item, text: `I cannot connect to Odie right now. ${recoveryMessage}` } : item));
       }
     } finally {
       setBusy(false);

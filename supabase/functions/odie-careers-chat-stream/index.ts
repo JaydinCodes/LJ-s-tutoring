@@ -50,6 +50,11 @@ const ChatRequestSchema = z.object({
 
 const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-20b';
 const RETIRED_GROQ_MODELS = new Set(['llama-3.1-8b-instant']);
+const GROQ_TIMEOUT_MS = 30_000;
+
+declare const EdgeRuntime: {
+  waitUntil(promise: Promise<unknown>): void;
+};
 
 const CAREERS_ODIE_SYSTEM_PROMPT = [
   'You are Odie, the Project Odysseus careers assistant for South African learners.',
@@ -184,66 +189,98 @@ Deno.serve(async (req) => {
   // Fastify/OpenRouter version (only the delta content is proxied, never the
   // raw SSE frames or the API key).
   const controller = new AbortController();
-  req.signal.addEventListener('abort', () => controller.abort());
+  const abortUpstream = () => controller.abort(req.signal.reason);
+  req.signal.addEventListener('abort', abortUpstream, { once: true });
+  const timeoutId = setTimeout(() => controller.abort(new DOMException('Groq response timed out', 'TimeoutError')), GROQ_TIMEOUT_MS);
 
-  const upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    signal: controller.signal,
-    headers: {
-      Authorization: `Bearer ${groqApiKey}`,
-      'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-    },
-    body: JSON.stringify({
-      model: groqModel,
-      messages: [
-        { role: 'system', content: CAREERS_ODIE_SYSTEM_PROMPT },
-        ...history.slice(-8),
-        { role: 'user', content: message },
-      ],
-      max_tokens: 900,
-      temperature: 0.35,
-      stream: true,
-    }),
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${groqApiKey}`,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify({
+        model: groqModel,
+        messages: [
+          { role: 'system', content: CAREERS_ODIE_SYSTEM_PROMPT },
+          ...history.slice(-8),
+          { role: 'user', content: message },
+        ],
+        max_completion_tokens: 600,
+        reasoning_effort: 'low',
+        include_reasoning: false,
+        temperature: 0.35,
+        stream: true,
+      }),
+    });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    req.signal.removeEventListener('abort', abortUpstream);
+    if (req.signal.aborted) return json({ error: 'request_cancelled' }, 499);
+    console.error('groq_request_failed', { name: error instanceof Error ? error.name : 'unknown' });
+    return json({ error: 'assistant_provider_timeout' }, 504);
+  }
 
   if (!upstream.ok || !upstream.body) {
-    const message = upstream.body ? await readAssistantError(upstream) : 'groq_stream_unavailable';
-    return json({ error: message }, upstream.status || 502);
+    clearTimeout(timeoutId);
+    req.signal.removeEventListener('abort', abortUpstream);
+    const providerMessage = upstream.body ? await readAssistantError(upstream) : 'groq_stream_unavailable';
+    console.error('groq_upstream_failed', { status: upstream.status, message: providerMessage });
+    return json({ error: 'assistant_provider_error', providerStatus: upstream.status }, 502);
   }
 
   const encoder = new TextEncoder();
   const upstreamReader = upstream.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  const writer = writable.getWriter();
 
-  const stream = new ReadableStream({
-    async pull(streamController) {
-      const { value, done } = await upstreamReader.read();
-      if (done) {
-        streamController.close();
-        return;
+  const writeEvents = async (events: string[]) => {
+    for (const event of events) {
+      for (const line of event.split(/\r?\n/)) {
+        if (!line.startsWith('data:')) continue;
+        const payload = line.replace(/^data:\s*/, '').trim();
+        if (!payload || payload === '[DONE]') continue;
+        const delta = extractOpenAiCompatibleDelta(payload);
+        if (delta) await writer.write(encoder.encode(delta));
       }
-      buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split('\n\n');
-      buffer = events.pop() ?? '';
+    }
+  };
 
-      for (const event of events) {
-        for (const line of event.split('\n')) {
-          if (!line.startsWith('data:')) continue;
-          const payload = line.replace(/^data:\s*/, '').trim();
-          if (!payload || payload === '[DONE]') continue;
-          const delta = extractOpenAiCompatibleDelta(payload);
-          if (delta) streamController.enqueue(encoder.encode(delta));
+  const pumpPromise = (async () => {
+    try {
+      while (true) {
+        const { value, done } = await upstreamReader.read();
+        buffer += decoder.decode(value, { stream: !done });
+        const events = buffer.split(/\r?\n\r?\n/);
+        buffer = events.pop() ?? '';
+        await writeEvents(events);
+        if (done) {
+          if (buffer.trim()) await writeEvents([buffer]);
+          await writer.close();
+          break;
         }
       }
-    },
-    cancel() {
-      controller.abort();
-    },
-  });
+    } catch (error) {
+      console.error('groq_stream_failed', { name: error instanceof Error ? error.name : 'unknown' });
+      await writer.abort(error).catch(() => undefined);
+    } finally {
+      clearTimeout(timeoutId);
+      req.signal.removeEventListener('abort', abortUpstream);
+      upstreamReader.releaseLock();
+    }
+  })();
 
-  return new Response(stream, {
+  // Keep the Edge Function alive while the response stream is being pumped.
+  // Without this, the request can remain open until the platform idle timeout.
+  EdgeRuntime.waitUntil(pumpPromise);
+
+  return new Response(readable, {
     headers: {
       ...corsHeaders,
       'Content-Type': 'text/plain; charset=utf-8',
