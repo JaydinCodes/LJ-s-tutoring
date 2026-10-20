@@ -155,6 +155,9 @@ jobs:
           # and the ensuing migration push cannot fall back to another project.
           npx supabase link --project-ref "$SUPABASE_PRODUCTION_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
           npx supabase db push --linked --password "$SUPABASE_DB_PASSWORD" --include-all --yes
+          # Keep the provider model deployment-owned. The previous Llama model
+          # was retired for developer-tier Groq accounts and returned 404s.
+          npx supabase secrets set GROQ_MODEL=openai/gpt-oss-20b --project-ref "$SUPABASE_PRODUCTION_PROJECT_REF"
           for function_name in admin-invite-user complete-temporary-password cleanup-submission-assets dispatch-notification-outbox grade-submission odie-careers-chat-stream process-privacy-deletion process-tutor-deletion refresh-stale-weekly-reports; do
             npx supabase functions deploy "$function_name" --project-ref "$SUPABASE_PRODUCTION_PROJECT_REF" --use-api
           done

@@ -48,6 +48,9 @@ const ChatRequestSchema = z.object({
   history: z.array(HistoryMessageSchema).max(8).optional().default([]),
 });
 
+const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-20b';
+const RETIRED_GROQ_MODELS = new Set(['llama-3.1-8b-instant']);
+
 const CAREERS_ODIE_SYSTEM_PROMPT = [
   'You are Odie, the Project Odysseus careers assistant for South African learners.',
   'Help with career pathways, subject choices, APS planning, study plans, entry-level readiness, portfolio evidence, and practical next steps.',
@@ -103,7 +106,10 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const groqApiKey = Deno.env.get('GROQ_API_KEY');
-  const groqModel = Deno.env.get('GROQ_MODEL') || 'llama-3.1-8b-instant';
+  const configuredGroqModel = Deno.env.get('GROQ_MODEL')?.trim();
+  const groqModel = configuredGroqModel && !RETIRED_GROQ_MODELS.has(configuredGroqModel)
+    ? configuredGroqModel
+    : DEFAULT_GROQ_MODEL;
   if (!supabaseUrl || !serviceRoleKey) {
     return json({ error: 'supabase_admin_not_configured' }, 501);
   }

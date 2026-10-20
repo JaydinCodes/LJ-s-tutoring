@@ -18,11 +18,15 @@ test('career profile storage is RLS-backed in the Supabase schema', () => {
 
 test('streaming Odie career chat is Groq-backed via a Supabase Edge Function and guarded', () => {
   const fn = read('supabase', 'functions', 'odie-careers-chat-stream', 'index.ts');
+  const deployment = read('.github', 'workflows', 'deploy-production.yml');
   const edgeHelper = read('src', 'lib', 'supabase', 'edgeFunctions.ts');
   const careersRoute = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
 
   assert.match(fn, /fetch\('https:\/\/api\.groq\.com\/openai\/v1\/chat\/completions'/, 'streaming function must call Groq');
   assert.ok(fn.includes("Accept: 'text/event-stream'"), 'Groq request must ask for streaming events');
+  assert.ok(fn.includes("DEFAULT_GROQ_MODEL = 'openai/gpt-oss-20b'"), 'Odie must default to a supported Groq model');
+  assert.ok(fn.includes("RETIRED_GROQ_MODELS = new Set(['llama-3.1-8b-instant'])"), 'Odie must reject the retired production model setting');
+  assert.ok(deployment.includes('supabase secrets set GROQ_MODEL=openai/gpt-oss-20b'), 'production deploys must pin the supported Groq model');
   assert.ok(fn.includes("error: 'groq_not_configured'"), 'missing Groq configuration must be explicit');
   assert.ok(fn.includes("req.signal.addEventListener('abort'"), 'client disconnect must stop generation');
   assert.ok(fn.includes('admin.auth.getUser(token)'), 'streaming function must validate the Supabase bearer token');
