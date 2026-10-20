@@ -92,7 +92,7 @@ test('tablet layout keeps comparison content and bottom navigation usable', asyn
   await expect(page.getByTestId('student-desktop-sidebar')).toBeHidden();
   await expect(page.getByTestId('student-mobile-navigation')).toBeVisible();
   await page.getByRole('tab', { name: /4\. Entry requirements/ }).click();
-  await expect(page.getByText('Programme eligibility', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Could I meet the requirements?', { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('#pathway-requirements-panel').getByText('Eduvos', { exact: true })).toBeVisible();
   await expectNoHorizontalPageOverflow(page);
 });
@@ -102,7 +102,7 @@ test('Pathway Builder captures desktop, mobile and dark-mode evidence', async ({
   await loginAsStudent(page);
   await page.goto('/dashboard/student/careers?career=software-developer');
   await page.getByRole('tab', { name: /4\. Entry requirements/ }).click();
-  await expect(page.getByText('Programme eligibility', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Could I meet the requirements?', { exact: true })).toBeVisible({ timeout: 15_000 });
   await page.waitForTimeout(400);
   await page.screenshot({ fullPage: true, path: 'artifacts/pathway-builder/after-desktop.png' });
 

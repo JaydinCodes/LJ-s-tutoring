@@ -32,13 +32,15 @@ test('career discovery is deterministic, catalogue-only, and explains text match
   const discovery = loadDiscoveryModule();
   const careers = [
     { id: 'dev', title: 'Software Developer', category: 'Technology', description: 'Builds applications.' },
+    { id: 'analyst', title: 'Data Analyst', category: 'Technology', description: 'Examines data to find useful patterns.' },
     { id: 'nurse', title: 'Registered Nurse', category: 'Health Sciences', description: 'Provides clinical care.' },
   ];
   const first = discovery.matchCareers(careers, ['Working with technology'], []);
   const second = discovery.matchCareers(careers, ['Working with technology'], []);
   assert.deepEqual(first, second);
-  assert.equal(first[0].career.id, 'dev');
-  assert.match(first[0].reasons[0], /working with technology/i);
+  assert.deepEqual(first.map((match) => match.career.id), ['analyst', 'dev']);
+  assert.equal(first.find((match) => match.career.id === 'dev').reasons[0], 'Builds applications.');
+  assert.notEqual(first[0].reasons[0], first[1].reasons[0]);
   assert.equal(first.every((match) => careers.includes(match.career)), true);
 });
 
