@@ -24,8 +24,13 @@ didn't need to change; only the endpoint/model/key did.
 
 ```bash
 supabase secrets set GROQ_API_KEY="<same value already in .env>"
-supabase secrets set GROQ_MODEL="llama-3.1-8b-instant"
+supabase secrets set GROQ_MODEL="openai/gpt-oss-20b"
 ```
+
+`llama-3.1-8b-instant` was retired for Groq developer-tier accounts on
+2026-08-16. The function treats that legacy value as stale and falls back to
+`openai/gpt-oss-20b`, but production deployments also replace the stored
+model setting so the runtime configuration remains explicit.
 
 ## Deploy
 
