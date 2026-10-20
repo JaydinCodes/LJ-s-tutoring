@@ -51,7 +51,7 @@ test('desktop Careers journey supports discovery, detail, pathway and saved care
   await expect(page.getByRole('button', { name: /Saved career/ })).toBeVisible();
   await page.getByRole('button', { name: 'Open My Future Plan' }).click();
   await page.getByRole('tab', { name: /Entry requirements/ }).click();
-  await expect(page.getByText('Programme eligibility', { exact: true })).toBeVisible();
+  await expect(page.getByText('Could I meet the requirements?', { exact: true })).toBeVisible();
   await expect(page.getByText('Missing results', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Not currently eligible', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: careerTitle ?? '' })).toBeVisible();
@@ -111,6 +111,12 @@ test('mobile Careers screens are intentional, keyboard reachable and overflow-fr
     await capture(page, `mobile-${name}`);
   }
 
+  await page.goto('/dashboard/student/careers');
+  await expect(page.getByRole('button', { name: /Discover with Odie/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Browse careers' })).toBeVisible();
+  const worldsHeadingBox = await page.getByRole('heading', { name: 'Explore career worlds' }).boundingBox();
+  expect(worldsHeadingBox?.y).toBeLessThan(844);
+
   await page.goto('/dashboard/student/careers?view=worlds');
   const search = page.getByLabel('Search careers');
   await search.focus();
@@ -130,10 +136,20 @@ test('mobile Careers screens are intentional, keyboard reachable and overflow-fr
   await page.goto('/dashboard/student/careers?view=pathway&career=software-developer');
   const panels = page.getByRole('tabpanel');
   await expect(panels).toHaveCount(1);
+  const primaryAction = page.getByTestId('pathway-primary-action');
+  const primaryActionLabel = await primaryAction.textContent();
+  await primaryAction.click();
+  const recommendedTab = page.getByRole('tab', { name: primaryActionLabel?.includes('Review entry requirements') ? /Entry requirements/ : /Subjects that matter/ });
+  await expect(recommendedTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tabpanel')).toBeFocused();
+
   const overviewTab = page.getByRole('tab', { name: /Career overview/ });
   await overviewTab.focus();
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('tab', { name: /Subjects that matter/ })).toHaveAttribute('aria-selected', 'true');
+  const subjectsPanel = page.getByRole('tabpanel');
+  await expect(subjectsPanel).toContainText('Minimum marks vary by programme.');
+  await expect(subjectsPanel).not.toContainText(/\d+% minimum/);
   await page.getByRole('tab', { name: /Study routes/ }).click();
   await expect(page.getByRole('tabpanel')).toHaveCount(1);
   await expect(page.getByRole('tabpanel').getByRole('heading', { name: 'Study routes' })).toBeVisible();

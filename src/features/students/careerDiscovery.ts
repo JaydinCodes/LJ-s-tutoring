@@ -51,10 +51,11 @@ export function matchCareers(careers: CareerSummary[], interests: string[], subj
       const haystack = [career.title, career.category, career.description, ...(career.pathCategories ?? []), ...(career.educationRoutes ?? [])].filter(Boolean).join(' ').toLowerCase();
       const matchedInterests = interests.filter((interest) => (INTEREST_TERMS[interest] ?? []).some((term) => haystack.includes(term)));
       const matchedSubjects = normalizedSubjects.filter((subject) => haystack.includes(subject));
-      const reasons = [
-        ...matchedInterests.slice(0, 2).map((interest) => `Connects with your interest in ${interest.toLowerCase()}`),
-        ...matchedSubjects.slice(0, 1).map((subject) => `Relates to ${subject}`),
-      ];
+      const reasons = career.description
+        ? [career.description]
+        : career.category
+          ? [`Explore what makes this ${career.category.toLowerCase()} career different.`]
+          : ['Open this career to explore the catalogue information available.'];
       return { career, reasons, score: matchedInterests.length * 3 + matchedSubjects.length * 2 };
     })
     .filter((match) => match.score > 0)
