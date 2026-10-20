@@ -36,6 +36,19 @@ export type ProgrammeEligibility = {
   gaps: string[];
 };
 
+export type SubjectRequirementOverview = {
+  key: string;
+  label: string;
+  acceptedSubjects: string[];
+  programmeRequirements: Array<{
+    programmeId: string;
+    programmeName: string;
+    institutionName: string;
+    minimumPercentage: number;
+  }>;
+  availableEvidence: SubjectEvidence[];
+};
+
 export type ImprovementAction = {
   id: string;
   title: string;
@@ -131,6 +144,40 @@ export function programmeRequirements(programme: CareerProgramme) {
     seen.add(key);
     return true;
   });
+}
+
+// The Subjects panel is intentionally threshold-free. It groups only exact
+// accepted-subject combinations while retaining every programme-specific
+// threshold for the Entry Requirements panel and regression checks.
+export function buildSubjectRequirementOverview(
+  eligibility: ProgrammeEligibility[],
+  evidence: SubjectEvidence[],
+): SubjectRequirementOverview[] {
+  const overviews = new Map<string, SubjectRequirementOverview>();
+
+  for (const { programme, requirements } of eligibility) {
+    for (const requirement of requirements) {
+      const acceptedSubjects = [...requirement.acceptedSubjects];
+      const key = acceptedSubjects.map(normalizeSubject).sort().join('|');
+      if (!key) continue;
+      const overview = overviews.get(key) ?? {
+        key,
+        label: requirement.label,
+        acceptedSubjects,
+        programmeRequirements: [],
+        availableEvidence: evidence.filter((item) => acceptedSubjects.some((subject) => normalizeSubject(subject) === normalizeSubject(item.subject))),
+      };
+      overview.programmeRequirements.push({
+        programmeId: programme.id,
+        programmeName: programme.programmeName,
+        institutionName: programme.institutionName,
+        minimumPercentage: requirement.minimumPercentage,
+      });
+      overviews.set(key, overview);
+    }
+  }
+
+  return [...overviews.values()].sort((left, right) => left.label.localeCompare(right.label));
 }
 
 export function classifyProgramme(programme: CareerProgramme, aps: ApsSummary, subjects: SubjectEvidence[]): ProgrammeEligibility {
