@@ -29,6 +29,13 @@ test('streaming Odie career chat is Groq-backed via a Supabase Edge Function and
   assert.ok(deployment.includes('supabase secrets set GROQ_MODEL=openai/gpt-oss-20b'), 'production deploys must pin the supported Groq model');
   assert.ok(fn.includes("error: 'groq_not_configured'"), 'missing Groq configuration must be explicit');
   assert.ok(fn.includes("req.signal.addEventListener('abort'"), 'client disconnect must stop generation');
+  assert.ok(fn.includes('const GROQ_TIMEOUT_MS = 30_000'), 'provider calls must finish before the Edge Function idle timeout');
+  assert.ok(fn.includes('max_completion_tokens: 600'), 'Groq GPT-OSS responses must use the supported completion-token limit');
+  assert.ok(fn.includes("reasoning_effort: 'low'"), 'learner chat must favour a fast response over hidden reasoning latency');
+  assert.ok(fn.includes('include_reasoning: false'), 'hidden provider reasoning must not be streamed to learners');
+  assert.ok(fn.includes('EdgeRuntime.waitUntil(pumpPromise)'), 'the Edge Function must stay alive while proxying the provider stream');
+  assert.ok(fn.includes('buffer.split(/\\r?\\n\\r?\\n/)'), 'the SSE parser must accept LF and CRLF event boundaries');
+  assert.ok(careersRoute.includes('Odie took too long to answer'), 'provider timeouts must give learners an actionable message');
   assert.ok(fn.includes('admin.auth.getUser(token)'), 'streaming function must validate the Supabase bearer token');
   assert.ok(fn.includes("role !== 'student'"), 'streaming function must require a student profile');
   assert.ok(fn.includes("error: 'student_record_missing'"), 'streaming function must require a linked students row');
