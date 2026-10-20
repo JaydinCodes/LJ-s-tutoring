@@ -23,14 +23,16 @@ test('React public route submits enquiries through the configured Formspree endp
   assert.ok(envExample.includes('FORMSPREE_ENDPOINT'), '.env.example must document the Formspree endpoint');
 });
 
-test('React public route excludes the retired guide and tutor-recruitment panels', () => {
+test('React public route excludes retired panels and portal sign-in links', () => {
+  const app = fs.readFileSync(path.join(root, 'src', 'app', 'App.tsx'), 'utf8');
   const publicRoutes = fs.readFileSync(path.join(root, 'src', 'app', 'routes', 'PublicRoutes.tsx'), 'utf8');
 
   assert.ok(publicRoutes.includes('FaqSection'), 'React public home must preserve FAQ content');
   assert.ok(!publicRoutes.includes('GuideSection'), 'React public home must not restore the retired guide panel');
   assert.ok(!publicRoutes.includes('BecomeTutorSection'), 'React public home must not restore the retired tutor-recruitment panel');
   assert.ok(!publicRoutes.includes('/#become-a-tutor'), 'React public navigation must not link to retired tutor panel anchor');
-  assert.ok(publicRoutes.includes('to="/dashboard/login"'), 'React public navigation must offer portal sign in link');
+  assert.ok(!publicRoutes.includes('to="/dashboard/login"'), 'React public navigation must not expose portal sign in');
+  assert.ok(app.includes('path="/dashboard/login"'), 'existing users must retain direct portal access');
 });
 
 test('React public routes exclude retired guide pages', () => {
