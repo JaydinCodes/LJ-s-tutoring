@@ -476,7 +476,6 @@ function PublicLayout({ children }: { children: ReactNode }) {
             <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/about">About</Link>
             <Link className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/programs">Programmes</Link>
             <a className="rounded-full px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" href="/#faq">FAQ</a>
-            <Link className="rounded-full border border-brand-navy/20 bg-brand-navy px-4 py-2 text-white transition hover:bg-brand-navy/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2" to="/dashboard/login">Sign in</Link>
           </div>
           <button
             className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-brand-navy shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean focus-visible:ring-offset-2 md:hidden"
@@ -501,7 +500,6 @@ function PublicLayout({ children }: { children: ReactNode }) {
               <Link className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/about" onClick={closeMenu}>About</Link>
               <Link className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/programs" onClick={closeMenu}>Programmes</Link>
               <a className="rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" href="/#faq" onClick={closeMenu}>FAQ</a>
-              <Link className="rounded-lg px-4 py-3 font-semibold text-brand-navy hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean" to="/dashboard/login" onClick={closeMenu}>Portal Sign In</Link>
             </div>
           </div>
         </nav>
@@ -523,7 +521,6 @@ function PublicLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 text-sm text-slate-600">
           <p>Project Odysseus - CAPS tutoring and learning intelligence</p>
           <div className="flex flex-wrap gap-4">
-            <Link to="/dashboard/login">Portal Sign In</Link>
             <Link to="/about">About</Link>
             <Link to="/programs">Tutoring programmes</Link>
             <Link to="/privacy">Privacy</Link>
