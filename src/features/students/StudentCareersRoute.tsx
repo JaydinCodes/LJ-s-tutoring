@@ -92,6 +92,7 @@ export function StudentCareersRoute() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [profile, setProfile] = useState<StudentCareerProfile>(emptyProfile);
   const [profileBusy, setProfileBusy] = useState(false);
+  const [profileSaveStatus, setProfileSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [profileError, setProfileError] = useState<{ message: string; failedProfile: StudentCareerProfile } | null>(null);
   const [odieOpen, setOdieOpen] = useState(false);
   const [message, setMessage] = useState('');
@@ -155,6 +156,7 @@ export function StudentCareersRoute() {
     if (!online) {
       optimisticProfileRef.current = confirmedProfileRef.current;
       setProfile(confirmedProfileRef.current);
+      setProfileSaveStatus('idle');
       setProfileError({ message: 'You are offline, so that change was not saved. Reconnect and try again.', failedProfile: nextProfile });
       return;
     }
@@ -162,7 +164,9 @@ export function StudentCareersRoute() {
     setProfile(nextProfile);
     pendingProfileSavesRef.current += 1;
     setProfileBusy(true);
+    setProfileSaveStatus('saving');
     setProfileError(null);
+    let saveConfirmed = false;
     try {
       // Serialize full-profile upserts so a slower older request can never land
       // after a newer edit and overwrite it in student_career_profiles.
@@ -172,6 +176,7 @@ export function StudentCareersRoute() {
       optimisticProfileRef.current = response.profile;
       setProfile(response.profile);
       await careersQuery.reload();
+      saveConfirmed = true;
     } catch (error) {
       if (saveSequence !== profileSaveSequenceRef.current) return;
       optimisticProfileRef.current = confirmedProfileRef.current;
@@ -180,10 +185,14 @@ export function StudentCareersRoute() {
       const message = code.includes('student_profile_missing')
         ? 'Your student profile could not be verified, so no Careers changes were saved.'
         : 'We could not save that Careers change. Your last confirmed profile is still safe.';
+      setProfileSaveStatus('idle');
       setProfileError({ message, failedProfile: nextProfile });
     } finally {
       pendingProfileSavesRef.current = Math.max(0, pendingProfileSavesRef.current - 1);
-      if (pendingProfileSavesRef.current === 0) setProfileBusy(false);
+      if (pendingProfileSavesRef.current === 0) {
+        setProfileBusy(false);
+        if (saveSequence === profileSaveSequenceRef.current && saveConfirmed) setProfileSaveStatus('saved');
+      }
     }
   }
 
@@ -248,6 +257,15 @@ export function StudentCareersRoute() {
   return (
     <PageShell title="Careers" subtitle="Explore what you love, discover what you could become, and plan your next steps with Odie." section="student" identity={dashboardQuery.data ? { name: dashboardQuery.data.profile.name, meta: dashboardQuery.data.profile.grade || 'Student' } : undefined}>
       <section className="min-w-0 space-y-4">
+        <p
+          aria-atomic="true"
+          className="sr-only"
+          data-testid="career-profile-save-status"
+          role="status"
+        >
+          {profileSaveStatus === 'saving' ? 'Saving Careers changes…' : null}
+          {profileSaveStatus === 'saved' ? 'Careers changes saved.' : null}
+        </p>
         {!online ? <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/40 dark:text-amber-100" role="status">You are offline. Cached pathway information remains visible, but profile changes and Odie need a connection.</div> : null}
         {profileError ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/40 dark:text-amber-100" role="alert"><span>{profileError.message}</span><button className="min-h-11 rounded-xl border border-current px-4 font-bold" disabled={profileBusy || !online} onClick={() => void persistProfile(profileError.failedProfile)} type="button">Retry save</button></div> : null}
         {careersQuery.loading ? <><SkeletonCard /><SkeletonCard /></> : null}

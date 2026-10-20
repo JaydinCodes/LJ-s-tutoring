@@ -127,6 +127,9 @@ test('student career profile persists through authenticated Supabase RLS after r
   await expect(saveButton).toBeVisible();
   await saveButton.click();
   await expect(savedButton).toBeVisible();
+  const saveStatus = page.getByTestId('career-profile-save-status');
+  await expect(saveStatus).toHaveText('Saving Careers changes…');
+  await expect(saveStatus).toHaveText('Careers changes saved.', { timeout: 15_000 });
 
   await page.reload();
   await expect(page.getByRole('button', { name: 'Saved career' })).toBeVisible({ timeout: 15_000 });
