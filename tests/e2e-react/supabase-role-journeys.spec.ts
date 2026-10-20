@@ -113,6 +113,32 @@ test('student authenticates through local Supabase, reads seeded work, and is de
   expectNoUnexpectedRuntimeFailures(runtimeFailures);
 });
 
+test('student career profile persists through authenticated Supabase RLS after rapid edits', async ({ page }) => {
+  const runtimeFailures = observeRuntimeFailures(page);
+  await signIn(page, 'student.supabase-e2e@projectodysseus.test', /\/dashboard\/student\/?$/);
+  await page.goto('/dashboard/student/careers?view=career&career=software-developer');
+
+  const saveButton = page.getByRole('button', { name: 'Save career' });
+  await expect(saveButton).toBeVisible({ timeout: 15_000 });
+  await saveButton.click();
+  const savedButton = page.getByRole('button', { name: 'Saved career' });
+  await expect(savedButton).toBeVisible();
+  await savedButton.click();
+  await expect(saveButton).toBeVisible();
+  await saveButton.click();
+  await expect(savedButton).toBeVisible();
+  const saveStatus = page.getByTestId('career-profile-save-status');
+  await expect(saveStatus).toHaveText('Saving Careers changes…');
+  await expect(saveStatus).toHaveText('Careers changes saved.', { timeout: 15_000 });
+
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Saved career' })).toBeVisible({ timeout: 15_000 });
+  await page.goto('/dashboard/student/careers');
+  await expect(page.getByRole('heading', { name: 'Your saved careers' })).toBeVisible();
+  await expect(page.getByText('Software Developer', { exact: true }).first()).toBeVisible();
+  expectNoUnexpectedRuntimeFailures(runtimeFailures);
+});
+
 test('tutor authenticates through local Supabase and sees only the seeded allocation', async ({ page }) => {
   const runtimeFailures = observeRuntimeFailures(page);
   await signIn(page, 'tutor.supabase-e2e@projectodysseus.test', /\/dashboard\/tutor\/?$/);
