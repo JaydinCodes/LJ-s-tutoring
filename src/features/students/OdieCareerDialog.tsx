@@ -93,7 +93,7 @@ export function OdieCareerDialog({ open, chat, message, busy, online, onClose, o
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-xl font-semibold leading-tight text-academy-navy dark:text-white">Ask Odie</h2>
-            <p className="mt-0.5 truncate text-xs text-academy-muted">Your Careers guide · Nothing sends automatically</p>
+            <p className="mt-0.5 truncate text-xs text-academy-muted">Your Careers guide · Nothing is sent automatically.</p>
           </div>
           <button aria-label="Close Odie" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-academy-gold dark:text-slate-300 dark:hover:bg-white/10" type="button" onClick={onClose}>
             <X className="h-5 w-5" aria-hidden="true" />

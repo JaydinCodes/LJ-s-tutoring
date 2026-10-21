@@ -101,8 +101,9 @@ test('missing data is not classified as failure and explanations match classific
 
 test('Odie remains Careers-only, opens with a reviewable draft, and never auto-sends', () => {
   const route = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
+  const dialog = read('src', 'features', 'students', 'OdieCareerDialog.tsx');
   assert.ok(route.includes('setMessage(`Please explain my pathway'));
-  assert.ok(route.includes('Nothing is sent automatically.'));
+  assert.ok(dialog.includes('Nothing is sent automatically.'));
   assert.equal((route.match(/await streamCareersAssistant\(/g) || []).length, 1);
   assert.match(route, /async function submit\(event: FormEvent/);
   assert.ok(route.indexOf('await streamCareersAssistant(') > route.indexOf('async function submit('));
