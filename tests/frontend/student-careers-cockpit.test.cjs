@@ -26,11 +26,12 @@ test('careers page is a URL-backed future plan with the required student section
 
 test('Odie career chat streams with stop support and bounded memory', () => {
   const source = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
+  const dialog = read('src', 'features', 'students', 'OdieCareerDialog.tsx');
   const client = read('src', 'lib', 'supabase', 'edgeFunctions.ts');
 
   assert.ok(source.includes("streamSupabaseFunctionText('odie-careers-chat-stream'"), 'careers page must use the streaming Odie Edge Function');
   assert.ok(source.includes('AbortController'), 'student must be able to stop generation');
-  assert.ok(source.includes('Stop generation'), 'stop control must be rendered');
+  assert.ok(dialog.includes('onClick={onStop}'), 'stop control must be rendered');
   assert.ok(source.includes('MAX_CHAT_MESSAGES = 12'), 'chat state must have a max message limit');
   assert.ok(source.includes('slice(-MAX_CHAT_MESSAGES)'), 'chat history must be trimmed');
   assert.ok(client.includes('response.body.getReader()'), 'Edge Function stream client must read streamed chunks');
@@ -45,7 +46,7 @@ test('Odie remains scoped to the careers student route', () => {
   for (const file of routeFiles) {
     const source = read('src', 'features', 'students', file);
     if (file === 'StudentCareersRoute.tsx') {
-      assert.ok(source.includes('Ask Odie'), 'careers route owns Odie');
+      assert.ok(source.includes("from './OdieCareerDialog'"), 'careers route owns Odie');
     } else {
       assert.ok(!source.includes('Ask Odie'), `${file} must not expose Odie chat`);
       assert.ok(!source.includes('careers-chat/stream'), `${file} must not call Odie careers streaming`);

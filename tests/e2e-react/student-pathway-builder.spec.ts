@@ -57,7 +57,7 @@ test('missing learner results remain missing—not ineligible—and Odie waits f
   await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel('Message')).toHaveValue(/Software Developer/);
   await expect(dialog.getByText('Nothing is sent automatically.')).toBeVisible();
-  await expect(dialog.locator('.bg-academy-navy')).toHaveCount(0);
+  await expect(dialog.locator('[data-message-role="user"]')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
 });

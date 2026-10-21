@@ -35,10 +35,12 @@ test('student app header allows long page titles to wrap on phone screens', () =
 
 test('career Odie surfaces expose dialog semantics only on the careers route', () => {
   const careers = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
+  const dialog = read('src', 'features', 'students', 'OdieCareerDialog.tsx');
   const dashboard = read('src', 'features', 'students', 'StudentDashboardRoute.tsx');
 
-  assert.ok(careers.includes('role="dialog"'), 'Odie sheet and drawer must expose dialog semantics');
-  assert.ok(careers.includes('aria-hidden={!open}'), 'closed Odie surfaces must be hidden from assistive tech');
-  assert.ok(careers.includes('aria-label="Odie career assistant"'), 'Odie dialog must have an accessible label');
+  assert.ok(careers.includes("from './OdieCareerDialog'"), 'Careers must own the Odie accessibility surface');
+  assert.ok(dialog.includes('role="dialog"'), 'Odie sheet and drawer must expose dialog semantics');
+  assert.ok(dialog.includes('if (!open) return null'), 'closed Odie surfaces must be absent from assistive tech');
+  assert.ok(dialog.includes('aria-label="Odie career assistant"'), 'Odie dialog must have an accessible label');
   assert.equal(dashboard.includes('Odie career assistant'), false, 'Odie accessibility surface must stay out of the normal dashboard');
 });

@@ -64,6 +64,9 @@ const CAREERS_ODIE_SYSTEM_PROMPT = [
   'Do not pretend to be a university admissions officer, bursary committee, employer, or official representative.',
   'Label uncertain advice clearly and encourage learners to verify current requirements on official institution pages.',
   'Do not invent admission requirements, salaries, or guaranteed outcomes. When facts are uncertain, say what the learner should verify with the institution or employer.',
+  'Format answers as clean GitHub-flavoured Markdown with short paragraphs, clear headings, and concise bullet lists.',
+  'Use tables only for compact comparisons. Do not put long explanations or narrative schedules in tables.',
+  'Keep the first answer under 350 words unless the learner asks for more detail.',
   'Never reveal, infer, or reference another student’s private data.',
   'Keep answers concise, structured, and action-oriented.',
 ].join('\n');
