@@ -57,6 +57,16 @@ test('desktop Careers journey supports discovery, detail, pathway and saved care
   await expect(page.getByRole('heading', { name: careerTitle ?? '' })).toBeVisible();
   await capture(page, 'desktop-pathway');
 
+  await page.getByRole('tab', { name: /Career overview/ }).click();
+  await page.getByRole('button', { name: 'Ask Odie' }).click();
+  const desktopOdie = page.getByRole('dialog', { name: 'Odie career assistant' });
+  await expect(desktopOdie).toBeVisible();
+  const desktopPanel = await desktopOdie.boundingBox();
+  expect(desktopPanel?.x).toBeGreaterThan(700);
+  expect(desktopPanel?.width).toBeLessThanOrEqual(640);
+  await captureViewport(page, 'desktop-viewport-odie-assistant');
+  await desktopOdie.getByRole('button', { name: 'Close Odie' }).click();
+
   await page.goBack();
   await expect(page).toHaveURL(/view=career/);
   await page.goForward();
@@ -92,6 +102,11 @@ test('Compass skip preserves answers and Odie suggestions remain editable drafts
   await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel('Message')).toHaveValue('What does a software developer actually do?');
   await expect(dialog.getByTestId('odie-career-transcript')).not.toContainText('What does a software developer actually do?');
+
+  const mobilePanel = await dialog.boundingBox();
+  expect(mobilePanel?.x).toBe(0);
+  expect(mobilePanel?.width).toBe(390);
+  await captureViewport(page, 'mobile-viewport-odie-assistant');
 });
 
 test('mobile Careers screens are intentional, keyboard reachable and overflow-free', async ({ page }) => {

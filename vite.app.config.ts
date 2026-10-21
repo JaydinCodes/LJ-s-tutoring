@@ -68,6 +68,12 @@ export default defineConfig(({ command, mode }) => {
           if (normalizedId.includes('/node_modules/lucide-react/')) {
             return 'lucide-icons';
           }
+          if (/\/node_modules\/(?:micromark|micromark-|mdast-util-|character-entities|decode-named-character-reference|ccount|escape-string-regexp|markdown-table)(?:\/|$)/.test(normalizedId)) {
+            return 'markdown-syntax';
+          }
+          if (/\/node_modules\/(?:react-markdown|remark-|rehype-|unified|vfile|vfile-|unist-util-|hast-util-|property-information|comma-separated-tokens|space-separated-tokens|html-url-attributes|trim-lines|bail|trough|devlop|is-plain-obj|zwitch)(?:\/|$)/.test(normalizedId)) {
+            return 'markdown-renderer';
+          }
           const supabasePackage = normalizedId.match(/\/node_modules\/@supabase\/([^/]+)\//)?.[1];
           if (supabasePackage) {
             return `supabase-${supabasePackage}`;
