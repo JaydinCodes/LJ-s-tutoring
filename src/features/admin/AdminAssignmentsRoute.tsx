@@ -22,7 +22,7 @@ export function AdminAssignmentsRoute() {
   const selectedAssignment = data?.assignments.find((assignment) => assignment.id === selectedAssignmentId) || null;
 
   return (
-    <DashboardShell title="Assignment Management" subtitle="Admin view for published work, due dates, status, and future creation workflows." section="admin">
+    <DashboardShell title="Assignment Management" subtitle="Create, prepare, publish and manage learner assignments." section="admin">
       <CreateAssignmentForm onCreated={reload} />
       <Card>
         <h2 className="text-xl font-semibold text-slate-950">Assignments</h2>
@@ -288,14 +288,14 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
   const selectedGrade = normalizeGrade(grade);
   const eligibleStudents = targetStudents.filter((student) => normalizeGrade(student.grade || '') === selectedGrade);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submit(event: FormEvent<HTMLFormElement> | null, publish = true) {
+    event?.preventDefault();
     setBusy(true);
     setMessage(null);
     setError(null);
     try {
       if (role === 'tutor' && !studentIds.length) throw new Error('Select at least one allocated learner for this assignment.');
-      await createAssignment({ title, description, subjectName, grade, curriculum, dueDate, attachment, studentIds });
+      await createAssignment({ title, description, subjectName, grade, curriculum, dueDate, attachment, studentIds, publish });
       setTitle('');
       setDescription('');
       setSubjectName('');
@@ -304,7 +304,7 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
       setDueDate('');
       setAttachment(null);
       setStudentIds([]);
-      setMessage('Assignment published.');
+      setMessage(publish ? 'Assignment published to eligible learners.' : 'Assignment saved as a staff-only draft. Publish it from Manage when ready.');
       await onCreated();
     } catch (err) {
       captureAppError(err, {
@@ -327,7 +327,7 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-slate-950">Create assignment</h2>
-          <p className="mt-1 text-sm text-slate-600">Publish learner work with a subject, grade, due date, and optional supporting file.</p>
+          <p className="mt-1 text-sm text-slate-600">Prepare drafts or publish learner work with a subject, grade, due date, and optional supporting file.</p>
         </div>
         <StatusBadge value="supabase_required" />
       </div>
@@ -384,7 +384,10 @@ export function CreateAssignmentForm({ onCreated, role = 'admin', targetStudents
         </div>
         <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
           <button disabled={busy} className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">
-            {busy ? 'Publishing...' : 'Publish assignment'}
+            {busy ? 'Working...' : 'Publish assignment'}
+          </button>
+          <button disabled={busy || !title.trim() || !subjectName.trim() || !grade.trim()} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:opacity-50" type="button" onClick={() => void submit(null, false)}>
+            Save draft
           </button>
           {message ? <p className="text-sm font-semibold text-emerald-700">{message}</p> : null}
           {error ? <InlineFeedback>{error}</InlineFeedback> : null}
