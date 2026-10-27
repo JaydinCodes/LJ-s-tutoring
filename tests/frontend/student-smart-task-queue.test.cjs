@@ -33,31 +33,30 @@ test('submitted work is isolated from overdue learner-action groups', () => {
   assert.ok(!data.includes("status === 'late_submitted') return 'needs-attention'"), 'late submitted work must never return to overdue action');
 });
 
-test('Smart Task Queue uses accessible filters and omits empty desktop detail panes', () => {
+test('Assignments page presents a searchable, accessible LMS list without archive cards', () => {
   const route = read('src', 'features', 'students', 'StudentAssignmentsRoute.tsx');
-
-  assert.ok(route.includes('title="Tasks"'));
-  assert.ok(route.includes('subtitle="Know what to do next."'));
-  assert.ok(!route.includes('Assignment desk'));
-  assert.ok(!route.includes('Work sorted by status'));
-  assert.ok(route.includes('role="tablist"'));
-  assert.ok(route.includes('role="tab"'));
-  assert.ok(route.includes('aria-selected={selected}'));
-  assert.ok(route.includes("aria-pressed={activeFilter === 'archived'}"));
-  assert.ok(route.includes('{selectedAssignment ? ('), 'detail panel must render only when a real selected assignment exists');
-  assert.ok(!route.includes('Select an assignment'), 'empty detail placeholder must be removed');
-  assert.ok(route.includes('useSearchParams()'), 'desktop selection must support URL deep linking and browser history');
+  assert.ok(route.includes('title="Assignments"'));
+  assert.ok(route.includes('Filter assignments'));
+  assert.ok(route.includes('type="search"'));
+  assert.ok(route.includes('aria-pressed={filter === item.key}'));
+  assert.ok(route.includes('Your assignments'));
+  assert.ok(route.includes('View result'));
+  assert.ok(route.includes('View corrections'));
+  assert.ok(!route.includes('QueueSummaryTabs'));
+  assert.ok(!route.includes('NextUpPanel'));
+  assert.ok(!route.includes('Archive <span'));
+  assert.ok(!route.includes('AssignmentDetailPanel'));
+  assert.ok(route.includes('useSearchParams()'));
 });
 
-test('Smart Task Queue never invents concept-only fields or exposes internal identifiers', () => {
+test('Assignment list shows released marks only, with safe subject and due-date fallbacks', () => {
   const route = read('src', 'features', 'students', 'StudentAssignmentsRoute.tsx');
-
-  assert.ok(!route.includes('estimatedMinutes'));
-  assert.ok(!route.includes('subject_id ||'), 'subject UUIDs must never be used as display fallbacks');
+  assert.ok(route.includes('submission?.marks_released && submission.marks_awarded != null'));
   assert.ok(route.includes("assignment.subject?.trim() || 'Subject not listed'"));
-  assert.ok(route.includes("if (!value) return 'No due date'"), 'null due dates need an explicit stable label');
-  assert.ok(route.includes('PDF, JPG, PNG, or written response'), 'accepted formats must match the existing upload validation');
-  assert.ok(route.includes('Maximum file size: 5 MiB.'), 'detail preview must match the enforced upload size');
+  assert.ok(route.includes("if (!value) return 'No due date'"));
+  assert.ok(route.includes('statusGroup'));
+  assert.ok(route.includes('isVisible'));
+  assert.ok(route.includes('assignment.status !== \'draft\''));
 });
 
 test('unreleased marked records stay under review until release evidence exists', () => {
