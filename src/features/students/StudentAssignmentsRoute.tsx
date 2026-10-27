@@ -20,6 +20,7 @@ const filters: Array<{ key: AssignmentFilter; label: string }> = [
 ];
 
 function statusGroup(status: AssignmentLifecycleStatus): AssignmentFilter {
+  if (status === 'closed' || status === 'archived' || status === 'draft') return 'all';
   if (status === 'marked') return 'graded';
   if (status === 'submitted' || status === 'under_review' || status === 'late_submitted') return 'submitted';
   return 'todo';
