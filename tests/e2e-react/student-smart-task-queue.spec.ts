@@ -9,7 +9,7 @@ async function loginAsStudent(page: Page) {
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page).toHaveURL(/\/dashboard\/student\/?$/);
   await page.goto('/dashboard/student/assignments');
-  await expect(page.getByRole('heading', { level: 1, name: 'Tasks' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { level: 1, name: 'Assignments' })).toBeVisible({ timeout: 15_000 });
 }
 
 async function expectNoHorizontalPageOverflow(page: Page) {
@@ -20,142 +20,128 @@ async function expectNoHorizontalPageOverflow(page: Page) {
   expect(dimensions.page).toBeLessThanOrEqual(dimensions.viewport);
 }
 
-test('desktop Smart Task Queue prioritizes learner action and supports deep-linked selection', async ({ page }) => {
+const table = (page: Page) => page.getByRole('table');
+
+test('desktop LMS shows a six-column assignment table and navigates through its title', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsStudent(page);
 
-  await expect(page.getByText('Next up', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Algebra diagnostic corrections' }).first()).toBeVisible();
-  await expect(page.getByTestId('task-primary-action')).toHaveText(/Review corrections/);
-  await expect(page.getByRole('heading', { name: 'Needs attention' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Upcoming' })).toBeVisible();
+  const list = table(page);
+  await expect(list).toBeVisible();
+  for (const name of ['Assignment Title', 'Status', 'Posted', 'Due Date', 'Submitted Date', 'Grade']) {
+    await expect(list.getByRole('columnheader', { name })).toBeVisible();
+  }
+  await expect(list.getByRole('link', { name: 'Algebra diagnostic corrections' })).toBeVisible();
+  await expect(page.getByText('Next up', { exact: true })).toHaveCount(0);
+  await expect(page.locator('aside[aria-label^="Details for"]')).toHaveCount(0);
 
-  const previews = page.getByRole('button', { name: /^Preview / });
-  await expect(previews.first()).toHaveAccessibleName('Preview Algebra diagnostic corrections');
-  await expect(page.getByRole('complementary', { name: 'Details for Algebra diagnostic corrections' })).toBeVisible();
-  await previews.filter({ hasText: 'English evidence paragraph' }).click();
-  await expect(page).toHaveURL(/task=e2e-assignment-overdue/);
-  await expect(page.getByRole('complementary', { name: 'Details for English evidence paragraph' })).toBeVisible();
-  await page.goBack();
-  await expect(page.getByRole('complementary', { name: 'Details for Algebra diagnostic corrections' })).toBeVisible();
+  await list.getByRole('link', { name: 'Algebra diagnostic corrections' }).click();
+  await expect(page).toHaveURL(/\/dashboard\/student\/assignments\/e2e-assignment-returned/);
+  await expect(page.getByRole('heading', { name: 'Assignment Details', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Algebra diagnostic corrections/ })).toBeVisible();
+  await expect(page.getByText('Questions 3 and 5 need corrected substitution steps.')).toBeVisible();
+  await page.getByRole('link', { name: 'Back to assignment list' }).click();
+  await expect(list).toBeVisible();
   await expectNoHorizontalPageOverflow(page);
 });
 
-test('accessible queue filters isolate submitted and released work', async ({ page }) => {
+test('LMS dropdown filters submitted and released work, and search finds titles', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await loginAsStudent(page);
+  const view = page.getByRole('combobox', { name: 'View assignments' });
 
-  const due = page.getByRole('tab', { name: /Due/i });
-  const submitted = page.getByRole('tab', { name: /Submitted/i });
-  const marked = page.getByRole('tab', { name: /Marked/i });
-  await expect(due).toHaveAttribute('aria-selected', 'true');
+  await view.selectOption('submitted');
+  await expect(table(page).getByRole('link', { name: 'Geometry proof set' })).toBeVisible();
+  await expect(table(page).getByRole('link', { name: 'English evidence paragraph' })).toHaveCount(0);
 
-  await submitted.click();
-  await expect(submitted).toHaveAttribute('aria-selected', 'true');
-  await expect(due).toHaveAttribute('aria-selected', 'false');
-  await expect(page.getByRole('heading', { name: 'Waiting for feedback' })).toBeVisible();
-  await expect(page.getByText('Geometry proof set').first()).toBeVisible();
-  await expect(page.getByText('Overdue — action needed')).toHaveCount(0);
+  await view.selectOption('graded');
+  await expect(table(page).getByRole('link', { name: 'Photosynthesis lab review' })).toBeVisible();
+  await expect(table(page).getByText('88%')).toBeVisible();
+  await expect(table(page).getByRole('link', { name: 'Geometry proof set' })).toHaveCount(0);
 
-  await marked.click();
-  await expect(marked).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('heading', { name: 'Recently marked' })).toBeVisible();
-  await expect(page.getByText('Photosynthesis lab review').first()).toBeVisible();
-  await expect(page.getByText('88%')).toBeVisible();
+  await view.selectOption('all');
+  const search = page.getByRole('searchbox', { name: 'Search' });
+  await search.fill('English evidence');
+  await expect(table(page).getByRole('link', { name: 'English evidence paragraph' })).toBeVisible();
+  await expect(table(page).getByRole('link', { name: 'Photosynthesis lab review' })).toHaveCount(0);
 });
 
-test('mobile queue stacks, keeps the primary action visible, and opens full-page details', async ({ page }) => {
+test('mobile retains a horizontally scrollable table and opens an assignment detail page', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await loginAsStudent(page);
-
   await expect(page.getByTestId('student-desktop-sidebar')).toBeHidden();
   await expect(page.getByTestId('student-mobile-navigation')).toBeVisible();
-  const primaryAction = page.getByTestId('task-primary-action');
-  await expect(primaryAction).toBeVisible();
-  const actionBox = await primaryAction.boundingBox();
-  expect(actionBox).not.toBeNull();
-  expect((actionBox?.y || 0) + (actionBox?.height || 0)).toBeLessThanOrEqual(844);
+  await expect(table(page)).toBeVisible();
   await expectNoHorizontalPageOverflow(page);
 
-  await page.getByRole('link', { name: /Open Algebra diagnostic corrections/i }).click();
+  await table(page).getByRole('link', { name: 'Algebra diagnostic corrections' }).click();
   await expect(page).toHaveURL(/\/dashboard\/student\/assignments\/e2e-assignment-returned/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Assignment Detail' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Algebra diagnostic corrections' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Assignment Details' })).toBeVisible();
+  await expect(page.getByText('Submitted Attachments', { exact: true })).toBeVisible();
   await expectNoHorizontalPageOverflow(page);
 });
 
-test('contextual empty and submitted-only states omit an empty detail panel', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
+test('empty and submitted-only datasets keep the table and remove the side preview', async ({ page }) => {
   await loginAsStudent(page);
-
   await page.evaluate(() => window.localStorage.setItem('project-odysseus:e2e-task-queue-state', 'empty'));
   await page.reload();
-  await expect(page.getByText('No assignments yet')).toBeVisible();
+  await expect(table(page)).toBeVisible();
+  await expect(table(page).getByText('No assignments yet. Published assignments will appear here.')).toBeVisible();
   await expect(page.locator('aside[aria-label^="Details for"]')).toHaveCount(0);
 
   await page.evaluate(() => window.localStorage.setItem('project-odysseus:e2e-task-queue-state', 'submitted-only'));
   await page.reload();
-  await expect(page.getByRole('heading', { name: "You're caught up" })).toBeVisible();
+  await expect(table(page).getByRole('link', { name: 'Geometry proof set' })).toBeVisible();
+  await page.getByRole('combobox', { name: 'View assignments' }).selectOption('submitted');
+  await expect(table(page).getByRole('link', { name: 'Geometry proof set' })).toBeVisible();
   await expect(page.locator('aside[aria-label^="Details for"]')).toHaveCount(0);
-  await page.getByRole('tab', { name: /Submitted/i }).click();
-  await expect(page.getByText('Geometry proof set').first()).toBeVisible();
-  await expect(page.getByRole('complementary', { name: 'Details for Geometry proof set' })).toBeVisible();
 });
 
-test('released-only and null-date states remain explicit', async ({ page }) => {
-  await page.setViewportSize({ width: 1366, height: 768 });
+test('released-only and null-date records have explicit LMS table cells', async ({ page }) => {
   await loginAsStudent(page);
-
   await page.evaluate(() => window.localStorage.setItem('project-odysseus:e2e-task-queue-state', 'marked-only'));
   await page.reload();
-  await expect(page.getByRole('heading', { name: "You're caught up" })).toBeVisible();
-  await page.getByRole('tab', { name: /Marked/i }).click();
-  await expect(page.getByText('Photosynthesis lab review').first()).toBeVisible();
-  await expect(page.getByText('88%')).toBeVisible();
+  await expect(table(page).getByRole('link', { name: 'Photosynthesis lab review' })).toBeVisible();
+  await expect(table(page).getByText('88%')).toBeVisible();
 
   await page.evaluate(() => window.localStorage.setItem('project-odysseus:e2e-task-queue-state', 'null-due'));
   await page.reload();
-  await expect(page.getByText('Ancient Greece source reflection').first()).toBeVisible();
-  await expect(page.getByText('No due date').first()).toBeVisible();
+  const row = table(page).getByRole('row').filter({ hasText: 'Ancient Greece source reflection' });
+  await expect(row).toBeVisible();
+  await expect(row.getByRole('cell').nth(3)).toHaveText('—');
 });
 
-test('loading and repository error states use the shared design language', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test('loading resolves to the LMS table and repository errors remain actionable', async ({ page }) => {
   await loginAsStudent(page);
-
   await page.evaluate(() => window.localStorage.setItem('project-odysseus:e2e-task-queue-state', 'loading'));
   await page.reload();
-  await expect(page.getByLabel('Loading task queue')).toBeVisible();
-  await expect(page.getByTestId('task-primary-action')).toBeVisible();
+  await expect(table(page)).toBeVisible({ timeout: 15_000 });
 
   await page.evaluate(() => window.localStorage.setItem('project-odysseus:e2e-task-queue-state', 'error'));
   await page.reload();
-  await expect(page.getByText('Tasks unavailable')).toBeVisible();
+  await expect(page.getByText('Assignments unavailable')).toBeVisible();
   await expect(page.getByText('The task queue could not be loaded.')).toBeVisible();
   await expectNoHorizontalPageOverflow(page);
 });
 
-test('Smart Task Queue remains readable in dark mode and captures desktop/mobile evidence', async ({ page }) => {
+test('LMS table stays readable in dark mode on desktop and mobile', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsStudent(page);
   await page.goto('/dashboard/student/settings');
   await page.getByRole('radio', { name: 'Dark' }).click();
   await page.goto('/dashboard/student/assignments');
   await expect(page.locator('html')).toHaveClass(/dark/);
+  await expect(table(page)).toBeVisible();
   await expectNoHorizontalPageOverflow(page);
-  await page.waitForTimeout(500);
-  await page.screenshot({ fullPage: true, path: 'artifacts/smart-task-queue/after-desktop-dark.png' });
 
   await page.goto('/dashboard/student/settings');
   await page.getByRole('radio', { name: 'Light' }).click();
   await page.goto('/dashboard/student/assignments');
   await expect(page.locator('html')).not.toHaveClass(/dark/);
-  await page.waitForTimeout(500);
-  await page.screenshot({ fullPage: true, path: 'artifacts/smart-task-queue/after-desktop.png' });
+  await expect(table(page)).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
+  await expect(table(page)).toBeVisible();
   await expectNoHorizontalPageOverflow(page);
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: 'artifacts/smart-task-queue/after-mobile.png' });
 });
