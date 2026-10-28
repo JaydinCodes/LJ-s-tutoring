@@ -80,7 +80,6 @@ function normalizeSubmissionStatus(
     || submission.feedback_released
     || submission.released_at
   );
-  );
 
   if (submissionStatus === 'returned' || submissionStatus === 'returned_for_correction') {
     return 'returned_for_correction';
