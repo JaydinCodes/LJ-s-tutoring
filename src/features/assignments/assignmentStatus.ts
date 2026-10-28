@@ -79,8 +79,7 @@ function normalizeSubmissionStatus(
     submission.marks_released
     || submission.feedback_released
     || submission.released_at
-    || submission.marks_awarded != null
-    || submission.feedback,
+  );
   );
 
   if (submissionStatus === 'returned' || submissionStatus === 'returned_for_correction') {
