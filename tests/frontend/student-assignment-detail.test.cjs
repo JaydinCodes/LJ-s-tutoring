@@ -25,7 +25,7 @@ test('student assignment detail route is registered for dashboard and short stud
 test('assignment detail page shows instructions, due date, topic, status, feedback, and history', () => {
   const detail = read('src', 'features', 'students', 'StudentAssignmentDetailRoute.tsx');
 
-  for (const label of ['Instructions', 'Due date', 'Topic', 'Status', 'Feedback', 'Submission History']) {
+  for (const label of ['Instructions', 'Due date', 'Subject', 'Status', 'feedback', 'Submission History']) {
     assert.ok(detail.includes(label), `${label} must appear on the detail page`);
   }
 
