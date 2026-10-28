@@ -161,7 +161,7 @@ function SubmissionHistory({ submissions, assignment }: { submissions: Assignmen
         return (
           <li key={item.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
             <div>
-              <p className="font-medium">Version {item.version_number || 1} · {item.submitted_at ? formatDate(item.submitted_at) : 'Date unavailable'}</p>
+              <p className="font-medium">Version {item.version_number || 1} · {item.submitted_at ? formatDate(item.submitted_at) : 'Date unavailable'}{item.is_latest ? ' · Latest version' : ''}</p>
               <p className="mt-1 text-academy-muted">{item.original_filename || (item.text_answer ? 'Written response' : 'Submission')}</p>
               {item.file_url ? <a className="mt-1 inline-block font-medium text-academy-aegean underline dark:text-sky-300" href={item.file_url} target="_blank" rel="noreferrer">Open submitted file</a> : null}
             </div>
