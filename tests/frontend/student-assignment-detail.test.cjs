@@ -30,8 +30,11 @@ test('assignment detail page shows instructions, due date, topic, status, feedba
   }
 
   assert.ok(detail.includes('assignment.description'), 'instructions must come from the real assignment description');
-  assert.ok(detail.includes('assignment.subject || assignment.subject_id'), 'topic must use real assignment subject data');
+  assert.ok(detail.includes("assignment.subject || 'Subject not listed'"), 'subject must use safe student-facing data');
   assert.ok(detail.includes('formatDueDate(assignment.due_date, dueDelta)'), 'due date must be formatted from assignment data');
+  assert.ok(!detail.includes('<Card>'), 'detail page must not use nested cards');
+  assert.ok(detail.includes('canShowMark'), 'results must be gated behind release status');
+  assert.ok(detail.includes('canShowFeedback'), 'feedback must be gated behind release status');
   assert.ok(detail.includes('submission?.feedback'), 'feedback must come from the learner submission');
   assert.ok(detail.includes('SubmissionHistory submissions={submissionHistory} assignment={assignment}'), 'submission history must render from real submission data');
 });
