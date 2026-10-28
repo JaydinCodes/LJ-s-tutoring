@@ -95,7 +95,7 @@ test('student authenticates through local Supabase, reads seeded work, and is de
 
   expect(assignmentId).toBeTruthy();
   await page.goto(`/dashboard/student/assignments/${assignmentId}`);
-  await expect(page.getByRole('heading', { name: 'Assignment Detail', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Assignment Details' })).toBeVisible();
   await page.getByLabel('Submission note').fill('Real local Supabase academic-loop evidence.');
   await page.locator('input[type="file"]').setInputFiles({
     name: 'local-supabase-evidence.pdf',
@@ -174,7 +174,7 @@ test('a fresh student session sees the tutor-released result and feedback', asyn
   await expect(page.getByText('84% average', { exact: true })).toBeVisible();
 
   await page.goto(`/dashboard/student/assignments/${assignmentId}`);
-  await expect(page.getByText('Mark: 84%', { exact: true })).toBeVisible();
+  await expect(page.locator('dl').getByText('84%', { exact: true })).toBeVisible();
   await expect(page.getByText('Strong local Supabase review.', { exact: true })).toBeVisible();
   expectNoUnexpectedRuntimeFailures(runtimeFailures);
 });
