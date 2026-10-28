@@ -718,7 +718,7 @@ export function AssignmentUploadPanel({
   }
 
   return (
-    <form className="mt-5 grid gap-4 rounded-[1.5rem] border border-white/70 bg-white/[0.62] p-4 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]" onSubmit={(event) => void submit(event)}>
+    <form className="mt-4 grid max-w-3xl gap-4" onSubmit={(event) => void submit(event)}>
       {disabled ? (
         <p className="rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-800">This assignment is closed and no longer accepts submissions.</p>
       ) : null}
@@ -733,7 +733,7 @@ export function AssignmentUploadPanel({
       <FormField label="Upload file" hint="Drag PDF, JPG, or PNG files here. Maximum file size is 5 MiB.">
         <div
           {...getRootProps()}
-          className={`rounded-[1.5rem] border p-5 backdrop-blur-xl transition ${isDragActive ? 'border-brand-gold/70 bg-brand-gold/10' : 'border-white/70 bg-white/50'} ${disabled || busy ? 'cursor-not-allowed opacity-60' : 'cursor-default hover:border-brand-aegean/[0.45] hover:bg-white/70'}`}
+          className={`border border-dashed p-4 transition ${isDragActive ? 'border-brand-gold bg-brand-gold/10' : 'border-[#c9c4bb] bg-transparent dark:border-white/30'} ${disabled || busy ? 'cursor-not-allowed opacity-60' : 'cursor-default hover:border-brand-aegean'}`}
         >
           <input {...getInputProps()} />
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center">
