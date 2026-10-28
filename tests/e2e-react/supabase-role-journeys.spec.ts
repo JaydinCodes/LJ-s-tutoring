@@ -87,7 +87,7 @@ test('student authenticates through local Supabase, reads seeded work, and is de
   await expect(page.getByText('Local Supabase Learner', { exact: true })).toBeVisible();
 
   await page.goto('/dashboard/student/assignments');
-  await expect(page.getByRole('heading', { name: 'Tasks', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Assignments', exact: true })).toBeVisible();
   await expect(page.getByText('Local Supabase Algebra Check').first()).toBeVisible();
   await page.getByRole('button', { name: 'Preview Local Supabase Algebra Check' }).click();
   await expect(page.getByLabel('Details for Local Supabase Algebra Check')).toBeVisible();
