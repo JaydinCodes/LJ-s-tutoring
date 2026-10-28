@@ -62,7 +62,7 @@ function AssignmentDetailWorkspace({
   const canShowFeedback = Boolean(submission?.feedback_released) && Boolean(submission?.feedback);
   const learningAction = canShowFeedback ? parseLearningAction(submission?.rubric_scores_json) : null;
   const isReturned = status === 'marked';
-  const stage = isReturned ? 4 : submission?.status === 'marked' ? 3 : submission ? 2 : 1;
+  const stage = isReturned ? 4 : submission ? 3 : 1;
   const stages = ['Assigned', 'In progress', 'Submitted', 'Returned'];
 
   return (
@@ -87,7 +87,7 @@ function AssignmentDetailWorkspace({
       <dl className="mt-5 grid grid-cols-[minmax(7rem,11rem)_minmax(0,1fr)] gap-x-3 gap-y-2 leading-6">
         <dt className="font-semibold">Title</dt><dd>{assignment.title}</dd>
         <dt className="font-semibold">Subject</dt><dd>{assignment.subject || 'Subject not listed'}</dd>
-        <dt className="font-semibold">Open Date</dt><dd>{formatDate(assignment.created_at)}</dd>
+        <dt className="font-semibold">Created</dt><dd>{formatDate(assignment.created_at)}</dd>
         <dt className="font-semibold">Due date</dt><dd>{formatDueDate(assignment.due_date, dueDelta)}</dd>
         <dt className="font-semibold">Status</dt><dd>{getAssignmentStatusLabel(status)}</dd>
         <dt className="font-semibold">Submitted Date</dt><dd>{submission?.submitted_at ? formatDate(submission.submitted_at) : 'Not submitted'}</dd>
