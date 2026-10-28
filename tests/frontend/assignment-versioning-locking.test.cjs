@@ -159,7 +159,7 @@ test('student views expose submission version history and latest marker', () => 
 
   assert.ok(detail.includes('submissionHistory'), 'student detail route must build submission history');
   assert.ok(detail.includes('Latest version'), 'student history must clearly mark the latest version');
-  assert.ok(detail.includes('Version ${submission.version_number || 1}'), 'student history must show version numbers');
+  assert.ok(detail.includes('Version {item.version_number || 1}'), 'student history must show version numbers');
   assert.ok(repository.includes('get_student_assignment_submissions'), 'student submissions (with version_number/is_latest) come from the redacted Supabase RPC; version history is built in the detail route');
   // Admin/tutor "previous versions" views were never repointed to Supabase (no
   // src/features/admin or src/features/tutors code reads version_number/is_latest

@@ -66,10 +66,10 @@ test('unauthorized role is blocked from another role dashboard', async ({ page }
 test('student can view and upload assignment work', async ({ page }) => {
   await loginAs(page, 'student');
   await page.goto('/dashboard/student/assignments');
-  await expect(page.getByRole('heading', { name: 'Tasks' }).first()).toBeVisible();
-  await page.getByRole('link', { name: /Open Quadratic Functions Launch Smoke/i }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Assignments' })).toBeVisible();
+  await page.getByRole('table').getByRole('link', { name: 'Quadratic Functions Launch Smoke' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Assignment Detail' }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Assignment Details' })).toBeVisible();
   await expect(page.getByRole('heading', { name: /Quadratic Functions Launch Smoke/i }).first()).toBeVisible();
   await page.getByLabel('Submission note').fill('E2E smoke upload answer.');
   await page.locator('input[type="file"]').setInputFiles({
@@ -84,7 +84,7 @@ test('student can view and upload assignment work', async ({ page }) => {
 test('student safely retries one submission after an ambiguous saved response', async ({ page }) => {
   await loginAs(page, 'student');
   await page.goto('/dashboard/student/assignments');
-  await page.getByRole('link', { name: /Open Quadratic Functions Launch Smoke/i }).first().click();
+  await page.getByRole('table').getByRole('link', { name: 'Quadratic Functions Launch Smoke' }).click();
 
   await page.getByLabel('Submission note').fill('Keep this exact payload across the retry.');
   await page.locator('input[type="file"]').setInputFiles({

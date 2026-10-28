@@ -15,6 +15,7 @@ export interface CreateAssignmentInput {
   rubricJson?: string;
   organizationId?: string;
   studentIds?: string[];
+  publish?: boolean;
 }
 
 export interface SubmitAssignmentInput {
@@ -763,7 +764,7 @@ export async function createAssignment(input: CreateAssignmentInput) {
       p_subject_id: subject.id,
       p_grade: grade,
       p_due_date: input.dueDate ? new Date(input.dueDate).toISOString() : null,
-      p_status: 'published',
+      p_status: input.publish === false ? 'draft' : 'published',
       p_attachment_url: attachmentPath,
       p_memo_url: null,
       p_expected_revision: draft.revision,
@@ -782,7 +783,7 @@ export async function createAssignment(input: CreateAssignmentInput) {
       p_subject_id: subject.id,
       p_grade: grade,
       p_due_date: input.dueDate ? new Date(input.dueDate).toISOString() : null,
-      p_status: 'published',
+      p_status: input.publish === false ? 'draft' : 'published',
       p_attachment_url: attachmentPath,
       p_memo_url: null,
       p_expected_revision: draft.revision,

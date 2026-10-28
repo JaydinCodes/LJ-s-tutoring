@@ -1,9 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
-import { ScrollText, Trophy, UploadCloud } from 'lucide-react';
-import { ErrorState, PageShell, SkeletonCard, TimelineCard } from '../../components/dashboard/DashboardDesignSystem';
-import { Card } from '../../components/ui/Card';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { StatusBadge } from '../../components/ui/StatusBadge';
+import { ErrorState, PageShell, SkeletonCard } from '../../components/dashboard/DashboardDesignSystem';
 import { formatDate } from '../../lib/utils/format';
 import type { Assignment, AssignmentSubmission } from '../../types/lms';
 import {
@@ -11,10 +7,10 @@ import {
   daysUntil,
   getAssignmentStatusLabel,
 } from '../assignments/assignmentStatus';
+import { parseLearningAction } from '../assignments/learningEvidence';
 import { AssignmentUploadPanel } from './StudentDashboardComponents';
 import { normalizeStudentData } from './studentData';
 import { useStudentDashboardQuery } from './studentQueries';
-import { parseLearningAction } from '../assignments/learningEvidence';
 
 export function StudentAssignmentDetailRoute() {
   const { assignmentId } = useParams();
@@ -30,28 +26,20 @@ export function StudentAssignmentDetailRoute() {
 
   return (
     <PageShell
-      title="Assignment Detail"
-      subtitle="Read the instructions, check feedback, and submit work from one focused page."
+      title="Assignment Details"
+      subtitle="Instructions, submission status and tutor feedback."
       section="student"
     >
-      <div className="mb-4">
-        <Link className="text-sm font-semibold text-brand-aegean hover:text-brand-gold dark:text-brand-gold" to="/dashboard/student/assignments">
-          Back to assignment list
-        </Link>
-      </div>
-
-      {loading ? <Card><SkeletonCard /></Card> : null}
-      {error ? <Card><ErrorState title="Assignment unavailable" description={error} onRetry={() => void reload()} /></Card> : null}
+      <Link className="mb-5 inline-flex min-h-10 items-center text-sm font-semibold text-academy-aegean underline underline-offset-2 hover:text-academy-navy dark:text-sky-300" to="/dashboard/student/assignments">
+        Back to assignment list
+      </Link>
+      {loading ? <SkeletonCard /> : null}
+      {error ? <ErrorState title="Assignment unavailable" description={error} onRetry={() => void reload()} /> : null}
       {data && !assignment ? (
-        <Card>
-          <EmptyState
-            title="Assignment not found"
-            description="This assignment may have been removed, archived, or assigned to a different learner."
-            actionLabel="Back to assignments"
-            actionHref="/dashboard/student/assignments"
-            icon={ScrollText}
-          />
-        </Card>
+        <div className="border-t border-[#d9d2c5] py-8 dark:border-white/20">
+          <h2 className="text-lg font-semibold text-academy-navy dark:text-white">Assignment not found</h2>
+          <p className="mt-2 text-sm text-academy-muted">This assignment may have been removed or may not be assigned to you.</p>
+        </div>
       ) : null}
       {assignment ? <AssignmentDetailWorkspace assignment={assignment} submission={submission} submissionHistory={submissionHistory} /> : null}
     </PageShell>
@@ -70,144 +58,121 @@ function AssignmentDetailWorkspace({
   const status = calculateAssignmentStatus({ assignment, submission });
   const dueDelta = daysUntil(assignment.due_date);
   const uploadDisabled = status === 'archived' || status === 'closed' || assignment.status === 'archived' || assignment.status === 'closed';
-  const learningAction = parseLearningAction(submission?.rubric_scores_json);
+  const canShowMark = Boolean(submission?.marks_released) && submission?.marks_awarded != null;
+  const canShowFeedback = Boolean(submission?.feedback_released) && Boolean(submission?.feedback);
+  const learningAction = canShowFeedback ? parseLearningAction(submission?.rubric_scores_json) : null;
+  const isReturned = status === 'marked';
+  const stage = isReturned ? 4 : submission ? 3 : 1;
+  const stages = ['Assigned', 'In progress', 'Submitted', 'Returned'];
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <Card>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-aegean dark:text-brand-gold">Assignment workspace</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{assignment.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">{assignment.subject || assignment.subject_id || 'Topic pending'}</p>
-          </div>
-          <StatusBadge value={status} />
-        </div>
+    <article className="min-w-0 text-sm text-academy-ink dark:text-slate-100">
+      <div className="border-b border-[#d9d2c5] pb-4 dark:border-white/20">
+        <h2 className="text-2xl font-semibold text-academy-navy dark:text-white">
+          {assignment.title} <span className="text-base font-medium text-academy-muted">— {getAssignmentStatusLabel(status)}</span>
+        </h2>
+        <p className="mt-1 text-academy-muted">{assignment.subject || 'Subject not listed'}</p>
+      </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <DetailMetric label="Due date" value={formatDueDate(assignment.due_date, dueDelta)} />
-          <DetailMetric label="Topic" value={assignment.subject || assignment.subject_id || 'Pending'} />
-          <DetailMetric label="Status" value={getAssignmentStatusLabel(status)} />
-        </div>
+      <ol aria-label="Assignment progress" className="mt-3 grid grid-cols-4 gap-1 text-center text-[0.7rem] sm:text-xs">
+        {stages.map((label, index) => (
+          <li
+            key={label}
+            aria-current={index + 1 === stage ? 'step' : undefined}
+            className={`border-b-[5px] pb-2 ${index + 1 <= stage ? 'border-academy-aegean text-academy-navy dark:text-sky-300' : 'border-[#ded8cb] text-academy-muted dark:border-white/20'}`}
+          >{label}</li>
+        ))}
+      </ol>
 
-        <section className="mt-6 rounded-[1.5rem] border border-white/70 bg-white/[0.62] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]">
-          <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Instructions</h2>
-          <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-700 dark:text-brand-marble">
-            {assignment.description || 'Your tutor has not added written instructions yet. Use the file rules and due date, then ask for clarification before submitting if needed.'}
-          </p>
+      <dl className="mt-5 grid grid-cols-[minmax(7rem,11rem)_minmax(0,1fr)] gap-x-3 gap-y-2 leading-6">
+        <dt className="font-semibold">Title</dt><dd>{assignment.title}</dd>
+        <dt className="font-semibold">Subject</dt><dd>{assignment.subject || 'Subject not listed'}</dd>
+        <dt className="font-semibold">Created</dt><dd>{formatDate(assignment.created_at)}</dd>
+        <dt className="font-semibold">Due date</dt><dd>{formatDueDate(assignment.due_date, dueDelta)}</dd>
+        <dt className="font-semibold">Status</dt><dd>{getAssignmentStatusLabel(status)}</dd>
+        <dt className="font-semibold">Submitted Date</dt><dd>{submission?.submitted_at ? formatDate(submission.submitted_at) : 'Not submitted'}</dd>
+        <dt className="font-semibold">Grade</dt><dd className="font-semibold">{canShowMark ? `${submission?.marks_awarded}%` : 'Not released'}</dd>
+      </dl>
+
+      <section aria-labelledby="instructions-heading" className="mt-7">
+        <h3 id="instructions-heading" className="border-b border-[#d9d2c5] pb-2 text-base font-semibold text-academy-navy dark:border-white/20 dark:text-white">Instructions</h3>
+        <p className="mt-3 whitespace-pre-wrap leading-7">
+          {assignment.description || 'No additional instructions were provided.'}
+        </p>
+      </section>
+
+      <section aria-labelledby="resources-heading" className="mt-7">
+        <h3 id="resources-heading" className="border-b border-[#d9d2c5] pb-2 text-base font-semibold text-academy-navy dark:border-white/20 dark:text-white">Additional resources for assignment</h3>
+        <div className="mt-3">
           {assignment.attachment_url ? (
-            <a className="mt-4 inline-flex rounded-full border border-white/70 bg-white/[0.65] px-4 py-2 text-sm font-semibold text-brand-navy shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-brand-parchment dark:hover:bg-white/[0.08]" href={assignment.attachment_url} rel="noreferrer" target="_blank">
-              Open attached brief
+            <a className="font-semibold text-academy-aegean underline hover:text-academy-navy dark:text-sky-300" href={assignment.attachment_url} target="_blank" rel="noreferrer">
+              Open attached worksheet or instructions
             </a>
-          ) : null}
-        </section>
-      </Card>
+          ) : <p className="text-academy-muted">No additional resources attached.</p>}
+        </div>
+      </section>
 
-      <aside className="space-y-5">
-        <Card>
-          <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Submission Rules</h2>
-          <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">
-            <li>Accepted files: PDF, JPG, or PNG.</li>
-            <li>Maximum file size: 5 MiB.</li>
-            <li>Add a note when the file needs context or when submitting a correction.</li>
-          </ul>
-          {uploadDisabled ? (
-            <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm font-semibold text-amber-800">This assignment is closed or archived, so uploads are disabled.</p>
-          ) : null}
-        </Card>
+      <section aria-labelledby="submitted-heading" className="mt-7">
+        <h3 id="submitted-heading" className="border-b border-[#d9d2c5] pb-2 text-base font-semibold text-academy-navy dark:border-white/20 dark:text-white">Submitted Attachments</h3>
+        {submission ? (
+          <div className="mt-3 space-y-2">
+            <p className="font-medium">Submission received {submission.submitted_at ? formatDate(submission.submitted_at) : ''}</p>
+            {submission.file_url ? <a className="inline-block break-all font-semibold text-academy-aegean underline dark:text-sky-300" href={submission.file_url} target="_blank" rel="noreferrer">{submission.original_filename || 'Open submitted file'}</a> : null}
+            {submission.text_answer ? <p className="whitespace-pre-wrap leading-6">{submission.text_answer}</p> : null}
+          </div>
+        ) : <p className="mt-3 text-academy-muted">No submission uploaded yet.</p>}
+      </section>
 
-        <Card>
-          <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Upload Work</h2>
-          <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Submit from the detail page so the assignment list stays easy to scan.</p>
-          {/* Upload controls live here rather than inside list cards to keep the tab view lightweight. */}
-          <AssignmentUploadPanel assignment={assignment} submission={submission} disabled={uploadDisabled} />
-        </Card>
-      </aside>
-
-      <Card>
-        <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Feedback</h2>
-        {submission?.feedback ? (
-          <p className="mt-3 rounded-2xl border border-white/70 bg-white/[0.58] p-4 text-sm leading-7 text-slate-700 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:text-brand-marble">{submission.feedback}</p>
-        ) : (
-          <EmptyState
-            title="No feedback yet"
-            description="Feedback and marks will appear here after your tutor reviews the submission."
-            actionLabel="Review assignment"
-            actionHref={`/dashboard/student/assignments/${assignment.id}`}
-            icon={Trophy}
-          />
-        )}
+      <section aria-labelledby="feedback-heading" className="mt-7">
+        <h3 id="feedback-heading" className="border-b border-[#d9d2c5] pb-2 text-base font-semibold text-academy-navy dark:border-white/20 dark:text-white">Tutor's comments about your submission</h3>
+        {canShowFeedback ? <p className="mt-3 whitespace-pre-wrap leading-7">{submission?.feedback}</p> :
+          <p className="mt-3 text-academy-muted">No feedback released yet.</p>}
         {learningAction ? (
-          <section className="mt-4 rounded-2xl border border-brand-gold/30 bg-amber-50/70 p-4 text-sm text-slate-800 dark:border-brand-gold/30 dark:bg-brand-gold/10 dark:text-brand-parchment">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">Your next learning action</p>
-            {learningAction.strengths ? <p className="mt-3"><span className="font-semibold">What went well:</span> {learningAction.strengths}</p> : null}
-            {learningAction.fixNext ? <p className="mt-2"><span className="font-semibold">Fix next:</span> {learningAction.fixNext}</p> : null}
-            <p className="mt-2"><span className="font-semibold">{learningAction.actionType === 'retry' ? 'Retry' : learningAction.actionType === 'practice' ? 'Practice' : learningAction.actionType === 'discuss' ? 'Discuss' : 'Revise'}:</span> {learningAction.actionDetail || 'Use the tutor feedback to plan one focused study block.'}</p>
-            {learningAction.dueDate ? <p className="mt-2 font-semibold">Aim to complete this by {formatDate(learningAction.dueDate)}.</p> : null}
-            {learningAction.allowResubmission && !uploadDisabled ? <p className="mt-2 font-semibold">You can submit a correction using the upload panel above.</p> : null}
-          </section>
+          <div className="mt-4 border-l-2 border-academy-aegean pl-4">
+            <h4 className="font-semibold">Recommended next learning action</h4>
+            {learningAction.strengths ? <p className="mt-2"><strong>What went well:</strong> {learningAction.strengths}</p> : null}
+            {learningAction.fixNext ? <p className="mt-2"><strong>Improve next:</strong> {learningAction.fixNext}</p> : null}
+            {learningAction.actionDetail ? <p className="mt-2">{learningAction.actionDetail}</p> : null}
+          </div>
         ) : null}
-      </Card>
+      </section>
 
-      <Card>
-        <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Submission History</h2>
-        {submissionHistory.length ? <SubmissionHistory submissions={submissionHistory} assignment={assignment} /> : (
-          <EmptyState
-            title="No submission history"
-            description="Your first upload will create a versioned record here, including the file name, timestamp, and latest status."
-            actionLabel="Use upload panel"
-            actionHref={`/dashboard/student/assignments/${assignment.id}`}
-            icon={UploadCloud}
-          />
-        )}
-      </Card>
-    </div>
+      <section aria-labelledby="history-heading" className="mt-7">
+        <h3 id="history-heading" className="border-b border-[#d9d2c5] pb-2 text-base font-semibold text-academy-navy dark:border-white/20 dark:text-white">Submission History</h3>
+        {submissionHistory.length ? <SubmissionHistory submissions={submissionHistory} assignment={assignment} /> :
+          <p className="mt-3 text-academy-muted">Your submission history will appear here after you submit work.</p>}
+      </section>
+
+      <section aria-labelledby="upload-heading" className="mt-7 border-t border-[#d9d2c5] pt-5 dark:border-white/20">
+        <h3 id="upload-heading" className="text-base font-semibold text-academy-navy dark:text-white">Upload Work</h3>
+        <p className="mt-1 text-academy-muted">Accepted files: PDF, JPG, PNG, or a written response. Maximum file size: 5 MiB.</p>
+        {uploadDisabled ? <p className="mt-3 font-medium text-amber-800 dark:text-amber-300">This assignment is closed or archived, so uploads are disabled.</p> : null}
+        <AssignmentUploadPanel assignment={assignment} submission={submission} disabled={uploadDisabled} />
+      </section>
+    </article>
   );
 }
 
-function DetailMetric({ label, value }: { label: string; value: string }) {
+function SubmissionHistory({ submissions, assignment }: { submissions: AssignmentSubmission[]; assignment: Assignment }) {
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/[0.58] p-4 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-aegean dark:text-brand-gold">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-100">{value}</p>
-    </div>
-  );
-}
-
-function SubmissionHistory({
-  submissions,
-  assignment,
-}: {
-  submissions: AssignmentSubmission[];
-  assignment: Assignment;
-}) {
-  return (
-    <div className="mt-4 space-y-3">
-      {submissions.map((submission) => {
-        const status = calculateAssignmentStatus({ assignment, submission });
+    <ul className="mt-3 divide-y divide-[#e3ddd2] dark:divide-white/15">
+      {submissions.map((item) => {
+        const status = calculateAssignmentStatus({ assignment, submission: item });
         return (
-          <TimelineCard
-            key={submission.id}
-            title={`Version ${submission.version_number || 1} - submitted ${formatDate(submission.submitted_at)}`}
-            meta={submission.original_filename || submission.file_url || submission.text_answer || 'Submission saved.'}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge value={status} />
-                {submission.is_latest ? <span className="rounded-full bg-brand-gold/20 px-3 py-1 text-xs font-semibold text-brand-obsidian">Latest version</span> : null}
-              </div>
-              {submission.marks_awarded != null ? <p className="text-sm font-semibold text-teal-700">Mark: {submission.marks_awarded}%</p> : null}
+          <li key={item.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+            <div>
+              <p className="font-medium">Version {item.version_number || 1} · {item.submitted_at ? formatDate(item.submitted_at) : 'Date unavailable'}{item.is_latest ? ' · Latest version' : ''}</p>
+              <p className="mt-1 text-academy-muted">{item.original_filename || (item.text_answer ? 'Written response' : 'Submission')}</p>
+              {item.file_url ? <a className="mt-1 inline-block font-medium text-academy-aegean underline dark:text-sky-300" href={item.file_url} target="_blank" rel="noreferrer">Open submitted file</a> : null}
             </div>
-            {submission.text_answer ? <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-brand-marble">{submission.text_answer}</p> : null}
-            {submission.file_url ? (
-              <a className="mt-3 inline-flex break-all text-sm font-semibold text-brand-aegean hover:text-brand-gold" href={submission.file_url} rel="noreferrer" target="_blank">
-                Open submitted file
-              </a>
-            ) : null}
-          </TimelineCard>
+            <div className="text-right">
+              <p>{getAssignmentStatusLabel(status)}</p>
+              {item.marks_released && item.marks_awarded != null ? <p className="mt-1 font-semibold">{item.marks_awarded}%</p> : null}
+            </div>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }
 
