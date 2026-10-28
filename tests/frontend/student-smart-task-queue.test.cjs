@@ -33,30 +33,34 @@ test('submitted work is isolated from overdue learner-action groups', () => {
   assert.ok(!data.includes("status === 'late_submitted') return 'needs-attention'"), 'late submitted work must never return to overdue action');
 });
 
-test('Assignments page presents a searchable, accessible LMS list without archive cards', () => {
+test('student assignments use the university-style column table with one detail route', () => {
   const route = read('src', 'features', 'students', 'StudentAssignmentsRoute.tsx');
+  for (const label of ['Assignment Title', 'Status', 'Posted', 'Due Date', 'Submitted Date', 'Grade']) {
+    assert.ok(route.includes(label), `Missing LMS table column: ${label}`);
+  }
   assert.ok(route.includes('title="Assignments"'));
-  assert.ok(route.includes('Filter assignments'));
+  assert.ok(route.includes('<table'));
   assert.ok(route.includes('type="search"'));
-  assert.ok(route.includes('aria-pressed={filter === item.key}'));
-  assert.ok(route.includes('Your assignments'));
-  assert.ok(route.includes('View result'));
-  assert.ok(route.includes('View corrections'));
+  assert.ok(route.includes('<select'));
+  assert.ok(route.includes('aria-label="View assignments"'));
+  assert.ok(route.includes('useSearchParams()'));
+  assert.ok(route.includes('PAGE_SIZE = 10'), 'large histories should be paginated');
+  assert.ok(route.includes('/dashboard/student/assignments/${assignment.id}'));
   assert.ok(!route.includes('QueueSummaryTabs'));
   assert.ok(!route.includes('NextUpPanel'));
-  assert.ok(!route.includes('Archive <span'));
   assert.ok(!route.includes('AssignmentDetailPanel'));
-  assert.ok(route.includes('useSearchParams()'));
+  assert.ok(!route.includes('StatusBadge'));
+  assert.ok(!route.includes('<Card'));
 });
 
-test('Assignment list shows released marks only, with safe subject and due-date fallbacks', () => {
+test('list renders only authorized records and marks released by tutors', () => {
   const route = read('src', 'features', 'students', 'StudentAssignmentsRoute.tsx');
   assert.ok(route.includes('submission?.marks_released && submission.marks_awarded != null'));
-  assert.ok(route.includes("assignment.subject?.trim() || 'Subject not listed'"));
-  assert.ok(route.includes("if (!value) return 'No due date'"));
+  assert.ok(route.includes('assignment.status !== \'draft\''));
+  assert.ok(route.includes("if (!value) return '—'"));
   assert.ok(route.includes('statusGroup'));
   assert.ok(route.includes('isVisible'));
-  assert.ok(route.includes('assignment.status !== \'draft\''));
+  assert.ok(route.includes("return 'Returned'"));
 });
 
 test('unreleased marked records stay under review until release evidence exists', () => {
