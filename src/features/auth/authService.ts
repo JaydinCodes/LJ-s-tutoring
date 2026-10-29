@@ -19,28 +19,6 @@ export type AuthStatus =
 
 export type AuthProfile = Omit<Profile, 'role'> & { role: SupportedDashboardRole };
 
-export type AdminMfaStatus =
-  | 'not_applicable'
-  | 'verified'
-  | 'required'
-  | 'setup_required'
-  | 'unavailable'
-  | 'dev_bypass';
-
-export interface AdminMfaState {
-  status: AdminMfaStatus;
-  currentLevel: string | null;
-  nextLevel: string | null;
-  factorId: string | null;
-  error: string | null;
-}
-
-export interface AdminMfaEnrollment {
-  factorId: string;
-  qrCode: string;
-  secret: string;
-}
-
 export interface AuthState {
   configured: boolean;
   loading: boolean;
@@ -48,151 +26,8 @@ export interface AuthState {
   profile: AuthProfile | null;
   status: AuthStatus;
   operationalAccess: OperationalAccess;
-  adminMfa: AdminMfaState;
   mustChangeTemporaryPassword: boolean;
   error: string | null;
-}
-
-type MfaFactorLike = {
-  id?: string;
-  factor_type?: string;
-  status?: string;
-};
-
-export const ADMIN_MFA_NOT_APPLICABLE: AdminMfaState = {
-  status: 'not_applicable',
-  currentLevel: null,
-  nextLevel: null,
-  factorId: null,
-  error: null,
-};
-
-function isLocalAdminMfaBypassEnabled() {
-  return !import.meta.env.PROD && import.meta.env.VITE_PO_DEV_ADMIN_MFA_BYPASS === 'true';
-}
-
-function findVerifiedTotpFactor(factors: unknown) {
-  const groupedFactors = factors as Partial<Record<'totp' | 'all', MfaFactorLike[]>>;
-  const candidates = [...(groupedFactors.totp ?? []), ...(groupedFactors.all ?? [])];
-  return candidates.find((factor) => factor.id && factor.factor_type === 'totp' && factor.status === 'verified') ?? null;
-}
-
-export async function getAdminMfaState(): Promise<AdminMfaState> {
-  if (isLocalAdminMfaBypassEnabled()) {
-    return {
-      status: 'dev_bypass',
-      currentLevel: 'dev_bypass',
-      nextLevel: 'dev_bypass',
-      factorId: null,
-      error: null,
-    };
-  }
-
-  const client = requireSupabase();
-  const assurance = await client.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (assurance.error) {
-    captureAppError(assurance.error, {
-      featureArea: 'auth',
-      action: 'auth.admin_mfa_assurance_failed',
-    });
-    return {
-      status: 'unavailable',
-      currentLevel: null,
-      nextLevel: null,
-      factorId: null,
-      error: assurance.error.message,
-    };
-  }
-
-  const currentLevel = assurance.data.currentLevel ?? null;
-  const nextLevel = assurance.data.nextLevel ?? null;
-  if (currentLevel === 'aal2') {
-    return { status: 'verified', currentLevel, nextLevel, factorId: null, error: null };
-  }
-
-  const factorResult = await client.auth.mfa.listFactors();
-  if (factorResult.error) {
-    captureAppError(factorResult.error, {
-      featureArea: 'auth',
-      action: 'auth.admin_mfa_factors_failed',
-    });
-    return {
-      status: 'unavailable',
-      currentLevel,
-      nextLevel,
-      factorId: null,
-      error: factorResult.error.message,
-    };
-  }
-
-  const verifiedTotpFactor = findVerifiedTotpFactor(factorResult.data);
-  if (!verifiedTotpFactor?.id) {
-    return {
-      status: 'setup_required',
-      currentLevel,
-      nextLevel,
-      factorId: null,
-      error: 'A verified Supabase TOTP factor is required for admin access.',
-    };
-  }
-
-  return {
-    status: 'required',
-    currentLevel,
-    nextLevel,
-    factorId: verifiedTotpFactor.id,
-    error: null,
-  };
-}
-
-export async function challengeAdminMfa(factorId: string) {
-  const client = requireSupabase();
-  const challenge = await client.auth.mfa.challenge({ factorId });
-  if (challenge.error) {
-    captureAppError(challenge.error, {
-      featureArea: 'auth',
-      action: 'auth.admin_mfa_challenge_failed',
-    });
-    throw challenge.error;
-  }
-
-  return { challengeId: challenge.data.id };
-}
-
-export async function enrollAdminMfa(): Promise<AdminMfaEnrollment> {
-  const client = requireSupabase();
-  const enrollment = await client.auth.mfa.enroll({
-    factorType: 'totp',
-    friendlyName: 'Project Odysseus Admin',
-  });
-
-  if (enrollment.error) {
-    captureAppError(enrollment.error, {
-      featureArea: 'auth',
-      action: 'auth.admin_mfa_enroll_failed',
-    });
-    throw enrollment.error;
-  }
-
-  return {
-    factorId: enrollment.data.id,
-    qrCode: enrollment.data.totp.qr_code,
-    secret: enrollment.data.totp.secret,
-  };
-}
-
-export async function verifyAdminMfa(input: { factorId: string; challengeId: string; code: string }) {
-  const client = requireSupabase();
-  const verification = await client.auth.mfa.verify(input);
-  if (verification.error) {
-    captureAppError(verification.error, {
-      featureArea: 'auth',
-      action: 'auth.admin_mfa_verify_failed',
-    });
-    throw verification.error;
-  }
-
-  return verification.data;
 }
 
 export async function fetchCurrentProfile() {
@@ -209,16 +44,6 @@ export async function fetchCurrentProfile() {
       ...snapshot,
       mustChangeTemporaryPassword: false,
       operationalAccess,
-      adminMfa:
-        role === 'admin'
-          ? {
-              status: 'dev_bypass',
-              currentLevel: 'dev_bypass',
-              nextLevel: 'dev_bypass',
-              factorId: null,
-              error: null,
-            } satisfies AdminMfaState
-          : ADMIN_MFA_NOT_APPLICABLE,
     };
   }
 
@@ -228,7 +53,6 @@ export async function fetchCurrentProfile() {
       profile: null,
       status: 'error' as const,
       operationalAccess: 'not_applicable' as const,
-      adminMfa: ADMIN_MFA_NOT_APPLICABLE,
       mustChangeTemporaryPassword: false,
     };
   }
@@ -253,7 +77,6 @@ export async function fetchCurrentProfile() {
       profile: null,
       status: 'unauthenticated' as const,
       operationalAccess: 'not_applicable' as const,
-      adminMfa: ADMIN_MFA_NOT_APPLICABLE,
       mustChangeTemporaryPassword: false,
     };
   }
@@ -280,7 +103,6 @@ export async function fetchCurrentProfile() {
       profile: null,
       status: 'missing_profile' as const,
       operationalAccess: 'not_applicable' as const,
-      adminMfa: ADMIN_MFA_NOT_APPLICABLE,
       mustChangeTemporaryPassword: false,
     };
   }
@@ -293,7 +115,6 @@ export async function fetchCurrentProfile() {
       profile: null,
       status: 'invalid_role' as const,
       operationalAccess: 'not_applicable' as const,
-      adminMfa: ADMIN_MFA_NOT_APPLICABLE,
       mustChangeTemporaryPassword: false,
     };
   }
@@ -332,11 +153,6 @@ export async function fetchCurrentProfile() {
     operationalAccess = accessResult.data ? 'allowed' : 'blocked';
   }
 
-  const adminMfa =
-    role === 'admin'
-      ? await getAdminMfaState()
-      : ADMIN_MFA_NOT_APPLICABLE;
-
   return {
     session,
     profile: {
@@ -345,7 +161,6 @@ export async function fetchCurrentProfile() {
     },
     status: 'authenticated' as const,
     operationalAccess,
-    adminMfa,
     mustChangeTemporaryPassword: role === 'student' && session.user.app_metadata?.require_password_change === true,
   };
 }
@@ -355,9 +170,6 @@ export async function signInWithPassword(email: string, password: string) {
     const snapshot = await signInWithE2EMock(email, password);
     return {
       ...snapshot,
-      adminMfa: snapshot.profile?.role === 'admin'
-        ? { status: 'dev_bypass', currentLevel: 'dev_bypass', nextLevel: 'dev_bypass', factorId: null, error: null } satisfies AdminMfaState
-        : ADMIN_MFA_NOT_APPLICABLE,
     };
   }
 

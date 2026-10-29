@@ -13,7 +13,7 @@ const mutations = read('src/features/admin/rosterMutations.ts');
 
 test('TUT-DEL-01 uses a trusted, leased tutor deletion saga', () => {
   assert.match(migration, /create or replace function public\.request_tutor_deletion\(/);
-  assert.match(migration, /if not public\.is_platform_admin\(\) then[\s\S]*?admin_mfa_required/);
+  assert.match(migration, /if not public\.is_platform_admin\(\) then/);
   assert.match(migration, /create or replace function public\.claim_tutor_deletion\(/);
   assert.match(migration, /processing_claim_token/);
   assert.match(migration, /processing_lease_expires_at/);
@@ -35,7 +35,7 @@ test('TUT-DEL-01 retains financial history while erasing tutor personal data', (
 });
 
 test('TUT-DEL-01 worker bans, clears storage, erases database data, and deletes Auth last', () => {
-  assert.match(worker, /decodeAal\(token\) !== 'aal2'/);
+  assert.doesNotMatch(worker, /decodeAal|admin_mfa_required/);
   assert.match(worker, /claim_tutor_deletion/);
   assert.match(worker, /updateUserById\(authUserId, \{ ban_duration: '876000h' \}\)/);
   assert.match(worker, /get_tutor_deletion_storage_manifest/);

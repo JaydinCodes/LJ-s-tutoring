@@ -25,7 +25,7 @@ test('architecture docs confirm lms-api retirement and document required diagram
 
   assert.match(architecture, /`lms-api\/` \(Fastify \+ Prisma\) was fully retired/);
   assert.match(architecture, /Browser-protected routes use Supabase session\/profile state/);
-  assert.match(architecture, /sequenceDiagram[\s\S]*getAuthenticatorAssuranceLevel/);
+  assert.match(architecture, /sequenceDiagram[\s\S]*normalized role/);
   assert.match(architecture, /sequenceDiagram[\s\S]*submit_assignment_submission/);
   assert.match(architecture, /sequenceDiagram[\s\S]*mark_assignment_submission/);
   assert.match(architecture, /POPIA/);

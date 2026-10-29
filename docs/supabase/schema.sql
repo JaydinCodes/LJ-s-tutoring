@@ -511,18 +511,9 @@ as $$
   select role from public.profile_identities where auth_user_id = auth.uid()
 $$;
 
--- Security fix (2026-07-24): admin RLS/RPC checks used to stop at
--- current_profile_role() = 'admin', matching AUDIT.md's original Critical
--- ("admin session with no server-side MFA") in a new form -- someone who
--- phished an admin's password but not their TOTP device could bypass
--- AdminMfaGate (a React component, not a security boundary) by calling
--- supabase-js/PostgREST directly with an aal1 session. AdminMfaGate remains
--- for UX, but the real enforcement now lives here, in the single function
--- every admin-gated policy/RPC in this file calls. auth.jwt()->>'aal' is
--- absent for the trusted service-role/pg_cron contexts that some RPCs
--- explicitly OR against (e.g. "is_platform_admin() or auth.uid() is null"),
--- so this correctly returns false there rather than raising -- those
--- call sites' own "auth.uid() is null" branch is what grants access.
+-- Admin RLS/RPC checks use the profile role in this shared helper. MFA is an
+-- optional Supabase Auth account setting and is not an application access
+-- requirement.
 -- Defined immediately after current_profile_role() (not near its other
 -- multi-org helper siblings further down) so every earlier policy/RPC in
 -- this file that calls it has a function that actually exists yet --
@@ -534,8 +525,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select public.current_profile_role() = 'admin'
-    and coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2'
+  select coalesce(public.current_profile_role() = 'admin', false)
 $$;
 
 create or replace function public.current_profile_id()
@@ -1987,7 +1977,7 @@ grant execute on function public.process_privacy_request(uuid) to authenticated;
 -- Retention cleanup for Supabase-owned data (POPIA_DATA_MAP §5).
 --
 -- The destructive worker is private and has no API-role EXECUTE grants.
--- Browser calls use the admin + AAL2-gated run_retention_cleanup RPC.
+-- Browser calls use the platform-admin-gated run_retention_cleanup RPC.
 -- Scheduled apply runs use run_retention_cleanup_scheduled(), which is granted
 -- only to service_role and validates the signed JWT role claim.
 -- ============================================================================
@@ -2140,7 +2130,7 @@ from public, anon, authenticated, service_role;
 grant execute on function public.run_retention_cleanup_scheduled() to service_role;
 
 comment on function public.run_retention_cleanup(boolean) is
-  'Admin-only retention dry-run/apply RPC. Requires platform admin authorization with AAL2.';
+  'Admin-only retention dry-run/apply RPC. Requires platform-admin authorization.';
 
 comment on function public.run_retention_cleanup_scheduled() is
   'Service-role-only scheduled retention apply RPC. Requires a signed JWT role claim of service_role.';

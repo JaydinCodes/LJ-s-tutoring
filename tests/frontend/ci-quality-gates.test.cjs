@@ -106,13 +106,12 @@ test('runtime Supabase RLS tests rebuild committed migrations in app CI', () => 
   assert.ok(fs.existsSync(path.join(root, 'supabase', 'tests', 'database', 'rls_role_matrix.test.sql')));
 });
 
-test('real Supabase browser gate covers the released academic loop and real admin AAL2', () => {
+test('real Supabase browser gate covers the released academic loop and admin access', () => {
   const runner = read('scripts/run-local-supabase-e2e.cjs');
   const journeys = read('tests/e2e-react/supabase-role-journeys.spec.ts');
 
   assert.match(runner, /assertLoopback\('Supabase API URL'/);
   assert.match(runner, /assertLoopback\('Supabase database URL'/);
-  assert.match(runner, /VITE_PO_DEV_ADMIN_MFA_BYPASS: 'false'/);
   assert.match(journeys, /page\.on\('pageerror'/);
   assert.match(journeys, /message\.type\(\) === 'error'/);
   assert.match(journeys, /response\.status\(\) >= 400/);
@@ -120,9 +119,8 @@ test('real Supabase browser gate covers the released academic loop and real admi
   assert.match(journeys, /Submission review saved\./);
   assert.match(journeys, /fresh student session sees the tutor-released result/);
   assert.match(journeys, /84% average/);
-  assert.match(journeys, /Start MFA setup/);
-  assert.match(journeys, /currentTotp\(secret!/);
-  assert.match(journeys, /Verify and unlock admin/);
+  assert.match(journeys, /Local Supabase Admin/);
+  assert.doesNotMatch(journeys, /Start MFA setup/);
 });
 
 test('accessibility and link checks use pinned local tools and canonical routes', () => {

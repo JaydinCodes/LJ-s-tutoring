@@ -40,20 +40,15 @@ and AI proxy calls stay in Supabase Edge Functions.
 - Reset and verify local policy behavior with the instructions in
   [LOCAL_DEVELOPMENT.md](../supabase/LOCAL_DEVELOPMENT.md).
 
-## Admin MFA
+## Admin access
 
-Production admin access requires Supabase Auth MFA, a normalized `admin` profile
-role, and Authenticator Assurance Level 2 (`aal2`) with a verified TOTP factor.
-The React admin guard calls `getAuthenticatorAssuranceLevel()` and blocks access
-when the MFA status cannot be read or the session is only `aal1`.
+Production admin access requires a valid Supabase session and a normalized
+`admin` profile role. Database RLS and Edge Functions enforce that role for
+privileged operations; the browser route guard is only a user-experience layer.
 
-The application uses Supabase MFA enrollment, challenge, verification, factor
-listing, and assurance-level APIs. Email OTP may be a first-factor sign-in
-method, but it is not the required admin second factor.
-
-`VITE_PO_DEV_ADMIN_MFA_BYPASS=true` is for local UI development only and is
-ignored by production builds. Do not set it in staging or production (and do not
-set it in preview environments either).
+Supabase MFA can still be enabled for individual accounts in the Supabase
+Dashboard, but the application does not require an authenticator factor for
+admin access.
 
 ## Local development
 
@@ -78,8 +73,8 @@ npm run verify:supabase:roles
 - Student, tutor, parent, NGO-partner, and admin users land on their own shell.
 - Cross-role queries and mutations fail at the database boundary, not just in
   React.
-- An admin with `aal1` is asked to complete TOTP and cannot render protected
-  admin content first.
+- An admin with a valid session and an `admin` profile can render protected
+  admin content.
 - Sign-out clears the active Supabase session and protected data disappears.
 - The runtime pgTAP suite passes after a clean migration reset.
 

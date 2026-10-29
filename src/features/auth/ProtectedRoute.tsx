@@ -4,7 +4,6 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
 import { LoadingState, MissingProfileState, PermissionDeniedState } from '../../components/ui/State';
 import { captureAppMessage } from '../../lib/monitoring/errorReporting';
-import { AdminMfaGate } from './AdminMfaGate';
 import { TemporaryPasswordGate } from './TemporaryPasswordGate';
 import { useAuth } from './AuthProvider';
 import { signOut } from './authService';
@@ -102,10 +101,6 @@ export function ProtectedRoute({ roles, children }: { roles: SupportedDashboardR
       </GuardShell>
     );
   }
-  if (currentRole === 'admin') {
-    return <AdminMfaGate>{children}</AdminMfaGate>;
-  }
-
   if (currentRole === 'student') {
     return <TemporaryPasswordGate>{children}</TemporaryPasswordGate>;
   }

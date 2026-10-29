@@ -15,24 +15,21 @@ const schema = read('docs/supabase/schema.sql');
 // pins the specific gap that was found and fixed, so a future refactor that
 // silently reopens one of these fails loudly here rather than only in a
 // live pentest. Where practical, the underlying fix was also live-verified
-// against a local Supabase instance with simulated JWTs (aal1 vs aal2
-// sessions, cross-org vs same-org submissions) -- these tests cover the
+// against a local Supabase instance with simulated role sessions and
+// cross-org vs same-org submissions -- these tests cover the
 // static, always-run half of that verification.
 
-test('admin RLS/RPC checks require AAL2, not just role=admin', () => {
+test('admin RLS/RPC checks require a platform-admin role', () => {
   const block = schema.slice(
     schema.indexOf('create or replace function public.is_platform_admin()'),
   ).split('$$;')[0];
 
   assert.match(block, /current_profile_role\(\) = 'admin'/, 'is_platform_admin must still check role');
-  assert.match(block, /auth\.jwt\(\) ->> 'aal'/, 'is_platform_admin must check the AAL2 claim, not just role');
-  assert.match(block, /= 'aal2'/);
+  assert.doesNotMatch(block, /auth\.jwt\(\) ->> 'aal'/, 'admin access no longer requires an AAL2 claim');
 
   // Every direct current_profile_role() = 'admin' equality check was
-  // converted to is_platform_admin() -- a lingering direct check would be a
-  // silent MFA bypass reintroduced somewhere. Strip comment lines and
-  // is_platform_admin()'s own body (the one legitimate place this still
-  // appears, as part of computing the AAL2-aware result) before checking.
+  // converted to is_platform_admin() so policies and RPCs use one role check.
+  // Strip comment lines and the helper body before checking.
   const codeWithoutComments = schema
     .split('\n')
     .filter((line) => !line.trim().startsWith('--'))
@@ -53,12 +50,12 @@ test('admin RLS/RPC checks require AAL2, not just role=admin', () => {
   assert.ok(definitionIndex >= 0 && definitionIndex <= firstCallerIndex, 'is_platform_admin() must be defined before its first caller in file order');
 });
 
-test('the three most sensitive POPIA admin RPCs (export, anonymize, process privacy request) require AAL2', () => {
+test('the three most sensitive POPIA admin RPCs use the platform-admin check', () => {
   for (const fnName of ['export_student_data', 'anonymize_student', 'process_privacy_request']) {
     const startIdx = schema.indexOf(`create or replace function public.${fnName}(`);
     assert.ok(startIdx >= 0, `public.${fnName} must exist`);
     const block = schema.slice(startIdx, startIdx + 800);
-    assert.match(block, /if not public\.is_platform_admin\(\) then/, `${fnName} must gate on the AAL2-aware admin check`);
+    assert.match(block, /if not public\.is_platform_admin\(\) then/, `${fnName} must gate on the platform-admin check`);
   }
 });
 

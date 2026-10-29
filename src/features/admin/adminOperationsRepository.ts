@@ -313,9 +313,6 @@ async function readPrivacyDeletionError(error: unknown): Promise<string> {
 }
 
 function readablePrivacyDeletionError(raw: string) {
-  if (raw.includes('admin_mfa_required')) {
-    return 'Admin MFA is required before deleting learner data.';
-  }
   if (raw.includes('admin_required')) {
     return 'Only platform administrators can process deletion requests.';
   }

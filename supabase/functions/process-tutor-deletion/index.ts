@@ -31,19 +31,6 @@ interface DeletionContext {
   processing_state: ProcessingState;
 }
 
-function decodeAal(token: string): string | null {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
-    const claims = JSON.parse(atob(padded)) as Record<string, unknown>;
-    return typeof claims.aal === 'string' ? claims.aal : null;
-  } catch {
-    return null;
-  }
-}
-
 function messageOf(error: unknown): string {
   if (error instanceof Error) return error.message;
   return typeof error === 'string' ? error : 'unknown_error';
@@ -71,7 +58,7 @@ function isAuthUserMissing(error: unknown): boolean {
 
 function statusForError(message: string): number {
   if (message === 'supabase_bearer_required' || message === 'supabase_bearer_invalid') return 401;
-  if (message === 'admin_required' || message === 'admin_mfa_required') return 403;
+  if (message === 'admin_required') return 403;
   if (message === 'rate_limited') return 429;
   if (message === 'tutor_deletion_request_not_found' || message === 'tutor_not_found') return 404;
   if (message === 'tutor_deletion_busy') return 409;
@@ -125,7 +112,6 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (profileError) throw profileError;
       if ((callerProfile as { role?: string } | null)?.role !== 'admin') throw new Error('admin_required');
-      if (decodeAal(token) !== 'aal2') throw new Error('admin_mfa_required');
 
       const { data: allowed, error: rateLimitError } = await admin.rpc(
         'check_and_record_edge_function_rate_limit',

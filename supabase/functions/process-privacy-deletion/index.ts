@@ -47,24 +47,6 @@ interface StorageManifestRow {
   object_name: string;
 }
 
-function decodeAal(token: string): string | null {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(
-      normalized.length + ((4 - (normalized.length % 4)) % 4),
-      '=',
-    );
-
-    const decoded = JSON.parse(atob(padded)) as Record<string, unknown>;
-    return typeof decoded.aal === 'string' ? decoded.aal : null;
-  } catch {
-    return null;
-  }
-}
-
 function messageOf(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
@@ -100,7 +82,7 @@ function isAuthUserMissing(error: unknown): boolean {
 
 function statusForError(message: string): number {
   if (message === 'supabase_bearer_required' || message === 'supabase_bearer_invalid') return 401;
-  if (message === 'admin_required' || message === 'admin_mfa_required') return 403;
+  if (message === 'admin_required') return 403;
   if (message === 'rate_limited') return 429;
   if (message === 'privacy_request_not_found') return 404;
   if (message === 'privacy_request_is_not_deletion') return 409;
@@ -162,7 +144,7 @@ Deno.serve(async (req) => {
     let authenticatedUserId: string | null = null;
 
     if (!isTrustedWorker) {
-      // Validate caller identity with Auth, then require platform admin + AAL2.
+      // Validate caller identity with Auth, then require a platform admin.
       const { data: userData, error: userError } = await admin.auth.getUser(token);
       if (userError || !userData.user) {
         throw new Error('supabase_bearer_invalid');
@@ -179,10 +161,6 @@ Deno.serve(async (req) => {
       if ((callerProfile as { role?: string } | null)?.role !== 'admin') {
         throw new Error('admin_required');
       }
-      if (decodeAal(token) !== 'aal2') {
-        throw new Error('admin_mfa_required');
-      }
-
       const { data: rateLimitAllowed, error: rateLimitError } = await admin.rpc(
         'check_and_record_edge_function_rate_limit',
         {

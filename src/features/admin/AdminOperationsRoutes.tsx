@@ -285,7 +285,7 @@ export function AdminAiGradingRoute() {
   }, {});
 
   return (
-    <DashboardShell title="AI grading operations" subtitle="Optional AI drafts only. Human marking remains available while jobs recover. Admin MFA is required." section="admin">
+    <DashboardShell title="AI grading operations" subtitle="Optional AI drafts only. Human marking remains available while jobs recover." section="admin">
       <Card>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -15,11 +15,7 @@ import {
   captureAppMessage,
   setMonitoringUserContext,
 } from '../../lib/monitoring/errorReporting';
-import {
-  ADMIN_MFA_NOT_APPLICABLE,
-  fetchCurrentProfile,
-  type AuthState,
-} from './authService';
+import { fetchCurrentProfile, type AuthState } from './authService';
 
 interface AuthContextValue extends AuthState {
   refresh: () => Promise<void>;
@@ -41,7 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile: null,
     status: 'loading',
     operationalAccess: 'not_applicable',
-    adminMfa: ADMIN_MFA_NOT_APPLICABLE,
     mustChangeTemporaryPassword: false,
     error: null,
   });
@@ -60,7 +55,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile: null,
         status: 'error',
         operationalAccess: 'not_applicable',
-        adminMfa: ADMIN_MFA_NOT_APPLICABLE,
         mustChangeTemporaryPassword: false,
         error:
           'The sign-in service is temporarily unavailable. Please contact support if you need urgent access.',
@@ -88,7 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         status,
         operationalAccess,
-        adminMfa,
         mustChangeTemporaryPassword,
       } = await fetchCurrentProfile();
 
@@ -112,7 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         status,
         operationalAccess,
-        adminMfa,
         mustChangeTemporaryPassword,
         error: statusError,
       });
@@ -153,7 +145,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile: null,
         status: 'error',
         operationalAccess: 'not_applicable',
-        adminMfa: ADMIN_MFA_NOT_APPLICABLE,
         mustChangeTemporaryPassword: false,
         error: message,
       });
@@ -246,7 +237,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           profile: null,
           status: 'unauthenticated',
           operationalAccess: 'not_applicable',
-          adminMfa: ADMIN_MFA_NOT_APPLICABLE,
           mustChangeTemporaryPassword: false,
           error: null,
         });
@@ -278,7 +268,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             profile: null,
             status: 'loading',
             operationalAccess: 'not_applicable',
-            adminMfa: ADMIN_MFA_NOT_APPLICABLE,
             mustChangeTemporaryPassword: false,
             error: null,
           });
