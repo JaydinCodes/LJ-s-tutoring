@@ -1425,23 +1425,16 @@ select throws_ok(
 
 reset role;
 
--- Admin policy is gated by authoritative AAL2, not the frontend MFA screen.
+-- Admin policy is role-based; Supabase MFA assurance is not required.
 select pg_temp.authenticate_as('00000000-0000-0000-0000-000000000001', 'aal1');
 set local role authenticated;
 
-select ok(not public.is_platform_admin(), 'AAL1 admin session is not platform-admin authorized');
-select throws_ok(
-  $$select public.run_retention_cleanup(false)$$,
-  '42501',
-  'not_authorized',
-  'AAL1 admin cannot run retention cleanup'
+select ok(public.is_platform_admin(), 'Admin role is authorized with an AAL1 session');
+select is(
+  (public.run_retention_cleanup(false) ->> 'applied')::boolean,
+  false,
+  'AAL1 admin can run a non-destructive retention dry run'
 );
-select is((select count(*) from public.profiles), 1::bigint, 'AAL1 admin sees only their ordinary self profile');
-select is((select count(*) from public.assignments), 0::bigint, 'AAL1 admin cannot use admin assignment access');
-select is((select count(*) from public.assignment_submissions), 0::bigint, 'AAL1 admin cannot use admin result access');
-select is((select count(*) from public.classes), 0::bigint, 'AAL1 admin cannot use admin class access');
-select is((select count(*) from public.class_enrollments), 0::bigint, 'AAL1 admin cannot use admin enrollment access');
-select is((select count(*) from storage.objects where bucket_id in ('assignment-files', 'assignment-submissions')), 0::bigint, 'AAL1 admin cannot use admin storage access');
 
 reset role;
 
