@@ -5,13 +5,13 @@ Single-stack migration (ADR-0003), Tier-2 slice 1. Replaces the Fastify route
 
 Invites/creates a Supabase Auth user and provisions their `profiles` row plus a
 `students`/`tutors` record, using the service-role key that must never reach the
-browser. Caller must be an **ADMIN** profile that has passed **MFA (AAL2)**.
+browser. Caller must have an **ADMIN** profile.
 
 ## Status: deployed, verified, frontend repointed
 
-Verified live with a real AAL2 admin token: both the student and tutor create
+Verified live with an admin token: both the student and tutor create
 paths succeed (correct `profiles` + `students`/`tutors` rows), duplicate email
-is correctly rejected (`409`), and a non-admin/non-AAL2 caller is correctly
+is correctly rejected (`409`), and a non-admin caller is correctly
 rejected (`403`). `src/features/admin/AdminUsersRoute.tsx` now calls this
 function via `supabase.functions.invoke`. The Fastify route stays registered
 until the broader `lms-api` retirement.
@@ -50,25 +50,23 @@ Administrators can resend an unaccepted invite from the tutor or student roster.
 The function re-reads the stored profile role server-side, refuses an already
 accepted account, and sends the fresh invitation to that role's portal URL.
 
-> Note: unlike the Fastify route, this function has **no dev MFA bypass** — AAL2 is
-> always required, because an Edge Function only runs deployed. Keep using the
-> Fastify route for local dev until the full cutover.
+> Note: authorization is based on the caller's authenticated ADMIN profile.
 
 ## Verify
 
-Get an admin session's access token that has completed MFA (AAL2), then:
+Get an authenticated admin session's access token, then:
 
 ```bash
 curl -i -X POST "https://<project-ref>.supabase.co/functions/v1/admin-invite-user" \
-  -H "Authorization: Bearer <ADMIN_AAL2_ACCESS_TOKEN>" \
+  -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
   -H "apikey: <SUPABASE_ANON_KEY>" \
   -H "content-type: application/json" \
   -d '{"mode":"invite","role":"tutor","fullName":"Test Tutor","email":"test.tutor@example.com","tutor":{"subjects":["Mathematics"],"grades":["10"]}}'
 ```
 
 Expect `{"ok":true,...}`. Confirm the `profiles` + `tutors` rows exist. Also check
-the guard rails: a non-admin token → `403 admin_required`; a non-AAL2 admin token
-→ `403 admin_mfa_required`; a duplicate email → `409 duplicate_email`.
+the guard rails: a non-admin token → `403 admin_required`; a duplicate email
+→ `409 duplicate_email`.
 
 ## Retire the Fastify route (not yet done)
 

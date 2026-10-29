@@ -13,9 +13,8 @@ configuration.
   `VITE_SENTRY_RELEASE`, `VITE_SENTRY_SAMPLE_RATE` — optional browser monitoring
   configuration. The DSN is public; a Sentry auth token is not.
 
-The two local test controls below must not be enabled in deployed builds:
+The local test controls below must not be enabled in deployed builds:
 
-- `VITE_PO_DEV_ADMIN_MFA_BYPASS`
 - `VITE_E2E_AUTH_MOCK` / `VITE_E2E_AUTH_PASSWORD`
 
 ## Retained compatibility output

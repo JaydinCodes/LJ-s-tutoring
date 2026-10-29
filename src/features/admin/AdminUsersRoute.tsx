@@ -163,7 +163,6 @@ function AdminInviteUserForm({ ngoPartners, onCreated }: { ngoPartners: NgoPartn
             This creates the Supabase Auth identity first, then writes the matching profile and role-specific roster row.
           </p>
         </div>
-        <StatusBadge value="admin_mfa_required" />
       </div>
 
       <form className="mt-5 grid gap-4 lg:grid-cols-2" onSubmit={(event) => void submit(event)}>
@@ -264,7 +263,7 @@ function SummaryTile({ label, value }: { label: string; value: number }) {
 
 // supabase-js's functions.invoke() wraps a non-2xx response in a generic
 // FunctionsHttpError -- the actual {error: "..."} body the Edge Function sent
-// (duplicate_email, admin_mfa_required, forbidden, ...) is only reachable via
+// (duplicate_email, forbidden, ...) is only reachable via
 // error.context, the raw Response. readableError() below matches against
 // those specific codes, so unwrap it here rather than falling back to the
 // generic wrapper message.
@@ -299,9 +298,6 @@ function readableError(error: unknown) {
   const raw = error instanceof Error ? error.message : 'Could not create user.';
   if (raw.includes('duplicate_email')) {
     return 'A profile with this email already exists.';
-  }
-  if (raw.includes('admin_mfa_required')) {
-    return 'Admin MFA is required before creating users.';
   }
   if (raw.includes('supabase_admin_not_configured')) {
     return 'The backend Supabase admin service is not configured.';

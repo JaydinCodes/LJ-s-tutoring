@@ -60,7 +60,6 @@ async function main() {
     env: {
       ...process.env,
       VITE_E2E_AUTH_MOCK: 'false',
-      VITE_PO_DEV_ADMIN_MFA_BYPASS: 'false',
       VITE_SUPABASE_URL: status.API_URL,
       VITE_SUPABASE_ANON_KEY: status.ANON_KEY,
     },

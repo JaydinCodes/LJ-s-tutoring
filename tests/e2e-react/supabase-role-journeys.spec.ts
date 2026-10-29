@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { createHmac } from 'node:crypto';
 
 const password = 'ProjectOdysseus!23';
 const assignmentId = process.env.E2E_SUPABASE_ASSIGNMENT_ID;
@@ -12,29 +11,6 @@ async function signIn(page: import('@playwright/test').Page, email: string, dest
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(destination);
-}
-
-function decodeBase32(value: string) {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  const bits = value.toUpperCase().replace(/=+$/g, '').split('').map((character) => {
-    const index = alphabet.indexOf(character);
-    if (index < 0) throw new Error('Supabase returned an invalid TOTP secret.');
-    return index.toString(2).padStart(5, '0');
-  }).join('');
-  const bytes = [];
-  for (let index = 0; index + 8 <= bits.length; index += 8) {
-    bytes.push(Number.parseInt(bits.slice(index, index + 8), 2));
-  }
-  return Buffer.from(bytes);
-}
-
-function currentTotp(secret: string) {
-  const counter = Buffer.alloc(8);
-  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000)));
-  const digest = createHmac('sha1', decodeBase32(secret)).update(counter).digest();
-  const offset = digest[digest.length - 1] & 0x0f;
-  const value = (digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000;
-  return value.toString().padStart(6, '0');
 }
 
 function observeRuntimeFailures(page: import('@playwright/test').Page) {
@@ -200,13 +176,6 @@ test('NGO partner authenticates through local Supabase and sees a cohort aggrega
 test('admin authenticates through local Supabase and loads the protected operational view', async ({ page }) => {
   const runtimeFailures = observeRuntimeFailures(page);
   await signIn(page, 'admin.supabase-e2e@projectodysseus.test', /\/dashboard\/admin\/?$/);
-  await expect(page.getByRole('heading', { name: 'MFA setup required' })).toBeVisible();
-  await page.getByRole('button', { name: 'Start MFA setup' }).click();
-  const secret = (await page.locator('code').first().textContent())?.trim();
-  expect(secret).toBeTruthy();
-  await page.getByLabel('Authenticator code').fill(currentTotp(secret!));
-  await page.getByRole('button', { name: 'Verify and unlock admin' }).click();
-
   await expect(page.getByText('Local Supabase Admin', { exact: true })).toBeVisible();
   await expect(page.getByText('Active learners', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Operations requiring attention' })).toBeVisible();

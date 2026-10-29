@@ -27,7 +27,7 @@ they are decision history, not competing runbooks.
 |---|---|---|
 | `src/` | Active | Unified React frontend for public, auth, onboarding, student, tutor, and admin routes. |
 | `src/app/App.tsx` | Active | Route registry for the unified React app. |
-| `src/features/auth/` | Active | Supabase Auth state, role normalization, protected route guards, and admin MFA gate. |
+| `src/features/auth/` | Active | Supabase Auth state, role normalization, and protected route guards. |
 | `src/features/assignments/` | Active | Supabase-first assignment reads and RPC-backed submission/marking mutations. |
 | `src/features/students/` | Active | Student dashboard, assignments, results, careers, reports, and support routes. |
 | `src/features/admin/` | Active | Admin dashboards and operational workflows. |
@@ -69,10 +69,10 @@ Routes are registered in `src/app/App.tsx`.
 | `/dashboard/tutor/*` | Tutor only | Tutor dashboard, classes, sessions, submissions, reports, risk. |
 | `/dashboard/parent/*` | Parent only | Guardian-linked released learner reports. |
 | `/dashboard/ngo/*` | NGO partner only | Permitted aggregate cohort reports. |
-| `/dashboard/admin/*` | Admin only + MFA | Admin dashboard, student/tutor management, assignments, approvals, payments, payroll, reconciliation, reports, results, audit, privacy, retention, ops runbook. |
+| `/dashboard/admin/*` | Admin only | Admin dashboard, student/tutor management, assignments, approvals, payments, payroll, reconciliation, reports, results, audit, privacy, retention, ops runbook. |
 | `/student/*`, `/tutor/*`, `/admin/*` | Compatibility redirects | Redirect into canonical `/dashboard/...` routes. |
 
-`src/features/auth/ProtectedRoute.tsx` enforces route roles. Admin routes additionally pass through `src/features/auth/AdminMfaGate.tsx`.
+`src/features/auth/ProtectedRoute.tsx` enforces route roles.
 
 ## Supabase-First Auth And Role Model
 
@@ -86,7 +86,7 @@ The frontend auth flow is:
 4. `src/features/auth/roles.ts` normalizes role values to `student`, `tutor`,
    `admin`, `parent`, or `ngo_partner`.
 5. `ProtectedRoute` blocks unauthenticated, missing-profile, invalid-role, and wrong-role users.
-6. Admin users must satisfy Supabase MFA assurance before admin content renders.
+6. Admin users must have a valid Supabase session and an `admin` profile role.
 
 ```mermaid
 sequenceDiagram
@@ -108,18 +108,7 @@ sequenceDiagram
       Guard-->>User: Clear blocked state
     else wrong role
       Guard-->>User: Access denied
-    else admin
-      React->>Auth: getAuthenticatorAssuranceLevel()
-      alt AAL2
-        Guard-->>User: Render admin route
-      else verified TOTP exists
-        React->>Auth: challenge() + verify(code)
-        Auth-->>React: AAL2 session
-        Guard-->>User: Render admin route
-      else no verified factor
-        Guard-->>User: MFA setup required
-      end
-    else allowed student or tutor
+    else allowed role
       Guard-->>User: Render role route
     end
   end
@@ -129,7 +118,7 @@ sequenceDiagram
 
 - `student`: may access student routes and student-owned data.
 - `tutor`: may access tutor routes and tutor-owned workflows, especially assignments they created.
-- `admin`: may access admin routes only after Supabase session, admin profile, and MFA.
+- `admin`: may access admin routes after a Supabase session and an admin profile.
 - `parent`: may access only guardian-linked learner reports permitted by the database boundary.
 - `ngo_partner`: may access only permitted cohort reporting data.
 
@@ -341,7 +330,7 @@ Local Supabase details live in `docs/supabase/LOCAL_DEVELOPMENT.md`.
 - Protected static shells must include `noindex` metadata; `scripts/build-static.js` handles this for dashboard and onboarding routes.
 - Browser-exposed config must contain only public values such as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 - Never expose Supabase service-role keys to the browser.
-- Production admin access requires Supabase MFA configuration and verified admin factors.
+- Production admin access requires a Supabase session and an admin profile.
 - Scheduled uptime monitoring validates the static JSON contract, Supabase Auth health, and the data-free `monitoring_health_probe` PostgREST RPC using only the public URL and anon key.
 
 ## Security Notes
@@ -352,7 +341,6 @@ The platform handles minors, academic records, tutor information, parent/guardia
 - Minors: do not expose classmate records, tutor notes, marks, contact data, or guardian data across learner accounts.
 - RLS: every browser-facing table must have RLS enabled before production use.
 - Roles: admin role assignment is trusted-operator/service-role only.
-- MFA: admin routes require Supabase MFA in production.
 - Storage: assignment files and submissions stay private; upload paths must include scoped IDs.
 - RPC: sensitive writes belong in SQL functions that validate role, ownership, state, and allowed transitions.
 - Tests: RLS/RPC policy tests should accompany every schema change that affects learner, tutor, admin, parent, or NGO data.

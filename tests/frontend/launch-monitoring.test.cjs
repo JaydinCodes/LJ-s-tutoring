@@ -41,7 +41,7 @@ test('LAUNCH-06 app crashes and auth anomalies are captured', () => {
   assert.match(protectedRoute, /auth\.unauthorized_route/);
   assert.match(authService, /auth\.password_sign_in_failed/);
   assert.match(authService, /auth\.profile_load_failed/);
-  assert.match(authService, /auth\.admin_mfa_/);
+  assert.doesNotMatch(authService, /auth\.admin_mfa_/);
 });
 
 test('LAUNCH-06 critical workflow failures are captured', () => {

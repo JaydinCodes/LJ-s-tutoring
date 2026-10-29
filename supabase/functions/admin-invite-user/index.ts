@@ -7,8 +7,8 @@
 // may hold.
 //
 // Security: the caller must present a valid Supabase bearer token for an ADMIN
-// profile that has passed MFA (AAL2). Unlike the legacy Fastify route this has NO
-// dev MFA bypass — an Edge Function only runs deployed, so AAL2 is always required.
+// profile. The function runs with a service-role client, so the caller's
+// application role is checked before any privileged work is performed.
 //
 // Status: deployed, verified (student and tutor create paths, duplicate-email
 // rejection, both confirmed live), and the frontend (AdminUsersRoute.tsx) is
@@ -19,7 +19,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
 
 const corsHeaders = {
-  // The admin bearer + role + AAL2 check is the real security boundary; CORS can
+  // The admin bearer + role check is the real security boundary; CORS can
   // be tightened to the app origins if desired.
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -111,22 +111,8 @@ function isExternalOnboardingEnabled(): boolean {
   return Deno.env.get('EXTERNAL_ONBOARDING_ENABLED') === 'true';
 }
 
-// Read the aal (authenticator assurance level) claim from the caller's JWT.
-function decodeAal(token: string): string | null {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
-    const json = JSON.parse(atob(padded)) as Record<string, unknown>;
-    return typeof json.aal === 'string' ? json.aal : null;
-  } catch {
-    return null;
-  }
-}
-
 function statusForError(message: string): number {
-  if (message === 'admin_required' || message === 'admin_mfa_required') return 403;
+  if (message === 'admin_required') return 403;
   if (message === 'supabase_bearer_required' || message === 'supabase_bearer_invalid') return 401;
   if (message === 'duplicate_email') return 409;
   if (message === 'invite_already_accepted') return 409;
@@ -166,7 +152,7 @@ Deno.serve(async (req) => {
     // Service-role client for privileged reads/writes and Auth admin operations.
     const admin = createClient(url, serviceRoleKey, { auth: { persistSession: false } });
 
-    // 1) Validate the caller: must be an ADMIN profile that passed MFA (AAL2).
+    // 1) Validate that the caller has an ADMIN profile.
     const { data: userData, error: userErr } = await admin.auth.getUser(token);
     if (userErr || !userData.user) {
       return json({ error: 'supabase_bearer_invalid' }, 401);
@@ -179,12 +165,8 @@ Deno.serve(async (req) => {
     if ((callerProfile as { role?: string } | null)?.role !== 'admin') {
       return json({ error: 'admin_required' }, 403);
     }
-    if (decodeAal(token) !== 'aal2') {
-      return json({ error: 'admin_mfa_required' }, 403);
-    }
-
-    // 1b) Rate limit (security fix, 2026-07-24): even a legitimately
-    // admin+AAL2-authenticated session had no throttling on mass account
+    // 1b) Rate limit: an authenticated admin session must not be able to
+    // create accounts in a tight loop.
     // creation. 10 invites / 10 minutes covers real bulk onboarding while
     // blocking a tight loop from a compromised admin session.
     const { data: rateLimitAllowed, error: rateLimitError } = await admin.rpc(

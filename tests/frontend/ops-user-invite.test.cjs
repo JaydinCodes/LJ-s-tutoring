@@ -21,7 +21,7 @@ test('admin user invite workflow is routed through a backend-only Supabase admin
 
   assert.match(edgeFunction, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(edgeFunction, /role !== 'admin'/);
-  assert.match(edgeFunction, /decodeAal\(token\) !== 'aal2'/);
+  assert.doesNotMatch(edgeFunction, /decodeAal|admin_mfa_required/);
   assert.match(edgeFunction, /inviteUserByEmail/);
   assert.match(edgeFunction, /APP_ADMIN_INVITE_REDIRECT_URL/);
   assert.match(edgeFunction, /APP_TUTOR_INVITE_REDIRECT_URL/);
