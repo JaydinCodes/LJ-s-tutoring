@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
+import { StatCard } from '../../components/dashboard/StatCard';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -10,32 +11,62 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { captureAppError } from '../../lib/monitoring/errorReporting';
 import { formatDate } from '../../lib/utils/format';
-import type { Assignment, AssignmentStatus, AssignmentSubmission, TutorAllocatedStudentSummary } from '../../types/lms';
+import type { Assignment, AssignmentStatus, AssignmentSubmission, DashboardMetric, TutorAllocatedStudentSummary } from '../../types/lms';
 import { getAiGradingPrefill } from '../assignments/aiGradingPrefill';
 import { createAssignment, markSubmission, updateAssignment } from '../assignments/assignmentMutations';
-import { TutorSubmissionReviewCard } from '../tutors/TutorSubmissionReviewCard';
 import { loadAdminDashboard } from './adminDashboardRepository';
 
 export function AdminAssignmentsRoute() {
   const { data, loading, error, reload } = useAsyncResource(loadAdminDashboard, []);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
+  const [assignmentStatus, setAssignmentStatus] = useState<'all' | AssignmentStatus>('all');
+  const [submissionStatus, setSubmissionStatus] = useState<'all' | 'submitted' | 'marked' | 'returned'>('all');
+  const [assignmentSearch, setAssignmentSearch] = useState('');
   const selectedAssignment = data?.assignments.find((assignment) => assignment.id === selectedAssignmentId) || null;
+  const selectedSubmission = data?.submissions.find((submission) => submission.id === selectedSubmissionId) || null;
+  const assignments = useMemo(() => filterAssignments(data?.assignments || [], assignmentStatus, assignmentSearch), [assignmentSearch, assignmentStatus, data?.assignments]);
+  const submissions = useMemo(() => filterSubmissions(data?.submissions || [], submissionStatus, assignmentSearch), [assignmentSearch, data?.submissions, submissionStatus]);
+  const metrics = useMemo(() => assignmentMetrics(data?.assignments || [], data?.submissions || []), [data?.assignments, data?.submissions]);
 
   return (
     <DashboardShell title="Assignment Management" subtitle="Create, prepare, publish and manage learner assignments." section="admin">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {metrics.map((metric) => <StatCard key={metric.label} metric={metric} />)}
+      </section>
       <CreateAssignmentForm onCreated={reload} />
-      <Card>
-        <h2 className="text-xl font-semibold text-slate-950">Assignments</h2>
-        <p className="mt-1 text-sm text-slate-600">Edit assignment details, close submissions, or archive old work without touching legacy static pages.</p>
-        {loading ? <LoadingState title="Loading assignments" description="Fetching current assignment records and submission counts..." /> : null}
-        {error ? <ErrorState title="Assignments unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
-        {data ? (
-          <div className="mt-5 space-y-5">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_31rem]">
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-950">Assignment library</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Find work by title, subject, grade, or lifecycle state, then open it in the editor.</p>
+            </div>
+            <StatusBadge value="supabase_required" />
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <FormField label="Search assignments">
+              <TextInput value={assignmentSearch} onChange={(event) => setAssignmentSearch(event.target.value)} placeholder="Title, subject, or grade" />
+            </FormField>
+            <FormField label="Lifecycle">
+              <select className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={assignmentStatus} onChange={(event) => setAssignmentStatus(event.target.value as 'all' | AssignmentStatus)}>
+                <option value="all">All assignments</option>
+                <option value="draft">Drafts</option>
+                <option value="published">Published</option>
+                <option value="closed">Closed</option>
+                <option value="archived">Archived</option>
+              </select>
+            </FormField>
+          </div>
+          {loading ? <LoadingState title="Loading assignments" description="Fetching current assignment records and submission counts..." /> : null}
+          {error ? <ErrorState title="Assignments unavailable" description={error} onRetry={() => void reload()} dashboardHref="/dashboard/admin" /> : null}
+          {data ? (
+            <div className="mt-5">
             <DataTable<Assignment>
-              rows={data.assignments}
-              empty="No assignments are available yet."
+              rows={assignments}
+              empty={data.assignments.length ? 'No assignments match these filters.' : 'No assignments are available yet.'}
               columns={[
-                { key: 'title', label: 'Title', render: (row) => <span className="font-semibold text-slate-950">{row.title || row.id}</span> },
+                { key: 'title', label: 'Assignment', render: (row) => <AssignmentCell assignment={row} /> },
                 { key: 'subject', label: 'Subject', render: (row) => row.subject || row.subject_id || 'Pending' },
                 { key: 'grade', label: 'Grade', render: (row) => row.grade || 'Pending' },
                 { key: 'due', label: 'Due', render: (row) => formatDate(row.due_date) },
@@ -43,20 +74,95 @@ export function AdminAssignmentsRoute() {
                 { key: 'action', label: 'Action', render: (row) => <ManageButton label={selectedAssignmentId === row.id ? 'Managing' : 'Manage'} onClick={() => setSelectedAssignmentId(row.id)} /> },
               ]}
             />
-            {selectedAssignment ? <AssignmentLifecycleCard key={selectedAssignment.id} assignment={selectedAssignment} onSaved={reload} onClose={() => setSelectedAssignmentId(null)} /> : <SelectionHint label="an assignment" />}
+            </div>
+          ) : null}
+        </Card>
+        {selectedAssignment ? <AssignmentLifecycleCard key={selectedAssignment.id} assignment={selectedAssignment} onSaved={reload} onClose={() => setSelectedAssignmentId(null)} /> : <WorkspaceHint title="No assignment selected" description="Choose an assignment from the library to edit its instructions, due date, attachment, or lifecycle." />}
+      </section>
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_31rem]">
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-950">Submission queue</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Triage learner work first, then mark and release from the focused review panel.</p>
+            </div>
           </div>
-        ) : null}
-      </Card>
-      <Card>
-        <h2 className="text-xl font-semibold text-slate-950">Review submissions</h2>
-        <p className="mt-1 text-sm text-slate-600">Mark submitted work, return it for revision, and write feedback visible to learners.</p>
-        <div className="mt-5 grid gap-4 xl:grid-cols-2">
-          {data?.submissions.length ? data.submissions.map((submission) => (
-            <TutorSubmissionReviewCard key={submission.id} submission={{ ...submission, student_label: submission.student_name }} onSaved={reload} />
-          )) : <EmptyState title="No submissions yet" description="Learner submissions will appear here after students submit published assignments." />}
-        </div>
-      </Card>
+          <div className="mt-5 max-w-xs">
+            <FormField label="Review state">
+              <select className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950" value={submissionStatus} onChange={(event) => setSubmissionStatus(event.target.value as 'all' | 'submitted' | 'marked' | 'returned')}>
+                <option value="all">All submissions</option>
+                <option value="submitted">Needs review</option>
+                <option value="marked">Marked</option>
+                <option value="returned">Returned for correction</option>
+              </select>
+            </FormField>
+          </div>
+          {data ? (
+            <div className="mt-5">
+              <DataTable<AssignmentSubmission & { assignment_title?: string; student_name?: string }>
+                rows={submissions}
+                empty={data.submissions.length ? 'No submissions match this review state.' : 'No submissions yet.'}
+                columns={[
+                  { key: 'learner', label: 'Learner', render: (row) => <span className="font-semibold text-slate-950">{row.student_name || row.student_id}</span> },
+                  { key: 'assignment', label: 'Assignment', render: (row) => row.assignment_title || row.assignment_id },
+                  { key: 'submitted', label: 'Submitted', render: (row) => formatDate(row.submitted_at) },
+                  { key: 'status', label: 'Status', render: (row) => <StatusBadge value={reviewStatusLabel(row.status)} /> },
+                  { key: 'action', label: 'Action', render: (row) => <ManageButton label={selectedSubmissionId === row.id ? 'Reviewing' : 'Review'} onClick={() => setSelectedSubmissionId(row.id)} /> },
+                ]}
+              />
+            </div>
+          ) : null}
+        </Card>
+        {selectedSubmission ? <SubmissionReviewCard key={selectedSubmission.id} submission={selectedSubmission} onSaved={reload} /> : <WorkspaceHint title="No submission selected" description="Select learner work from the queue to mark it, return it for correction, or control what is released." />}
+      </section>
     </DashboardShell>
+  );
+}
+
+function assignmentMetrics(assignments: Assignment[], submissions: AssignmentSubmission[]): DashboardMetric[] {
+  const published = assignments.filter((assignment) => assignment.status === 'published').length;
+  const awaitingReview = submissions.filter((submission) => submission.status === 'submitted').length;
+  const released = submissions.filter((submission) => submission.marks_released || submission.feedback_released).length;
+  return [
+    { label: 'Assignments', value: String(assignments.length), helper: 'All assignment records.', tone: 'teal' },
+    { label: 'Published', value: String(published), helper: 'Currently visible to learners.', tone: 'violet' },
+    { label: 'Needs review', value: String(awaitingReview), helper: 'Submitted work awaiting action.', tone: 'amber' },
+    { label: 'Released', value: String(released), helper: 'Submissions with learner-visible feedback or marks.', tone: 'blue' },
+  ];
+}
+
+function filterAssignments(assignments: Assignment[], status: 'all' | AssignmentStatus, search: string) {
+  const query = search.trim().toLocaleLowerCase();
+  return [...assignments]
+    .filter((assignment) => status === 'all' || assignment.status === status)
+    .filter((assignment) => !query || [assignment.title, assignment.subject, assignment.grade].some((value) => (value || '').toLocaleLowerCase().includes(query)))
+    .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime() || left.title.localeCompare(right.title));
+}
+
+function filterSubmissions(
+  submissions: Array<AssignmentSubmission & { assignment_title?: string; student_name?: string }>,
+  status: 'all' | 'submitted' | 'marked' | 'returned',
+  search: string,
+) {
+  const query = search.trim().toLocaleLowerCase();
+  return [...submissions]
+    .filter((submission) => status === 'all' || submission.status === status)
+    .filter((submission) => !query || [submission.assignment_title, submission.student_name].some((value) => (value || '').toLocaleLowerCase().includes(query)))
+    .sort((left, right) => new Date(right.submitted_at || 0).getTime() - new Date(left.submitted_at || 0).getTime());
+}
+
+function reviewStatusLabel(status: string) {
+  if (status === 'submitted') return 'under_review';
+  if (status === 'returned') return 'returned_for_correction';
+  return status;
+}
+
+function AssignmentCell({ assignment }: { assignment: Assignment }) {
+  return (
+    <div>
+      <p className="font-semibold text-slate-950">{assignment.title || assignment.id}</p>
+      <p className="mt-1 text-xs text-slate-500">Created {formatDate(assignment.created_at)}</p>
+    </div>
   );
 }
 
@@ -168,8 +274,13 @@ function ManageButton({ label, onClick }: { label: string; onClick: () => void }
   return <button className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-800 transition hover:border-brand-aegean hover:text-brand-aegean dark:border-white/20 dark:text-slate-200 dark:hover:border-brand-gold dark:hover:text-brand-gold" type="button" onClick={onClick}>{label}</button>;
 }
 
-function SelectionHint({ label }: { label: string }) {
-  return <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-600 dark:border-white/15 dark:text-slate-300">Select {label} from the table to edit it. This keeps the roster easy to scan as it grows.</p>;
+function WorkspaceHint({ title, description }: { title: string; description: string }) {
+  return (
+    <Card>
+      <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
+      <EmptyState title={title} description={description} />
+    </Card>
+  );
 }
 
 function SubmissionReviewCard({
