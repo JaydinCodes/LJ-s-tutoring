@@ -21,7 +21,7 @@ test('Supabase authorization remains role-based without an AAL2 requirement', ()
   const privacyWorker = read('supabase/functions/process-privacy-deletion/index.ts');
   const tutorWorker = read('supabase/functions/process-tutor-deletion/index.ts');
 
-  assert.match(migration, /select public\.current_profile_role\(\) = 'admin'/);
+  assert.match(migration, /coalesce\(public\.current_profile_role\(\) = 'admin', false\)/);
   assert.doesNotMatch(migration, /aal2|admin_mfa_required/);
   for (const worker of [inviteWorker, privacyWorker, tutorWorker]) {
     assert.match(worker, /role[^\n]*admin|role !== 'admin'/);

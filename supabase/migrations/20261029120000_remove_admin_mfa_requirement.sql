@@ -9,7 +9,7 @@ stable
 security definer
 set search_path = ''
 as $$
-  select public.current_profile_role() = 'admin'
+  select coalesce(public.current_profile_role() = 'admin', false)
 $$;
 
 -- These operational functions previously made an additional direct AAL2

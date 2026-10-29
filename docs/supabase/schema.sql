@@ -525,7 +525,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select public.current_profile_role() = 'admin'
+  select coalesce(public.current_profile_role() = 'admin', false)
 $$;
 
 create or replace function public.current_profile_id()
