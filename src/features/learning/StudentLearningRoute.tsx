@@ -1,6 +1,7 @@
 import {
   ArrowRight,
   Brain,
+  BookOpen,
   CheckCircle2,
 } from 'lucide-react';
 
@@ -15,7 +16,7 @@ import {
   SkeletonCard,
 } from '../../components/dashboard/DashboardDesignSystem';
 
-import { useAvailableLearningDiagnostics, useDueRetentionStep, useLearnerMasterySummary, useNextLearningStep } from './studentLearningQueries';
+import { useApprovedLearningVideos, useAvailableLearningDiagnostics, useDueRetentionStep, useGrade9LearningCatalogue, useLearnerMasterySummary, useNextLearningStep } from './studentLearningQueries';
 
 export function StudentLearningRoute() {
   const diagnosticsQuery =
@@ -23,8 +24,10 @@ export function StudentLearningRoute() {
   const nextStepQuery = useNextLearningStep();
   const retentionQuery = useDueRetentionStep();
   const masteryQuery = useLearnerMasterySummary();
+  const catalogueQuery = useGrade9LearningCatalogue();
+  const videosQuery = useApprovedLearningVideos();
 
-  if (diagnosticsQuery.isPending || nextStepQuery.isPending || retentionQuery.isPending || masteryQuery.isPending) {
+  if (diagnosticsQuery.isPending || nextStepQuery.isPending || retentionQuery.isPending || masteryQuery.isPending || catalogueQuery.isPending) {
     return (
       <PageShell
         title="Learning"
@@ -37,7 +40,7 @@ export function StudentLearningRoute() {
     );
   }
 
-  if (diagnosticsQuery.isError || nextStepQuery.isError || retentionQuery.isError || masteryQuery.isError) {
+  if (diagnosticsQuery.isError || nextStepQuery.isError || retentionQuery.isError || masteryQuery.isError || catalogueQuery.isError) {
     return (
       <PageShell
         title="Learning"
@@ -52,6 +55,8 @@ export function StudentLearningRoute() {
             void nextStepQuery.refetch();
             void retentionQuery.refetch();
             void masteryQuery.refetch();
+            void catalogueQuery.refetch();
+            void videosQuery.refetch();
           }}
         />
       </PageShell>
@@ -64,6 +69,8 @@ export function StudentLearningRoute() {
   // A due retrieval takes precedence, and the section below is guarded.
   const nextStep = nextStepQuery.data ?? dueRetention!;
   const mastery = masteryQuery.data ?? [];
+  const catalogue = catalogueQuery.data ?? [];
+  const foundationVideos = (videosQuery.data ?? []).filter((video) => video.skillCode.startsWith('G8-'));
 
   return (
     <PageShell
@@ -99,6 +106,24 @@ export function StudentLearningRoute() {
           </span>
         </div>
       </GreekHeroCard>
+
+      <section aria-labelledby="catalogue-heading">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-aegean">Grade 9 Mathematics</p>
+            <h2 id="catalogue-heading" className="mt-1 text-xl font-semibold">Choose a CAPS-aligned topic</h2>
+          </div>
+          <p className="max-w-md text-sm leading-6 text-slate-600 dark:text-brand-marble">Only skills with reviewed learner content appear here. More Grade 9 topics will appear as their content is approved.</p>
+        </div>
+        {catalogue.length ? <div className="mt-4 grid gap-4 lg:grid-cols-2">{catalogue.map((topic) => <article key={topic.topicCode} className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-900 sm:p-6"><p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-aegean">{topic.areaName}</p><h3 className="mt-2 text-xl font-semibold text-brand-navy dark:text-brand-parchment">{topic.topicName}</h3>{topic.topicDescription ? <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-brand-marble">{topic.topicDescription}</p> : null}<ul className="mt-4 space-y-2" aria-label={`${topic.topicName} available skills`}>{topic.skills.map((skill) => <li key={skill.skillCode} className="rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-slate-950/60"><span className="font-medium text-brand-navy dark:text-brand-parchment">{skill.skillName}</span>{skill.activityCode ? <span className="ml-2 text-brand-aegean">Practice ready</span> : <span className="ml-2 text-slate-500 dark:text-brand-marble">Explanation ready</span>}</li>)}</ul><Link className="academy-btn-primary mt-5 inline-flex min-h-11 items-center gap-2 rounded-full px-5" to={`/dashboard/student/learning/topic/${encodeURIComponent(topic.topicCode)}`}>Explore topic <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></article>)}</div> : <EmptyState icon={BookOpen} title="Reviewed topics are on their way" description="Learning content is shown only after it has been reviewed and approved." />}
+      </section>
+
+      <section aria-labelledby="foundation-heading" className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-slate-900 sm:p-6">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-aegean">Grade 8 foundations</p>
+        <h2 id="foundation-heading" className="mt-1 text-xl font-semibold">Strengthen a prerequisite when you need it</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-brand-marble">Number operations, fractions, exponents and introductory algebra are available only when their resources have been reviewed. A foundation check is support, not a judgement that you have failed Grade 8.</p>
+        {foundationVideos.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2">{foundationVideos.map((video) => <a key={video.resourceCode} className="rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-brand-navy hover:border-brand-aegean dark:border-white/10 dark:bg-slate-950 dark:text-brand-parchment" href={video.youtubeUrl} target="_blank" rel="noreferrer">{video.title}<span className="mt-1 block text-xs font-normal text-slate-500 dark:text-brand-marble">{video.channelName} · Watch on YouTube</span></a>)}</div> : <p className="mt-4 text-sm text-slate-500 dark:text-brand-marble">Foundation resources will appear here after staff review.</p>}
+      </section>
 
       {mastery.length ? <section aria-labelledby="skills-heading"><h2 id="skills-heading" className="text-xl font-semibold">Current learning progress</h2><div className="mt-4 grid gap-3 sm:grid-cols-2">{mastery.map((item) => <article className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900" key={item.skillCode}><span className="font-medium">{item.skillName}</span><span className="rounded-full bg-brand-aegean/10 px-3 py-1 text-sm capitalize text-brand-aegean">{item.state}</span></article>)}</div></section> : null}
 

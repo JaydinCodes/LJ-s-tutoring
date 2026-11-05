@@ -10,7 +10,6 @@ import {
   Clock,
   Compass,
   Ellipsis,
-  FolderOpen,
   GraduationCap,
   Home,
   LayoutDashboard,
@@ -23,7 +22,6 @@ import {
   TrendingUp,
   Trophy,
   UserPlus,
-  UserRound,
   UsersRound,
   WalletCards,
   X,
@@ -54,21 +52,13 @@ const navigation = {
       label: 'Learning',
       items: [
         { to: '/dashboard/student', label: 'Today', icon: Home },
-        { to: '/dashboard/student/assignments', label: 'Tasks', icon: ClipboardList },
+        { to: '/dashboard/student/assignments', label: 'Assignments', icon: ClipboardList },
         { to: '/dashboard/student/learning', label: 'Learning', icon: Brain },
         { to: '/dashboard/student/results', label: 'Results', icon: Trophy },
         { to: '/dashboard/student/progress', label: 'Progress', icon: TrendingUp },
       ],
     },
-    {
-      label: 'Support',
-      items: [
-        { to: '/dashboard/student/sessions', label: 'Tutor & sessions', shortLabel: 'Sessions', icon: UserRound },
-        { to: '/dashboard/student/reports', label: 'Resources', icon: FolderOpen },
-        { to: '/dashboard/student/careers', label: 'Careers', icon: Compass },
-        { to: '/dashboard/student/settings', label: 'Settings', icon: Settings },
-      ],
-    },
+    { label: 'Support', items: [{ to: '/dashboard/student/careers', label: 'Careers', icon: Compass }, { to: '/dashboard/student/settings', label: 'Settings', icon: Settings }] },
   ],
   tutor: [
     {
@@ -164,7 +154,7 @@ export type DashboardIdentity = {
 };
 
 const mobilePrimaryLabels: Partial<Record<DashboardSection, string[]>> = {
-  student: ['Today', 'Tasks', 'Results', 'Progress'],
+  student: ['Today', 'Assignments', 'Learning', 'Results'],
   tutor: ['Today', 'Learners', 'Teach', 'Assess'],
   admin: ['Today', 'Learners & guardians', 'Learning quality', 'Finance'],
 };

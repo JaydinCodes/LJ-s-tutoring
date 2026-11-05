@@ -67,6 +67,7 @@ const StudentDiagnosticRoute = lazy(() =>
     }))
 );
 const StudentActivityRoute = lazy(() => import('../features/learning/StudentActivityRoute').then((module) => ({ default: module.StudentActivityRoute })));
+const StudentLearningTopicRoute = lazy(() => import('../features/learning/StudentLearningTopicRoute').then((module) => ({ default: module.StudentLearningTopicRoute })));
 function RouteLoadingFallback() {
   return (
     <main className="min-h-screen bg-brand-parchment px-4 py-5 text-brand-obsidian dark:bg-slate-950 dark:text-brand-parchment" aria-busy="true">
@@ -142,6 +143,7 @@ export function App() {
         <Route path="/dashboard/tutor/risk" element={<ProtectedRoute roles={['tutor']}><TutorRiskRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/settings" element={<ProtectedRoute roles={['tutor']}><PortalSettingsRoute role="tutor" /></ProtectedRoute>} />
 <Route path="/dashboard/student/learning/activity/:activityCode" element={<ProtectedRoute roles={['student']}><StudentActivityRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/student/learning/topic/:topicCode" element={<ProtectedRoute roles={['student']}><StudentLearningTopicRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/learning" element={<ProtectedRoute roles={['student']}><StudentLearningRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/learning/diagnostic/:diagnosticCode" element={<ProtectedRoute roles={['student']}><StudentDiagnosticRoute /></ProtectedRoute>} />
           <Route path="*" element={<NotFoundRoute />} />

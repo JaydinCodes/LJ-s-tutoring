@@ -18,7 +18,7 @@ test('desktop role navigation is grouped and independently scrollable', () => {
 
 test('all role shells use a five-destination mobile nav with an accessible More dialog', () => {
   const shell = read('src', 'components', 'dashboard', 'DashboardShell.tsx');
-  assert.match(shell, /student: \['Today', 'Tasks', 'Results', 'Progress'\]/);
+  assert.match(shell, /student: \['Today', 'Assignments', 'Learning', 'Results'\]/);
   assert.match(shell, /tutor: \['Today', 'Learners', 'Teach', 'Assess'\]/);
   assert.match(shell, /admin: \['Today', 'Learners & guardians', 'Learning quality', 'Finance'\]/);
   assert.match(shell, /aria-haspopup="dialog"/);
