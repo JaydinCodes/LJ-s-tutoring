@@ -87,6 +87,7 @@ test('curated video candidates are review-gated, learner-safe, and rechecked aft
     'review_learning_video_resource_action',
     'update_learning_video_resource_metadata',
     'youtube_id_changed',
+    'as supplied(skill_code)',
     "review_status=case when v_changed_id then 'draft'",
   ]) assert.ok(migration.includes(fragment), `missing ${fragment}`);
   assert.doesNotMatch(migration, /'approved'\s*,\s*'available'/);

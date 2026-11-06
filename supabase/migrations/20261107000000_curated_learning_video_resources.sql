@@ -127,7 +127,7 @@ with candidates(code,youtube_video_id,title,channel_name,description,display_ord
   on conflict(code) do nothing returning id,code
 )
 insert into public.learning_video_resource_skills(learning_video_resource_id,curriculum_skill_id)
-select resource.id,skill.id from inserted resource join candidates candidate on candidate.code=resource.code cross join lateral unnest(candidate.skill_codes) code join public.curriculum_skills skill on skill.skill_code=code
+select resource.id,skill.id from inserted resource join candidates candidate on candidate.code=resource.code cross join lateral unnest(candidate.skill_codes) as supplied(skill_code) join public.curriculum_skills skill on skill.skill_code=supplied.skill_code
 on conflict do nothing;
 
 revoke all on function public.review_learning_video_resource_action(uuid,text,text,text,integer) from public;
