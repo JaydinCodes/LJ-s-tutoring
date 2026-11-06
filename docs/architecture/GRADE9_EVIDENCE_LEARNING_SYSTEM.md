@@ -5,6 +5,9 @@ and content-review boundary are documented in
 [Grade 9 Instructional Pilot](GRADE9_INSTRUCTIONAL_PILOT.md).
 The validation workflow, human-review checklist and synthetic regression matrix
 are documented in [Grade 9 Instructional Validation](GRADE9_INSTRUCTIONAL_VALIDATION.md).
+The Term 1 curriculum graph, review-gated topic policy configuration and
+Sprint 2 handover are documented in
+[Grade 9 Term 1 Learning Foundation](../product/GRADE9_TERM1_LEARNING_FOUNDATION.md).
 
 ## Scope and audit
 
