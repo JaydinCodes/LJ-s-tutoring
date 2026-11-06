@@ -71,6 +71,11 @@ its availability verification. The review action and metadata changes are
 audited. If video retrieval fails, the reviewed text lesson and approved
 practice remain available.
 
+One supplied candidate (`VID.G8.EQN.001`) contained a 12-character value
+where a YouTube video ID must contain 11 characters. Its stored 11-character
+prefix is still `draft`/`unverified`; the original supplied value is in the
+review note, and staff must confirm the actual video before it can proceed.
+
 ## Current scope
 
 The catalogue reads the existing Grade 9 CAPS taxonomy, so Algebraic

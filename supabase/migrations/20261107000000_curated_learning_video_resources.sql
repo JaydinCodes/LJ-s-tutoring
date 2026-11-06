@@ -110,7 +110,7 @@ with candidates(code,youtube_video_id,title,channel_name,description,display_ord
    ('VID.G8.INT.001','O6bRgxVRoZ4','How to Add, Subtract, Multiply, and Divide Integers','Math with Mr. J','Candidate bridge lesson for integer operations.',1,array['G8-NUM-INTEGERS-OPERATIONS']),
    ('VID.G8.ORDER.001','70cAYYCJBuQ','How to Use BODMAS (Order of Operations)','Cognito','Candidate bridge lesson for order of operations.',2,array['G8-NUM-WHOLE-PROPERTIES']),
    ('VID.G8.SUB.001','k-KiWkV81fQ','Intro to Evaluating Algebraic Expressions','Math with Mr. J','Candidate bridge lesson for substitution.',3,array['G8-ALG-LANGUAGE-TERMS']),
-   ('VID.G8.EQN.001','L0_K89UJfJYw','How to Solve One-Step Equations','Math with Mr. J','Candidate bridge lesson for simple linear equations.',4,array['G8-EQ-LINEAR-INVERSES']),
+   ('VID.G8.EQN.001','L0_K89UJfJY','How to Solve One-Step Equations','Math with Mr. J','Candidate bridge lesson for simple linear equations.',4,array['G8-EQ-LINEAR-INVERSES']),
    ('VID.G8.FACT.001','B_Qzw8bpFfA','HCF and LCM','Maths Genie','Candidate bridge lesson for factors, HCF and LCM.',5,array['G8-NUM-WHOLE-PROPERTIES']),
    ('VID.G8.FRACT.001','h1HlYqeeJYw','Adding & Subtracting Common Fractions','Danemathics','Candidate bridge lesson for common fractions.',6,array['G8-NUM-FRACTIONS-OPERATIONS']),
    ('VID.G8.EXP.001','B4zejSI8zho','Math Antics – Exponents and Square Roots','Math Antics','Candidate bridge lesson for exponents and roots.',7,array['G8-EXP-LAWS-SCI','G8-NUM-INTEGERS-OPERATIONS']),
@@ -123,7 +123,7 @@ with candidates(code,youtube_video_id,title,channel_name,description,display_ord
    ('VID.G9.EXP.001','LkhPRz7Hocg','Algebra Basics: Laws of Exponents','Math Antics','Candidate Grade 9 lesson for exponent laws.',14,array['G9-EXP-NEGATIVE-SCI'])
 ), inserted as (
   insert into public.learning_video_resources(code,youtube_video_id,title,channel_name,description,display_order,availability_status,review_status,review_notes)
-  select code,youtube_video_id,title,channel_name,description,display_order,'unverified','draft','Seeded candidate. Network verification was not possible in the implementation environment; reviewer must verify public accessibility, duration, grade/topic fit, narration and rights before approval.' from candidates
+  select code,youtube_video_id,title,channel_name,description,display_order,'unverified','draft',case when code='VID.G8.EQN.001' then 'Candidate was supplied with a 12-character value (L0_K89UJfJYw). The stored 11-character prefix (L0_K89UJfJY) is unverified and must be checked on YouTube before it can be submitted or approved.' else 'Seeded candidate. Network verification was not possible in the implementation environment; reviewer must verify public accessibility, duration, grade/topic fit, narration and rights before approval.' end from candidates
   on conflict(code) do nothing returning id,code
 )
 insert into public.learning_video_resource_skills(learning_video_resource_id,curriculum_skill_id)

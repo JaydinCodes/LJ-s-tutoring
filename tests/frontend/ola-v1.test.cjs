@@ -84,6 +84,8 @@ test('curated video candidates are review-gated, learner-safe, and rechecked aft
     "availability_status in ('unverified','available','unavailable','restricted')",
     "resource.review_status='approved' and resource.availability_status='available'",
     "'VID.G9.DOTS.001'", "'IqN8Z1-nlsY'",
+    "'L0_K89UJfJY'",
+    '12-character value (L0_K89UJfJYw)',
     'review_learning_video_resource_action',
     'update_learning_video_resource_metadata',
     'youtube_id_changed',
