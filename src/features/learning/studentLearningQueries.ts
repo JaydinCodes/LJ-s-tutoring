@@ -14,6 +14,9 @@ import {
   loadLearnerQuestion,
   loadLearnerMasterySummary,
   loadDueRetentionStep,
+  loadGrade9LearningCatalogue,
+  loadGrade9LearningTopic,
+  loadApprovedLearningVideos,
   loadNextLearningStep,
   submitLearningAttempt,
   type SubmitLearningAttemptInput,
@@ -56,6 +59,9 @@ export const studentLearningQueryKeys = {
   activityProgress: (studentScope: string, code: string) => [...studentLearningQueryKeys.activity(studentScope, code), 'progress'] as const,
   mastery: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'mastery'] as const,
   retention: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'retention'] as const,
+  catalogue: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'catalogue'] as const,
+  topic: (studentScope: string, topicCode: string) => [...studentLearningQueryKeys.all, studentScope, 'topic', topicCode] as const,
+  videos: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'videos'] as const,
 };
 
 export function useDueRetentionStep() {
@@ -71,6 +77,21 @@ export function useLearnerMasterySummary() {
 export function useNextLearningStep() {
   const studentScope = useStudentScope();
   return useQuery({ queryKey: studentLearningQueryKeys.nextStep(studentScope), queryFn: loadNextLearningStep, staleTime: 10_000 });
+}
+
+export function useGrade9LearningCatalogue() {
+  const studentScope = useStudentScope();
+  return useQuery({ queryKey: studentLearningQueryKeys.catalogue(studentScope), queryFn: loadGrade9LearningCatalogue, staleTime: 60_000 });
+}
+
+export function useGrade9LearningTopic(topicCode: string) {
+  const studentScope = useStudentScope();
+  return useQuery({ queryKey: studentLearningQueryKeys.topic(studentScope, topicCode), queryFn: () => loadGrade9LearningTopic(topicCode), enabled: Boolean(topicCode), staleTime: 60_000 });
+}
+
+export function useApprovedLearningVideos() {
+  const studentScope = useStudentScope();
+  return useQuery({ queryKey: studentLearningQueryKeys.videos(studentScope), queryFn: loadApprovedLearningVideos, staleTime: 60_000 });
 }
 
 export function useLearnerActivity(activityCode: string) {

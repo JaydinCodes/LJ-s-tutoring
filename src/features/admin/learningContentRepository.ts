@@ -76,3 +76,34 @@ export async function reviewLearningActivity(activityId: string, action: 'submit
   const { error } = await requireSupabase().rpc('review_learning_activity_action', { p_activity_id: activityId, p_action: action, p_notes: notes });
   if (error) throw error;
 }
+
+export type LearningSkillContent = { id:string; skillCode:string; skillName:string; title:string; status:'draft'|'in_review'|'approved'|'rejected'|'retired'; hasVideo:boolean; hasWorksheet:boolean; reviewNotes?:string|null };
+export async function loadLearningSkillContentCatalog(): Promise<LearningSkillContent[]> {
+  const client = requireSupabase() as unknown as { rpc: (name: 'get_learning_skill_content_catalog') => Promise<{ data: unknown; error: Error | null }> };
+  const { data, error } = await client.rpc('get_learning_skill_content_catalog');
+  if (error) throw error;
+  return Array.isArray(data) ? data as LearningSkillContent[] : [];
+}
+export async function reviewLearningSkillContent(contentId:string, action:'submit_for_review'|'approve'|'reject'|'return_for_revision'|'retire', notes?:string) {
+  const client = requireSupabase() as unknown as { rpc: (name: 'review_learning_skill_content_action', args: { p_content_id:string; p_action:string; p_notes?:string }) => Promise<{ error: Error | null }> };
+  const { error } = await client.rpc('review_learning_skill_content_action', { p_content_id: contentId, p_action: action, p_notes: notes });
+  if (error) throw error;
+}
+
+export type LearningVideoResource = { id:string; code:string; title:string; channelName:string; youtubeVideoId:string; status:'draft'|'in_review'|'approved'|'rejected'|'retired'; availabilityStatus:'unverified'|'available'|'unavailable'|'restricted'; durationSeconds:number|null; displayOrder:number; reviewNotes?:string|null; skills:string[] };
+export async function loadLearningVideoResourceCatalog(): Promise<LearningVideoResource[]> {
+  const client = requireSupabase() as unknown as { rpc: (name: 'get_learning_video_resource_catalog') => Promise<{ data: unknown; error: Error | null }> };
+  const { data, error } = await client.rpc('get_learning_video_resource_catalog');
+  if (error) throw error;
+  return Array.isArray(data) ? data as LearningVideoResource[] : [];
+}
+export async function reviewLearningVideoResource(id:string, action:'submit_for_review'|'approve'|'reject'|'return_for_revision'|'retire', notes?:string, availabilityStatus?:'available'|'unavailable'|'restricted', durationSeconds?:number) {
+  const client = requireSupabase() as unknown as { rpc: (name: 'review_learning_video_resource_action', args: Record<string, unknown>) => Promise<{ error: Error | null }> };
+  const { error } = await client.rpc('review_learning_video_resource_action', { p_resource_id:id, p_action:action, p_notes:notes, p_availability_status:availabilityStatus, p_duration_seconds:durationSeconds });
+  if (error) throw error;
+}
+export async function updateLearningVideoResourceMetadata(id:string, input:{ youtubeVideoId?:string; displayOrder?:number; skillCodes?:string[] }) {
+  const client = requireSupabase() as unknown as { rpc: (name: 'update_learning_video_resource_metadata', args: Record<string, unknown>) => Promise<{ error: Error | null }> };
+  const { error } = await client.rpc('update_learning_video_resource_metadata', { p_resource_id:id, p_youtube_video_id:input.youtubeVideoId, p_display_order:input.displayOrder, p_skill_codes:input.skillCodes });
+  if (error) throw error;
+}

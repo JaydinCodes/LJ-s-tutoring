@@ -104,6 +104,51 @@ export type LearnerMasterySummary = {
   determinedAt: string;
 };
 
+export type LearningCatalogueSkill = {
+  skillCode: string;
+  skillName: string;
+  skillDescription: string;
+  activityCode?: string | null;
+  hasExplanation: boolean;
+};
+
+export type LearningCatalogueTopic = {
+  topicCode: string;
+  topicName: string;
+  topicDescription: string | null;
+  areaName: string;
+  skills: LearningCatalogueSkill[];
+};
+
+export type LearnerTopicContent = {
+  title: string;
+  explanation: string;
+  workedExample: string;
+  videoUrl?: string | null;
+  worksheetUrl?: string | null;
+  worksheetPermissionNote?: string | null;
+};
+
+export type LearningTopicSkill = LearningCatalogueSkill & {
+  activityName?: string | null;
+  content?: LearnerTopicContent | null;
+};
+
+export type LearningTopic = Omit<LearningCatalogueTopic, 'skills'> & {
+  skills: LearningTopicSkill[];
+};
+
+export type LearnerVideoResource = {
+  resourceCode: string;
+  skillCode: string;
+  title: string;
+  channelName: string;
+  description: string;
+  youtubeUrl: string;
+  durationSeconds: number | null;
+  displayOrder: number;
+};
+
 export type SubmitLearningAttemptEvaluation = {
   status: 'correct' | 'incorrect' | 'needs_review';
   marksAwarded: number | null;
@@ -248,7 +293,7 @@ export async function submitLearningAttempt(
 ): Promise<SubmitLearningAttemptResult> {
   const client = requireSupabase();
 
-  const { data, error } = await client.functions.invoke(
+  const evaluationRequest = client.functions.invoke(
     'evaluate-learning-attempt',
     {
       body: {
@@ -269,6 +314,14 @@ export async function submitLearningAttempt(
       },
     },
   );
+
+  // A missing Edge Function previously left the activity screen looking busy
+  // indefinitely. Keep the same idempotency key on retry; this only bounds
+  // the client wait and never changes server-side persistence.
+  const { data, error } = await Promise.race([
+    evaluationRequest,
+    new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('Answer checking is taking longer than expected. Your answer has not been changed; please retry the same answer.')), 15_000)),
+  ]);
 
   if (error) {
     throw error;
@@ -360,5 +413,28 @@ export async function loadLearnerMasterySummary(): Promise<LearnerMasterySummary
     skillName: row.skill_name,
     state: row.state,
     determinedAt: row.determined_at,
+  }));
+}
+
+export async function loadGrade9LearningCatalogue(): Promise<LearningCatalogueTopic[]> {
+  const client = requireSupabase() as unknown as { rpc: (name: 'get_my_grade9_learning_catalogue') => Promise<{ data: unknown; error: Error | null }> };
+  const { data, error } = await client.rpc('get_my_grade9_learning_catalogue');
+  if (error) throw error;
+  return Array.isArray(data) ? data as unknown as LearningCatalogueTopic[] : [];
+}
+
+export async function loadGrade9LearningTopic(topicCode: string): Promise<LearningTopic | null> {
+  const client = requireSupabase() as unknown as { rpc: (name: 'get_my_grade9_learning_topic', args: { p_topic_code: string }) => Promise<{ data: unknown; error: Error | null }> };
+  const { data, error } = await client.rpc('get_my_grade9_learning_topic', { p_topic_code: topicCode });
+  if (error) throw error;
+  return objectValue(data) as unknown as LearningTopic | null;
+}
+
+export async function loadApprovedLearningVideos(): Promise<LearnerVideoResource[]> {
+  const client = requireSupabase() as unknown as { rpc: (name: 'get_my_approved_learning_video_resources') => Promise<{ data: Array<Record<string, unknown>> | null; error: Error | null }> };
+  const { data, error } = await client.rpc('get_my_approved_learning_video_resources');
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    resourceCode: String(row.resource_code), skillCode: String(row.skill_code), title: String(row.title), channelName: String(row.channel_name), description: String(row.description), youtubeUrl: String(row.youtube_url), durationSeconds: typeof row.duration_seconds === 'number' ? row.duration_seconds : null, displayOrder: Number(row.display_order ?? 0),
   }));
 }

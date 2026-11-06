@@ -167,9 +167,9 @@ export const instructionalValidationProfiles: InstructionalValidationProfile[] =
     expected: { mastery: 'secure', recommendation: 'retrieval_practice' },
   },
   {
-    name: 'unknown-prerequisite-routes-remediation', targetSkillCode: 'G9.GRAPH.LINEAR_DRAW',
+    name: 'unknown-prerequisite-does-not-assert-remediation', targetSkillCode: 'G9.GRAPH.LINEAR_DRAW',
     evidence: [skillEvidence('p17a', false, '2026-03-01')], prerequisites: [{ code: 'G9.GRAPH.PLOT_POINTS', state: 'unassessed' }],
-    expected: { mastery: 'emerging', recommendation: 'prerequisite_remediation', focusSkillCode: 'G9.GRAPH.PLOT_POINTS' },
+    expected: { mastery: 'emerging', recommendation: 'guided_practice' },
   },
   {
     name: 'zero-product-pattern', targetSkillCode: 'G9.EQN.ZERO_PRODUCT',

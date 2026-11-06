@@ -248,7 +248,12 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
   const confirmedOrSuspected = input.misconceptions.filter((item) => item.state !== 'resolved');
   const hasRepeatedMisconception = confirmedOrSuspected.length >= 2 || confirmedOrSuspected.some((item) => (item.evidenceCount || 1) >= 2);
   const prerequisitesSecure = input.prerequisites.length > 0 && input.prerequisites.every((item) => item.state === 'secure' || item.state === 'retained');
-  const firstWeakPrerequisite = input.prerequisites.find((item) => !['secure', 'retained'].includes(item.state));
+  // Missing evidence is not evidence of a gap. A diagnostic (or a short
+  // prerequisite check) may be useful, but it must not be represented as
+  // remediation for a failure that has not been observed.
+  const firstWeakPrerequisite = input.prerequisites.find(
+    (item) => item.state === 'emerging' || item.state === 'developing',
+  );
   const complexIndependent = input.evidence.filter((item) => item.independent && (item.cognitiveLevel === 'complex' || item.cognitiveLevel === 'problem_solving'));
   const complexAccuracy = accuracy(complexIndependent);
   const assisted = input.evidence.filter((item) => !item.independent);
@@ -408,8 +413,10 @@ export function evaluateDiagnosticEvidence(input: DiagnosticEvaluationInput): Di
   const strongPrerequisiteCodes = input.prerequisites
     .filter((item) => item.state === 'secure' || item.state === 'retained')
     .map((item) => item.code);
+  // An unassessed prerequisite needs a check, not a failure label. The
+  // caller can offer a diagnostic without claiming that the learner lacks it.
   const firstWeakPrerequisite = input.prerequisites.find(
-    (item) => item.state === 'unassessed' || item.state === 'emerging' || item.state === 'developing',
+    (item) => item.state === 'emerging' || item.state === 'developing',
   );
 
   if (firstWeakPrerequisite) {

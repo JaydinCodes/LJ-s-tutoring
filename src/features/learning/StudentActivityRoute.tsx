@@ -65,6 +65,7 @@ export function StudentActivityRoute() {
   const [submissionKey, setSubmissionKey] = useState<string | null>(null);
   const [activeFeedback, setActiveFeedback] = useState<QuestionFeedbackState | null>(null);
   const [sessionResults, setSessionResults] = useState<QuestionFeedbackState[]>([]);
+  const [submissionMessage, setSubmissionMessage] = useState<string | null>(null);
   const startedAt = useRef(Date.now());
 
   useEffect(() => {
@@ -73,6 +74,7 @@ export function StudentActivityRoute() {
     setHintIds([]);
     setSubmissionKey(null);
     setActiveFeedback(null);
+    setSubmissionMessage(null);
     startedAt.current = Date.now();
   }, [current?.questionVersionId]);
 
@@ -213,6 +215,7 @@ export function StudentActivityRoute() {
     if (!question || !answer.trim() || submit.isPending) return;
     const key = submissionKey ?? crypto.randomUUID();
     setSubmissionKey(key);
+    setSubmissionMessage(null);
 
     try {
       const result = await submit.mutateAsync({
@@ -246,8 +249,9 @@ export function StudentActivityRoute() {
       setActiveFeedback(feedbackItem);
       setSessionResults((prev) => [...prev, feedbackItem]);
       setSubmissionKey(null);
-    } catch {
-      // In error state, keep submission key so retry is idempotent
+    } catch (error) {
+      // Keep the key: retrying an uncertain request is idempotent.
+      setSubmissionMessage(error instanceof Error ? error.message : 'We could not check your answer. Please retry the same answer.');
     }
   }
 
@@ -467,9 +471,9 @@ export function StudentActivityRoute() {
                 </div>
               </fieldset>
 
-              {submit.isError ? (
+              {submissionMessage || submit.isError ? (
                 <p className="mt-4 text-sm text-red-700" role="alert">
-                  Your answer could not be saved. Check your connection and retry.
+                  {submissionMessage ?? 'Your answer could not be saved. Check your connection and retry.'}
                 </p>
               ) : null}
 
@@ -483,7 +487,7 @@ export function StudentActivityRoute() {
                     void submitAnswer();
                   }}
                 >
-                  {submit.isPending ? 'Checking answer…' : 'Check answer'}
+                  {submit.isPending ? 'Checking answer…' : submissionMessage ? 'Retry same answer' : 'Check answer'}
                 </PremiumButton>
               </div>
             </div>
