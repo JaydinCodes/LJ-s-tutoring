@@ -43,11 +43,26 @@ select is(
   'entry baseline plus each topic baseline, endline and mastery challenge are represented as drafts'
 );
 
-select row_security_active('public.topic_mastery_policies'::regclass), 'topic mastery policy RLS is active';
-select row_security_active('public.topic_mastery_policy_skills'::regclass), 'topic mastery policy skill RLS is active';
-select row_security_active('public.learning_assessment_definitions'::regclass), 'assessment definition RLS is active';
-select row_security_active('public.learning_assessment_definition_questions'::regclass), 'assessment question mapping RLS is active';
-select row_security_active('public.qualifying_assignment_mastery_evidence'::regclass), 'qualified assignment evidence RLS is active';
+select ok(
+  (select relrowsecurity from pg_catalog.pg_class where oid = 'public.topic_mastery_policies'::regclass),
+  'topic mastery policy RLS is active'
+);
+select ok(
+  (select relrowsecurity from pg_catalog.pg_class where oid = 'public.topic_mastery_policy_skills'::regclass),
+  'topic mastery policy skill RLS is active'
+);
+select ok(
+  (select relrowsecurity from pg_catalog.pg_class where oid = 'public.learning_assessment_definitions'::regclass),
+  'assessment definition RLS is active'
+);
+select ok(
+  (select relrowsecurity from pg_catalog.pg_class where oid = 'public.learning_assessment_definition_questions'::regclass),
+  'assessment question mapping RLS is active'
+);
+select ok(
+  (select relrowsecurity from pg_catalog.pg_class where oid = 'public.qualifying_assignment_mastery_evidence'::regclass),
+  'qualified assignment evidence RLS is active'
+);
 
 select policies_are('public', 'topic_mastery_policies', array['topic_mastery_policies_admin_read'], 'only the admin read policy exists for topic policies');
 select policies_are('public', 'learning_assessment_definitions', array['learning_assessment_definitions_admin_read'], 'only the admin read policy exists for assessment definitions');
