@@ -10,6 +10,7 @@ The product/strategy source of truth for Project Odysseus. **Start with the Road
 4. **[CONTENT_AUTHORING_PIPELINE.md](CONTENT_AUTHORING_PIPELINE.md)** — how content goes AI-draft → teacher-review → published; states, roles, data model, AI guardrails.
 5. **[TUTOR_AND_VOLUNTEER_MODEL.md](TUTOR_AND_VOLUNTEER_MODEL.md)** — recruitment, paid vs volunteer, and the safeguarding/vetting gate for anyone working with minors.
 6. **[COORDINATOR_AND_ONBOARDING_FLOWS.md](COORDINATOR_AND_ONBOARDING_FLOWS.md)** — how each org type is set up, the coordinator role, and learner onboarding with parental consent.
+7. **[GRADE9_TERM1_LEARNING_FOUNDATION.md](GRADE9_TERM1_LEARNING_FOUNDATION.md)** — Sprint 1 curriculum graph, policy/assessment contracts, progression decisions, and Sprint 2 handover.
 
 ## Related (compliance, architecture & audit)
 

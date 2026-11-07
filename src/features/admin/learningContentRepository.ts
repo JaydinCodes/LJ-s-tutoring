@@ -1,11 +1,44 @@
 import { requireSupabase } from '../../lib/supabase/client';
 import type { Json } from '../../../supabase/types/public.generated';
+import { validateMultipleChoiceSpecification } from '../learning/grade9Term1FoundationContracts';
 
 export type ContentQuestion = { id:string; item_code:string; version_number:number; review_status:string; prompt:string; marks:number; activity_type:string; grade:string; subject_name:string; primary_skill_code:string; source_tier:string; created_at:string };
 export type ContentSkill = { id:string; code:string; name:string };
 export type ContentMisconception = { id:string; code:string; name:string; skillId:string };
 export type ContentCatalog = { items:ContentQuestion[]; total:number; skills:ContentSkill[]; misconceptions:ContentMisconception[] };
-export type QuestionDraft = { itemCode:string; primarySkillId:string; supportingSkillIds:string[]; misconceptionIds:string[]; prompt:string; questionType:string; expected:string; optionsText:string; tolerance:string; correctOption:string; requiredForm:string; marks:string; activityType:string; cognitiveLevel:string; representation:string; calculatorPolicy:string; solution:string; sourceTier:string; sourceNotes:string; hints:string[] };
+export type QuestionDraft = { itemCode:string; primarySkillId:string; supportingSkillIds:string[]; misconceptionIds:string[]; prompt:string; questionType:string; expected:string; optionsText:string; distractorExplanationsText:string; tolerance:string; correctOption:string; requiredForm:string; marks:string; difficulty:string; reasoningClassification:string; activityType:string; cognitiveLevel:string; representation:string; calculatorPolicy:string; solution:string; sourceTier:string; sourceNotes:string; hints:string[] };
+
+/** Review-gated payloads owned by the assessment-configuration admin RPCs. */
+export type TopicMasteryPolicyDraft = {
+  curriculumTopicId: string;
+  code: string;
+  version: number;
+  name: string;
+  overallAchievementThreshold: number;
+  criticalSkillCoverageThreshold: number;
+  minimumReasoningEvidenceCount: number;
+  minimumReasoningAchievementThreshold: number;
+  strongBaselineThreshold: number;
+  requiresMasteryChallenge: boolean;
+  allowQualifyingAssignmentEvidence: boolean;
+  qualifyingAssignmentMinimumAchievement: number;
+  skills: Array<{ skillId: string; isEssential: boolean; isCritical: boolean; requiresReasoningEvidence: boolean }>;
+};
+
+export type LearningAssessmentDraft = {
+  curriculumVersionId: string;
+  curriculumTopicId?: string;
+  topicMasteryPolicyId?: string;
+  code: string;
+  formCode: string;
+  name: string;
+  assessmentType: 'entry_baseline'|'topic_baseline'|'endline'|'mastery_challenge';
+  description?: string;
+  durationMinutes: number;
+  /** Formal configurations are server-constrained to one scored response. */
+  scoredAttemptsPerQuestion: 1;
+  questionVersionIds: string[];
+};
 
 export async function loadLearningContentCatalog(search = '', status = '', page = 1): Promise<ContentCatalog> {
   const { data, error } = await requireSupabase().rpc('get_learning_content_catalog', { p_search: search || undefined, p_status: (status || undefined) as 'draft'|'in_review'|'approved'|'rejected'|'retired'|undefined, p_page: page, p_page_size: 25 });
@@ -16,8 +49,22 @@ export async function loadLearningContentCatalog(search = '', status = '', page 
 export function answerConfigFromDraft(draft: QuestionDraft): Json {
   const type = draft.questionType;
   if (type === 'multiple_choice') {
-    const options = Object.fromEntries(draft.optionsText.split('\n').map(line => line.split(':')).filter(parts => parts.length >= 2).map(([key, ...value]) => [key.trim(), value.join(':').trim()]));
-    return { type, correct_option: draft.correctOption, options };
+    const parseKeyedLines = (value: string) => Object.fromEntries(value.split('\n')
+      .map(line => line.split(':'))
+      .filter(parts => parts.length >= 2)
+      .map(([key, ...label]) => [key.trim(), label.join(':').trim()]));
+    const options = parseKeyedLines(draft.optionsText);
+    const distractorExplanations = parseKeyedLines(draft.distractorExplanationsText);
+    const errors = validateMultipleChoiceSpecification({
+      type: 'multiple_choice',
+      options: options as { A: string; B: string; C: string; D: string },
+      correctOption: draft.correctOption as 'A'|'B'|'C'|'D',
+      distractorExplanations,
+      difficulty: Number(draft.difficulty) as 1|2|3|4|5,
+      reasoningClassification: draft.reasoningClassification as 'not_classified'|'procedural'|'mathematical_reasoning',
+    });
+    if (errors.length) throw new Error(`Multiple-choice specification: ${errors.join(', ')}`);
+    return { type, correct_option: draft.correctOption, options, distractor_explanations: distractorExplanations };
   }
   const config: Record<string, Json> = { type, accepted: draft.expected.split('\n').map((value) => value.trim()).filter(Boolean) };
   if (type === 'numeric' && draft.tolerance.trim()) config.tolerance = Number(draft.tolerance);
@@ -30,6 +77,7 @@ export async function saveQuestionDraft(draft: QuestionDraft, questionVersionId?
     itemCode: draft.itemCode, primarySkillId: draft.primarySkillId, supportingSkillIds: draft.supportingSkillIds, misconceptionIds: draft.misconceptionIds,
     prompt: draft.prompt, answerConfig: answerConfigFromDraft(draft), marks: Number(draft.marks), activityType: draft.activityType,
     cognitiveLevel: draft.cognitiveLevel, representation: draft.representation, calculatorPolicy: draft.calculatorPolicy,
+    difficulty: draft.difficulty, reasoningClassification: draft.reasoningClassification,
     solution: draft.solution, sourceTier: draft.sourceTier, sourceNotes: draft.sourceNotes,
     hints: draft.hints.filter(Boolean).map((prompt, index) => ({ level: index + 1, prompt })),
   } as Json });

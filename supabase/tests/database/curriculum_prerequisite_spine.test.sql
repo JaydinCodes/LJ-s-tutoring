@@ -16,8 +16,8 @@ select is(
 
 select is(
   (select count(*) from public.curriculum_skills where grade = 'Grade 9' and skill_code like 'G9-%'),
-  15::bigint,
-  'Grade 9 has atomic Mathematics question families'
+  23::bigint,
+  'Grade 9 has atomic Mathematics question families, including the complete Term 1 foundation'
 );
 
 select is(
@@ -36,14 +36,14 @@ select is(
   (select count(*) from public.curriculum_question_types question_type
    join public.curriculum_skills skill on skill.id = question_type.skill_id
    where skill.skill_code ~ '^G(8|9|10|11)-'),
-  81::bigint,
-  'every new Grade 8–11 skill has its own question-type evidence stream'
+  89::bigint,
+  'every Grade 8–11 spine skill has its own question-type evidence stream'
 );
 
 select is(
   (select count(*) from public.curriculum_skills where skill_code ~ '^G(8|9|10|11)-' and review_status = 'teacher_review'),
-  81::bigint,
-  'the new source-derived taxonomy remains review-only until a curriculum owner approves it'
+  89::bigint,
+  'the source-derived taxonomy remains review-only until a curriculum owner approves it'
 );
 
 select ok(
