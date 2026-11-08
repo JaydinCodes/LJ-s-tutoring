@@ -3066,190 +3066,6 @@ export type Database = {
         }
         Relationships: []
       }
-      learning_skill_content: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          curriculum_skill_id: string
-          explanation: string
-          id: string
-          review_notes: string | null
-          review_status: Database["public"]["Enums"]["question_review_status"]
-          reviewed_at: string | null
-          reviewed_by: string | null
-          source_tier: Database["public"]["Enums"]["curriculum_source_tier"]
-          title: string
-          updated_at: string
-          video_url: string | null
-          worked_example: string
-          worksheet_permission_note: string | null
-          worksheet_url: string | null
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          curriculum_skill_id: string
-          explanation: string
-          id?: string
-          review_notes?: string | null
-          review_status?: Database["public"]["Enums"]["question_review_status"]
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          source_tier?: Database["public"]["Enums"]["curriculum_source_tier"]
-          title: string
-          updated_at?: string
-          video_url?: string | null
-          worked_example: string
-          worksheet_permission_note?: string | null
-          worksheet_url?: string | null
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          curriculum_skill_id?: string
-          explanation?: string
-          id?: string
-          review_notes?: string | null
-          review_status?: Database["public"]["Enums"]["question_review_status"]
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          source_tier?: Database["public"]["Enums"]["curriculum_source_tier"]
-          title?: string
-          updated_at?: string
-          video_url?: string | null
-          worked_example?: string
-          worksheet_permission_note?: string | null
-          worksheet_url?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "learning_skill_content_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "learning_skill_content_curriculum_skill_id_fkey"
-            columns: ["curriculum_skill_id"]
-            isOneToOne: true
-            referencedRelation: "curriculum_skills"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "learning_skill_content_reviewed_by_fkey"
-            columns: ["reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      learning_video_resource_skills: {
-        Row: {
-          curriculum_skill_id: string
-          learning_video_resource_id: string
-        }
-        Insert: {
-          curriculum_skill_id: string
-          learning_video_resource_id: string
-        }
-        Update: {
-          curriculum_skill_id?: string
-          learning_video_resource_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "learning_video_resource_skills_curriculum_skill_id_fkey"
-            columns: ["curriculum_skill_id"]
-            isOneToOne: false
-            referencedRelation: "curriculum_skills"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "learning_video_resource_skills_learning_video_resource_id_fkey"
-            columns: ["learning_video_resource_id"]
-            isOneToOne: false
-            referencedRelation: "learning_video_resources"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      learning_video_resources: {
-        Row: {
-          availability_status: string
-          availability_verified_at: string | null
-          channel_name: string
-          code: string
-          created_at: string
-          created_by: string | null
-          description: string
-          display_order: number
-          duration_seconds: number | null
-          id: string
-          review_notes: string | null
-          review_status: Database["public"]["Enums"]["question_review_status"]
-          reviewed_at: string | null
-          reviewed_by: string | null
-          title: string
-          updated_at: string
-          youtube_video_id: string
-        }
-        Insert: {
-          availability_status?: string
-          availability_verified_at?: string | null
-          channel_name: string
-          code: string
-          created_at?: string
-          created_by?: string | null
-          description: string
-          display_order?: number
-          duration_seconds?: number | null
-          id?: string
-          review_notes?: string | null
-          review_status?: Database["public"]["Enums"]["question_review_status"]
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          title: string
-          updated_at?: string
-          youtube_video_id: string
-        }
-        Update: {
-          availability_status?: string
-          availability_verified_at?: string | null
-          channel_name?: string
-          code?: string
-          created_at?: string
-          created_by?: string | null
-          description?: string
-          display_order?: number
-          duration_seconds?: number | null
-          id?: string
-          review_notes?: string | null
-          review_status?: Database["public"]["Enums"]["question_review_status"]
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          title?: string
-          updated_at?: string
-          youtube_video_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "learning_video_resources_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "learning_video_resources_reviewed_by_fkey"
-            columns: ["reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       mastery_rule_sets: {
         Row: {
           code: string
@@ -6753,8 +6569,6 @@ export type Database = {
           representation: Database["public"]["Enums"]["math_representation"]
         }[]
       }
-      get_learning_skill_content_catalog: { Args: never; Returns: Json }
-      get_learning_video_resource_catalog: { Args: never; Returns: Json }
       get_my_approved_diagnostic_state: {
         Args: { p_code: string }
         Returns: {
@@ -6764,19 +6578,6 @@ export type Database = {
           question_version_id: string
           sequence_number: number
           submitted_at: string
-        }[]
-      }
-      get_my_approved_learning_video_resources: {
-        Args: never
-        Returns: {
-          channel_name: string
-          description: string
-          display_order: number
-          duration_seconds: number
-          resource_code: string
-          skill_code: string
-          title: string
-          youtube_url: string
         }[]
       }
       get_my_available_learning_diagnostics: {
@@ -6790,11 +6591,6 @@ export type Database = {
         }[]
       }
       get_my_due_learning_retention_step: { Args: never; Returns: Json }
-      get_my_grade9_learning_catalogue: { Args: never; Returns: Json }
-      get_my_grade9_learning_topic: {
-        Args: { p_topic_code: string }
-        Returns: Json
-      }
       get_my_learning_activity: {
         Args: { p_activity_code: string }
         Returns: Json
@@ -7678,20 +7474,6 @@ export type Database = {
         }
         Returns: string
       }
-      review_learning_skill_content_action: {
-        Args: { p_action: string; p_content_id: string; p_notes?: string }
-        Returns: undefined
-      }
-      review_learning_video_resource_action: {
-        Args: {
-          p_action: string
-          p_availability_status?: string
-          p_duration_seconds?: number
-          p_notes?: string
-          p_resource_id: string
-        }
-        Returns: undefined
-      }
       review_question_version: {
         Args: {
           p_question_version_id: string
@@ -7716,10 +7498,6 @@ export type Database = {
       }
       save_learning_question_draft: {
         Args: { p_payload: Json; p_question_version_id?: string }
-        Returns: string
-      }
-      save_learning_skill_content_draft: {
-        Args: { p_content_id: string; p_payload: Json }
         Returns: string
       }
       session_date_pay_period_locked: {
@@ -7981,15 +7759,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      update_learning_video_resource_metadata: {
-        Args: {
-          p_display_order?: number
-          p_resource_id: string
-          p_skill_codes?: string[]
-          p_youtube_video_id?: string
-        }
-        Returns: undefined
-      }
       update_session: {
         Args: {
           p_date: string
@@ -8070,10 +7839,6 @@ export type Database = {
       }
       validate_learning_answer_config: {
         Args: { p_config: Json }
-        Returns: string[]
-      }
-      validate_learning_skill_content_for_approval: {
-        Args: { p_content_id: string }
         Returns: string[]
       }
       validate_question_version_for_approval: {
