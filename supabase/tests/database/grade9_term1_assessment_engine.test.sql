@@ -14,10 +14,10 @@ select has_table('public', 'learning_assessment_session_question_results', 'serv
 select has_table('public', 'topic_mastery_evaluations', 'topic mastery decisions are append-only records');
 select has_table('public', 'topic_mastery_evaluation_evidence', 'mastery decisions cite their evidence');
 
-select ok((select relrowsecurity from pg_class where oid = 'public.learning_assessment_sessions'::regclass), 'session RLS is enabled';
-select ok((select relrowsecurity from pg_class where oid = 'public.learning_assessment_session_extensions'::regclass), 'extension RLS is enabled';
-select ok((select relrowsecurity from pg_class where oid = 'public.learning_assessment_session_question_results'::regclass), 'result RLS is enabled';
-select ok((select relrowsecurity from pg_class where oid = 'public.topic_mastery_evaluations'::regclass), 'mastery-evaluation RLS is enabled';
+select ok((select relrowsecurity from pg_class where oid = 'public.learning_assessment_sessions'::regclass), 'session RLS is enabled');
+select ok((select relrowsecurity from pg_class where oid = 'public.learning_assessment_session_extensions'::regclass), 'extension RLS is enabled');
+select ok((select relrowsecurity from pg_class where oid = 'public.learning_assessment_session_question_results'::regclass), 'result RLS is enabled');
+select ok((select relrowsecurity from pg_class where oid = 'public.topic_mastery_evaluations'::regclass), 'mastery-evaluation RLS is enabled');
 select policies_are('public', 'learning_assessment_sessions', array['learning_assessment_sessions_student_or_admin_read'], 'sessions permit only their learner or an administrator to read');
 select policies_are('public', 'learning_assessment_session_extensions', array['learning_assessment_session_extensions_admin_read'], 'extension reasons are administrator-only');
 
