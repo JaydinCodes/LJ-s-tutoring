@@ -22,6 +22,7 @@ const AdminStudentsRoute = lazy(() => import('../features/admin/AdminStudentsRou
 const AdminTutorsRoute = lazy(() => import('../features/admin/AdminTutorsRoute').then((module) => ({ default: module.AdminTutorsRoute })));
 const AdminUsersRoute = lazy(() => import('../features/admin/AdminUsersRoute').then((module) => ({ default: module.AdminUsersRoute })));
 const AdminLearningContentRoute = lazy(() => import('../features/admin/AdminLearningContentRoute').then((module) => ({ default: module.AdminLearningContentRoute })));
+const AdminAssessmentManagementRoute = lazy(() => import('../features/admin/AdminAssessmentManagementRoute').then((module) => ({ default: module.AdminAssessmentManagementRoute })));
 const LoginRoute = lazy(() => import('../features/auth/LoginRoute').then((module) => ({ default: module.LoginRoute })));
 const NgoReportsRoute = lazy(() => import('../features/ngo/NgoReportsRoute').then((module) => ({ default: module.NgoReportsRoute })));
 const OnboardingRoute = lazy(() => import('../features/onboarding/OnboardingRoute').then((module) => ({ default: module.OnboardingRoute })));
@@ -68,6 +69,8 @@ const StudentDiagnosticRoute = lazy(() =>
 );
 const StudentActivityRoute = lazy(() => import('../features/learning/StudentActivityRoute').then((module) => ({ default: module.StudentActivityRoute })));
 const StudentLearningTopicRoute = lazy(() => import('../features/learning/StudentLearningTopicRoute').then((module) => ({ default: module.StudentLearningTopicRoute })));
+const StudentAssessmentIntroductionRoute = lazy(() => import('../features/learning/StudentAssessmentRoutes').then((module) => ({ default: module.StudentAssessmentIntroductionRoute })));
+const StudentAssessmentSessionRoute = lazy(() => import('../features/learning/StudentAssessmentRoutes').then((module) => ({ default: module.StudentAssessmentSessionRoute })));
 function RouteLoadingFallback() {
   return (
     <main className="min-h-screen bg-brand-parchment px-4 py-5 text-brand-obsidian dark:bg-slate-950 dark:text-brand-parchment" aria-busy="true">
@@ -130,6 +133,7 @@ export function App() {
         <Route path="/dashboard/admin/retention" element={<ProtectedRoute roles={['admin']}><AdminRetentionRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/results" element={<ProtectedRoute roles={['admin']}><AdminResultsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/learning-content" element={<ProtectedRoute roles={['admin']}><AdminLearningContentRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/admin/assessments" element={<ProtectedRoute roles={['admin']}><AdminAssessmentManagementRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/ops-runbook" element={<ProtectedRoute roles={['admin']}><AdminOpsRunbookRoute /></ProtectedRoute>} />
         <Route path="/dashboard/admin/reports" element={<ProtectedRoute roles={['admin']}><AdminReportsRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor" element={<ProtectedRoute roles={['tutor']}><TutorDashboardRoute /></ProtectedRoute>} />
@@ -143,6 +147,8 @@ export function App() {
         <Route path="/dashboard/tutor/risk" element={<ProtectedRoute roles={['tutor']}><TutorRiskRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/settings" element={<ProtectedRoute roles={['tutor']}><PortalSettingsRoute role="tutor" /></ProtectedRoute>} />
 <Route path="/dashboard/student/learning/activity/:activityCode" element={<ProtectedRoute roles={['student']}><StudentActivityRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/student/learning/assessment/session/:sessionId" element={<ProtectedRoute roles={['student']}><StudentAssessmentSessionRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/student/learning/assessment/:definitionId" element={<ProtectedRoute roles={['student']}><StudentAssessmentIntroductionRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/learning/topic/:topicCode" element={<ProtectedRoute roles={['student']}><StudentLearningTopicRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/learning" element={<ProtectedRoute roles={['student']}><StudentLearningRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/learning/diagnostic/:diagnosticCode" element={<ProtectedRoute roles={['student']}><StudentDiagnosticRoute /></ProtectedRoute>} />

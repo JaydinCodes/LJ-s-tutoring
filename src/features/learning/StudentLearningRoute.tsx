@@ -16,7 +16,7 @@ import {
   SkeletonCard,
 } from '../../components/dashboard/DashboardDesignSystem';
 
-import { useApprovedLearningVideos, useAvailableLearningDiagnostics, useDueRetentionStep, useGrade9LearningCatalogue, useLearnerMasterySummary, useNextLearningStep } from './studentLearningQueries';
+import { useApprovedLearningVideos, useAvailableLearningAssessments, useAvailableLearningDiagnostics, useDueRetentionStep, useGrade9LearningCatalogue, useLearnerMasterySummary, useNextLearningStep } from './studentLearningQueries';
 
 export function StudentLearningRoute() {
   const diagnosticsQuery =
@@ -26,6 +26,7 @@ export function StudentLearningRoute() {
   const masteryQuery = useLearnerMasterySummary();
   const catalogueQuery = useGrade9LearningCatalogue();
   const videosQuery = useApprovedLearningVideos();
+  const assessmentsQuery = useAvailableLearningAssessments();
 
   if (diagnosticsQuery.isPending || nextStepQuery.isPending || retentionQuery.isPending || masteryQuery.isPending || catalogueQuery.isPending) {
     return (
@@ -71,6 +72,7 @@ export function StudentLearningRoute() {
   const mastery = masteryQuery.data ?? [];
   const catalogue = catalogueQuery.data ?? [];
   const foundationVideos = (videosQuery.data ?? []).filter((video) => video.skillCode.startsWith('G8-'));
+  const assessments = assessmentsQuery.data ?? [];
 
   return (
     <PageShell
@@ -106,6 +108,8 @@ export function StudentLearningRoute() {
           </span>
         </div>
       </GreekHeroCard>
+
+      {assessments.length ? <section aria-labelledby="assessments-heading" className="rounded-3xl border border-brand-gold/30 bg-brand-navy p-5 text-brand-parchment sm:p-6"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-gold">Independent checks</p><h2 id="assessments-heading" className="mt-1 text-xl font-semibold text-white">Available assessments</h2></div><p className="max-w-md text-sm leading-6 text-brand-marble">These timed checks are separate from practice. Your exercise book is the place for working.</p></div><div className="mt-4 grid gap-3 lg:grid-cols-2">{assessments.map((assessment) => <article className="rounded-2xl border border-white/10 bg-white/5 p-4" key={assessment.definitionId}><p className="text-xs font-bold uppercase tracking-wide text-brand-gold">{assessment.assessmentType.replaceAll('_', ' ')}</p><h3 className="mt-1 font-semibold text-white">{assessment.name}</h3><p className="mt-2 text-sm text-brand-marble">{assessment.questionCount} questions · {assessment.durationMinutes} minutes</p><Link className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-brand-navy" to={`/dashboard/student/learning/assessment/${encodeURIComponent(assessment.definitionId)}`}>Read instructions <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></article>)}</div></section> : null}
 
       <section aria-labelledby="catalogue-heading">
         <div className="flex flex-wrap items-end justify-between gap-3">

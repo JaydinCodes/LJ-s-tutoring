@@ -17,8 +17,13 @@ import {
   loadGrade9LearningCatalogue,
   loadGrade9LearningTopic,
   loadApprovedLearningVideos,
+  loadAvailableLearningAssessments,
+  loadLearningAssessmentSession,
   loadNextLearningStep,
+  saveLearningAssessmentAnswer,
+  startLearningAssessment,
   submitLearningAttempt,
+  submitLearningAssessment,
   type SubmitLearningAttemptInput,
 } from './studentLearningRepository';
 
@@ -62,6 +67,8 @@ export const studentLearningQueryKeys = {
   catalogue: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'catalogue'] as const,
   topic: (studentScope: string, topicCode: string) => [...studentLearningQueryKeys.all, studentScope, 'topic', topicCode] as const,
   videos: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'videos'] as const,
+  assessments: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'assessments'] as const,
+  assessmentSession: (studentScope: string, sessionId: string) => [...studentLearningQueryKeys.all, studentScope, 'assessment-session', sessionId] as const,
 };
 
 export function useDueRetentionStep() {
@@ -92,6 +99,72 @@ export function useGrade9LearningTopic(topicCode: string) {
 export function useApprovedLearningVideos() {
   const studentScope = useStudentScope();
   return useQuery({ queryKey: studentLearningQueryKeys.videos(studentScope), queryFn: loadApprovedLearningVideos, staleTime: 60_000 });
+}
+
+export function useAvailableLearningAssessments() {
+  const studentScope = useStudentScope();
+  return useQuery({
+    queryKey: studentLearningQueryKeys.assessments(studentScope),
+    queryFn: loadAvailableLearningAssessments,
+    staleTime: 15_000
+  });
+}
+
+export function useLearningAssessmentSession(sessionId: string) {
+  const studentScope = useStudentScope();
+  return useQuery({
+    queryKey: studentLearningQueryKeys.assessmentSession(studentScope, sessionId),
+    queryFn: () => loadLearningAssessmentSession(sessionId),
+    enabled: Boolean(sessionId),
+    staleTime: 0,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true
+  });
+}
+
+export function useStartLearningAssessmentMutation() {
+  const queryClient = useQueryClient();
+  const studentScope = useStudentScope();
+  return useMutation({
+    mutationFn: ({ definitionId, idempotencyKey }: { definitionId: string; idempotencyKey: string }) => startLearningAssessment(definitionId, idempotencyKey),
+    onSuccess: async () =>
+      queryClient.invalidateQueries({
+        queryKey: studentLearningQueryKeys.assessments(studentScope),
+        exact: true
+      })
+  });
+}
+
+export function useSaveLearningAssessmentAnswerMutation(sessionId: string) {
+  const queryClient = useQueryClient();
+  const studentScope = useStudentScope();
+  return useMutation({
+    mutationFn: ({ sessionQuestionId, selectedOption, idempotencyKey }: { sessionQuestionId: string; selectedOption: 'A' | 'B' | 'C' | 'D'; idempotencyKey: string }) => saveLearningAssessmentAnswer(sessionId, sessionQuestionId, selectedOption, idempotencyKey),
+    onSuccess: async () =>
+      queryClient.invalidateQueries({
+        queryKey: studentLearningQueryKeys.assessmentSession(studentScope, sessionId),
+        exact: true
+      })
+  });
+}
+
+export function useSubmitLearningAssessmentMutation(sessionId: string) {
+  const queryClient = useQueryClient();
+  const studentScope = useStudentScope();
+  return useMutation({
+    mutationFn: () => submitLearningAssessment(sessionId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: studentLearningQueryKeys.assessmentSession(studentScope, sessionId),
+        exact: true
+      });
+      await queryClient.invalidateQueries({
+        queryKey: studentLearningQueryKeys.assessments(studentScope),
+        exact: true
+      });
+    }
+  });
 }
 
 export function useLearnerActivity(activityCode: string) {

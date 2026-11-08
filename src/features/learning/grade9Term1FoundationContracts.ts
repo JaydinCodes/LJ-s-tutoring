@@ -50,6 +50,8 @@ export interface TopicMasteryEvidence {
   overallAchievement: number | null;
   criticalSkills: TopicSkillEvidence[];
   mathematicalReasoningEvidence: MathematicalReasoningEvidence[];
+  /** Endlines and mastery challenges are alternate independent pathways. */
+  qualifyingAssessmentPath?: 'endline' | 'mastery_challenge' | null;
   masteryChallengePassed: boolean | null;
 }
 
@@ -200,7 +202,14 @@ export function evaluateTopicMastery(
   if (criticalSkillCoverage < policy.criticalSkillCoverageThreshold) reasonCodes.push('CRITICAL_SKILL_COVERAGE_BELOW_THRESHOLD');
   if (criticalNotSecure.length) reasonCodes.push('CRITICAL_SKILL_NOT_SECURE');
   if (reasoningAchievement === null || reasoningAchievement < policy.minimumReasoningAchievementThreshold) reasonCodes.push('MATHEMATICAL_REASONING_ACHIEVEMENT_BELOW_THRESHOLD');
-  if (policy.requiresMasteryChallenge && evidence.masteryChallengePassed !== true) reasonCodes.push('MASTERY_CHALLENGE_NOT_PASSED');
+  // A challenge accelerates a learner who has a strong baseline. A qualifying
+  // endline is the normal independent route and must not be blocked by the
+  // policy flag that enables the challenge route.
+  const qualifyingPath = evidence.qualifyingAssessmentPath
+    ?? (evidence.masteryChallengePassed === true ? 'mastery_challenge' : null);
+  if (policy.requiresMasteryChallenge && qualifyingPath === null) {
+    reasonCodes.push('MISSING_QUALIFYING_INDEPENDENT_ASSESSMENT');
+  }
 
   return {
     status: reasonCodes.length ? 'not_yet_mastered' : 'mastered',
@@ -221,6 +230,22 @@ export function determineTopicProgression(
   currentTopicEvidence: TopicMasteryEvidence | null,
 ): TopicProgressionDecision {
   const prerequisiteReadiness = evaluatePrerequisiteReadiness(prerequisites);
+
+  // Completion is terminal for this topic. It deliberately takes precedence
+  // over a stale baseline or later prerequisite snapshot so a mastered topic
+  // is never offered another challenge.
+  if (currentTopicEvidence) {
+    const mastery = evaluateTopicMastery(policy, currentTopicEvidence);
+    if (mastery.status === 'mastered') {
+      return {
+        action: 'advance_to_dependent_topic',
+        prerequisiteReadiness,
+        eligibleAssessmentTypes: [],
+        focusSkillCodes: [],
+        reasonCodes: ['TOPIC_MASTERY_DEMONSTRATED'],
+      };
+    }
+  }
 
   if (prerequisiteReadiness.status === 'targeted_remediation_recommended') {
     return {
@@ -272,19 +297,6 @@ export function determineTopicProgression(
         ...(prerequisiteReadiness.status === 'unknown_needs_diagnostic' ? ['PREREQUISITE_EVIDENCE_UNKNOWN'] : []),
       ]),
     };
-  }
-
-  if (currentTopicEvidence) {
-    const mastery = evaluateTopicMastery(policy, currentTopicEvidence);
-    if (mastery.status === 'mastered') {
-      return {
-        action: 'advance_to_dependent_topic',
-        prerequisiteReadiness,
-        eligibleAssessmentTypes: [],
-        focusSkillCodes: [],
-        reasonCodes: ['TOPIC_MASTERY_DEMONSTRATED'],
-      };
-    }
   }
 
   return {
