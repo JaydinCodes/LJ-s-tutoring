@@ -4,7 +4,7 @@ import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { ErrorState, LoadingState } from '../../components/ui/State';
 import { Card } from '../../components/ui/Card';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
-import { approveTopicMasteryPolicyRevision, createLearningAssessmentRevision, createTopicMasteryPolicyRevision, loadAssessmentManagementCatalog, publishLearningAssessmentConfiguration, reviewLearningAssessmentConfiguration, reviewTopicMasteryPolicyConfiguration, saveLearningAssessmentConfiguration, saveTopicMasteryPolicyConfiguration, type AssessmentManagementCatalog } from './learningContentRepository';
+import { approveTopicMasteryPolicyRevision, authorizeLearningAssessmentReassessment, createLearningAssessmentRevision, createTopicMasteryPolicyRevision, loadAssessmentManagementCatalog, publishLearningAssessmentConfiguration, reviewLearningAssessmentConfiguration, reviewTopicMasteryPolicyConfiguration, saveLearningAssessmentConfiguration, saveTopicMasteryPolicyConfiguration, type AssessmentManagementCatalog } from './learningContentRepository';
 
 type AssessmentDraft = AssessmentManagementCatalog['definitions'][number];
 type PolicyDraft = AssessmentManagementCatalog['policies'][number];
@@ -128,10 +128,38 @@ export function AdminAssessmentManagementRoute() {
           </section>
           {selectedAssessment ? <AssessmentEditor definition={selectedAssessment} questions={resource.data.questions} policies={policies} onError={setError} onSaved={(text) => void refresh(text)} /> : null}
           {selectedPolicy ? <PolicyEditor policy={selectedPolicy} policies={policies} onError={setError} onSaved={(text) => void refresh(text)} /> : null}
+          <ReassessmentAuthorisation definitions={definitions} sessions={resource.data.recentSessions} onError={setError} onSaved={(text) => void refresh(text)} />
         </div>
       ) : null}
     </DashboardShell>
   );
+}
+
+function ReassessmentAuthorisation({ definitions, sessions, onSaved, onError }: { definitions: AssessmentDraft[]; sessions: AssessmentManagementCatalog['recentSessions']; onSaved: (message: string) => void; onError: (message: string) => void }) {
+  const completed = sessions.filter((session) => session.status === 'submitted' || session.status === 'timed_out');
+  const alternatives = definitions.filter((definition) => definition.code.includes('REASSESSMENT'));
+  const [priorSessionId, setPriorSessionId] = useState('');
+  const [definitionId, setDefinitionId] = useState('');
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function authorise() {
+    if (!priorSessionId || !definitionId || !reason.trim()) return;
+    setBusy(true); onError('');
+    try {
+      await authorizeLearningAssessmentReassessment({ priorSessionId, reassessmentDefinitionId: definitionId, reason: reason.trim() });
+      setReason(''); onSaved('Independent reassessment authorised. The learner can now start exactly one new attempt.');
+    } catch (error) { onError(errorText(error)); } finally { setBusy(false); }
+  }
+  return <Card>
+    <h2 className="text-xl font-semibold">Controlled reassessment</h2>
+    <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">A single attempt is authorised only for an independent Form B. The server rechecks the prior outcome, topic status and form independence.</p>
+    <div className="mt-4 grid gap-4 md:grid-cols-3">
+      <Field label="Completed learner session"><select value={priorSessionId} onChange={(event) => setPriorSessionId(event.target.value)}><option value="">Choose a completed session</option>{completed.map((session) => <option key={session.id} value={session.id}>{session.topicName ?? 'Term 1'} · {session.assessmentType} · {session.percentage ?? 0}%</option>)}</select></Field>
+      <Field label="Independent alternative form"><select value={definitionId} onChange={(event) => setDefinitionId(event.target.value)}><option value="">Choose Form B</option>{alternatives.map((definition) => <option key={definition.id} value={definition.id}>{definition.name}</option>)}</select></Field>
+      <Field label="Authorisation reason"><input required value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Targeted reassessment after learning" /></Field>
+    </div>
+    <button className="mt-4 min-h-11 rounded-xl bg-brand-navy px-4 font-semibold text-white disabled:opacity-50" disabled={busy || !priorSessionId || !definitionId || !reason.trim()} onClick={() => void authorise()} type="button">{busy ? 'Authorising…' : 'Authorise one reassessment'}</button>
+  </Card>;
 }
 
 function AssessmentEditor({ definition, questions, policies, onSaved, onError }: { definition: AssessmentDraft; questions: AssessmentManagementCatalog['questions']; policies: PolicyDraft[]; onSaved: (message: string) => void; onError: (message: string) => void }) {
@@ -208,6 +236,12 @@ function AssessmentEditor({ definition, questions, policies, onSaved, onError }:
         </div>
         <span className="rounded-full bg-slate-100 px-3 py-1 text-sm capitalize dark:bg-white/10">{draft.reviewStatus}</span>
       </div>
+      {draft.publicationValidation && !draft.publicationValidation.valid ? (
+        <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">
+          <p className="font-semibold">Publication blockers</p>
+          <p className="mt-1">{draft.publicationValidation.errors.join(' · ')}</p>
+        </div>
+      ) : null}
       <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={(event) => void save(event)}>
         <Field label="Name">
           <input required value={draft.name} onChange={(event) => patch('name', event.target.value)} />
@@ -330,6 +364,8 @@ function PolicyEditor({ policy, policies, onSaved, onError }: { policy: PolicyDr
           version: draft.version,
           name: draft.name,
           overallAchievementThreshold: asNumber(String(draft.overallAchievementThreshold), 80),
+          criticalSkillAchievementThreshold: asNumber(String(draft.criticalSkillAchievementThreshold ?? 75), 75),
+          minimumQuestionsPerCriticalSkill: asNumber(String(draft.minimumQuestionsPerCriticalSkill ?? 4), 4),
           criticalSkillCoverageThreshold: asNumber(String(draft.criticalSkillCoverageThreshold), 100),
           minimumReasoningEvidenceCount: asNumber(String(draft.minimumReasoningEvidenceCount), 2),
           minimumReasoningAchievementThreshold: asNumber(String(draft.minimumReasoningAchievementThreshold), 80),
@@ -389,6 +425,8 @@ function PolicyEditor({ policy, policies, onSaved, onError }: { policy: PolicyDr
       </label>
       <form className="mt-5 grid gap-4 md:grid-cols-3" onSubmit={(event) => void save(event)}>
         <Threshold label="Overall achievement" value={draft.overallAchievementThreshold} onChange={(value) => patch('overallAchievementThreshold', value)} />
+        <Threshold label="Critical-skill achievement" value={draft.criticalSkillAchievementThreshold ?? 75} onChange={(value) => patch('criticalSkillAchievementThreshold', value)} />
+        <Threshold label="Questions per critical skill" value={draft.minimumQuestionsPerCriticalSkill ?? 4} onChange={(value) => patch('minimumQuestionsPerCriticalSkill', value)} />
         <Threshold label="Critical-skill coverage" value={draft.criticalSkillCoverageThreshold} onChange={(value) => patch('criticalSkillCoverageThreshold', value)} />
         <Threshold label="Reasoning achievement" value={draft.minimumReasoningAchievementThreshold} onChange={(value) => patch('minimumReasoningAchievementThreshold', value)} />
         <Threshold label="Independent reasoning items" value={draft.minimumReasoningEvidenceCount} onChange={(value) => patch('minimumReasoningEvidenceCount', value)} />

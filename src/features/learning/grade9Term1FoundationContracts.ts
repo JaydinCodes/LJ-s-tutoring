@@ -26,6 +26,10 @@ export interface PrerequisiteEvidence {
 
 export interface TopicMasteryPolicyContract {
   overallAchievementThreshold: number;
+  /** Required achievement within every critical skill, not mere exposure. */
+  criticalSkillAchievementThreshold?: number;
+  /** Independent formal questions required before a skill can be judged. */
+  minimumQuestionsPerCriticalSkill?: number;
   criticalSkillCoverageThreshold: number;
   minimumReasoningEvidenceCount: number;
   minimumReasoningAchievementThreshold: number;
@@ -39,6 +43,8 @@ export interface TopicSkillEvidence {
   skillCode: string;
   isCritical: boolean;
   state: PrerequisiteEvidenceState;
+  correctResponses?: number;
+  independentResponses?: number;
 }
 
 export interface MathematicalReasoningEvidence {
@@ -177,8 +183,20 @@ export function evaluateTopicMastery(
   }
 
   const critical = evidence.criticalSkills.filter((item) => item.isCritical);
-  const criticalUnknown = critical.filter((item) => item.state === 'unknown');
-  const criticalNotSecure = critical.filter((item) => item.state === 'not_secure');
+  const minimumCriticalQuestions = policy.minimumQuestionsPerCriticalSkill ?? 1;
+  const criticalAchievementThreshold = policy.criticalSkillAchievementThreshold ?? 75;
+  const criticalUnknown = critical.filter((item) =>
+    item.independentResponses !== undefined
+      ? item.independentResponses < minimumCriticalQuestions
+      : item.state === 'unknown',
+  );
+  const criticalNotSecure = critical.filter((item) => {
+    if (item.independentResponses !== undefined) {
+      return item.independentResponses >= minimumCriticalQuestions
+        && ((item.correctResponses ?? 0) / item.independentResponses) * 100 < criticalAchievementThreshold;
+    }
+    return item.state === 'not_secure';
+  });
   const criticalSkillCoverage = critical.length
     ? ((critical.length - criticalUnknown.length - criticalNotSecure.length) / critical.length) * 100
     : 100;

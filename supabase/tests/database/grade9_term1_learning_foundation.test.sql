@@ -39,8 +39,8 @@ select ok(
 );
 select is(
   (select count(*) from public.learning_assessment_definitions where code like 'G9-T1-%'),
-  13::bigint,
-  'entry baseline plus each topic baseline, endline and mastery challenge are represented as drafts'
+  17::bigint,
+  'entry baseline, topic pathways and independent reassessment forms are represented as drafts'
 );
 
 select ok(
