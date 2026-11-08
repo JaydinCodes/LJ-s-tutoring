@@ -2377,6 +2377,138 @@ export type Database = {
           },
         ]
       }
+      learning_assessment_definition_questions: {
+        Row: {
+          display_order: number
+          learning_assessment_definition_id: string
+          question_version_id: string
+        }
+        Insert: {
+          display_order: number
+          learning_assessment_definition_id: string
+          question_version_id: string
+        }
+        Update: {
+          display_order?: number
+          learning_assessment_definition_id?: string
+          question_version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_assessment_definitio_learning_assessment_definiti_fkey"
+            columns: ["learning_assessment_definition_id"]
+            isOneToOne: false
+            referencedRelation: "learning_assessment_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_assessment_definition_questio_question_version_id_fkey"
+            columns: ["question_version_id"]
+            isOneToOne: false
+            referencedRelation: "question_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_assessment_definitions: {
+        Row: {
+          assessment_type: string
+          code: string
+          created_at: string
+          created_by: string | null
+          curriculum_topic_id: string | null
+          curriculum_version_id: string
+          description: string | null
+          duration_minutes: number
+          form_code: string
+          id: string
+          name: string
+          review_notes: string | null
+          review_status: Database["public"]["Enums"]["question_review_status"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          scored_attempts_per_question: number
+          topic_mastery_policy_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assessment_type: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          curriculum_topic_id?: string | null
+          curriculum_version_id: string
+          description?: string | null
+          duration_minutes: number
+          form_code: string
+          id?: string
+          name: string
+          review_notes?: string | null
+          review_status?: Database["public"]["Enums"]["question_review_status"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scored_attempts_per_question?: number
+          topic_mastery_policy_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assessment_type?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          curriculum_topic_id?: string | null
+          curriculum_version_id?: string
+          description?: string | null
+          duration_minutes?: number
+          form_code?: string
+          id?: string
+          name?: string
+          review_notes?: string | null
+          review_status?: Database["public"]["Enums"]["question_review_status"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scored_attempts_per_question?: number
+          topic_mastery_policy_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_assessment_definitions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_assessment_definitions_curriculum_topic_id_fkey"
+            columns: ["curriculum_topic_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_assessment_definitions_curriculum_version_id_fkey"
+            columns: ["curriculum_version_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_assessment_definitions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_assessment_definitions_topic_mastery_policy_id_fkey"
+            columns: ["topic_mastery_policy_id"]
+            isOneToOne: false
+            referencedRelation: "topic_mastery_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learning_attempt_hint_events: {
         Row: {
           id: string
@@ -3609,6 +3741,84 @@ export type Database = {
         }
         Relationships: []
       }
+      qualifying_assignment_mastery_evidence: {
+        Row: {
+          achievement: number
+          assignment_submission_id: string
+          created_at: string
+          id: string
+          is_mathematical_reasoning_evidence: boolean
+          qualification_rationale: string
+          qualified_at: string
+          qualified_by: string
+          skill_id: string
+          student_id: string
+          topic_mastery_policy_id: string
+        }
+        Insert: {
+          achievement: number
+          assignment_submission_id: string
+          created_at?: string
+          id?: string
+          is_mathematical_reasoning_evidence?: boolean
+          qualification_rationale: string
+          qualified_at?: string
+          qualified_by: string
+          skill_id: string
+          student_id: string
+          topic_mastery_policy_id: string
+        }
+        Update: {
+          achievement?: number
+          assignment_submission_id?: string
+          created_at?: string
+          id?: string
+          is_mathematical_reasoning_evidence?: boolean
+          qualification_rationale?: string
+          qualified_at?: string
+          qualified_by?: string
+          skill_id?: string
+          student_id?: string
+          topic_mastery_policy_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qualifying_assignment_mastery_evi_assignment_submission_id_fkey"
+            columns: ["assignment_submission_id"]
+            isOneToOne: false
+            referencedRelation: "assignment_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qualifying_assignment_mastery_evid_topic_mastery_policy_id_fkey"
+            columns: ["topic_mastery_policy_id"]
+            isOneToOne: false
+            referencedRelation: "topic_mastery_policies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qualifying_assignment_mastery_evidence_qualified_by_fkey"
+            columns: ["qualified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qualifying_assignment_mastery_evidence_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qualifying_assignment_mastery_evidence_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       question_hints: {
         Row: {
           created_at: string
@@ -3824,6 +4034,7 @@ export type Database = {
           material_change_note: string | null
           prompt: string
           question_item_id: string
+          reasoning_classification: string
           representation: Database["public"]["Enums"]["math_representation"]
           review_notes: string | null
           review_status: Database["public"]["Enums"]["question_review_status"]
@@ -3845,6 +4056,7 @@ export type Database = {
           material_change_note?: string | null
           prompt: string
           question_item_id: string
+          reasoning_classification?: string
           representation: Database["public"]["Enums"]["math_representation"]
           review_notes?: string | null
           review_status?: Database["public"]["Enums"]["question_review_status"]
@@ -3866,6 +4078,7 @@ export type Database = {
           material_change_note?: string | null
           prompt?: string
           question_item_id?: string
+          reasoning_classification?: string
           representation?: Database["public"]["Enums"]["math_representation"]
           review_notes?: string | null
           review_status?: Database["public"]["Enums"]["question_review_status"]
@@ -4780,6 +4993,142 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      topic_mastery_policies: {
+        Row: {
+          allow_qualifying_assignment_evidence: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          critical_skill_coverage_threshold: number
+          curriculum_topic_id: string
+          formal_scored_attempts_per_question: number
+          id: string
+          minimum_reasoning_achievement_threshold: number
+          minimum_reasoning_evidence_count: number
+          name: string
+          overall_achievement_threshold: number
+          practice_attempts_per_question: number
+          qualifying_assignment_minimum_achievement: number
+          requires_mastery_challenge: boolean
+          review_notes: string | null
+          review_status: Database["public"]["Enums"]["question_review_status"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          strong_baseline_threshold: number
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          allow_qualifying_assignment_evidence?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          critical_skill_coverage_threshold: number
+          curriculum_topic_id: string
+          formal_scored_attempts_per_question?: number
+          id?: string
+          minimum_reasoning_achievement_threshold: number
+          minimum_reasoning_evidence_count: number
+          name: string
+          overall_achievement_threshold: number
+          practice_attempts_per_question?: number
+          qualifying_assignment_minimum_achievement?: number
+          requires_mastery_challenge?: boolean
+          review_notes?: string | null
+          review_status?: Database["public"]["Enums"]["question_review_status"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          strong_baseline_threshold: number
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          allow_qualifying_assignment_evidence?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          critical_skill_coverage_threshold?: number
+          curriculum_topic_id?: string
+          formal_scored_attempts_per_question?: number
+          id?: string
+          minimum_reasoning_achievement_threshold?: number
+          minimum_reasoning_evidence_count?: number
+          name?: string
+          overall_achievement_threshold?: number
+          practice_attempts_per_question?: number
+          qualifying_assignment_minimum_achievement?: number
+          requires_mastery_challenge?: boolean
+          review_notes?: string | null
+          review_status?: Database["public"]["Enums"]["question_review_status"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          strong_baseline_threshold?: number
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_mastery_policies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_mastery_policies_curriculum_topic_id_fkey"
+            columns: ["curriculum_topic_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_mastery_policies_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topic_mastery_policy_skills: {
+        Row: {
+          is_critical: boolean
+          is_essential: boolean
+          requires_reasoning_evidence: boolean
+          skill_id: string
+          topic_mastery_policy_id: string
+        }
+        Insert: {
+          is_critical?: boolean
+          is_essential?: boolean
+          requires_reasoning_evidence?: boolean
+          skill_id: string
+          topic_mastery_policy_id: string
+        }
+        Update: {
+          is_critical?: boolean
+          is_essential?: boolean
+          requires_reasoning_evidence?: boolean
+          skill_id?: string
+          topic_mastery_policy_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_mastery_policy_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_mastery_policy_skills_topic_mastery_policy_id_fkey"
+            columns: ["topic_mastery_policy_id"]
+            isOneToOne: false
+            referencedRelation: "topic_mastery_policies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tutor_applications: {
         Row: {
@@ -7034,6 +7383,17 @@ export type Database = {
         }
       }
       process_privacy_request: { Args: { p_request_id: string }; Returns: Json }
+      qualify_assignment_mastery_evidence: {
+        Args: {
+          p_achievement: number
+          p_assignment_submission_id: string
+          p_is_mathematical_reasoning_evidence: boolean
+          p_qualification_rationale: string
+          p_skill_id: string
+          p_topic_mastery_policy_id: string
+        }
+        Returns: string
+      }
       queue_learning_attempt_review: {
         Args: { p_explanation_code: string; p_learning_attempt_id: string }
         Returns: undefined
@@ -7465,6 +7825,10 @@ export type Database = {
         Args: { p_action: string; p_activity_id: string; p_notes?: string }
         Returns: undefined
       }
+      review_learning_assessment_action: {
+        Args: { p_action: string; p_assessment_id: string; p_notes?: string }
+        Returns: undefined
+      }
       review_learning_attempt: {
         Args: {
           p_feedback_note?: string
@@ -7490,14 +7854,30 @@ export type Database = {
         }
         Returns: undefined
       }
+      review_topic_mastery_policy_action: {
+        Args: { p_action: string; p_notes?: string; p_policy_id: string }
+        Returns: undefined
+      }
       run_retention_cleanup: { Args: { p_apply?: boolean }; Returns: Json }
       run_retention_cleanup_scheduled: { Args: never; Returns: Json }
       save_learning_activity_draft: {
         Args: { p_activity_id?: string; p_payload: Json }
         Returns: string
       }
+      save_learning_assessment_draft: {
+        Args: { p_assessment_id?: string; p_payload: Json }
+        Returns: string
+      }
       save_learning_question_draft: {
         Args: { p_payload: Json; p_question_version_id?: string }
+        Returns: string
+      }
+      save_learning_skill_content_draft: {
+        Args: { p_content_id: string; p_payload: Json }
+        Returns: string
+      }
+      save_topic_mastery_policy_draft: {
+        Args: { p_payload: Json; p_policy_id?: string }
         Returns: string
       }
       session_date_pay_period_locked: {
