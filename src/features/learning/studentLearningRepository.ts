@@ -149,6 +149,71 @@ export type LearnerVideoResource = {
   displayOrder: number;
 };
 
+export type AvailableLearningAssessment = {
+  definitionId: string;
+  formVersionId: string;
+  name: string;
+  assessmentType: 'entry_baseline' | 'topic_baseline' | 'endline' | 'mastery_challenge';
+  topicCode: string | null;
+  topicName: string | null;
+  durationMinutes: number;
+  questionCount: number;
+};
+
+export type LearningAssessmentSession = {
+  sessionId: string;
+  status: 'in_progress' | 'submitted' | 'timed_out' | 'cancelled' | 'invalidated';
+  startedAt: string;
+  expiresAt: string;
+  serverNow: string;
+  assessment: {
+    name: string;
+    assessmentType: AvailableLearningAssessment['assessmentType'];
+    topicCode: string | null;
+    topicName: string | null;
+    durationMinutes: number;
+  };
+  questions: Array<{
+    sessionQuestionId: string;
+    sequenceNumber: number;
+    prompt: string;
+    options: Record<'A' | 'B' | 'C' | 'D', string>;
+    selectedOption: 'A' | 'B' | 'C' | 'D' | null;
+  }>;
+  result: null | {
+    rawScore: number;
+    totalMarks: number;
+    percentage: number;
+    recommendation: {
+      nextStep?: string;
+      focusSkillCode?: string | null;
+      reasonCodes?: string[];
+    };
+    topicMastery: null | {
+      status: 'not_assessed' | 'evidence_incomplete' | 'not_yet_mastered' | 'mastered';
+      reasonCodes: string[];
+      criticalSkillCoverage: number | null;
+      reasoningAchievement: number | null;
+      reasoningEvidenceCount: number;
+    };
+    skillBreakdown: Array<{
+      skillCode: string;
+      skillName: string;
+      correct: number;
+      total: number;
+      percentage: number;
+    }>;
+    questionFeedback: Array<{
+      sessionQuestionId: string;
+      selectedOption: 'A' | 'B' | 'C' | 'D' | null;
+      isCorrect: boolean;
+      correctOption: 'A' | 'B' | 'C' | 'D';
+      distractorExplanation: string | null;
+      workedSolution: string;
+    }>;
+  };
+};
+
 export type SubmitLearningAttemptEvaluation = {
   status: 'correct' | 'incorrect' | 'needs_review';
   marksAwarded: number | null;
@@ -437,4 +502,66 @@ export async function loadApprovedLearningVideos(): Promise<LearnerVideoResource
   return (data ?? []).map((row) => ({
     resourceCode: String(row.resource_code), skillCode: String(row.skill_code), title: String(row.title), channelName: String(row.channel_name), description: String(row.description), youtubeUrl: String(row.youtube_url), durationSeconds: typeof row.duration_seconds === 'number' ? row.duration_seconds : null, displayOrder: Number(row.display_order ?? 0),
   }));
+}
+
+type AssessmentRpcClient = {
+  rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: Error | null }>;
+};
+
+export async function loadAvailableLearningAssessments(): Promise<AvailableLearningAssessment[]> {
+  const { data, error } = await (requireSupabase() as unknown as AssessmentRpcClient).rpc('get_my_available_learning_assessments');
+  if (error) throw error;
+  if (!Array.isArray(data)) return [];
+  return data.flatMap((row) => {
+    const item = objectValue(row);
+    if (!item || typeof item.definitionId !== 'string' || typeof item.formVersionId !== 'string' || typeof item.name !== 'string') return [];
+    return [
+      {
+        definitionId: item.definitionId,
+        formVersionId: item.formVersionId,
+        name: item.name,
+        assessmentType: item.assessmentType as AvailableLearningAssessment['assessmentType'],
+        topicCode: typeof item.topicCode === 'string' ? item.topicCode : null,
+        topicName: typeof item.topicName === 'string' ? item.topicName : null,
+        durationMinutes: Number(item.durationMinutes),
+        questionCount: Number(item.questionCount)
+      }
+    ];
+  });
+}
+
+export async function startLearningAssessment(definitionId: string, idempotencyKey: string) {
+  const { data, error } = await (requireSupabase() as unknown as AssessmentRpcClient).rpc('start_my_learning_assessment', {
+    p_assessment_definition_id: definitionId,
+    p_idempotency_key: idempotencyKey
+  });
+  if (error) throw error;
+  if (typeof data !== 'string') throw new Error('Your assessment session could not be started.');
+  return data;
+}
+
+export async function loadLearningAssessmentSession(sessionId: string): Promise<LearningAssessmentSession> {
+  const { data, error } = await (requireSupabase() as unknown as AssessmentRpcClient).rpc('get_my_learning_assessment_session', { p_session_id: sessionId });
+  if (error) throw error;
+  const item = objectValue(data);
+  if (!item || typeof item.sessionId !== 'string' || !Array.isArray(item.questions) || !objectValue(item.assessment)) {
+    throw new Error('This assessment session is unavailable.');
+  }
+  return item as unknown as LearningAssessmentSession;
+}
+
+export async function saveLearningAssessmentAnswer(sessionId: string, sessionQuestionId: string, selectedOption: 'A' | 'B' | 'C' | 'D', idempotencyKey: string) {
+  const { error } = await (requireSupabase() as unknown as AssessmentRpcClient).rpc('save_my_learning_assessment_answer', {
+    p_session_id: sessionId,
+    p_session_question_id: sessionQuestionId,
+    p_selected_option: selectedOption,
+    p_idempotency_key: idempotencyKey
+  });
+  if (error) throw error;
+}
+
+export async function submitLearningAssessment(sessionId: string) {
+  const { data, error } = await (requireSupabase() as unknown as AssessmentRpcClient).rpc('submit_my_learning_assessment', { p_session_id: sessionId });
+  if (error) throw error;
+  return typeof data === 'string' ? data : sessionId;
 }

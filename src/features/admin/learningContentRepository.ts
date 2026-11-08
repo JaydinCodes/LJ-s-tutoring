@@ -22,7 +22,13 @@ export type TopicMasteryPolicyDraft = {
   requiresMasteryChallenge: boolean;
   allowQualifyingAssignmentEvidence: boolean;
   qualifyingAssignmentMinimumAchievement: number;
-  skills: Array<{ skillId: string; isEssential: boolean; isCritical: boolean; requiresReasoningEvidence: boolean }>;
+  skills: Array<{
+    skillId: string;
+    skillCode?: string;
+    isEssential: boolean;
+    isCritical: boolean;
+    requiresReasoningEvidence: boolean;
+  }>;
 };
 
 export type LearningAssessmentDraft = {
@@ -32,7 +38,7 @@ export type LearningAssessmentDraft = {
   code: string;
   formCode: string;
   name: string;
-  assessmentType: 'entry_baseline'|'topic_baseline'|'endline'|'mastery_challenge';
+  assessmentType: 'entry_baseline' | 'topic_baseline' | 'endline' | 'mastery_challenge';
   description?: string;
   durationMinutes: number;
   /** Formal configurations are server-constrained to one scored response. */
@@ -153,5 +159,141 @@ export async function reviewLearningVideoResource(id:string, action:'submit_for_
 export async function updateLearningVideoResourceMetadata(id:string, input:{ youtubeVideoId?:string; displayOrder?:number; skillCodes?:string[] }) {
   const client = requireSupabase() as unknown as { rpc: (name: 'update_learning_video_resource_metadata', args: Record<string, unknown>) => Promise<{ error: Error | null }> };
   const { error } = await client.rpc('update_learning_video_resource_metadata', { p_resource_id:id, p_youtube_video_id:input.youtubeVideoId, p_display_order:input.displayOrder, p_skill_codes:input.skillCodes });
+  if (error) throw error;
+}
+
+export type AssessmentManagementCatalog = {
+  definitions: Array<{
+    id: string;
+    code: string;
+    formCode: string;
+    name: string;
+    description: string | null;
+    curriculumVersionId: string;
+    topicId: string | null;
+    topicName: string | null;
+    topicMasteryPolicyId: string | null;
+    assessmentType: 'entry_baseline' | 'topic_baseline' | 'endline' | 'mastery_challenge';
+    durationMinutes: number;
+    questionOrderMode: 'fixed' | 'session_shuffle';
+    solutionReleasePolicy: 'after_submission' | 'manual' | 'never';
+    reviewStatus: string;
+    questionVersionIds: string[];
+    questionCount: number;
+    publishedFormVersion: number | null;
+  }>;
+  policies: Array<TopicMasteryPolicyDraft & { id: string; reviewStatus: string }>;
+  questions: Array<{
+    id: string;
+    itemCode: string;
+    prompt: string;
+    skillCode: string;
+    difficulty: number;
+    reasoningClassification: 'procedural' | 'mathematical_reasoning';
+  }>;
+  recentSessions: Array<{
+    id: string;
+    status: string;
+    percentage: number | null;
+    assessmentType: string;
+    submittedAt: string | null;
+    studentId: string;
+    topicName: string | null;
+    formVersion: number;
+    topicMasteryStatus: string | null;
+    criticalSkillCoverage: number | null;
+    reasoningAchievement: number | null;
+  }>;
+};
+
+type AssessmentManagementClient = {
+  rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: Error | null }>;
+};
+
+export async function loadAssessmentManagementCatalog(): Promise<AssessmentManagementCatalog> {
+  const { data, error } = await (requireSupabase() as unknown as AssessmentManagementClient).rpc('get_learning_assessment_management_catalog');
+  if (error) throw error;
+  const empty: AssessmentManagementCatalog = {
+    definitions: [],
+    policies: [],
+    questions: [],
+    recentSessions: []
+  };
+  return data && typeof data === 'object' ? { ...empty, ...(data as AssessmentManagementCatalog) } : empty;
+}
+
+export async function saveLearningAssessmentConfiguration(
+  draft: LearningAssessmentDraft & {
+    questionOrderMode: 'fixed' | 'session_shuffle';
+    solutionReleasePolicy: 'after_submission' | 'manual' | 'never';
+  },
+  assessmentId?: string
+) {
+  const { data, error } = await (requireSupabase() as unknown as AssessmentManagementClient).rpc('save_learning_assessment_draft', {
+    p_assessment_id: assessmentId,
+    p_payload: draft
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function reviewLearningAssessmentConfiguration(id: string, action: 'submit_for_review' | 'approve' | 'reject' | 'return_for_revision' | 'retire', notes?: string) {
+  const { error } = await (requireSupabase() as unknown as AssessmentManagementClient).rpc('review_learning_assessment_action', {
+    p_assessment_id: id,
+    p_action: action,
+    p_notes: notes
+  });
+  if (error) throw error;
+}
+
+export async function publishLearningAssessmentConfiguration(id: string) {
+  const { data, error } = await (requireSupabase() as unknown as AssessmentManagementClient).rpc('publish_learning_assessment_form', { p_assessment_definition_id: id });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function createLearningAssessmentRevision(id: string, input: { code: string; formCode: string; name: string }) {
+  const { data, error } = await (requireSupabase() as unknown as AssessmentManagementClient).rpc('create_learning_assessment_revision', {
+    p_assessment_definition_id: id,
+    p_code: input.code,
+    p_form_code: input.formCode,
+    p_name: input.name
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function saveTopicMasteryPolicyConfiguration(draft: TopicMasteryPolicyDraft, policyId?: string) {
+  const { data, error } = await (requireSupabase() as unknown as AssessmentManagementClient).rpc('save_topic_mastery_policy_draft', {
+    p_policy_id: policyId,
+    p_payload: draft
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function reviewTopicMasteryPolicyConfiguration(id: string, action: 'submit_for_review' | 'approve' | 'reject' | 'return_for_revision' | 'retire', notes?: string) {
+  const { error } = await (requireSupabase() as unknown as AssessmentManagementClient).rpc('review_topic_mastery_policy_action', {
+    p_policy_id: id,
+    p_action: action,
+    p_notes: notes
+  });
+  if (error) throw error;
+}
+
+export async function createTopicMasteryPolicyRevision(id: string, name?: string) {
+  const { data, error } = await (requireSupabase() as unknown as AssessmentManagementClient).rpc('create_topic_mastery_policy_revision', {
+    p_policy_id: id,
+    p_name: name
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function approveTopicMasteryPolicyRevision(id: string, notes?: string) {
+  const { error } = await (requireSupabase() as unknown as AssessmentManagementClient).rpc('approve_topic_mastery_policy_revision', {
+    p_policy_id: id,
+    p_notes: notes
+  });
   if (error) throw error;
 }
