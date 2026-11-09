@@ -25,6 +25,12 @@ function validateDeterministic(question, errors) {
     const product = [...answer.matchAll(/(\d+)(?:\^(\d+))?/g)].reduce((total, match) => total * (Number(match[1]) ** Number(match[2] ?? 1)), 1);
     if (product !== v.value) errors.push(`${question.code}: stated prime factorisation multiplies to ${product}, not ${v.value}.`);
   }
+  if (v.kind === 'arithmetic-sequence-index') {
+    const computed = v.first + ((v.expectedIndex - 1) * v.difference);
+    if (computed !== v.target || Number(answer) !== v.expectedIndex) {
+      errors.push(`${question.code}: arithmetic-sequence target and selected term are inconsistent.`);
+    }
+  }
   if (v.expected != null && ['percentage', 'rental', 'compound-interest', 'rate', 'inverse-proportion', 'direct-proportion', 'direct-ratio', 'perfect-square-classification'].includes(v.kind)) {
     const numeric = Number((answer.match(/-?\d+(?:\.\d+)?/) ?? [])[0]);
     if (Math.abs(numeric - Number(v.expected)) > 0.005) errors.push(`${question.code}: deterministic answer does not equal ${v.expected}.`);

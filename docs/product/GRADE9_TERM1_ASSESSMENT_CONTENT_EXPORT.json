@@ -5857,7 +5857,7 @@
       "form": "ENDLINE",
       "sequence": 15,
       "skillCode": "G9-PAT-NUMERIC-STRUCTURE",
-      "prompt": "The pattern is 3, 6, 9, … . Which term is 18?",
+      "prompt": "The pattern is 3, 6, 9, … . Which term is 21?",
       "options": {
         "A": "7",
         "B": "5",
@@ -5870,12 +5870,15 @@
         "C": "This gives a term equal to 3d + 6.",
         "D": "This gives a term three more."
       },
-      "solution": "Tn = 3n + (3 − 3). Set 3n + 0 = 18; then 3n = 21, so n = 7.",
+      "solution": "Tn = 3n + (3 − 3). Set 3n + 0 = 21; then 3n = 21, so n = 7.",
       "difficulty": 2,
       "reasoningClassification": "procedural",
       "verification": {
-        "kind": "editorial",
-        "evidence": "Worked solution and distractor rationale are authored for administrator review."
+        "kind": "arithmetic-sequence-index",
+        "first": 3,
+        "difference": 3,
+        "target": 21,
+        "expectedIndex": 7
       }
     },
     {
@@ -6289,7 +6292,7 @@
       "form": "MASTERY-CHALLENGE",
       "sequence": 15,
       "skillCode": "G9-PAT-NUMERIC-STRUCTURE",
-      "prompt": "The pattern is 4, 7, 10, … . Which term is 21?",
+      "prompt": "The pattern is 4, 7, 10, … . Which term is 25?",
       "options": {
         "A": "7",
         "B": "9",
@@ -6302,12 +6305,15 @@
         "B": "This gives a term three more.",
         "D": "This gives a term three less."
       },
-      "solution": "Tn = 3n + (4 − 3). Set 3n + 1 = 21; then 3n = 24, so n = 8.",
+      "solution": "Tn = 3n + (4 − 3). Set 3n + 1 = 25; then 3n = 24, so n = 8.",
       "difficulty": 2,
       "reasoningClassification": "procedural",
       "verification": {
-        "kind": "editorial",
-        "evidence": "Worked solution and distractor rationale are authored for administrator review."
+        "kind": "arithmetic-sequence-index",
+        "first": 4,
+        "difference": 3,
+        "target": 25,
+        "expectedIndex": 8
       }
     },
     {
@@ -6721,7 +6727,7 @@
       "form": "ENDLINE-REASSESSMENT-B",
       "sequence": 15,
       "skillCode": "G9-PAT-NUMERIC-STRUCTURE",
-      "prompt": "The pattern is 5, 8, 11, … . Which term is 24?",
+      "prompt": "The pattern is 5, 8, 11, … . Which term is 29?",
       "options": {
         "A": "7",
         "B": "8",
@@ -6734,12 +6740,15 @@
         "B": "This gives a term equal to 3d + 6.",
         "C": "This gives a term three more."
       },
-      "solution": "Tn = 3n + (5 − 3). Set 3n + 2 = 24; then 3n = 27, so n = 9.",
+      "solution": "Tn = 3n + (5 − 3). Set 3n + 2 = 29; then 3n = 27, so n = 9.",
       "difficulty": 2,
       "reasoningClassification": "procedural",
       "verification": {
-        "kind": "editorial",
-        "evidence": "Worked solution and distractor rationale are authored for administrator review."
+        "kind": "arithmetic-sequence-index",
+        "first": 5,
+        "difference": 3,
+        "target": 29,
+        "expectedIndex": 9
       }
     },
     {
