@@ -6018,9 +6018,9 @@ export type Database = {
       }
       topic_mastery_policies: {
         Row: {
+          allow_qualifying_assignment_evidence: boolean
           assignment_evidence_combination_version: string
           assignment_evidence_maximum_question_equivalents: number
-          allow_qualifying_assignment_evidence: boolean
           code: string
           created_at: string
           created_by: string | null
@@ -6046,9 +6046,9 @@ export type Database = {
           version: number
         }
         Insert: {
+          allow_qualifying_assignment_evidence?: boolean
           assignment_evidence_combination_version?: string
           assignment_evidence_maximum_question_equivalents?: number
-          allow_qualifying_assignment_evidence?: boolean
           code: string
           created_at?: string
           created_by?: string | null
@@ -6074,9 +6074,9 @@ export type Database = {
           version: number
         }
         Update: {
+          allow_qualifying_assignment_evidence?: boolean
           assignment_evidence_combination_version?: string
           assignment_evidence_maximum_question_equivalents?: number
-          allow_qualifying_assignment_evidence?: boolean
           code?: string
           created_at?: string
           created_by?: string | null
