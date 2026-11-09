@@ -65,7 +65,10 @@ test('the server-owned journey contract derives from existing assessment, activi
     "'NO_APPROVED_CONTENT'",
   ]) assert.ok(migration.includes(fragment), `missing ${fragment}`);
 
-  assert.match(migration, /case item->>'assessmentType' when 'entry_baseline' then 1 else 2 end/);
+  const precedenceFix = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261111120000_grade9_term1_selected_topic_baseline_precedence.sql'), 'utf8');
+  assert.match(precedenceFix, /a learner's explicit Grade 9 topic choice/);
+  assert.match(precedenceFix, /v_journey #>> '\{primary,action\}' is distinct from 'start_baseline'/);
+  assert.match(precedenceFix, /candidate->>'assessmentType' = 'topic_baseline'/);
   assert.match(migration, /where item->>'assessmentType' = 'mastery_challenge'/);
   assert.match(migration, /elsif v_ola <> 'null'::jsonb/);
   assert.match(migration, /where item->>'assessmentType' = 'endline'/);
@@ -82,6 +85,8 @@ test('the dashboard retains a single dominant continue action and exposes all fo
   assert.match(topicRoute, /Make this my current topic/);
   assert.match(topicRoute, /Learn at your own pace/);
   assert.match(topicRoute, /Hints support learning but do not award topic mastery/);
+  assert.match(topicRoute, /isRoadmapStepComplete/);
+  assert.match(topicRoute, /This is my current topic/);
   const adminRoute = fs.readFileSync(path.join(root, 'src', 'features', 'admin', 'AdminLearningContentRoute.tsx'), 'utf8');
   assert.match(adminRoute, /Grade 9 Term 1 learner readiness/);
   assert.match(adminRoute, /Publication blocked/);

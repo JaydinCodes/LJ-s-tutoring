@@ -11,7 +11,6 @@ import {
   AnimatedProgressBar,
   EmptyState,
   ErrorState,
-  GreekHeroCard,
   PageShell,
   SkeletonCard,
 } from '../../components/dashboard/DashboardDesignSystem';
@@ -101,26 +100,6 @@ export function StudentLearningRoute() {
           <Link className="academy-btn-primary mt-6 inline-flex min-h-11 items-center gap-2 rounded-full px-5" to={journey.primary.route}>{journey.primary.action === 'explore_topic' ? 'Explore learning' : journey.primary.action === 'resume_assessment' ? 'Resume assessment' : 'Continue learning'} <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
         </section>
       ) : null}
-      <GreekHeroCard
-        eyebrow="Evidence-driven learning"
-        title="Learn one step at a time."
-        description="Complete short checks, use hints when you need them, and let your tutor use the evidence to plan what comes next."
-      >
-        <div className="flex flex-wrap gap-3 text-sm text-brand-parchment">
-          <span className="rounded-full border border-white/15 bg-white/5 px-4 py-2">
-            No grades are shown here
-          </span>
-
-          <span className="rounded-full border border-white/15 bg-white/5 px-4 py-2">
-            Hints are always optional
-          </span>
-
-          <span className="rounded-full border border-white/15 bg-white/5 px-4 py-2">
-            Your tutor reviews the evidence
-          </span>
-        </div>
-      </GreekHeroCard>
-
       {journey ? <section aria-labelledby="journey-heading" className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-900 sm:p-6"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-aegean">My learning journey</p><h2 id="journey-heading" className="mt-1 text-xl font-semibold text-brand-navy dark:text-brand-parchment">Grade 9 Mathematics · Term 1</h2></div><p className="max-w-md text-sm leading-6 text-slate-600 dark:text-brand-marble">Your roadmap is based on independent assessment evidence and reviewed learning availability—not pages visited.</p></div><ol className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{journey.topics.map((topic, index) => <li key={topic.topicCode} className="rounded-2xl border border-slate-200 p-4 dark:border-white/10"><p className="text-xs font-bold uppercase tracking-wide text-brand-aegean">Topic {index + 1}</p><h3 className="mt-1 font-semibold text-brand-navy dark:text-brand-parchment">{topic.topicName}</h3><p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${topic.status === 'mastered' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-brand-marble'}`}>{journeyStatusLabel[topic.status] ?? topic.status}</p><Link className="mt-4 inline-flex text-sm font-semibold text-brand-aegean underline-offset-4 hover:underline" to={`/dashboard/student/learning/topic/${encodeURIComponent(topic.topicCode)}`}>View roadmap</Link></li>)}</ol></section> : null}
 
       {journey ? <section aria-labelledby="progress-heading" className="grid gap-3 sm:grid-cols-3"><article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-wide text-brand-aegean">Topics mastered</p><p id="progress-heading" className="mt-2 text-2xl font-semibold text-brand-navy dark:text-brand-parchment">{masteredTopicCount} of {journey.topics.length}</p><p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Formal assessment evidence only.</p></article><article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-wide text-brand-aegean">Current focus</p><p className="mt-2 break-words font-semibold text-brand-navy dark:text-brand-parchment">{currentFocus}</p><p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Recommendations update from saved evidence.</p></article><article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-wide text-brand-aegean">Optional review</p><p className="mt-2 font-semibold text-brand-navy dark:text-brand-parchment">{journey.primary.action === 'retention_review' ? 'A quick retrieval is ready' : dueRetention ? 'A quick retrieval is available' : 'No review is due now'}</p><p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Reviews support retention; they are never a deadline.</p>{dueRetention && journey.primary.action !== 'retention_review' ? <Link className="mt-3 inline-flex text-sm font-semibold text-brand-aegean underline-offset-4 hover:underline" to={`/dashboard/student/learning/activity/${encodeURIComponent(dueRetention.activityCode)}?retentionCheck=${encodeURIComponent(dueRetention.retentionCheckId)}`}>Start quick review</Link> : null}</article></section> : null}
