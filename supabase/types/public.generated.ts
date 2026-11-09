@@ -5865,8 +5865,8 @@ export type Database = {
           achievement: number | null
           assignment_equivalent_correct_count: number
           assignment_evidence_count: number
-          evidence_state: string
           evidence_provenance: Json
+          evidence_state: string
           formal_correct_count: number
           formal_question_count: number
           id: string
@@ -5879,8 +5879,8 @@ export type Database = {
           achievement?: number | null
           assignment_equivalent_correct_count?: number
           assignment_evidence_count?: number
-          evidence_state: string
           evidence_provenance?: Json
+          evidence_state: string
           formal_correct_count: number
           formal_question_count: number
           id?: string
@@ -5893,8 +5893,8 @@ export type Database = {
           achievement?: number | null
           assignment_equivalent_correct_count?: number
           assignment_evidence_count?: number
-          evidence_state?: string
           evidence_provenance?: Json
+          evidence_state?: string
           formal_correct_count?: number
           formal_question_count?: number
           id?: string
