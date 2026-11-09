@@ -7071,21 +7071,6 @@ export type Database = {
         Args: { p_notes?: string; p_policy_id: string }
         Returns: undefined
       }
-      assignment_evidence_for_mastery_session: {
-        Args: {
-          p_reasoning_only?: boolean
-          p_session_id: string
-          p_skill_id: string
-        }
-        Returns: {
-          achievement: number
-          contribution_count: number
-          equivalent_correct_count: number
-          evidence_basis: string
-          evidence_id: string
-          source_snapshot: Json
-        }[]
-      }
       assert_learning_assessment_session_owner: {
         Args: { p_session_id: string }
         Returns: {
@@ -7119,6 +7104,21 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      assignment_evidence_for_mastery_session: {
+        Args: {
+          p_reasoning_only?: boolean
+          p_session_id: string
+          p_skill_id: string
+        }
+        Returns: {
+          achievement: number
+          contribution_count: number
+          equivalent_correct_count: number
+          evidence_basis: string
+          evidence_id: string
+          source_snapshot: Json
+        }[]
       }
       authorize_learning_assessment_reassessment: {
         Args: {
