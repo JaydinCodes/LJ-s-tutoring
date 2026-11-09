@@ -5541,6 +5541,59 @@ export type Database = {
           },
         ]
       }
+      student_learning_journey_context: {
+        Row: {
+          focus_skill_id: string | null
+          origin_topic_id: string | null
+          selected_topic_id: string | null
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          focus_skill_id?: string | null
+          origin_topic_id?: string | null
+          selected_topic_id?: string | null
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          focus_skill_id?: string | null
+          origin_topic_id?: string | null
+          selected_topic_id?: string | null
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_learning_journey_context_focus_skill_id_fkey"
+            columns: ["focus_skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_learning_journey_context_origin_topic_id_fkey"
+            columns: ["origin_topic_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_learning_journey_context_selected_topic_id_fkey"
+            columns: ["selected_topic_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_learning_journey_context_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_notifications: {
         Row: {
           body: string
@@ -5608,59 +5661,6 @@ export type Database = {
             foreignKeyName: "student_notifications_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      student_learning_journey_context: {
-        Row: {
-          focus_skill_id: string | null
-          origin_topic_id: string | null
-          selected_topic_id: string | null
-          student_id: string
-          updated_at: string
-        }
-        Insert: {
-          focus_skill_id?: string | null
-          origin_topic_id?: string | null
-          selected_topic_id?: string | null
-          student_id: string
-          updated_at?: string
-        }
-        Update: {
-          focus_skill_id?: string | null
-          origin_topic_id?: string | null
-          selected_topic_id?: string | null
-          student_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "student_learning_journey_context_focus_skill_id_fkey"
-            columns: ["focus_skill_id"]
-            isOneToOne: false
-            referencedRelation: "curriculum_skills"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_learning_journey_context_origin_topic_id_fkey"
-            columns: ["origin_topic_id"]
-            isOneToOne: false
-            referencedRelation: "curriculum_topics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_learning_journey_context_selected_topic_id_fkey"
-            columns: ["selected_topic_id"]
-            isOneToOne: false
-            referencedRelation: "curriculum_topics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_learning_journey_context_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: true
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
