@@ -72,3 +72,39 @@ The current draft candidates are mapped only to topic-baseline configuration dra
 - The draft pack does not yet make a parallel reviewed endline/challenge form available.
 - Runtime migration and RLS execution must be repeated in CI or a developer environment with the Supabase Postgres image available. The current cloud workspace cannot pull that image because its registry request is denied.
 - Generated Supabase database types have not been regenerated in this workspace for the same unavailable local database reason.
+
+## Sprint 2 closure — 8 November 2026
+
+### Retake eligibility and history
+
+`20261108120000_grade9_term1_assessment_closure.sql` closes the completed-form restart gap. A standard formal definition now permits one completed session per learner; an active session is resumed, and a previously used idempotency key returns its original session rather than manufacturing a new attempt. A new key is rejected after completion.
+
+Reassessment is a separate, review-gated Form B definition with a controlled administrator authorisation record. The authorisation is single-use, records its reason and author, checks the prior completed attempt, rejects already-mastered learners, and rejects insufficiently independent forms. Sessions retain their attempt number, immutable form-version reference and reassessment reason. Existing sessions and topic decisions remain append-only history.
+
+### Critical skills and reasoning
+
+The evaluator now persists `topic_mastery_evaluation_skill_evidence`, including independent formal-question count, correct count, achievement, and sufficient/insufficient/below-threshold state for every mapped skill. The pilot default is 80% overall, 75% in every critical skill, four independently scored questions per critical skill, and 80% reasoning achievement with configurable reasoning evidence count.
+
+It distinguishes inadequate sampling from weak performance. Qualified Assignment evidence is still cited only through the existing controlled skill-level qualification record; it cannot substitute a single aggregate assignment percentage for formal critical-skill evidence, and previously cited Assignment evidence is not counted again.
+
+### Expiry transaction repair
+
+Saving after the authoritative database deadline no longer finalises then raises an exception. It finalises as `timed_out` and returns successfully; the learner UI refreshes the session and displays the durable result. Finalisation locks the session, writes result rows idempotently, and preserves saved answers, so concurrent expiry/submit/refresh paths score exactly once.
+
+### Form and content inventory
+
+The closure pack supplies 17 draft forms and 252 original formal candidates: one 12-item entry baseline; four 12-item topic baselines; four 16-item endlines; four 16-item mastery challenges; and four independent 16-item reassessment forms. The full inventory, coverage map and review boundary are in [GRADE9_TERM1_ASSESSMENT_CONTENT_QA.md](GRADE9_TERM1_ASSESSMENT_CONTENT_QA.md).
+
+### Administration and publication
+
+The Admin Assessment route now displays exact publication blockers, manages draft durations and solution release as before, configures the critical-skill threshold and minimum independent samples, previews question metadata, and provides a controlled reassessment-authorisation action. Published policies/forms remain immutable; a policy revision is still required for changes to an approved policy.
+
+### Verification and security
+
+Executed locally on the closure branch: React type-check; the full frontend unit suite (487 passing); the focused assessment-contract suite (7 passing); React lint; production build and static-asset verification. The database test plan now covers the closure schema/functions, and frontend contract tests cover the 14/16-style high-total/weak-critical-skill outcome.
+
+Local Supabase migration reset, pgTAP/RLS journeys and generated-type verification did **not** run: Docker rejected the `supabase/postgres` image download with `Forbidden`, leaving no local database container. This is an environment limitation, not a passing result. The closure PR must run the committed-migration rebuild, pgTAP/RLS runtime suite, type generation and browser/mobile journeys in GitHub CI before release. The historical PR #117 GitHub checks passed App CI, QA, Release Gates, Security Stack and Lighthouse CI, including Supabase RLS runtime; those results do not substitute for checks on this closure PR.
+
+### Outstanding release gate
+
+The content remains unpublished until authorised administrators complete the existing mathematical review and publication workflow. That is the only content-publication blocker; it is not a new mandatory reviewer role. Sprint 3 may proceed only after this branch’s CI and runtime database checks pass, generated types are regenerated from the applied migration chain, and the administrator has either published validated forms or explicitly scheduled their review.

@@ -15,6 +15,8 @@ export type TopicMasteryPolicyDraft = {
   version: number;
   name: string;
   overallAchievementThreshold: number;
+  criticalSkillAchievementThreshold?: number;
+  minimumQuestionsPerCriticalSkill?: number;
   criticalSkillCoverageThreshold: number;
   minimumReasoningEvidenceCount: number;
   minimumReasoningAchievementThreshold: number;
@@ -174,6 +176,8 @@ export type AssessmentManagementCatalog = {
     topicName: string | null;
     topicMasteryPolicyId: string | null;
     assessmentType: 'entry_baseline' | 'topic_baseline' | 'endline' | 'mastery_challenge';
+    assessmentRoute?: 'standard' | 'reassessment';
+    reassessmentOfDefinitionId?: string | null;
     durationMinutes: number;
     questionOrderMode: 'fixed' | 'session_shuffle';
     solutionReleasePolicy: 'after_submission' | 'manual' | 'never';
@@ -181,6 +185,7 @@ export type AssessmentManagementCatalog = {
     questionVersionIds: string[];
     questionCount: number;
     publishedFormVersion: number | null;
+    publicationValidation?: { valid: boolean; errors: string[] };
   }>;
   policies: Array<TopicMasteryPolicyDraft & { id: string; reviewStatus: string }>;
   questions: Array<{
@@ -267,6 +272,29 @@ export async function saveTopicMasteryPolicyConfiguration(draft: TopicMasteryPol
   const { data, error } = await (requireSupabase() as unknown as AssessmentManagementClient).rpc('save_topic_mastery_policy_draft', {
     p_policy_id: policyId,
     p_payload: draft
+  });
+  if (error) throw error;
+  const id = data as string;
+  if (policyId) {
+    const { error: evidenceError } = await (requireSupabase() as unknown as AssessmentManagementClient).rpc('save_topic_mastery_policy_evidence_requirements', {
+      p_policy_id: policyId,
+      p_critical_skill_achievement_threshold: draft.criticalSkillAchievementThreshold ?? 75,
+      p_minimum_questions_per_critical_skill: draft.minimumQuestionsPerCriticalSkill ?? 4,
+    });
+    if (evidenceError) throw evidenceError;
+  }
+  return id;
+}
+
+export async function authorizeLearningAssessmentReassessment(input: {
+  priorSessionId: string;
+  reassessmentDefinitionId: string;
+  reason: string;
+}) {
+  const { data, error } = await (requireSupabase() as unknown as AssessmentManagementClient).rpc('authorize_learning_assessment_reassessment', {
+    p_prior_session_id: input.priorSessionId,
+    p_reassessment_definition_id: input.reassessmentDefinitionId,
+    p_reason: input.reason,
   });
   if (error) throw error;
   return data as string;

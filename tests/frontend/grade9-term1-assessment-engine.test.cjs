@@ -6,6 +6,7 @@ const ts = require('typescript');
 
 const root = path.resolve(__dirname, '..', '..');
 const engineMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261107120000_grade9_term1_assessment_engine.sql'), 'utf8');
+const closureMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261108120000_grade9_term1_assessment_closure.sql'), 'utf8');
 const contentMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261107130000_grade9_term1_assessment_drafts.sql'), 'utf8');
 
 function contracts() {
@@ -54,6 +55,19 @@ test('mastered-topic progression takes precedence over a stale strong baseline',
   assert.equal(decision.action, 'advance_to_dependent_topic');
 });
 
+test('a high overall score cannot turn two correct responses out of four on a critical skill into mastery', () => {
+  const { evaluateTopicMastery } = contracts();
+  const decision = evaluateTopicMastery({ ...policy, criticalSkillAchievementThreshold: 75, minimumQuestionsPerCriticalSkill: 4 }, {
+    overallAchievement: 87.5,
+    criticalSkills: [{ skillCode: 'G9-NUM-WHOLE-HCF-LCM', isCritical: true, state: 'secure', independentResponses: 4, correctResponses: 2 }],
+    mathematicalReasoningEvidence: [{ independentlyCompleted: true, correct: true }, { independentlyCompleted: true, correct: true }],
+    qualifyingAssessmentPath: 'endline',
+    masteryChallengePassed: false,
+  });
+  assert.equal(decision.status, 'not_yet_mastered');
+  assert.ok(decision.reasonCodes.includes('CRITICAL_SKILL_NOT_SECURE'));
+});
+
 test('assessment migration snapshots forms, enforces the server deadline, and records append-only decisions', () => {
   for (const pattern of [
     /create table public\.learning_assessment_form_versions/,
@@ -67,7 +81,10 @@ test('assessment migration snapshots forms, enforces the server deadline, and re
     /qualifying_assignment_mastery_evidence/,
     /MISSING_MATHEMATICAL_REASONING_EVIDENCE/,
     /learning_assessment_requires_approved_valid_multiple_choice_questions/,
-  ]) assert.match(engineMigration, pattern);
+    /learning_assessment_reassessment_authorizations/,
+    /FORM_ALREADY_COMPLETED/,
+    /minimum_questions_per_critical_skill/,
+  ]) assert.match(`${engineMigration}\n${closureMigration}`, pattern);
 });
 
 test('active learner session payloads expose option labels but withhold answers until the configured release condition', () => {

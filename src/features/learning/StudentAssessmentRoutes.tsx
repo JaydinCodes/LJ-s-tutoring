@@ -134,6 +134,9 @@ export function StudentAssessmentSessionRoute() {
         selectedOption: option,
         idempotencyKey: crypto.randomUUID()
       });
+      // An expired save is safely finalised by the database without an error;
+      // reload so the learner immediately sees the durable timed-out result.
+      await sessionQuery.refetch();
     } catch (error) {
       setSaveError(message(error));
       await sessionQuery.refetch();
