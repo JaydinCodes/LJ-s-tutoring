@@ -108,3 +108,29 @@ Local Supabase migration reset, pgTAP/RLS journeys and generated-type verificati
 ### Outstanding release gate
 
 The content remains unpublished until authorised administrators complete the existing mathematical review and publication workflow. That is the only content-publication blocker; it is not a new mandatory reviewer role. Sprint 3 may proceed only after this branch’s CI and runtime database checks pass, generated types are regenerated from the applied migration chain, and the administrator has either published validated forms or explicitly scheduled their review.
+
+## Final quality closure — 9 November 2026
+
+### Reconstructed question bank and QA boundary
+
+`20261109120000_grade9_term1_content_reconstruction.sql` is additive. It retires and unlinks only unreleased generated draft candidates, preserves any immutable historical snapshot, and links the reconstructed `Q.G9.T1C.*` item versions to the 17 existing draft definitions. It does not rewrite prior migrations or fabricate a review result.
+
+The source of truth is [grade9-term1-assessment-content.cjs](../../scripts/grade9-term1-assessment-content.cjs). It deterministically generates the additive migration, the secured repository-review export and [the formal content review pack](GRADE9_TERM1_ASSESSMENT_CONTENT_REVIEW.md). Run `npm run assessment:content:qa` to validate all 252 records before reviewing a change. The harness checks choice structure, unique keys, actual distractors, worked solutions, mappings, difficulty/reasoning classifications, duplicate codes/prompts, form composition, answer-position distribution and supported numerical calculations. It does not claim that a structural test replaces mathematical/CAPS review of a conceptual question.
+
+The bank remains draft-only. The export deliberately includes answer keys and worked solutions and must remain a repository/admin-review artefact, not a static learner asset. An authorised administrator remains the only publisher after ordinary question, form and policy review. The Admin Assessments route now exposes form-level QA counts, option distribution and precise publication blockers alongside the existing question preview, duration, solution-release, policy, revision and reassessment controls.
+
+### Assignment evidence combination
+
+`20261109130000_grade9_term1_assignment_evidence_combination.sql` changes qualified Assignment evidence from a cited-only record into a conservative, skill-specific input to the mastery calculation. The policy snapshot now carries an admin-configurable maximum number of Assignment question equivalents per skill (default two) and a versioned `skill-weighted-v1` combination rule. Formal overall achievement remains entirely formal-assessment based.
+
+Each qualification requires a marked, released, latest Assignment submission; explicit admin action; an essential policy skill; the policy’s minimum achievement; a provenance snapshot; and either item-level evidence or a single conservative aggregate observation. An aggregate percentage can never invent four item responses. The evaluator combines only unused evidence for the matching skill, records formal and Assignment counts separately, preserves IDs and provenance, and globally prevents a qualified Assignment evidence record from being consumed twice. Historical session decisions retain their original policy snapshots; snapshots created before this policy have zero Assignment weight rather than being silently reinterpreted.
+
+### Runtime and release evidence
+
+The pgTAP runtime fixture `supabase/tests/database/grade9_term1_assessment_runtime.test.sql` calls the production finaliser, late-answer save RPC and evaluator. It verifies an 80% total with 2/4 critical-skill performance is withheld, then verifies a qualified item-level Assignment contribution can change the per-skill decision without changing the formal total; it verifies that an unqualified Assignment is rejected, that evidence is consumed once, and that a late answer finalises a timed-out session without overwriting the saved response or duplicating marks. The existing assessment schema test now asserts the new provenance/cap columns and controlled evidence selector.
+
+Executed in this workspace for this closure: content generation, content QA (252/252 passed), and React typecheck. The database rebuild, pgTAP runtime suite, RLS runtime suite, generated-type check and browser/mobile journey have not yet run here because no local Supabase database container is available. They remain required GitHub CI gates for this PR. Do not describe them as passed until the new PR’s checks complete.
+
+### Sprint 3 readiness
+
+The assessment-engine defects addressed by this closure are implemented: draft content is versioned and reviewable; Assignment evidence participates without replacing the formal standard; and finalisation/evaluation has database behaviour coverage. Sprint 3 learning-journey implementation can begin after this PR’s migration, pgTAP, RLS, generated-types and browser checks are green. Publication still requires the planned administrator mathematical/CAPS review of the supplied export; no reviewer signature has been invented.

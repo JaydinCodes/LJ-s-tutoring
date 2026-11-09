@@ -24,6 +24,8 @@ export type TopicMasteryPolicyDraft = {
   requiresMasteryChallenge: boolean;
   allowQualifyingAssignmentEvidence: boolean;
   qualifyingAssignmentMinimumAchievement: number;
+  assignmentEvidenceMaximumQuestionEquivalents?: number;
+  assignmentEvidenceCombinationVersion?: string;
   skills: Array<{
     skillId: string;
     skillCode?: string;
@@ -195,6 +197,18 @@ export type AssessmentManagementCatalog = {
     skillCode: string;
     difficulty: number;
     reasoningClassification: 'procedural' | 'mathematical_reasoning';
+    solution?: string | null;
+    answerConfig?: { options?: Record<string, string>; correct_option?: string };
+    reviewStatus?: string;
+  }>;
+  contentQa?: Array<{
+    definitionId: string;
+    code: string;
+    questionCount: number;
+    reasoningQuestionCount: number;
+    correctOptionDistribution: Record<string, number>;
+    invalidQuestionCount: number;
+    publicationValidation: { valid: boolean; errors: string[] };
   }>;
   recentSessions: Array<{
     id: string;
@@ -240,6 +254,15 @@ export async function saveLearningAssessmentConfiguration(
   });
   if (error) throw error;
   return data as string;
+}
+
+export async function saveTopicMasteryPolicyAssignmentEvidenceRequirements(id: string, maximumQuestionEquivalents: number) {
+  const client = requireSupabase() as unknown as { rpc: (name: string, args: Record<string, unknown>) => Promise<{ error: Error | null }> };
+  const { error } = await client.rpc('save_topic_mastery_policy_assignment_evidence_requirements', {
+    p_policy_id: id,
+    p_assignment_evidence_maximum_question_equivalents: maximumQuestionEquivalents
+  });
+  if (error) throw error;
 }
 
 export async function reviewLearningAssessmentConfiguration(id: string, action: 'submit_for_review' | 'approve' | 'reject' | 'return_for_revision' | 'retire', notes?: string) {

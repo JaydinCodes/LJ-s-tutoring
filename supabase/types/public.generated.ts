@@ -4557,12 +4557,15 @@ export type Database = {
           achievement: number
           assignment_submission_id: string
           created_at: string
+          evidence_basis: string
           id: string
+          independent_evidence_count: number
           is_mathematical_reasoning_evidence: boolean
           qualification_rationale: string
           qualified_at: string
           qualified_by: string
           skill_id: string
+          source_snapshot: Json
           student_id: string
           topic_mastery_policy_id: string
         }
@@ -4570,12 +4573,15 @@ export type Database = {
           achievement: number
           assignment_submission_id: string
           created_at?: string
+          evidence_basis?: string
           id?: string
+          independent_evidence_count?: number
           is_mathematical_reasoning_evidence?: boolean
           qualification_rationale: string
           qualified_at?: string
           qualified_by: string
           skill_id: string
+          source_snapshot?: Json
           student_id: string
           topic_mastery_policy_id: string
         }
@@ -4583,12 +4589,15 @@ export type Database = {
           achievement?: number
           assignment_submission_id?: string
           created_at?: string
+          evidence_basis?: string
           id?: string
+          independent_evidence_count?: number
           is_mathematical_reasoning_evidence?: boolean
           qualification_rationale?: string
           qualified_at?: string
           qualified_by?: string
           skill_id?: string
+          source_snapshot?: Json
           student_id?: string
           topic_mastery_policy_id?: string
         }
@@ -5854,32 +5863,44 @@ export type Database = {
       topic_mastery_evaluation_skill_evidence: {
         Row: {
           achievement: number | null
+          assignment_equivalent_correct_count: number
+          assignment_evidence_count: number
           evidence_state: string
+          evidence_provenance: Json
           formal_correct_count: number
           formal_question_count: number
           id: string
           is_critical: boolean
           skill_id: string
+          total_independent_evidence_count: number
           topic_mastery_evaluation_id: string
         }
         Insert: {
           achievement?: number | null
+          assignment_equivalent_correct_count?: number
+          assignment_evidence_count?: number
           evidence_state: string
+          evidence_provenance?: Json
           formal_correct_count: number
           formal_question_count: number
           id?: string
           is_critical: boolean
           skill_id: string
+          total_independent_evidence_count?: number
           topic_mastery_evaluation_id: string
         }
         Update: {
           achievement?: number | null
+          assignment_equivalent_correct_count?: number
+          assignment_evidence_count?: number
           evidence_state?: string
+          evidence_provenance?: Json
           formal_correct_count?: number
           formal_question_count?: number
           id?: string
           is_critical?: boolean
           skill_id?: string
+          total_independent_evidence_count?: number
           topic_mastery_evaluation_id?: string
         }
         Relationships: [
@@ -5997,6 +6018,8 @@ export type Database = {
       }
       topic_mastery_policies: {
         Row: {
+          assignment_evidence_combination_version: string
+          assignment_evidence_maximum_question_equivalents: number
           allow_qualifying_assignment_evidence: boolean
           code: string
           created_at: string
@@ -6023,6 +6046,8 @@ export type Database = {
           version: number
         }
         Insert: {
+          assignment_evidence_combination_version?: string
+          assignment_evidence_maximum_question_equivalents?: number
           allow_qualifying_assignment_evidence?: boolean
           code: string
           created_at?: string
@@ -6049,6 +6074,8 @@ export type Database = {
           version: number
         }
         Update: {
+          assignment_evidence_combination_version?: string
+          assignment_evidence_maximum_question_equivalents?: number
           allow_qualifying_assignment_evidence?: boolean
           code?: string
           created_at?: string
@@ -7040,6 +7067,21 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      assignment_evidence_for_mastery_session: {
+        Args: {
+          p_reasoning_only?: boolean
+          p_session_id: string
+          p_skill_id: string
+        }
+        Returns: {
+          achievement: number
+          contribution_count: number
+          equivalent_correct_count: number
+          evidence_basis: string
+          evidence_id: string
+          source_snapshot: Json
+        }[]
+      }
       approve_topic_mastery_policy_revision: {
         Args: { p_notes?: string; p_policy_id: string }
         Returns: undefined
@@ -7967,6 +8009,7 @@ export type Database = {
         Args: never
         Returns: Json
       }
+      get_grade9_term1_assessment_content_qa: { Args: never; Returns: Json }
       get_learning_activity_content_catalog: { Args: never; Returns: Json }
       get_learning_assessment_management_catalog: { Args: never; Returns: Json }
       get_learning_assessment_publication_validation: {
@@ -8512,9 +8555,12 @@ export type Database = {
         Args: {
           p_achievement: number
           p_assignment_submission_id: string
+          p_evidence_basis?: string
+          p_independent_evidence_count?: number
           p_is_mathematical_reasoning_evidence: boolean
           p_qualification_rationale: string
           p_skill_id: string
+          p_source_snapshot?: Json
           p_topic_mastery_policy_id: string
         }
         Returns: string
@@ -9028,6 +9074,13 @@ export type Database = {
           p_selected_option: string
           p_session_id: string
           p_session_question_id: string
+        }
+        Returns: undefined
+      }
+      save_topic_mastery_policy_assignment_evidence_requirements: {
+        Args: {
+          p_assignment_evidence_maximum_question_equivalents: number
+          p_policy_id: string
         }
         Returns: undefined
       }
