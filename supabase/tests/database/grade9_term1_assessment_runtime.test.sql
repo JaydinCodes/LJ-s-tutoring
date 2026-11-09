@@ -23,6 +23,7 @@ declare
   v_policy uuid := gen_random_uuid(); v_definition uuid := gen_random_uuid(); v_form uuid := gen_random_uuid();
   v_version uuid; v_topic uuid; v_curriculum uuid; v_critical uuid; v_support uuid; v_session uuid;
   v_question record; v_attempt integer; v_sequence integer; v_selected text; v_first uuid; v_second uuid;
+  v_timeout_question_version uuid; v_timeout_prompt text; v_timeout_options jsonb; v_timeout_marks numeric;
   v_timeout_session uuid; v_timeout_question uuid; v_timeout_original_option text := 'A';
   v_assignment uuid := gen_random_uuid(); v_submission uuid := gen_random_uuid(); v_evidence uuid;
 begin
@@ -83,12 +84,17 @@ begin
   end loop;
   insert into public.learning_assessment_sessions(student_id,learning_assessment_definition_id,learning_assessment_form_version_id,curriculum_version_id,curriculum_topic_id,topic_mastery_policy_id,policy_snapshot,assessment_type,start_idempotency_key,started_at,expires_at,original_expires_at)
   values(v_student,v_definition,v_form,v_curriculum,v_topic,v_policy,'{}'::jsonb,'endline',gen_random_uuid(),now()-interval '31 minutes',now()-interval '1 minute',now()-interval '1 minute') returning id into v_timeout_session;
-  select version.id, version.prompt, version.answer_config, version.marks into v_question
+  -- Keep the timeout fixture in explicitly typed variables.  A PL/pgSQL
+  -- record which has been populated by a FOR query keeps that query's tuple
+  -- descriptor; reusing it for a differently shaped SELECT can leave a NULL
+  -- field reference on some PostgreSQL versions.
+  select version.id, version.prompt, version.answer_config->'options', version.marks
+  into v_timeout_question_version, v_timeout_prompt, v_timeout_options, v_timeout_marks
   from public.question_versions version join public.question_items item on item.id=version.question_item_id
   where item.item_code like 'Q.G9.T1C.%' and version.answer_config->>'type'='multiple_choice'
   order by item.item_code limit 1;
   insert into public.learning_assessment_session_questions(learning_assessment_session_id,question_version_id,primary_skill_id,sequence_number,prompt_snapshot,options_snapshot,marks_snapshot,reasoning_classification)
-  values(v_timeout_session,v_question.id,v_critical,1,v_question.prompt,v_question.answer_config->'options',v_question.marks,'procedural') returning id into v_timeout_question;
+  values(v_timeout_session,v_timeout_question_version,v_critical,1,v_timeout_prompt,v_timeout_options,v_timeout_marks,'procedural') returning id into v_timeout_question;
   insert into public.learning_assessment_session_answers(learning_assessment_session_question_id,selected_option,last_event_id)
   values(v_timeout_question,v_timeout_original_option,gen_random_uuid());
   perform set_config('request.jwt.claim.sub', v_student_user::text, true);
