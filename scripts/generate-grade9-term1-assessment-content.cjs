@@ -9,6 +9,7 @@ const { buildBank } = require('./grade9-term1-assessment-content.cjs');
 
 const root = path.resolve(__dirname, '..');
 const migration = path.join(root, 'supabase/migrations/20261109120000_grade9_term1_content_reconstruction.sql');
+const backfillMigration = path.join(root, 'supabase/migrations/20261109140000_grade9_term1_content_reconstruction_backfill.sql');
 const exportPath = path.join(root, 'docs/product/GRADE9_TERM1_ASSESSMENT_CONTENT_EXPORT.json');
 const reviewPath = path.join(root, 'docs/product/GRADE9_TERM1_ASSESSMENT_CONTENT_REVIEW.md');
 
@@ -44,6 +45,90 @@ function migrationText(bank) {
   const values = bank.map(row).join(',\n    ');
   return `-- Generated from scripts/grade9-term1-assessment-content.cjs.\n-- This is an additive correction: invalid generated draft candidates remain\n-- traceable, while only unreleased drafts are retired and relinked.\n\nwith content(item_code, definition_code, display_order, skill_code, prompt, answer_config, solution, difficulty, reasoning_classification, cognitive_level, representation) as (\n  values\n    ${values}\n), retired_links as (\n  delete from public.learning_assessment_definition_questions link\n  using public.learning_assessment_definitions definition, public.question_versions version, public.question_items item\n  where link.learning_assessment_definition_id = definition.id\n    and link.question_version_id = version.id\n    and version.question_item_id = item.id\n    and definition.review_status in ('draft', 'rejected')\n    and item.item_code like 'Q.G9.T1.%'\n    and item.item_code not like 'Q.G9.T1C.%'\n  returning item.id\n), retired_items as (\n  update public.question_items item\n  set retired_at = coalesce(item.retired_at, now())\n  where item.id in (select id from retired_links)\n    and not exists (\n      select 1 from public.question_versions version\n      join public.learning_assessment_form_questions snapshot on snapshot.question_version_id = version.id\n      where version.question_item_id = item.id\n    )\n  returning item.id\n), new_items as (\n  insert into public.question_items(curriculum_version_id, item_code, source_tier)\n  select curriculum.id, content.item_code, 'Odysseus_authored'\n  from content\n  join public.curriculum_versions curriculum on curriculum.code = 'CAPS-MATH-G9-2026'\n  on conflict (curriculum_version_id, item_code) do nothing\n  returning id\n)\ninsert into public.question_versions(\n  question_item_id, version_number, review_status, activity_type, cognitive_level, representation, difficulty, reasoning_classification, calculator_policy, prompt, answer_config, solution, marks, material_change_note\n)\nselect item.id, 1, 'draft', 'independent_practice', content.cognitive_level::public.caps_cognitive_level, content.representation::public.math_representation, content.difficulty, content.reasoning_classification, 'not_allowed', content.prompt, content.answer_config::jsonb, content.solution, 1, 'Content reconstruction v1: corrected original formal-assessment item; independent mathematical review remains required before publication.'\nfrom content\njoin public.question_items item on item.item_code = content.item_code\nleft join public.question_versions version on version.question_item_id = item.id and version.version_number = 1\nwhere version.id is null;\n\nwith content(item_code, definition_code, display_order, skill_code) as (\n  values\n    ${bank.map((question) => `(${sql(question.code)}, ${sql(topicDefinitionCode(question.topic, question.form))}, ${question.sequence}, ${sql(question.skillCode)})`).join(',\n    ')}\n)\ninsert into public.question_version_skill_links(question_version_id, skill_id, relationship_type)\nselect version.id, skill.id, 'primary'\nfrom content\njoin public.question_items item on item.item_code = content.item_code\njoin public.question_versions version on version.question_item_id = item.id and version.version_number = 1\njoin public.curriculum_skills skill on skill.skill_code = content.skill_code\non conflict (question_version_id, skill_id) do nothing;\n\nwith content(item_code, definition_code, display_order) as (\n  values\n    ${bank.map((question) => `(${sql(question.code)}, ${sql(topicDefinitionCode(question.topic, question.form))}, ${question.sequence})`).join(',\n    ')}\n)\ninsert into public.learning_assessment_definition_questions(learning_assessment_definition_id, question_version_id, display_order)\nselect definition.id, version.id, content.display_order\nfrom content\njoin public.learning_assessment_definitions definition on definition.code = content.definition_code\njoin public.question_items item on item.item_code = content.item_code\njoin public.question_versions version on version.question_item_id = item.id and version.version_number = 1\nwhere definition.review_status in ('draft', 'rejected')\non conflict (learning_assessment_definition_id, question_version_id) do update set display_order = excluded.display_order;\n\n-- Admin-only structural QA summary. This never approves or publishes content.\ncreate or replace function public.get_grade9_term1_assessment_content_qa()\nreturns jsonb language plpgsql security definer set search_path = '' as $$\nbegin\n  perform public.content_admin_required();\n  return coalesce((\n    select jsonb_agg(jsonb_build_object(\n      'definitionId', definition.id, 'code', definition.code,\n      'questionCount', count(link.question_version_id),\n      'reasoningQuestionCount', count(link.question_version_id) filter (where version.reasoning_classification = 'mathematical_reasoning'),\n      'correctOptionDistribution', jsonb_build_object(\n        'A', count(*) filter (where version.answer_config->>'correct_option' = 'A'),\n        'B', count(*) filter (where version.answer_config->>'correct_option' = 'B'),\n        'C', count(*) filter (where version.answer_config->>'correct_option' = 'C'),\n        'D', count(*) filter (where version.answer_config->>'correct_option' = 'D')\n      ),\n      'invalidQuestionCount', count(*) filter (where cardinality(public.validate_learning_answer_config(version.answer_config)) > 0),\n      'publicationValidation', public.get_learning_assessment_publication_validation(definition.id)\n    ) order by definition.code)\n    from public.learning_assessment_definitions definition\n    left join public.learning_assessment_definition_questions link on link.learning_assessment_definition_id = definition.id\n    left join public.question_versions version on version.id = link.question_version_id\n    where definition.code like 'G9-T1-%'\n    group by definition.id\n  ), '[]'::jsonb);\nend;\n$$;\nrevoke all on function public.get_grade9_term1_assessment_content_qa() from public;\ngrant execute on function public.get_grade9_term1_assessment_content_qa() to authenticated;\n`;
 }
+function backfillMigrationText(bank) {
+  const values = bank.map(row).join(',\n  ');
+  return `-- Generated from scripts/grade9-term1-assessment-content.cjs.
+-- Additive repair for 20261109120000: PostgreSQL data-modifying CTEs use a
+-- single snapshot, so a following query cannot see question_items inserted by
+-- a sibling CTE. This migration creates the missing draft versions and links
+-- without mutating or deleting historical/published content.
+
+create temporary table grade9_term1_reconstructed_content (
+  item_code text not null,
+  definition_code text not null,
+  display_order integer not null,
+  skill_code text not null,
+  prompt text not null,
+  answer_config text not null,
+  solution text not null,
+  difficulty smallint not null,
+  reasoning_classification text not null,
+  cognitive_level text not null,
+  representation text not null
+) on commit drop;
+
+insert into grade9_term1_reconstructed_content(
+  item_code, definition_code, display_order, skill_code, prompt, answer_config,
+  solution, difficulty, reasoning_classification, cognitive_level, representation
+) values
+  ${values};
+
+insert into public.question_versions(
+  question_item_id, version_number, review_status, activity_type, cognitive_level,
+  representation, difficulty, reasoning_classification, calculator_policy, prompt,
+  answer_config, solution, marks, material_change_note
+)
+select item.id, 1, 'draft', 'independent_practice',
+  content.cognitive_level::public.caps_cognitive_level,
+  content.representation::public.math_representation, content.difficulty,
+  content.reasoning_classification, 'not_allowed', content.prompt,
+  content.answer_config::jsonb, content.solution, 1,
+  'Content reconstruction v1: corrected original formal-assessment item; independent mathematical review remains required before publication.'
+from grade9_term1_reconstructed_content content
+join public.question_items item on item.item_code = content.item_code
+left join public.question_versions version
+  on version.question_item_id = item.id and version.version_number = 1
+where version.id is null;
+
+do $$
+declare v_missing integer;
+begin
+  select count(*) into v_missing
+  from grade9_term1_reconstructed_content content
+  left join public.question_items item on item.item_code = content.item_code
+  left join public.question_versions version
+    on version.question_item_id = item.id and version.version_number = 1
+  where version.id is null;
+  if v_missing > 0 then
+    raise exception 'grade9_term1_reconstruction_question_versions_missing: %', v_missing
+      using errcode = '23514';
+  end if;
+end;
+$$;
+
+insert into public.question_version_skill_links(question_version_id, skill_id, relationship_type)
+select version.id, skill.id, 'primary'
+from grade9_term1_reconstructed_content content
+join public.question_items item on item.item_code = content.item_code
+join public.question_versions version
+  on version.question_item_id = item.id and version.version_number = 1
+join public.curriculum_skills skill on skill.skill_code = content.skill_code
+on conflict (question_version_id, skill_id) do nothing;
+
+insert into public.learning_assessment_definition_questions(
+  learning_assessment_definition_id, question_version_id, display_order
+)
+select definition.id, version.id, content.display_order
+from grade9_term1_reconstructed_content content
+join public.learning_assessment_definitions definition on definition.code = content.definition_code
+join public.question_items item on item.item_code = content.item_code
+join public.question_versions version
+  on version.question_item_id = item.id and version.version_number = 1
+where definition.review_status in ('draft', 'rejected')
+on conflict (learning_assessment_definition_id, question_version_id)
+  do update set display_order = excluded.display_order;
+`;
+}
 function countBy(items, key) {
   return Object.fromEntries([...items.reduce((map, item) => map.set(key(item), (map.get(key(item)) ?? 0) + 1), new Map())].sort());
 }
@@ -66,6 +151,7 @@ function reviewText(bank) {
 
 const bank = buildBank();
 fs.writeFileSync(migration, migrationText(bank));
+fs.writeFileSync(backfillMigration, backfillMigrationText(bank));
 fs.writeFileSync(exportPath, `${JSON.stringify({ generatedAt: 'source-controlled', questionCount: bank.length, questions: bank }, null, 2)}\n`);
 fs.writeFileSync(reviewPath, reviewText(bank));
 process.stdout.write(`Generated ${bank.length} authored questions, migration, reviewer export and review pack.\n`);
