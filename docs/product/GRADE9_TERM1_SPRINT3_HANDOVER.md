@@ -39,7 +39,7 @@ The precedence is deterministic:
 7. offer an eligible endline;
 8. return an explicit `NO_APPROVED_CONTENT` fallback.
 
-Mastered topics are represented as status only, never as a new mastery-challenge action. A selected topic breaks ties only among equally eligible topic choices. Unknown prerequisites are not treated as failed prerequisites.
+Mastered topics are represented as status only, never as a new mastery-challenge action. When the learner deliberately selects a topic and its independent topic baseline is eligible, it takes precedence over the generic, topic-less entry baseline; resumable work still remains first. Unknown prerequisites are not treated as failed prerequisites.
 
 ## Grade 8 prerequisite support and retention
 
@@ -113,3 +113,9 @@ Run `npm run supabase:docs:update` after a migration. The local stack is require
 2. Complete authorized mathematical/CAPS review and publish only forms/lessons that pass the existing gates.
 3. Add an authenticated mobile Playwright journey against a published disposable fixture before real learner publication.
 4. Expand reviewed Grade 9 Term 1 lesson/activity coverage using the existing content workflow, rather than bypassing it with generated or static client content.
+
+## Visual QA refinement — 2026-11-09
+
+`SPRINT3_VISUAL_QA_REPORT.md` records the actual Chromium review at 390 × 844 and 1440 × 900. It fixed selected-topic baseline precedence, evidence-based roadmap ticks, the duplicate unavailable-state action, a dead-end unavailable-topic selection control, and competing dashboard hero panels. The App CI frontend-smoke job now publishes passing visual captures as the `sprint3-learning-journey-visual-qa` artifact.
+
+The managed workspace could not start local Supabase because the required Postgres image pull returned `Forbidden`; this remains an explicit local-runtime limitation, not a passed claim. The existing GitHub App CI Supabase runtime gate is responsible for the database rebuild, pgTAP, generated type and authenticated real-Supabase evidence.
