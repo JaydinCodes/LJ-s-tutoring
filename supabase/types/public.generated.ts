@@ -8063,7 +8063,10 @@ export type Database = {
         Returns: Json
       }
       get_grade9_term1_assessment_content_qa: { Args: never; Returns: Json }
-      get_grade9_term1_learning_journey_readiness: { Args: never; Returns: Json }
+      get_grade9_term1_learning_journey_readiness: {
+        Args: never
+        Returns: Json
+      }
       get_learning_activity_content_catalog: { Args: never; Returns: Json }
       get_learning_assessment_management_catalog: { Args: never; Returns: Json }
       get_learning_assessment_publication_validation: {
