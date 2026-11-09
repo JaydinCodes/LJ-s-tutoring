@@ -5541,6 +5541,59 @@ export type Database = {
           },
         ]
       }
+      student_learning_journey_context: {
+        Row: {
+          focus_skill_id: string | null
+          origin_topic_id: string | null
+          selected_topic_id: string | null
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          focus_skill_id?: string | null
+          origin_topic_id?: string | null
+          selected_topic_id?: string | null
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          focus_skill_id?: string | null
+          origin_topic_id?: string | null
+          selected_topic_id?: string | null
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_learning_journey_context_focus_skill_id_fkey"
+            columns: ["focus_skill_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_learning_journey_context_origin_topic_id_fkey"
+            columns: ["origin_topic_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_learning_journey_context_selected_topic_id_fkey"
+            columns: ["selected_topic_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_learning_journey_context_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_notifications: {
         Row: {
           body: string
@@ -8010,6 +8063,10 @@ export type Database = {
         Returns: Json
       }
       get_grade9_term1_assessment_content_qa: { Args: never; Returns: Json }
+      get_grade9_term1_learning_journey_readiness: {
+        Args: never
+        Returns: Json
+      }
       get_learning_activity_content_catalog: { Args: never; Returns: Json }
       get_learning_assessment_management_catalog: { Args: never; Returns: Json }
       get_learning_assessment_publication_validation: {
@@ -8096,6 +8153,7 @@ export type Database = {
         Args: { p_topic_code: string }
         Returns: Json
       }
+      get_my_grade9_term1_learning_journey: { Args: never; Returns: Json }
       get_my_learning_activity: {
         Args: { p_activity_code: string }
         Returns: Json
@@ -9117,6 +9175,14 @@ export type Database = {
           p_assignment_id: string
           p_class_ids?: string[]
           p_student_ids?: string[]
+        }
+        Returns: undefined
+      }
+      set_my_grade9_term1_learning_context: {
+        Args: {
+          p_focus_skill_code?: string
+          p_origin_topic_code?: string
+          p_topic_code: string
         }
         Returns: undefined
       }

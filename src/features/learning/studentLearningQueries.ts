@@ -16,6 +16,7 @@ import {
   loadDueRetentionStep,
   loadGrade9LearningCatalogue,
   loadGrade9LearningTopic,
+  loadGrade9Term1LearningJourney,
   loadApprovedLearningVideos,
   loadAvailableLearningAssessments,
   loadLearningAssessmentSession,
@@ -24,6 +25,7 @@ import {
   startLearningAssessment,
   submitLearningAttempt,
   submitLearningAssessment,
+  setGrade9Term1LearningContext,
   type SubmitLearningAttemptInput,
 } from './studentLearningRepository';
 
@@ -68,6 +70,7 @@ export const studentLearningQueryKeys = {
   topic: (studentScope: string, topicCode: string) => [...studentLearningQueryKeys.all, studentScope, 'topic', topicCode] as const,
   videos: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'videos'] as const,
   assessments: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'assessments'] as const,
+  journey: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'journey'] as const,
   assessmentSession: (studentScope: string, sessionId: string) => [...studentLearningQueryKeys.all, studentScope, 'assessment-session', sessionId] as const,
 };
 
@@ -110,6 +113,26 @@ export function useAvailableLearningAssessments() {
   });
 }
 
+export function useGrade9Term1LearningJourney() {
+  const studentScope = useStudentScope();
+  return useQuery({
+    queryKey: studentLearningQueryKeys.journey(studentScope),
+    queryFn: loadGrade9Term1LearningJourney,
+    staleTime: 10_000,
+    refetchOnReconnect: true,
+  });
+}
+
+export function useSetGrade9Term1LearningContextMutation() {
+  const studentScope = useStudentScope();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ topicCode, focusSkillCode, originTopicCode }: { topicCode: string; focusSkillCode?: string | null; originTopicCode?: string | null }) =>
+      setGrade9Term1LearningContext(topicCode, focusSkillCode, originTopicCode),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.journey(studentScope), exact: true }),
+  });
+}
+
 export function useLearningAssessmentSession(sessionId: string) {
   const studentScope = useStudentScope();
   return useQuery({
@@ -128,11 +151,16 @@ export function useStartLearningAssessmentMutation() {
   const studentScope = useStudentScope();
   return useMutation({
     mutationFn: ({ definitionId, idempotencyKey }: { definitionId: string; idempotencyKey: string }) => startLearningAssessment(definitionId, idempotencyKey),
-    onSuccess: async () =>
-      queryClient.invalidateQueries({
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
         queryKey: studentLearningQueryKeys.assessments(studentScope),
         exact: true
-      })
+      });
+      await queryClient.invalidateQueries({
+        queryKey: studentLearningQueryKeys.journey(studentScope),
+        exact: true
+      });
+    }
   });
 }
 
@@ -163,6 +191,7 @@ export function useSubmitLearningAssessmentMutation(sessionId: string) {
         queryKey: studentLearningQueryKeys.assessments(studentScope),
         exact: true
       });
+      await queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.journey(studentScope), exact: true });
     }
   });
 }
@@ -275,6 +304,7 @@ export function useSubmitLearningAttemptMutation(
           queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.nextStep(studentScope), exact: true }),
           queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.mastery(studentScope), exact: true }),
           queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.retention(studentScope), exact: true }),
+          queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.journey(studentScope), exact: true }),
         ] : []),
 
         queryClient.invalidateQueries({

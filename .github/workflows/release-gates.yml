@@ -126,6 +126,13 @@ jobs:
       - name: Frontend mock smoke journeys
         run: npm run test:e2e
 
+      # Database, authentication, and Edge Function checks are complete.
+      # Stop their Docker containers before benchmarking the static public
+      # site so the Lighthouse score measures the page rather than Supabase
+      # resource contention on the same shared CI runner.
+      - name: Free Supabase resources before Lighthouse
+        run: npx supabase stop --no-backup
+
       - name: Canonical route QA and Lighthouse budgets
         env:
           CHROME_PATH: ${{ env.CHROME_PATH }}
