@@ -7067,6 +7067,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      approve_topic_mastery_policy_revision: {
+        Args: { p_notes?: string; p_policy_id: string }
+        Returns: undefined
+      }
       assignment_evidence_for_mastery_session: {
         Args: {
           p_reasoning_only?: boolean
@@ -7081,10 +7085,6 @@ export type Database = {
           evidence_id: string
           source_snapshot: Json
         }[]
-      }
-      approve_topic_mastery_policy_revision: {
-        Args: { p_notes?: string; p_policy_id: string }
-        Returns: undefined
       }
       assert_learning_assessment_session_owner: {
         Args: { p_session_id: string }
