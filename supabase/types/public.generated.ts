@@ -5872,8 +5872,8 @@ export type Database = {
           id: string
           is_critical: boolean
           skill_id: string
-          total_independent_evidence_count: number
           topic_mastery_evaluation_id: string
+          total_independent_evidence_count: number
         }
         Insert: {
           achievement?: number | null
@@ -5886,8 +5886,8 @@ export type Database = {
           id?: string
           is_critical: boolean
           skill_id: string
-          total_independent_evidence_count?: number
           topic_mastery_evaluation_id: string
+          total_independent_evidence_count?: number
         }
         Update: {
           achievement?: number | null
@@ -5900,8 +5900,8 @@ export type Database = {
           id?: string
           is_critical?: boolean
           skill_id?: string
-          total_independent_evidence_count?: number
           topic_mastery_evaluation_id?: string
+          total_independent_evidence_count?: number
         }
         Relationships: [
           {
