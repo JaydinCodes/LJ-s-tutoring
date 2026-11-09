@@ -81,11 +81,11 @@ select ok(
   'anon cannot execute the topic-policy RPC'
 );
 select ok(
-  has_function_privilege('authenticated', 'public.qualify_assignment_mastery_evidence(uuid,uuid,uuid,numeric,boolean,text)', 'execute'),
+  has_function_privilege('authenticated', 'public.qualify_assignment_mastery_evidence(uuid,uuid,uuid,numeric,boolean,text,smallint,text,jsonb)', 'execute'),
   'authenticated reaches the controlled assignment-evidence RPC, which rechecks admin authority'
 );
 select ok(
-  not has_function_privilege('anon', 'public.qualify_assignment_mastery_evidence(uuid,uuid,uuid,numeric,boolean,text)', 'execute'),
+  not has_function_privilege('anon', 'public.qualify_assignment_mastery_evidence(uuid,uuid,uuid,numeric,boolean,text,smallint,text,jsonb)', 'execute'),
   'anon cannot execute the assignment-evidence RPC'
 );
 

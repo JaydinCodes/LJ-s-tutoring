@@ -8,6 +8,8 @@ const root = path.resolve(__dirname, '..', '..');
 const engineMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261107120000_grade9_term1_assessment_engine.sql'), 'utf8');
 const closureMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261108120000_grade9_term1_assessment_closure.sql'), 'utf8');
 const contentMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261107130000_grade9_term1_assessment_drafts.sql'), 'utf8');
+const reconstructionMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261109120000_grade9_term1_content_reconstruction.sql'), 'utf8');
+const assignmentEvidenceMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261109130000_grade9_term1_assignment_evidence_combination.sql'), 'utf8');
 
 function contracts() {
   const source = fs.readFileSync(path.join(root, 'src', 'features', 'learning', 'grade9Term1FoundationContracts.ts'), 'utf8');
@@ -102,6 +104,36 @@ test('author draft bank covers all four topics and keeps new content draft/revie
   assert.match(contentMigration, /'draft', 'independent_practice'/);
   assert.match(contentMigration, /'distractor_explanations'/);
   assert.match(contentMigration, /Requires authorised curriculum review before publication/);
+});
+
+test('reconstructed content source has 252 inspectable questions with shuffled correct-option positions and no placeholder distractors', () => {
+  const { buildBank } = require(path.join(root, 'scripts', 'grade9-term1-assessment-content.cjs'));
+  const bank = buildBank();
+  assert.equal(bank.length, 252);
+  assert.equal(new Set(bank.map((question) => question.code)).size, 252);
+  for (const question of bank) {
+    assert.deepEqual(Object.keys(question.options).sort(), ['A', 'B', 'C', 'D']);
+    assert.ok(question.options[question.correctOption]);
+    assert.equal(Object.keys(question.distractorExplanations).length, 3);
+    assert.doesNotMatch(Object.values(question.options).join(' '), /common operation error|unrelated answer|unrelated value/i);
+    assert.ok(question.solution.length >= 20);
+  }
+  for (const form of ['TOPIC-BASELINE', 'ENDLINE', 'MASTERY-CHALLENGE', 'ENDLINE-REASSESSMENT-B']) {
+    const positions = new Set(bank.filter((question) => question.form === form).map((question) => question.correctOption));
+    assert.ok(positions.size >= 3, `${form} should not concentrate answers in one position`);
+  }
+  assert.match(reconstructionMigration, /get_grade9_term1_assessment_content_qa/);
+});
+
+test('assignment evidence is a conservative, traceable skill-level contribution rather than an overall-mark shortcut', () => {
+  for (const pattern of [
+    /assignment_evidence_maximum_question_equivalents/,
+    /aggregate_assignment_evidence_counts_as_one_independent_observation/,
+    /assignment_evidence_for_mastery_session/,
+    /topic_mastery_assignment_evidence_consumed_once_idx/,
+    /OVERALL_ACHIEVEMENT_BELOW_THRESHOLD/,
+    /grade9-term1-assessment-v3-assignment-skill-weighted/,
+  ]) assert.match(assignmentEvidenceMigration, pattern);
 });
 
 test('student runner is a four-option, server-timed UI with no embedded answer key', () => {

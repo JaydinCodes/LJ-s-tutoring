@@ -1,6 +1,6 @@
 begin;
 
-select plan(48);
+select plan(54);
 
 select has_table('public', 'learning_assessment_form_versions', 'published assessment forms are immutable version records');
 select has_table('public', 'learning_assessment_form_questions', 'published forms snapshot their question selection');
@@ -29,6 +29,11 @@ select has_column('public', 'learning_assessment_sessions', 'learning_assessment
 select has_column('public', 'learning_assessment_sessions', 'attempt_number', 'historical attempt numbers are retained');
 select has_column('public', 'topic_mastery_policies', 'minimum_questions_per_critical_skill', 'critical skills require meaningful independent sampling');
 select has_column('public', 'topic_mastery_policies', 'critical_skill_achievement_threshold', 'critical skill achievement has a separate threshold');
+select has_column('public', 'topic_mastery_policies', 'assignment_evidence_maximum_question_equivalents', 'assignment evidence has a policy-versioned cap');
+select has_column('public', 'qualifying_assignment_mastery_evidence', 'independent_evidence_count', 'qualified assignment evidence records its independent sample size');
+select has_column('public', 'qualifying_assignment_mastery_evidence', 'source_snapshot', 'qualified assignment evidence has immutable provenance');
+select has_column('public', 'topic_mastery_evaluation_skill_evidence', 'assignment_evidence_count', 'skill evidence distinguishes assignment observations from formal items');
+select has_column('public', 'topic_mastery_evaluation_skill_evidence', 'total_independent_evidence_count', 'combined independent evidence is recorded explicitly');
 
 select has_function('public', 'get_my_available_learning_assessments', array[]::text[], 'learner availability is supplied by a controlled function');
 select has_function('public', 'start_my_learning_assessment', array['uuid', 'uuid'], 'starting a timed session is server controlled');
@@ -43,6 +48,7 @@ select has_function('public', 'release_learning_assessment_form_solutions', arra
 select has_function('public', 'authorize_learning_assessment_reassessment', array['uuid', 'uuid', 'text', 'timestamp with time zone'], 'reassessment is an explicit controlled action');
 select has_function('public', 'get_learning_assessment_publication_validation', array['uuid'], 'publication blockers are returned precisely to administrators');
 select has_function('public', 'get_grade9_term1_assessment_content_coverage', array[]::text[], 'content coverage is reportable without publishing it');
+select has_function('public', 'assignment_evidence_for_mastery_session', array['uuid', 'uuid', 'boolean'], 'assignment evidence is selected through a controlled, traceable combination boundary');
 
 select ok(has_function_privilege('authenticated', 'public.start_my_learning_assessment(uuid,uuid)', 'execute'), 'authenticated learners may reach the start RPC, which rechecks student identity');
 select ok(not has_function_privilege('anon', 'public.start_my_learning_assessment(uuid,uuid)', 'execute'), 'anonymous callers cannot start an assessment');

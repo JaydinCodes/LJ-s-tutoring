@@ -84,6 +84,8 @@
     "supabase:types:update": "node scripts/check-supabase-type-drift.cjs --update",
     "supabase:docs:update": "node scripts/generate-supabase-schema-docs.cjs",
     "supabase:docs:check": "node scripts/generate-supabase-schema-docs.cjs --check",
+    "assessment:content:generate": "node scripts/generate-grade9-term1-assessment-content.cjs",
+    "assessment:content:qa": "node scripts/assessment-content-qa.cjs",
     "verify:edge-function-policy": "node scripts/verify-edge-function-policy.cjs",
     "check:security-definer-search-path": "node scripts/check-security-definer-search-path.cjs",
     "test:edge:auth:runtime": "node scripts/test-local-edge-function-auth.cjs",

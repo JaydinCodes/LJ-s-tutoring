@@ -118,6 +118,9 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20261107130000_grade9_term1_assessment_drafts.sql` | `70be9303297c3a47884b80a2163b145701ab2fc734d4d4d28c10b502dcdc8f80` |
 | `20261108120000_grade9_term1_assessment_closure.sql` | `e706566e7da41d8a3b7e7a097400de9baf13422234e8e8b1cd762dd42e5b3257` |
 | `20261108130000_grade9_term1_complete_assessment_bank.sql` | `2ffcda6b7c378bd22b9ebdd7643b3077793306d87b09889bf4b0a917dfeb4e19` |
+| `20261109120000_grade9_term1_content_reconstruction.sql` | `e4f8b53e3486dc7f158f026600826d681a18bbe8ffb6253546c0b0ea5ba7a066` |
+| `20261109130000_grade9_term1_assignment_evidence_combination.sql` | `ffbd6fd3781f38db684af6fd4e127fefddb046ba9dae14cc935aa019f2ff5880` |
+| `20261109140000_grade9_term1_content_reconstruction_backfill.sql` | `e6761721537c2ad2f330d9529e81f36ec6cf451eb60ea37ce4840c0e548edc33` |
 
 ## Regeneration
 

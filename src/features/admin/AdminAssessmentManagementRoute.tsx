@@ -4,7 +4,7 @@ import { DashboardShell } from '../../components/dashboard/DashboardShell';
 import { ErrorState, LoadingState } from '../../components/ui/State';
 import { Card } from '../../components/ui/Card';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
-import { approveTopicMasteryPolicyRevision, authorizeLearningAssessmentReassessment, createLearningAssessmentRevision, createTopicMasteryPolicyRevision, loadAssessmentManagementCatalog, publishLearningAssessmentConfiguration, reviewLearningAssessmentConfiguration, reviewTopicMasteryPolicyConfiguration, saveLearningAssessmentConfiguration, saveTopicMasteryPolicyConfiguration, type AssessmentManagementCatalog } from './learningContentRepository';
+import { approveTopicMasteryPolicyRevision, authorizeLearningAssessmentReassessment, createLearningAssessmentRevision, createTopicMasteryPolicyRevision, loadAssessmentManagementCatalog, publishLearningAssessmentConfiguration, reviewLearningAssessmentConfiguration, reviewTopicMasteryPolicyConfiguration, saveLearningAssessmentConfiguration, saveTopicMasteryPolicyAssignmentEvidenceRequirements, saveTopicMasteryPolicyConfiguration, type AssessmentManagementCatalog } from './learningContentRepository';
 
 type AssessmentDraft = AssessmentManagementCatalog['definitions'][number];
 type PolicyDraft = AssessmentManagementCatalog['policies'][number];
@@ -126,6 +126,7 @@ export function AdminAssessmentManagementRoute() {
               </div>
             </Card>
           </section>
+          <ContentQaPanel rows={resource.data.contentQa ?? []} />
           {selectedAssessment ? <AssessmentEditor definition={selectedAssessment} questions={resource.data.questions} policies={policies} onError={setError} onSaved={(text) => void refresh(text)} /> : null}
           {selectedPolicy ? <PolicyEditor policy={selectedPolicy} policies={policies} onError={setError} onSaved={(text) => void refresh(text)} /> : null}
           <ReassessmentAuthorisation definitions={definitions} sessions={resource.data.recentSessions} onError={setError} onSaved={(text) => void refresh(text)} />
@@ -299,6 +300,24 @@ function AssessmentEditor({ definition, questions, policies, onSaved, onError }:
           </select>
           <span className="text-xs text-slate-500">{draft.questionVersionIds.length} selected. Hold Ctrl/Cmd to select multiple questions.</span>
         </Field>
+        {questions.some((question) => selected.has(question.id)) ? (
+          <section aria-label="Administrator question preview" className="rounded-2xl border border-slate-200 p-4 md:col-span-2 dark:border-white/15">
+            <h3 className="font-semibold">Administrator question preview</h3>
+            <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Prompts, answer choices and worked solutions are visible only in this authorised administration view.</p>
+            <div className="mt-3 grid gap-2">
+              {questions.filter((question) => selected.has(question.id)).map((question) => (
+                <details className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950" key={question.id}>
+                  <summary className="cursor-pointer font-mono text-xs font-semibold">{question.itemCode} · {question.skillCode} · {question.reasoningClassification}</summary>
+                  <p className="mt-3 whitespace-pre-wrap text-sm">{question.prompt}</p>
+                  <ol className="mt-3 grid gap-1 text-sm" type="A">
+                    {Object.entries(question.answerConfig?.options ?? {}).map(([option, label]) => <li key={option}>{label}</li>)}
+                  </ol>
+                  <p className="mt-3 rounded-lg border-l-4 border-brand-aegean bg-white p-3 text-sm dark:bg-slate-900"><span className="font-semibold">Worked solution: </span>{question.solution || 'No worked solution has been recorded.'}</p>
+                </details>
+              ))}
+            </div>
+          </section>
+        ) : null}
         <div className="md:col-span-2 flex flex-wrap gap-2">
           <button className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-4 font-semibold text-white disabled:opacity-50" disabled={busy} type="submit">
             <Save className="h-4 w-4" />
@@ -339,6 +358,24 @@ function AssessmentEditor({ definition, questions, policies, onSaved, onError }:
   );
 }
 
+function ContentQaPanel({ rows }: { rows: NonNullable<AssessmentManagementCatalog['contentQa']> }) {
+  if (!rows.length) return null;
+  return <Card>
+    <h2 className="text-xl font-semibold">Content QA</h2>
+    <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Structural QA is visible here for review; it does not publish a form or replace the administrator’s mathematical review.</p>
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <thead><tr className="border-b"><th className="pb-2">Form</th><th className="pb-2">Questions</th><th className="pb-2">Reasoning</th><th className="pb-2">Answer positions</th><th className="pb-2">Validation</th></tr></thead>
+        <tbody>{rows.map((row) => <tr className="border-b last:border-0" key={row.definitionId}>
+          <td className="py-2 font-mono text-xs">{row.code}</td><td className="py-2">{row.questionCount}</td><td className="py-2">{row.reasoningQuestionCount}</td>
+          <td className="py-2">A {row.correctOptionDistribution.A ?? 0} · B {row.correctOptionDistribution.B ?? 0} · C {row.correctOptionDistribution.C ?? 0} · D {row.correctOptionDistribution.D ?? 0}</td>
+          <td className="py-2">{row.invalidQuestionCount ? `${row.invalidQuestionCount} invalid` : row.publicationValidation.valid ? 'Ready for publication checks' : row.publicationValidation.errors.join(' · ')}</td>
+        </tr>)}</tbody>
+      </table>
+    </div>
+  </Card>;
+}
+
 function PolicyEditor({ policy, policies, onSaved, onError }: { policy: PolicyDraft; policies: PolicyDraft[]; onSaved: (message: string) => void; onError: (message: string) => void }) {
   const [selectedId, setSelectedId] = useState(policy.id);
   const current = policies.find((item) => item.id === selectedId) ?? policy;
@@ -377,6 +414,7 @@ function PolicyEditor({ policy, policies, onSaved, onError }: { policy: PolicyDr
         },
         draft.id
       );
+      await saveTopicMasteryPolicyAssignmentEvidenceRequirements(draft.id, asNumber(String(draft.assignmentEvidenceMaximumQuestionEquivalents ?? 2), 2));
       onSaved('Mastery-policy draft saved.');
     } catch (error) {
       onError(errorText(error));
@@ -432,6 +470,7 @@ function PolicyEditor({ policy, policies, onSaved, onError }: { policy: PolicyDr
         <Threshold label="Independent reasoning items" value={draft.minimumReasoningEvidenceCount} onChange={(value) => patch('minimumReasoningEvidenceCount', value)} />
         <Threshold label="Strong baseline" value={draft.strongBaselineThreshold} onChange={(value) => patch('strongBaselineThreshold', value)} />
         <Threshold label="Qualified Assignment minimum" value={draft.qualifyingAssignmentMinimumAchievement} onChange={(value) => patch('qualifyingAssignmentMinimumAchievement', value)} />
+        <Threshold label="Assignment evidence cap per skill" value={draft.assignmentEvidenceMaximumQuestionEquivalents ?? 2} onChange={(value) => patch('assignmentEvidenceMaximumQuestionEquivalents', value)} />
         <label className="flex items-center gap-2 text-sm font-semibold">
           <input checked={draft.requiresMasteryChallenge} type="checkbox" onChange={(event) => patch('requiresMasteryChallenge', event.target.checked)} />
           Offer mastery challenge after a strong baseline
