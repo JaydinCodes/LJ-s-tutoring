@@ -37,7 +37,7 @@ For an endline or mastery challenge, the evaluator writes one `topic_mastery_eva
 
 The policy thresholds remain configurable pilot values: 80% overall, 100% critical coverage, 80% reasoning achievement, 90% strong baseline. The two-reasoning-item rule was chosen to avoid a single lucky response standing in for mathematical reasoning evidence; it remains educator-reviewable rather than a universal claim.
 
-Assignments remain separate. Only an administrator-created `qualifying_assignment_mastery_evidence` row, for an approved opt-in policy and released marked submission, can contribute to critical-skill or reasoning coverage. Generic assignment percentages never enter the evaluation.
+Assignments remain separate. Only an administrator-created `qualifying_assignment_mastery_evidence` row, for an approved opt-in policy and released marked submission, can contribute to matching critical-skill or reasoning coverage. Generic assignment percentages never enter the evaluation, and the formal overall-score requirement remains formal-assessment-only.
 
 ## Administration and publishing
 
@@ -55,9 +55,9 @@ Authorised extensions are intentionally a narrow admin RPC with a required reaso
 
 ## Content state and quality assurance
 
-Sprint 2 seeds authored draft candidates for all four topics plus Grade 9 ratio/rate and financial-application skills. The scientific-notation extension remains supplementary. The draft bank includes four options, a single key, distractor explanations, primary skill mapping, difficulty and reasoning classification, but no candidate is auto-approved or learner-visible.
+Sprint 2 now supplies a complete reconstructed, draft-only Grade 9 Term 1 bank: 252 authored MCQs across 17 definitions (entry baseline, topic baselines, endlines, mastery challenges and independent endline reassessments). Every item has four options, a key, distractor rationales, a worked solution, primary-skill mapping, difficulty and reasoning classification. Scientific notation remains supplementary rather than a mastery requirement.
 
-The current draft candidates are mapped only to topic-baseline configuration drafts. Sprint 3 content work must author and educator-review parallel endline and mastery-challenge forms before any formal assessment is published. This is deliberate: content coverage cannot be inferred from an unreviewed draft bank.
+The source, secure reviewer export and QA evidence are in [GRADE9_TERM1_ASSESSMENT_CONTENT_REVIEW.md](GRADE9_TERM1_ASSESSMENT_CONTENT_REVIEW.md). None of these drafts are auto-approved or learner-visible: administrator mathematical/CAPS review and explicit publication are still required.
 
 ## Deployment and verification handover
 
@@ -93,7 +93,7 @@ Saving after the authoritative database deadline no longer finalises then raises
 
 ### Form and content inventory
 
-The closure pack supplies 17 draft forms and 252 original formal candidates: one 12-item entry baseline; four 12-item topic baselines; four 16-item endlines; four 16-item mastery challenges; and four independent 16-item reassessment forms. The full inventory, coverage map and review boundary are in [GRADE9_TERM1_ASSESSMENT_CONTENT_QA.md](GRADE9_TERM1_ASSESSMENT_CONTENT_QA.md).
+The closure pack supplies 17 draft forms and 252 original formal candidates: one 12-item entry baseline; four 12-item topic baselines; four 16-item endlines; four 16-item mastery challenges; and four independent 16-item reassessment forms. The full inventory, coverage map, answer-position distribution and review boundary are in [GRADE9_TERM1_ASSESSMENT_CONTENT_REVIEW.md](GRADE9_TERM1_ASSESSMENT_CONTENT_REVIEW.md); the answer-key-bearing export is `GRADE9_TERM1_ASSESSMENT_CONTENT_EXPORT.json` in the same repository-review directory.
 
 ### Administration and publication
 
@@ -113,7 +113,7 @@ The content remains unpublished until authorised administrators complete the exi
 
 ### Reconstructed question bank and QA boundary
 
-`20261109120000_grade9_term1_content_reconstruction.sql` is additive. It retires and unlinks only unreleased generated draft candidates, preserves any immutable historical snapshot, and links the reconstructed `Q.G9.T1C.*` item versions to the 17 existing draft definitions. It does not rewrite prior migrations or fabricate a review result.
+`20261109120000_grade9_term1_content_reconstruction.sql` is additive. It retires and unlinks only unreleased generated draft candidates and preserves immutable historical snapshots. `20261109140000_grade9_term1_content_reconstruction_backfill.sql` then creates and links the reconstructed `Q.G9.T1C.*` draft versions after the original migration's data-modifying-CTE visibility limitation was found by the clean runtime rebuild. Neither migration rewrites applied history or fabricates a review result.
 
 The source of truth is [grade9-term1-assessment-content.cjs](../../scripts/grade9-term1-assessment-content.cjs). It deterministically generates the additive migration, the secured repository-review export and [the formal content review pack](GRADE9_TERM1_ASSESSMENT_CONTENT_REVIEW.md). Run `npm run assessment:content:qa` to validate all 252 records before reviewing a change. The harness checks choice structure, unique keys, actual distractors, worked solutions, mappings, difficulty/reasoning classifications, duplicate codes/prompts, form composition, answer-position distribution and supported numerical calculations. It does not claim that a structural test replaces mathematical/CAPS review of a conceptual question.
 
@@ -129,8 +129,8 @@ Each qualification requires a marked, released, latest Assignment submission; ex
 
 The pgTAP runtime fixture `supabase/tests/database/grade9_term1_assessment_runtime.test.sql` calls the production finaliser, late-answer save RPC and evaluator. It verifies an 80% total with 2/4 critical-skill performance is withheld, then verifies a qualified item-level Assignment contribution can change the per-skill decision without changing the formal total; it verifies that an unqualified Assignment is rejected, that evidence is consumed once, and that a late answer finalises a timed-out session without overwriting the saved response or duplicating marks. The existing assessment schema test now asserts the new provenance/cap columns and controlled evidence selector.
 
-Executed in this workspace for this closure: content generation, content QA (252/252 passed), and React typecheck. The database rebuild, pgTAP runtime suite, RLS runtime suite, generated-type check and browser/mobile journey have not yet run here because no local Supabase database container is available. They remain required GitHub CI gates for this PR. Do not describe them as passed until the new PR’s checks complete.
+Executed in this workspace for this closure: content generation, content QA (252/252 passed), React typecheck, lint, production build, the frontend unit suite and security-definer/schema-document checks. The workspace could not start local Supabase because its image registry request was denied. GitHub Actions therefore performed the clean database rebuild and passed the pgTAP/RLS runtime matrix, generated-type fingerprint, seeded role journeys and Edge Function authorisation matrix for this PR. The general frontend smoke, Lighthouse, CodeQL, dependency/security and secret-scanning jobs also passed.
 
 ### Sprint 3 readiness
 
-The assessment-engine defects addressed by this closure are implemented: draft content is versioned and reviewable; Assignment evidence participates without replacing the formal standard; and finalisation/evaluation has database behaviour coverage. Sprint 3 learning-journey implementation can begin after this PR’s migration, pgTAP, RLS, generated-types and browser checks are green. Publication still requires the planned administrator mathematical/CAPS review of the supplied export; no reviewer signature has been invented.
+The assessment-engine defects addressed by this closure are implemented: draft content is versioned and reviewable; Assignment evidence participates without replacing the formal standard; and finalisation/evaluation has database behaviour coverage. The verified code is ready to unblock Sprint 3 Learning Journey work. Formal learner release remains conditional on administrator mathematical/CAPS review of the supplied export and explicit publication; no reviewer signature has been invented. The runtime workflow covers seeded role journeys but does not yet contain a dedicated authenticated mobile formal-assessment Playwright journey, so that release-experience test remains a follow-up before learner publication.
