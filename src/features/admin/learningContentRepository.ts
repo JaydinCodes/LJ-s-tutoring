@@ -7,6 +7,17 @@ export type ContentSkill = { id:string; code:string; name:string };
 export type ContentMisconception = { id:string; code:string; name:string; skillId:string };
 export type ContentCatalog = { items:ContentQuestion[]; total:number; skills:ContentSkill[]; misconceptions:ContentMisconception[] };
 export type QuestionDraft = { itemCode:string; primarySkillId:string; supportingSkillIds:string[]; misconceptionIds:string[]; prompt:string; questionType:string; expected:string; optionsText:string; distractorExplanationsText:string; tolerance:string; correctOption:string; requiredForm:string; marks:string; difficulty:string; reasoningClassification:string; activityType:string; cognitiveLevel:string; representation:string; calculatorPolicy:string; solution:string; sourceTier:string; sourceNotes:string; hints:string[] };
+export type LearningJourneyReadiness = {
+  topicCode: string;
+  topicName: string;
+  approvedLessonCount: number;
+  approvedActivityCount: number;
+  publishedAssessmentCount: number;
+  draftAssessmentCount: number;
+  learnerContentReady: boolean;
+  assessmentReady: boolean;
+  blockers: string[];
+};
 
 /** Review-gated payloads owned by the assessment-configuration admin RPCs. */
 export type TopicMasteryPolicyDraft = {
@@ -54,6 +65,16 @@ export async function loadLearningContentCatalog(search = '', status = '', page 
   const { data, error } = await requireSupabase().rpc('get_learning_content_catalog', { p_search: search || undefined, p_status: (status || undefined) as 'draft'|'in_review'|'approved'|'rejected'|'retired'|undefined, p_page: page, p_page_size: 25 });
   if (error) throw error;
   return data as unknown as ContentCatalog;
+}
+
+/** Aggregated publication state for the existing Grade 9 Term 1 journey. */
+export async function loadGrade9Term1LearningJourneyReadiness(): Promise<LearningJourneyReadiness[]> {
+  const client = requireSupabase() as unknown as {
+    rpc: (name: 'get_grade9_term1_learning_journey_readiness') => Promise<{ data: unknown; error: Error | null }>;
+  };
+  const { data, error } = await client.rpc('get_grade9_term1_learning_journey_readiness');
+  if (error) throw error;
+  return Array.isArray(data) ? data as LearningJourneyReadiness[] : [];
 }
 
 export function answerConfigFromDraft(draft: QuestionDraft): Json {

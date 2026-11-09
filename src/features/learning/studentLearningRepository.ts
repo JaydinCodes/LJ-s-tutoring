@@ -160,6 +160,61 @@ export type AvailableLearningAssessment = {
   questionCount: number;
 };
 
+export type LearningJourneyTopicStatus =
+  | 'not_started'
+  | 'baseline_available'
+  | 'assessment_in_progress'
+  | 'learning_in_progress'
+  | 'ready_for_endline'
+  | 'mastery_challenge_available'
+  | 'mastered'
+  | 'content_unavailable';
+
+export type LearningJourneyTopic = {
+  topicCode: string;
+  topicName: string;
+  topicDescription: string | null;
+  status: LearningJourneyTopicStatus;
+  topicMasteryStatus: 'not_assessed' | 'evidence_incomplete' | 'not_yet_mastered' | 'mastered' | null;
+  reasonCodes: string[];
+  lastUpdatedAt: string | null;
+  contentAvailable: boolean;
+  availableAssessmentTypes: string[];
+  focusSkillCode: string | null;
+};
+
+export type LearningJourney = {
+  primary: {
+    action: 'resume_assessment' | 'retention_review' | 'start_baseline' | 'start_mastery_challenge' | 'start_endline' | 'continue_learning' | 'explore_topic';
+    topicCode: string | null;
+    title: string;
+    description: string;
+    route: string;
+    reasonCodes: string[];
+    activityCode?: string | null;
+    assessmentDefinitionId?: string | null;
+  };
+  topics: LearningJourneyTopic[];
+  currentTopic?: LearningJourneyTopic | null;
+  alternatives: Array<{
+    assessmentDefinitionId: string;
+    assessmentType: AvailableLearningAssessment['assessmentType'];
+    topicCode: string | null;
+    name: string;
+    route: string;
+    reasonCode: string | null;
+  }>;
+  prerequisiteRecommendation?: {
+    activityCode: string;
+    skillCode: string;
+    reasonCodes: string[];
+    originTopicCode: string | null;
+  } | null;
+  lastProgressAt?: string | null;
+  contentAvailable: boolean;
+  context: { selectedTopicCode?: string | null; focusSkillCode?: string | null; originTopicCode?: string | null; updatedAt?: string | null };
+};
+
 export type LearningAssessmentSession = {
   sessionId: string;
   status: 'in_progress' | 'submitted' | 'timed_out' | 'cancelled' | 'invalidated';
@@ -528,6 +583,27 @@ export async function loadAvailableLearningAssessments(): Promise<AvailableLearn
       }
     ];
   });
+}
+
+export async function loadGrade9Term1LearningJourney(): Promise<LearningJourney> {
+  const { data, error } = await (requireSupabase() as unknown as AssessmentRpcClient).rpc('get_my_grade9_term1_learning_journey');
+  if (error) throw error;
+  const journey = objectValue(data);
+  if (!journey || !objectValue(journey.primary) || !Array.isArray(journey.topics)) throw new Error('Your Learning Journey is not available right now.');
+  return {
+    ...journey,
+    alternatives: Array.isArray(journey.alternatives) ? journey.alternatives : [],
+    contentAvailable: journey.contentAvailable === true,
+  } as unknown as LearningJourney;
+}
+
+export async function setGrade9Term1LearningContext(topicCode: string, focusSkillCode?: string | null, originTopicCode?: string | null) {
+  const { error } = await (requireSupabase() as unknown as AssessmentRpcClient).rpc('set_my_grade9_term1_learning_context', {
+    p_topic_code: topicCode,
+    p_focus_skill_code: focusSkillCode ?? null,
+    p_origin_topic_code: originTopicCode ?? null,
+  });
+  if (error) throw error;
 }
 
 export async function startLearningAssessment(definitionId: string, idempotencyKey: string) {
