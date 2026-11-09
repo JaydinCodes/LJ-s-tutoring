@@ -269,8 +269,10 @@ begin
 end;
 $$;
 
-revoke all on function public.prevent_qualifying_assignment_evidence_mutation(), public.assignment_evidence_for_mastery_session(uuid,uuid,boolean), public.evaluate_topic_mastery_from_assessment_session(uuid), public.start_my_learning_assessment(uuid,uuid), public.save_topic_mastery_policy_assignment_evidence_requirements(uuid,smallint) from public;
+revoke all on function public.prevent_qualifying_assignment_evidence_mutation(), public.assignment_evidence_for_mastery_session(uuid,uuid,boolean), public.evaluate_topic_mastery_from_assessment_session(uuid), public.start_my_learning_assessment(uuid,uuid), public.save_topic_mastery_policy_assignment_evidence_requirements(uuid,smallint) from public, anon;
 grant execute on function public.qualify_assignment_mastery_evidence(uuid,uuid,uuid,numeric,boolean,text,smallint,text,jsonb), public.save_topic_mastery_policy_assignment_evidence_requirements(uuid,smallint) to authenticated;
+revoke all on function public.qualify_assignment_mastery_evidence(uuid,uuid,uuid,numeric,boolean,text,smallint,text,jsonb) from public, anon;
+grant execute on function public.qualify_assignment_mastery_evidence(uuid,uuid,uuid,numeric,boolean,text,smallint,text,jsonb) to authenticated;
 
 create or replace function public.get_learning_assessment_management_catalog()
 returns jsonb language plpgsql security definer set search_path='' as $$

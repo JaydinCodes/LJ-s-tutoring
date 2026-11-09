@@ -78,7 +78,7 @@ begin
       insert into public.assignment_submissions(id,assignment_id,student_id,text_answer,status,marks_awarded,marks_released,feedback_released,released_at) values(v_submission,v_assignment,v_student,'Independent skill demonstration','marked',100,true,true,now());
       perform set_config('request.jwt.claim.sub', v_admin_user::text, true);
       perform set_config('request.jwt.claims', jsonb_build_object('sub',v_admin_user::text,'role','authenticated')::text, true);
-      v_evidence := public.qualify_assignment_mastery_evidence(v_policy,v_submission,v_critical,100,false,'Administrator verified four independent, skill-specific Assignment items.',4,'item_level','{"provenance":"runtime-test-item-level-rubric"}'::jsonb);
+      v_evidence := public.qualify_assignment_mastery_evidence(v_policy,v_submission,v_critical,100::numeric,false,'Administrator verified four independent, skill-specific Assignment items.',4::smallint,'item_level'::text,'{"provenance":"runtime-test-item-level-rubric"}'::jsonb);
     end if;
   end loop;
   insert into public.learning_assessment_sessions(student_id,learning_assessment_definition_id,learning_assessment_form_version_id,curriculum_version_id,curriculum_topic_id,topic_mastery_policy_id,policy_snapshot,assessment_type,start_idempotency_key,started_at,expires_at,original_expires_at)
@@ -114,7 +114,7 @@ do $$ begin
   perform set_config('request.jwt.claims', '{"sub":"e0000000-0000-0000-0000-000000000101","role":"authenticated"}', true);
 end $$;
 select throws_ok(
-  format('select public.qualify_assignment_mastery_evidence(%L::uuid,%L::uuid,%L::uuid,50,false,''Below the approved minimum.'',1,''skill_aggregate'',''{"provenance":"runtime-unqualified-check"}''::jsonb)', (select policy_id from assessment_runtime_fixture), (select assignment_submission_id from assessment_runtime_fixture), (select critical_skill_id from assessment_runtime_fixture)),
+  format('select public.qualify_assignment_mastery_evidence(%L::uuid,%L::uuid,%L::uuid,50::numeric,false,''Below the approved minimum.'',1::smallint,''skill_aggregate''::text,''{"provenance":"runtime-unqualified-check"}''::jsonb)', (select policy_id from assessment_runtime_fixture), (select assignment_submission_id from assessment_runtime_fixture), (select critical_skill_id from assessment_runtime_fixture)),
   '23514', 'assignment_evidence_below_configured_qualification_threshold',
   'an unqualified Assignment cannot create evidence or improve mastery'
 );
