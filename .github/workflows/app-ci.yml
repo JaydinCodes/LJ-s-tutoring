@@ -152,6 +152,15 @@ jobs:
       - name: Run frontend mock smoke journeys
         run: npm run test:e2e
 
+      - name: Upload Sprint 3 visual-QA evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sprint3-learning-journey-visual-qa
+          path: test-results/**/sprint3-visual-qa/
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

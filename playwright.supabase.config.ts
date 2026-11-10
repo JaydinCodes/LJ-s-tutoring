@@ -4,6 +4,8 @@ const port = Number(process.env.REACT_SUPABASE_E2E_PORT ?? 5175);
 const webBaseUrl = `http://127.0.0.1:${port}`;
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+const executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
+const video = process.env.PLAYWRIGHT_NO_VIDEO === 'true' ? 'off' : 'retain-on-failure';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Local Supabase URL and anon key are required for runtime browser journeys.');
@@ -29,7 +31,8 @@ export default defineConfig({
     baseURL: webBaseUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video,
+    ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
   webServer: {
     command: `npx vite --config vite.app.config.ts --host 127.0.0.1 --port ${port}`,
