@@ -425,19 +425,24 @@ async function seedGrade9Term1Fixture(status, request, profiles) {
   }
 
   const instructionalCodes = new Set(buildPracticeQuestions().map((question) => question.code));
-  const versionRows = await request('/rest/v1/question_versions?select=id,version_number,review_status,question_items(item_code)');
-  const definitionLinks = await request('/rest/v1/learning_assessment_definition_questions?select=learning_assessment_definition_id,question_version_id');
   const definitionIds = new Set(grade9Definitions.map((definition) => definition.id));
+  // Do not read the unfiltered links/version tables here.  The disposable
+  // stack is intentionally seeded with other assessment content, and a
+  // PostgREST default range can otherwise truncate this Grade 9 fixture's
+  // exact 252-question evidence set.  Scope each read to the authoritative
+  // fixture records before counting or approving them.
+  const definitionLinks = await request(`/rest/v1/learning_assessment_definition_questions?select=learning_assessment_definition_id,question_version_id&learning_assessment_definition_id=${inFilter([...definitionIds])}`);
   const formalVersionIds = new Set(definitionLinks.filter((link) => definitionIds.has(link.learning_assessment_definition_id)).map((link) => link.question_version_id));
-  const instructionalV3Versions = versionRows.filter((version) => {
-    const itemCode = nestedItemCode(version);
-    return version.version_number === 3 && instructionalCodes.has(itemCode);
-  });
-  const versionsToApprove = versionRows.filter((version) => formalVersionIds.has(version.id) || instructionalV3Versions.some((instructional) => instructional.id === version.id));
-  const draftQuestionVersion = versionRows.find((version) => version.version_number === 2 && instructionalCodes.has(nestedItemCode(version)) && version.review_status === 'draft');
+  if (formalVersionIds.size < 252) throw new Error(`Grade 9 fixture expected at least 252 linked formal-assessment questions, found ${formalVersionIds.size}.`);
+  const formalVersions = await request(`/rest/v1/question_versions?select=id,version_number,review_status,question_items(item_code)&id=${inFilter([...formalVersionIds])}`);
+  const instructionalItems = await request(`/rest/v1/question_items?select=id,item_code&item_code=${inFilter([...instructionalCodes])}`);
+  if (instructionalItems.length !== 76) throw new Error(`Grade 9 fixture expected 76 canonical practice question items, found ${instructionalItems.length}.`);
+  const instructionalVersions = await request(`/rest/v1/question_versions?select=id,version_number,review_status,question_items(item_code)&question_item_id=${inFilter(instructionalItems.map((item) => item.id))}`);
+  const instructionalV3Versions = instructionalVersions.filter((version) => version.version_number === 3 && instructionalCodes.has(nestedItemCode(version)));
+  const versionsToApprove = [...formalVersions, ...instructionalV3Versions];
+  const draftQuestionVersion = instructionalVersions.find((version) => version.version_number === 2 && instructionalCodes.has(nestedItemCode(version)) && version.review_status === 'draft');
   if (!draftQuestionVersion) throw new Error('A historical v2 draft question is required to verify draft learner isolation.');
   if (instructionalV3Versions.length !== 76) throw new Error(`Grade 9 fixture expected 76 explicit-feedback v3 practice questions, found ${instructionalV3Versions.length}.`);
-  if (formalVersionIds.size < 252) throw new Error(`Grade 9 fixture expected at least 252 linked formal-assessment questions, found ${formalVersionIds.size}.`);
   for (const version of versionsToApprove) {
     await reviewThroughAdmin(adminRequest, 'review_question_version_action', 'p_question_version_id', version.id, version.review_status, 'Disposable Sprint 4 release-gate fixture review.');
   }
