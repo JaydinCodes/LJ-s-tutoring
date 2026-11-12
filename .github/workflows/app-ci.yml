@@ -131,6 +131,11 @@ jobs:
       - name: Run seeded local-Supabase role journeys and Sprint 4 Grade 9 A–H
         run: npm run test:e2e:supabase
 
+      - name: Surface Sprint 4 Grade 9 failure evidence
+        if: failure()
+        run: >-
+          node -e "const fs=require('node:fs');const root='test-results/sprint4-grade9-real';const files=['fixture-setup-failure.json','journey-scenario-summary.json'];const found=files.map(name=>[name,root+'/'+name]).find(([,file])=>fs.existsSync(file));const detail=found?fs.readFileSync(found[1],'utf8').replace(/\\s+/g,' ').slice(0,1500):'No Grade 9 fixture evidence file was written.';console.log('::error title=Sprint 4 Grade 9 real-journey evidence::'+detail);"
+
       - name: Upload Sprint 4 Grade 9 real-journey evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
