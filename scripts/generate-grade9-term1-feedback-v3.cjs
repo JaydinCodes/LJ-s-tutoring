@@ -38,7 +38,10 @@ insert into public.question_versions(question_item_id,version_number,review_stat
 select item.id,3,'draft','guided_practice',authored.cognitive_level::public.caps_cognitive_level,'symbolic',case when authored.reasoning_classification='mathematical_reasoning' then 3 else 2 end,authored.reasoning_classification,'not_allowed',authored.prompt,authored.answer_config,authored.solution,1,'Sprint 4 v3: replaces inferred distractor feedback with individually authored misconception-specific feedback. Versions 1 and 2 remain immutable for audit and historical attempts.'
 from authored
 join public.question_items item on item.item_code=authored.item_code
-join public.question_versions version_two on version_two.question_item_id=item.id and version_two.version_number=2
+where exists (
+  select 1 from public.question_versions version_base
+  where version_base.question_item_id=item.id and version_base.version_number in (1,2)
+)
 on conflict(question_item_id,version_number) do nothing;
 
 -- Each revision retains the canonical primary skill link independently.
@@ -67,17 +70,18 @@ join public.question_items item on item.item_code=authored.item_code
 join public.question_versions version on version.question_item_id=item.id and version.version_number=3
 on conflict(question_version_id,hint_level) do update set prompt=excluded.prompt;
 
--- Only unapproved activities move to v3. Published historical activities and their learner evidence are never rewritten.
+-- Only unapproved activities move from their retained v1/v2 question version to v3.
+-- Published historical activities and their learner evidence are never rewritten.
 with authored(activity_code,stage_sequence,item_code,display_order) as (
 values
 ${values(activityRows)}
 )
 delete from public.learning_activity_stage_questions link
-using public.learning_activity_stages stage, public.learning_activity_templates activity, public.question_items item, public.question_versions version_two, authored
+using public.learning_activity_stages stage, public.learning_activity_templates activity, public.question_items item, public.question_versions version_previous, authored
 where link.learning_activity_stage_id=stage.id
   and stage.learning_activity_template_id=activity.id
-  and link.question_version_id=version_two.id
-  and version_two.question_item_id=item.id and version_two.version_number=2
+  and link.question_version_id=version_previous.id
+  and version_previous.question_item_id=item.id and version_previous.version_number in (1,2)
   and activity.code=authored.activity_code and stage.sequence_number=authored.stage_sequence and item.item_code=authored.item_code
   and activity.review_status in ('draft','rejected');
 
