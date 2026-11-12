@@ -3910,6 +3910,41 @@ export type Database = {
           },
         ]
       }
+      learning_skill_content_revisions: {
+        Row: {
+          change_note: string
+          created_at: string
+          id: string
+          learning_skill_content_id: string
+          revision_number: number
+          snapshot: Json
+        }
+        Insert: {
+          change_note: string
+          created_at?: string
+          id?: string
+          learning_skill_content_id: string
+          revision_number: number
+          snapshot: Json
+        }
+        Update: {
+          change_note?: string
+          created_at?: string
+          id?: string
+          learning_skill_content_id?: string
+          revision_number?: number
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_skill_content_revisions_learning_skill_content_id_fkey"
+            columns: ["learning_skill_content_id"]
+            isOneToOne: false
+            referencedRelation: "learning_skill_content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learning_video_resource_skills: {
         Row: {
           curriculum_skill_id: string
@@ -8069,6 +8104,10 @@ export type Database = {
         Returns: Json
       }
       get_grade9_term1_assessment_content_qa: { Args: never; Returns: Json }
+      get_grade9_term1_assessment_publication_matrix: {
+        Args: never
+        Returns: Json
+      }
       get_grade9_term1_learning_journey_readiness: {
         Args: never
         Returns: Json
