@@ -76,6 +76,11 @@ jobs:
       - name: Verify Grade 9 Term 1 assessment content pack
         run: npm run assessment:content:qa
 
+      - name: Verify corrected Sprint 4 instructional and assessment blueprints
+        run: |
+          npm run qa:grade9-term1-content
+          npm run qa:grade9-term1-assessment-forms
+
   supabase-rls-runtime:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -124,6 +129,17 @@ jobs:
 
       - name: Run seeded local-Supabase role journeys
         run: npm run test:e2e:supabase
+
+      - name: Upload Sprint 4 real-Supabase browser artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sprint4-real-supabase-browser-evidence
+          path: |
+            test-results/**/sprint4-real/**
+            playwright-report/supabase/**
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Run local Edge Function authorization matrix
         run: npm run test:edge:auth:runtime

@@ -1,5 +1,6 @@
 {
-  "contentVersion": "sprint4-v1",
+  "contentVersion": "sprint4-v2-mathematics-corrections",
+  "revisionOf": "sprint4-v1",
   "generatedAt": "2026-11-12",
   "lessons": [
     {
@@ -7,9 +8,9 @@
       "grade": "Grade 9",
       "title": "Real numbers: rational or irrational",
       "objective": "By the end of this lesson, you should be able to classify real numbers as rational or irrational.",
-      "explanation": "Rational numbers can be written as a fraction of two integers, with a non-zero denominator. Integers, terminating decimals and recurring decimals are rational. A square root is rational only when its radicand is a perfect square. Numbers such as √2 and π are real but irrational.",
-      "workedExample": "Classify √81.\n1. 81 is a perfect square: 9 × 9 = 81.\n2. √81 = 9.\n3. 9 is an integer, so it is rational.\nTherefore √81 is a rational real number.",
-      "misconception": "A root sign does not automatically mean “irrational”. Check whether the number inside the root is a perfect square.",
+      "explanation": "Rational numbers can be written as a fraction of two integers, with a non-zero denominator. Integers, terminating decimals and recurring decimals are rational. For a non-negative integer radicand, its square root is rational exactly when that integer is a perfect square. More generally, rational radicands can also have rational roots: √(1/4) = 1/2. Numbers such as √2 and π are real but irrational.",
+      "workedExample": "Classify √81.\n1. 81 is a non-negative integer and a perfect square: 9 × 9 = 81.\n2. √81 = 9.\n3. 9 is an integer, so it is rational.\nAlso, √(1/4) = 1/2, showing that a rational non-integer radicand can have a rational square root.\nTherefore √81 is a rational real number.",
+      "misconception": "A root sign does not automatically mean “irrational”. For an integer inside √, check whether it is a perfect square; for fractions, simplify the root carefully.",
       "practiceQuestions": [
         {
           "code": "Q.G9.S4.PRACTICE.REAL.01",
@@ -22,13 +23,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Check whether the radicand is a perfect square.",
-            "C": "Revisit the worked method: Check whether the radicand is a perfect square.",
-            "D": "Revisit the worked method: Check whether the radicand is a perfect square."
+            "B": "Choosing “0.25” suggests a calculation step, scale factor, or place value has changed. 20 is not a perfect square, so √20 cannot be written as a ratio of integers. The other choices are rational. Use this check: Check whether the radicand is a perfect square.",
+            "C": "Choosing “−7” suggests the sign rule has been applied incorrectly. 20 is not a perfect square, so √20 cannot be written as a ratio of integers. The other choices are rational. Use this check: Check whether the radicand is a perfect square.",
+            "D": "Choosing “3/5” suggests a calculation step, scale factor, or place value has changed. 20 is not a perfect square, so √20 cannot be written as a ratio of integers. The other choices are rational. Use this check: Check whether the radicand is a perfect square."
           },
           "solution": "20 is not a perfect square, so √20 cannot be written as a ratio of integers. The other choices are rational.",
           "hint": "Check whether the radicand is a perfect square.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.REAL"
         },
         {
@@ -42,13 +44,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Find the principal square root first.",
-            "C": "Revisit the worked method: Find the principal square root first.",
-            "D": "Revisit the worked method: Find the principal square root first."
+            "A": "Choosing “Not a real number” suggests a different operation or condition has been applied than the one in the question. √121 = 11. It is a natural number, an integer and therefore rational. Use this check: Find the principal square root first.",
+            "C": "Choosing “An irrational number” suggests a different operation or condition has been applied than the one in the question. √121 = 11. It is a natural number, an integer and therefore rational. Use this check: Find the principal square root first.",
+            "D": "Choosing “A negative integer” suggests a different operation or condition has been applied than the one in the question. √121 = 11. It is a natural number, an integer and therefore rational. Use this check: Find the principal square root first."
           },
           "solution": "√121 = 11. It is a natural number, an integer and therefore rational.",
           "hint": "Find the principal square root first.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.REAL"
         },
         {
@@ -62,33 +65,35 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Recurring is different from non-repeating.",
-            "B": "Revisit the worked method: Recurring is different from non-repeating.",
-            "D": "Revisit the worked method: Recurring is different from non-repeating."
+            "A": "Choosing “It is close to zero” suggests a different operation or condition has been applied than the one in the question. A recurring decimal has a fractional form. Here 0.333… = 1/3, so it is rational. Use this check: Recurring is different from non-repeating.",
+            "B": "Choosing “It contains a decimal point” suggests a different operation or condition has been applied than the one in the question. A recurring decimal has a fractional form. Here 0.333… = 1/3, so it is rational. Use this check: Recurring is different from non-repeating.",
+            "D": "Choosing “It has infinitely many digits” suggests a different operation or condition has been applied than the one in the question. A recurring decimal has a fractional form. Here 0.333… = 1/3, so it is rational. Use this check: Recurring is different from non-repeating."
           },
           "solution": "A recurring decimal has a fractional form. Here 0.333… = 1/3, so it is rational.",
           "hint": "Recurring is different from non-repeating.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.REAL"
         },
         {
           "code": "Q.G9.S4.PRACTICE.REAL.04",
-          "prompt": "Which statement is correct about √49?",
+          "prompt": "Which statement is correct about √(1/4)?",
           "options": {
-            "A": "It is irrational because it has a root sign",
-            "B": "It is negative because 49 has two roots",
+            "A": "It is irrational because 1/4 is not an integer",
+            "B": "It equals 1/16 because both parts are squared",
             "C": "It is not real",
-            "D": "It is rational because √49 = 7"
+            "D": "It is rational because √(1/4) = 1/2"
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: What positive number squared gives 49?",
-            "B": "Revisit the worked method: What positive number squared gives 49?",
-            "C": "Revisit the worked method: What positive number squared gives 49?"
+            "A": "Choosing “It is irrational because 1/4 is not an integer” suggests a calculation step, scale factor, or place value has changed. The principal square root of 1/4 is 1/2 because (1/2)² = 1/4. A rational radicand need not be an integer. Use this check: Which non-negative fraction squared gives 1/4?",
+            "B": "Choosing “It equals 1/16 because both parts are squared” suggests a calculation step, scale factor, or place value has changed. The principal square root of 1/4 is 1/2 because (1/2)² = 1/4. A rational radicand need not be an integer. Use this check: Which non-negative fraction squared gives 1/4?",
+            "C": "Choosing “It is not real” suggests an absolute statement has replaced the stated mathematical condition. The principal square root of 1/4 is 1/2 because (1/2)² = 1/4. A rational radicand need not be an integer. Use this check: Which non-negative fraction squared gives 1/4?"
           },
-          "solution": "The symbol √ means the principal, non-negative square root. √49 = 7, a rational integer.",
-          "hint": "What positive number squared gives 49?",
+          "solution": "The principal square root of 1/4 is 1/2 because (1/2)² = 1/4. A rational radicand need not be an integer.",
+          "hint": "Which non-negative fraction squared gives 1/4?",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.REAL"
         }
       ],
@@ -114,13 +119,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Keep dividing by prime numbers.",
-            "B": "Revisit the worked method: Keep dividing by prime numbers.",
-            "C": "Revisit the worked method: Keep dividing by prime numbers."
+            "A": "Choosing “2 × 3 × 7” suggests a calculation step, scale factor, or place value has changed. 84 = 4 × 21 = 2² × 3 × 7. Use this check: Keep dividing by prime numbers.",
+            "B": "Choosing “2³ × 3 × 7” suggests a calculation step, scale factor, or place value has changed. 84 = 4 × 21 = 2² × 3 × 7. Use this check: Keep dividing by prime numbers.",
+            "C": "Choosing “2² × 3² × 7” suggests a calculation step, scale factor, or place value has changed. 84 = 4 × 21 = 2² × 3 × 7. Use this check: Keep dividing by prime numbers."
           },
           "solution": "84 = 4 × 21 = 2² × 3 × 7.",
           "hint": "Keep dividing by prime numbers.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.HCF-LCM"
         },
         {
@@ -134,18 +140,19 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: List the prime factors of both numbers.",
-            "C": "Revisit the worked method: List the prime factors of both numbers.",
-            "D": "Revisit the worked method: List the prime factors of both numbers."
+            "B": "Choosing “5” suggests a calculation step, scale factor, or place value has changed. 30 = 2 × 3 × 5 and 45 = 3² × 5. The common factors are 3 and 5, so the HCF is 15. Use this check: List the prime factors of both numbers.",
+            "C": "Choosing “10” suggests a calculation step, scale factor, or place value has changed. 30 = 2 × 3 × 5 and 45 = 3² × 5. The common factors are 3 and 5, so the HCF is 15. Use this check: List the prime factors of both numbers.",
+            "D": "Choosing “90” suggests a calculation step, scale factor, or place value has changed. 30 = 2 × 3 × 5 and 45 = 3² × 5. The common factors are 3 and 5, so the HCF is 15. Use this check: List the prime factors of both numbers."
           },
           "solution": "30 = 2 × 3 × 5 and 45 = 3² × 5. The common factors are 3 and 5, so the HCF is 15.",
           "hint": "List the prime factors of both numbers.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.HCF-LCM"
         },
         {
           "code": "Q.G9.S4.PRACTICE.HCF-LCM.03",
-          "prompt": "Two buses arrive every 12 and 18 minutes. When do they next arrive together?",
+          "prompt": "Two buses arrive together at the starting time, then every 12 and 18 minutes. How many minutes later do they next arrive together?",
           "options": {
             "A": "216 minutes",
             "B": "36 minutes",
@@ -154,13 +161,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: A future time must be a multiple of both intervals.",
-            "C": "Revisit the worked method: A future time must be a multiple of both intervals.",
-            "D": "Revisit the worked method: A future time must be a multiple of both intervals."
+            "A": "Choosing “216 minutes” suggests a calculation step, scale factor, or place value has changed. Starting together means the next shared arrival is the LCM. LCM(12,18) = 36. Use this check: A future time must be a multiple of both intervals.",
+            "C": "Choosing “6 minutes” suggests a calculation step, scale factor, or place value has changed. Starting together means the next shared arrival is the LCM. LCM(12,18) = 36. Use this check: A future time must be a multiple of both intervals.",
+            "D": "Choosing “30 minutes” suggests a calculation step, scale factor, or place value has changed. Starting together means the next shared arrival is the LCM. LCM(12,18) = 36. Use this check: A future time must be a multiple of both intervals."
           },
-          "solution": "The next shared arrival is the LCM. LCM(12,18) = 36.",
+          "solution": "Starting together means the next shared arrival is the LCM. LCM(12,18) = 36.",
           "hint": "A future time must be a multiple of both intervals.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.HCF-LCM"
         },
         {
@@ -174,13 +182,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: HCF describes a shared divisor, not a product.",
-            "B": "Revisit the worked method: HCF describes a shared divisor, not a product.",
-            "D": "Revisit the worked method: HCF describes a shared divisor, not a product."
+            "A": "Choosing “HCF is 384, because numbers are multiplied” suggests a calculation step, scale factor, or place value has changed. 16 = 2⁴ and 24 = 2³ × 3. The common part is 2³ = 8. Use this check: HCF describes a shared divisor, not a product.",
+            "B": "Choosing “HCF is 16, because it is the smaller number” suggests a calculation step, scale factor, or place value has changed. 16 = 2⁴ and 24 = 2³ × 3. The common part is 2³ = 8. Use this check: HCF describes a shared divisor, not a product.",
+            "D": "Choosing “HCF is 40, because factors are added” suggests a calculation step, scale factor, or place value has changed. 16 = 2⁴ and 24 = 2³ × 3. The common part is 2³ = 8. Use this check: HCF describes a shared divisor, not a product."
           },
           "solution": "16 = 2⁴ and 24 = 2³ × 3. The common part is 2³ = 8.",
           "hint": "HCF describes a shared divisor, not a product.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.HCF-LCM"
         }
       ],
@@ -206,13 +215,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Find a number that divides both parts.",
-            "B": "Revisit the worked method: Find a number that divides both parts.",
-            "D": "Revisit the worked method: Find a number that divides both parts."
+            "A": "Choosing “9 : 12” suggests a calculation step, scale factor, or place value has changed. The HCF of 18 and 24 is 6. Divide both parts: 18 ÷ 6 : 24 ÷ 6 = 3 : 4. Use this check: Find a number that divides both parts.",
+            "B": "Choosing “42 : 1” suggests a calculation step, scale factor, or place value has changed. The HCF of 18 and 24 is 6. Divide both parts: 18 ÷ 6 : 24 ÷ 6 = 3 : 4. Use this check: Find a number that divides both parts.",
+            "D": "Choosing “6 : 8 : 2” suggests a calculation step, scale factor, or place value has changed. The HCF of 18 and 24 is 6. Divide both parts: 18 ÷ 6 : 24 ÷ 6 = 3 : 4. Use this check: Find a number that divides both parts."
           },
           "solution": "The HCF of 18 and 24 is 6. Divide both parts: 18 ÷ 6 : 24 ÷ 6 = 3 : 4.",
           "hint": "Find a number that divides both parts.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.RATIO-RATE"
         },
         {
@@ -226,13 +236,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: A unit rate means “for one hour”.",
-            "B": "Revisit the worked method: A unit rate means “for one hour”.",
-            "C": "Revisit the worked method: A unit rate means “for one hour”."
+            "A": "Choosing “153 km/h” suggests a calculation step, scale factor, or place value has changed. Speed = distance ÷ time = 150 ÷ 3 = 50 km/h. Use this check: A unit rate means “for one hour”.",
+            "B": "Choosing “450 km/h” suggests a calculation step, scale factor, or place value has changed. Speed = distance ÷ time = 150 ÷ 3 = 50 km/h. Use this check: A unit rate means “for one hour”.",
+            "C": "Choosing “47 km/h” suggests a calculation step, scale factor, or place value has changed. Speed = distance ÷ time = 150 ÷ 3 = 50 km/h. Use this check: A unit rate means “for one hour”."
           },
           "solution": "Speed = distance ÷ time = 150 ÷ 3 = 50 km/h.",
           "hint": "A unit rate means “for one hour”.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.RATIO-RATE"
         },
         {
@@ -246,33 +257,35 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Find the scale factor first.",
-            "C": "Revisit the worked method: Find the scale factor first.",
-            "D": "Revisit the worked method: Find the scale factor first."
+            "B": "Choosing “11 cups” suggests a calculation step, scale factor, or place value has changed. Red changes from 2 to 6, so multiply by 3. White is 5 × 3 = 15 cups. Use this check: Find the scale factor first.",
+            "C": "Choosing “30 cups” suggests a calculation step, scale factor, or place value has changed. Red changes from 2 to 6, so multiply by 3. White is 5 × 3 = 15 cups. Use this check: Find the scale factor first.",
+            "D": "Choosing “5 cups” suggests a calculation step, scale factor, or place value has changed. Red changes from 2 to 6, so multiply by 3. White is 5 × 3 = 15 cups. Use this check: Find the scale factor first."
           },
           "solution": "Red changes from 2 to 6, so multiply by 3. White is 5 × 3 = 15 cups.",
           "hint": "Find the scale factor first.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.RATIO-RATE"
         },
         {
           "code": "Q.G9.S4.PRACTICE.RATIO-RATE.04",
-          "prompt": "Why must 4 : 6 and 10 : 15 not be treated as equivalent?",
+          "prompt": "A learner claims that 4 : 6 and 10 : 15 are not equivalent. Which explanation correctly evaluates the claim?",
           "options": {
-            "A": "Ratios cannot be simplified",
-            "B": "Their simplified ratios are 2 : 3 and 2 : 3, so they actually are equivalent",
-            "C": "The numbers are different",
-            "D": "Only ratios with small numbers are equivalent"
+            "A": "The claim is incorrect because all ratios are equivalent",
+            "B": "The claim is incorrect: 4 : 6 = 2 : 3 and 10 : 15 = 2 : 3",
+            "C": "The claim is correct because the numbers in each ratio are different",
+            "D": "The claim is correct because only ratios already in lowest terms can be equivalent"
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Simplify both ratios before deciding.",
-            "C": "Revisit the worked method: Simplify both ratios before deciding.",
-            "D": "Revisit the worked method: Simplify both ratios before deciding."
+            "A": "Choosing “The claim is incorrect because all ratios are equivalent” suggests a different operation or condition has been applied than the one in the question. Simplify each ratio by its own common factor: 4 : 6 ÷ 2 = 2 : 3 and 10 : 15 ÷ 5 = 2 : 3. Both describe the same multiplicative relationship, so the learner’s claim is incorrect. Use this check: Simplify both ratios before deciding.",
+            "C": "Choosing “The claim is correct because the numbers in each ratio are different” suggests a different operation or condition has been applied than the one in the question. Simplify each ratio by its own common factor: 4 : 6 ÷ 2 = 2 : 3 and 10 : 15 ÷ 5 = 2 : 3. Both describe the same multiplicative relationship, so the learner’s claim is incorrect. Use this check: Simplify both ratios before deciding.",
+            "D": "Choosing “The claim is correct because only ratios already in lowest terms can be equivalent” suggests a different operation or condition has been applied than the one in the question. Simplify each ratio by its own common factor: 4 : 6 ÷ 2 = 2 : 3 and 10 : 15 ÷ 5 = 2 : 3. Both describe the same multiplicative relationship, so the learner’s claim is incorrect. Use this check: Simplify both ratios before deciding."
           },
-          "solution": "4 : 6 ÷ 2 = 2 : 3 and 10 : 15 ÷ 5 = 2 : 3. Equal simplified ratios show equal relationships.",
+          "solution": "Simplify each ratio by its own common factor: 4 : 6 ÷ 2 = 2 : 3 and 10 : 15 ÷ 5 = 2 : 3. Both describe the same multiplicative relationship, so the learner’s claim is incorrect.",
           "hint": "Simplify both ratios before deciding.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.RATIO-RATE"
         }
       ],
@@ -298,13 +311,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Find the cost of one notebook.",
-            "B": "Revisit the worked method: Find the cost of one notebook.",
-            "D": "Revisit the worked method: Find the cost of one notebook."
+            "A": "Choosing “R320” suggests a calculation step, scale factor, or place value has changed. One notebook costs R40 ÷ 5 = R8. Eight cost 8 × R8 = R64. Use this check: Find the cost of one notebook.",
+            "B": "Choosing “R13” suggests a calculation step, scale factor, or place value has changed. One notebook costs R40 ÷ 5 = R8. Eight cost 8 × R8 = R64. Use this check: Find the cost of one notebook.",
+            "D": "Choosing “R48” suggests a calculation step, scale factor, or place value has changed. One notebook costs R40 ÷ 5 = R8. Eight cost 8 × R8 = R64. Use this check: Find the cost of one notebook."
           },
           "solution": "One notebook costs R40 ÷ 5 = R8. Eight cost 8 × R8 = R64.",
           "hint": "Find the cost of one notebook.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.PROPORTION"
         },
         {
@@ -318,13 +332,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: For inverse proportion, multiply first then divide.",
-            "B": "Revisit the worked method: For inverse proportion, multiply first then divide.",
-            "C": "Revisit the worked method: For inverse proportion, multiply first then divide."
+            "A": "Choosing “9 hours” suggests a calculation step, scale factor, or place value has changed. The work is 8 × 6 = 48 tap-hours. 48 ÷ 12 = 4 hours. Use this check: For inverse proportion, multiply first then divide.",
+            "B": "Choosing “18 hours” suggests a calculation step, scale factor, or place value has changed. The work is 8 × 6 = 48 tap-hours. 48 ÷ 12 = 4 hours. Use this check: For inverse proportion, multiply first then divide.",
+            "C": "Choosing “6 hours” suggests a calculation step, scale factor, or place value has changed. The work is 8 × 6 = 48 tap-hours. 48 ÷ 12 = 4 hours. Use this check: For inverse proportion, multiply first then divide."
           },
           "solution": "The work is 8 × 6 = 48 tap-hours. 48 ÷ 12 = 4 hours.",
           "hint": "For inverse proportion, multiply first then divide.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.PROPORTION"
         },
         {
@@ -338,13 +353,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Look for a fixed total task or distance.",
-            "C": "Revisit the worked method: Look for a fixed total task or distance.",
-            "D": "Revisit the worked method: Look for a fixed total task or distance."
+            "B": "Choosing “More loaves cost more at one price” suggests a different operation or condition has been applied than the one in the question. For the same distance, speed × time is fixed. Increasing speed decreases time. Use this check: Look for a fixed total task or distance.",
+            "C": "Choosing “More litres give a higher water bill” suggests a different operation or condition has been applied than the one in the question. For the same distance, speed × time is fixed. Increasing speed decreases time. Use this check: Look for a fixed total task or distance.",
+            "D": "Choosing “More pages mean more printing” suggests a different operation or condition has been applied than the one in the question. For the same distance, speed × time is fixed. Increasing speed decreases time. Use this check: Look for a fixed total task or distance."
           },
           "solution": "For the same distance, speed × time is fixed. Increasing speed decreases time.",
           "hint": "Look for a fixed total task or distance.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.PROPORTION"
         },
         {
@@ -358,13 +374,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Test the answer: would more workers really take longer?",
-            "C": "Revisit the worked method: Test the answer: would more workers really take longer?",
-            "D": "Revisit the worked method: Test the answer: would more workers really take longer?"
+            "A": "Choosing “They should add workers and days” suggests a different operation or condition has been applied than the one in the question. For the same job, doubling workers halves the time. The worker-day total stays constant. Use this check: Test the answer: would more workers really take longer?",
+            "C": "Choosing “They simplified the ratio too far” suggests a different operation or condition has been applied than the one in the question. For the same job, doubling workers halves the time. The worker-day total stays constant. Use this check: Test the answer: would more workers really take longer?",
+            "D": "Choosing “They forgot a decimal point” suggests a different operation or condition has been applied than the one in the question. For the same job, doubling workers halves the time. The worker-day total stays constant. Use this check: Test the answer: would more workers really take longer?"
           },
           "solution": "For the same job, doubling workers halves the time. The worker-day total stays constant.",
           "hint": "Test the answer: would more workers really take longer?",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.PROPORTION"
         }
       ],
@@ -375,7 +392,7 @@
       "grade": "Grade 9",
       "title": "Commission, rental and compound interest",
       "objective": "By the end of this lesson, you should be able to calculate common Grade 9 financial applications.",
-      "explanation": "Commission is a percentage of sales. Rental questions often have a per-day amount plus a once-off fee. Compound interest grows the balance each period, so each new percentage is calculated on the previous balance.",
+      "explanation": "Commission is a percentage of sales. Rental questions can include a per-day amount, a non-refundable fee, and a refundable deposit; identify which amount is returned before finding the final cost. Compound interest grows the balance each period, so each new percentage is calculated on the previous balance.",
       "workedExample": "R2 000 earns 10% compound interest for two years.\nYear 1: R2 000 × 1.10 = R2 200.\nYear 2: R2 200 × 1.10 = R2 420.\nThe balance is R2 420.",
       "misconception": "Do not add the once-off rental fee once for every day, and do not use simple interest when the question says compound.",
       "practiceQuestions": [
@@ -390,33 +407,35 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Change the percent to a decimal.",
-            "B": "Revisit the worked method: Change the percent to a decimal.",
-            "C": "Revisit the worked method: Change the percent to a decimal."
+            "A": "Choosing “R21” suggests a calculation step, scale factor, or place value has changed. 7% = 0.07. R3 000 × 0.07 = R210. Use this check: Change the percent to a decimal.",
+            "B": "Choosing “R2 790” suggests a calculation step, scale factor, or place value has changed. 7% = 0.07. R3 000 × 0.07 = R210. Use this check: Change the percent to a decimal.",
+            "C": "Choosing “R700” suggests a calculation step, scale factor, or place value has changed. 7% = 0.07. R3 000 × 0.07 = R210. Use this check: Change the percent to a decimal."
           },
           "solution": "7% = 0.07. R3 000 × 0.07 = R210.",
           "hint": "Change the percent to a decimal.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.FINANCE"
         },
         {
           "code": "Q.G9.S4.PRACTICE.FINANCE.02",
-          "prompt": "A bike costs R80 per day plus one R50 deposit. What is paid for 3 days?",
+          "prompt": "A bike rents for R80 per day and requires a refundable R50 deposit paid at collection. What is paid upfront for 3 days, and what is the net rental cost after the deposit is returned?",
           "options": {
-            "A": "R290",
-            "B": "R390",
-            "C": "R240",
-            "D": "R130"
+            "A": "R290 upfront; R240 net rental",
+            "B": "R390 upfront; R390 net rental",
+            "C": "R240 upfront; R240 net rental",
+            "D": "R290 upfront; R290 net rental"
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: The deposit is once-off.",
-            "C": "Revisit the worked method: The deposit is once-off.",
-            "D": "Revisit the worked method: The deposit is once-off."
+            "B": "Choosing “R390 upfront; R390 net rental” suggests a calculation step, scale factor, or place value has changed. The 3-day rental fee is 3 × R80 = R240. The R50 deposit is added once at collection, so R290 is paid upfront; because it is refundable, the net rental cost after return is R240. Use this check: Separate the once-off refundable deposit from the rental fee.",
+            "C": "Choosing “R240 upfront; R240 net rental” suggests a calculation step, scale factor, or place value has changed. The 3-day rental fee is 3 × R80 = R240. The R50 deposit is added once at collection, so R290 is paid upfront; because it is refundable, the net rental cost after return is R240. Use this check: Separate the once-off refundable deposit from the rental fee.",
+            "D": "Choosing “R290 upfront; R290 net rental” suggests a calculation step, scale factor, or place value has changed. The 3-day rental fee is 3 × R80 = R240. The R50 deposit is added once at collection, so R290 is paid upfront; because it is refundable, the net rental cost after return is R240. Use this check: Separate the once-off refundable deposit from the rental fee."
           },
-          "solution": "3 × R80 = R240. Add one deposit: R240 + R50 = R290.",
-          "hint": "The deposit is once-off.",
+          "solution": "The 3-day rental fee is 3 × R80 = R240. The R50 deposit is added once at collection, so R290 is paid upfront; because it is refundable, the net rental cost after return is R240.",
+          "hint": "Separate the once-off refundable deposit from the rental fee.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.FINANCE"
         },
         {
@@ -430,13 +449,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Apply 8% to the new balance in year 2.",
-            "C": "Revisit the worked method: Apply 8% to the new balance in year 2.",
-            "D": "Revisit the worked method: Apply 8% to the new balance in year 2."
+            "A": "Choosing “R1 620.80” suggests a calculation step, scale factor, or place value has changed. Year 1: 1500 × 1.08 = 1620. Year 2: 1620 × 1.08 = 1749.60. Use this check: Apply 8% to the new balance in year 2.",
+            "C": "Choosing “R1 620.00” suggests a calculation step, scale factor, or place value has changed. Year 1: 1500 × 1.08 = 1620. Year 2: 1620 × 1.08 = 1749.60. Use this check: Apply 8% to the new balance in year 2.",
+            "D": "Choosing “R1 740.00” suggests a calculation step, scale factor, or place value has changed. Year 1: 1500 × 1.08 = 1620. Year 2: 1620 × 1.08 = 1749.60. Use this check: Apply 8% to the new balance in year 2."
           },
           "solution": "Year 1: 1500 × 1.08 = 1620. Year 2: 1620 × 1.08 = 1749.60.",
           "hint": "Apply 8% to the new balance in year 2.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.FINANCE"
         },
         {
@@ -450,13 +470,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Compare the base used in the second year.",
-            "B": "Revisit the worked method: Compare the base used in the second year.",
-            "D": "Revisit the worked method: Compare the base used in the second year."
+            "A": "Choosing “The original balance is ignored” suggests a different operation or condition has been applied than the one in the question. Compound interest adds year-one interest to the balance before calculating year two. Use this check: Compare the base used in the second year.",
+            "B": "Choosing “Interest is subtracted first” suggests a different operation or condition has been applied than the one in the question. Compound interest adds year-one interest to the balance before calculating year two. Use this check: Compare the base used in the second year.",
+            "D": "Choosing “The percentage doubles automatically” suggests a different operation or condition has been applied than the one in the question. Compound interest adds year-one interest to the balance before calculating year two. Use this check: Compare the base used in the second year."
           },
           "solution": "Compound interest adds year-one interest to the balance before calculating year two.",
           "hint": "Compare the base used in the second year.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.FINANCE"
         }
       ],
@@ -482,13 +503,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: A positive addend moves right.",
-            "B": "Revisit the worked method: A positive addend moves right.",
-            "C": "Revisit the worked method: A positive addend moves right."
+            "A": "Choosing “−21” suggests the sign rule has been applied incorrectly. Starting at −8 and adding 13 gives 5. Use this check: A positive addend moves right.",
+            "B": "Choosing “−5” suggests the sign rule has been applied incorrectly. Starting at −8 and adding 13 gives 5. Use this check: A positive addend moves right.",
+            "C": "Choosing “21” suggests a calculation step, scale factor, or place value has changed. Starting at −8 and adding 13 gives 5. Use this check: A positive addend moves right."
           },
           "solution": "Starting at −8 and adding 13 gives 5.",
           "hint": "A positive addend moves right.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.INTEGER-OPS"
         },
         {
@@ -502,13 +524,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Check whether the signs match.",
-            "C": "Revisit the worked method: Check whether the signs match.",
-            "D": "Revisit the worked method: Check whether the signs match."
+            "B": "Choosing “42” suggests a calculation step, scale factor, or place value has changed. The signs differ, so the product is negative. 7 × 6 = 42. Use this check: Check whether the signs match.",
+            "C": "Choosing “−13” suggests a calculation step, scale factor, or place value has changed. The signs differ, so the product is negative. 7 × 6 = 42. Use this check: Check whether the signs match.",
+            "D": "Choosing “13” suggests a calculation step, scale factor, or place value has changed. The signs differ, so the product is negative. 7 × 6 = 42. Use this check: Check whether the signs match."
           },
           "solution": "The signs differ, so the product is negative. 7 × 6 = 42.",
           "hint": "Check whether the signs match.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.INTEGER-OPS"
         },
         {
@@ -522,13 +545,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Brackets are calculated first.",
-            "C": "Revisit the worked method: Brackets are calculated first.",
-            "D": "Revisit the worked method: Brackets are calculated first."
+            "A": "Choosing “−3” suggests a calculation step, scale factor, or place value has changed. Evaluate the bracket: 3 + (−6) = −3. Then 18 ÷ −3 = −6. Use this check: Brackets are calculated first.",
+            "C": "Choosing “6” suggests a calculation step, scale factor, or place value has changed. Evaluate the bracket: 3 + (−6) = −3. Then 18 ÷ −3 = −6. Use this check: Brackets are calculated first.",
+            "D": "Choosing “0” suggests a calculation step, scale factor, or place value has changed. Evaluate the bracket: 3 + (−6) = −3. Then 18 ÷ −3 = −6. Use this check: Brackets are calculated first."
           },
           "solution": "Evaluate the bracket: 3 + (−6) = −3. Then 18 ÷ −3 = −6.",
           "hint": "Brackets are calculated first.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.INTEGER-OPS"
         },
         {
@@ -542,13 +566,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Think about direction on a number line.",
-            "B": "Revisit the worked method: Think about direction on a number line.",
-            "D": "Revisit the worked method: Think about direction on a number line."
+            "A": "Choosing “Only 7 is negative” suggests a calculation step, scale factor, or place value has changed. On a number line start at −4 and move seven units left, reaching −11. Use this check: Think about direction on a number line.",
+            "B": "Choosing “All subtraction answers are negative” suggests a different operation or condition has been applied than the one in the question. On a number line start at −4 and move seven units left, reaching −11. Use this check: Think about direction on a number line.",
+            "D": "Choosing “The signs cancel” suggests a different operation or condition has been applied than the one in the question. On a number line start at −4 and move seven units left, reaching −11. Use this check: Think about direction on a number line."
           },
           "solution": "On a number line start at −4 and move seven units left, reaching −11.",
           "hint": "Think about direction on a number line.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.INTEGER-OPS"
         }
       ],
@@ -574,13 +599,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Square the whole bracketed number.",
-            "C": "Revisit the worked method: Square the whole bracketed number.",
-            "D": "Revisit the worked method: Square the whole bracketed number."
+            "B": "−25 keeps a negative sign after squaring. The bracket makes both factors negative, and (−5) × (−5) is +25.",
+            "C": "−10 doubles −5 instead of squaring it. Squaring means multiplying the base by itself: (−5) × (−5).",
+            "D": "10 treats the exponent as an instruction to change the sign or add. Expand (−5)² as (−5) × (−5), which is 25."
           },
           "solution": "(−5)² = (−5) × (−5) = 25.",
           "hint": "Square the whole bracketed number.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.POWERS-ROOTS"
         },
         {
@@ -594,13 +620,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Which negative number cubed gives −216?",
-            "C": "Revisit the worked method: Which negative number cubed gives −216?",
-            "D": "Revisit the worked method: Which negative number cubed gives −216?"
+            "A": "Choosing “36” suggests a calculation step, scale factor, or place value has changed. (−6) × (−6) × (−6) = −216. Use this check: Which negative number cubed gives −216?",
+            "C": "Choosing “6” suggests a calculation step, scale factor, or place value has changed. (−6) × (−6) × (−6) = −216. Use this check: Which negative number cubed gives −216?",
+            "D": "Choosing “−36” suggests a calculation step, scale factor, or place value has changed. (−6) × (−6) × (−6) = −216. Use this check: Which negative number cubed gives −216?"
           },
           "solution": "(−6) × (−6) × (−6) = −216.",
           "hint": "Which negative number cubed gives −216?",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.POWERS-ROOTS"
         },
         {
@@ -614,13 +641,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: There are no brackets around −3.",
-            "B": "Revisit the worked method: There are no brackets around −3.",
-            "D": "Revisit the worked method: There are no brackets around −3."
+            "A": "Choosing “−6” suggests a calculation step, scale factor, or place value has changed. The exponent applies to 3 first: −3² = −(3²) = −9. Use this check: There are no brackets around −3.",
+            "B": "Choosing “6” suggests a calculation step, scale factor, or place value has changed. The exponent applies to 3 first: −3² = −(3²) = −9. Use this check: There are no brackets around −3.",
+            "D": "Choosing “9” suggests a calculation step, scale factor, or place value has changed. The exponent applies to 3 first: −3² = −(3²) = −9. Use this check: There are no brackets around −3."
           },
           "solution": "The exponent applies to 3 first: −3² = −(3²) = −9.",
           "hint": "There are no brackets around −3.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.POWERS-ROOTS"
         },
         {
@@ -634,13 +662,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Separate a root symbol from solving an equation.",
-            "B": "Revisit the worked method: Separate a root symbol from solving an equation.",
-            "C": "Revisit the worked method: Separate a root symbol from solving an equation."
+            "A": "Choosing “Square roots have no value” suggests a different operation or condition has been applied than the one in the question. The equation x² = 64 has ±8 solutions, but the symbol √64 is defined as the principal root 8. Use this check: Separate a root symbol from solving an equation.",
+            "B": "Choosing “Both signs are always written” suggests an absolute statement has replaced the stated mathematical condition. The equation x² = 64 has ±8 solutions, but the symbol √64 is defined as the principal root 8. Use this check: Separate a root symbol from solving an equation.",
+            "C": "Choosing “64 has only one square root equation” suggests a different operation or condition has been applied than the one in the question. The equation x² = 64 has ±8 solutions, but the symbol √64 is defined as the principal root 8. Use this check: Separate a root symbol from solving an equation."
           },
           "solution": "The equation x² = 64 has ±8 solutions, but the symbol √64 is defined as the principal root 8.",
           "hint": "Separate a root symbol from solving an equation.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.POWERS-ROOTS"
         }
       ],
@@ -651,7 +680,7 @@
       "grade": "Grade 9",
       "title": "Exponent laws",
       "objective": "By the end of this lesson, you should be able to use product, quotient and power laws for exponents.",
-      "explanation": "For the same non-zero base: multiply means add exponents, divide means subtract exponents, and a power of a power means multiply exponents. The base does not change just because the exponent changes.",
+      "explanation": "For the same non-zero base: multiply means add exponents, divide means subtract exponents, and a power of a power means multiply exponents. A quotient law needs a non-zero divisor, for example y⁹ ÷ y⁴ requires y ≠ 0. The base does not change just because the exponent changes.",
       "workedExample": "Simplify (x³)⁴.\nA power of a power multiplies exponents.\n(x³)⁴ = x^(3 × 4) = x¹².",
       "misconception": "Do not use the product law for addition: x² + x³ cannot be simplified by adding exponents.",
       "practiceQuestions": [
@@ -666,18 +695,19 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: The base remains a.",
-            "C": "Revisit the worked method: The base remains a.",
-            "D": "Revisit the worked method: The base remains a."
+            "B": "Choosing “a¹²” suggests a different operation or condition has been applied than the one in the question. The bases match, so add exponents: 4 + 3 = 7. Use this check: The base remains a.",
+            "C": "Choosing “a¹” suggests a different operation or condition has been applied than the one in the question. The bases match, so add exponents: 4 + 3 = 7. Use this check: The base remains a.",
+            "D": "Choosing “7a” suggests a different operation or condition has been applied than the one in the question. The bases match, so add exponents: 4 + 3 = 7. Use this check: The base remains a."
           },
           "solution": "The bases match, so add exponents: 4 + 3 = 7.",
           "hint": "The base remains a.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.EXP-LAWS"
         },
         {
           "code": "Q.G9.S4.PRACTICE.EXP-LAWS.02",
-          "prompt": "Simplify y⁹ ÷ y⁴.",
+          "prompt": "For y ≠ 0, simplify y⁹ ÷ y⁴.",
           "options": {
             "A": "1/y⁵",
             "B": "y⁵",
@@ -686,13 +716,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Use the quotient law.",
-            "C": "Revisit the worked method: Use the quotient law.",
-            "D": "Revisit the worked method: Use the quotient law."
+            "A": "Choosing “1/y⁵” suggests a different operation or condition has been applied than the one in the question. Because y ≠ 0, the quotient is defined. For division with the same base, subtract: 9 − 4 = 5. Use this check: Use the quotient law only after checking the divisor is non-zero.",
+            "C": "Choosing “y¹³” suggests an exponent or operation has been used in place of the required inverse operation. Because y ≠ 0, the quotient is defined. For division with the same base, subtract: 9 − 4 = 5. Use this check: Use the quotient law only after checking the divisor is non-zero.",
+            "D": "Choosing “y³⁶” suggests an exponent or operation has been used in place of the required inverse operation. Because y ≠ 0, the quotient is defined. For division with the same base, subtract: 9 − 4 = 5. Use this check: Use the quotient law only after checking the divisor is non-zero."
           },
-          "solution": "For division with the same base, subtract: 9 − 4 = 5.",
-          "hint": "Use the quotient law.",
+          "solution": "Because y ≠ 0, the quotient is defined. For division with the same base, subtract: 9 − 4 = 5.",
+          "hint": "Use the quotient law only after checking the divisor is non-zero.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.EXP-LAWS"
         },
         {
@@ -706,13 +737,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Every exponent inside the bracket is multiplied.",
-            "B": "Revisit the worked method: Every exponent inside the bracket is multiplied.",
-            "D": "Revisit the worked method: Every exponent inside the bracket is multiplied."
+            "A": "Choosing “m⁴n⁹” suggests a different operation or condition has been applied than the one in the question. Apply the outer power to each factor: m^(2×2)n^(3×2). Use this check: Every exponent inside the bracket is multiplied.",
+            "B": "Choosing “m²n⁶” suggests a different operation or condition has been applied than the one in the question. Apply the outer power to each factor: m^(2×2)n^(3×2). Use this check: Every exponent inside the bracket is multiplied.",
+            "D": "Choosing “m⁴n⁵” suggests a different operation or condition has been applied than the one in the question. Apply the outer power to each factor: m^(2×2)n^(3×2). Use this check: Every exponent inside the bracket is multiplied."
           },
           "solution": "Apply the outer power to each factor: m^(2×2)n^(3×2).",
           "hint": "Every exponent inside the bracket is multiplied.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.EXP-LAWS"
         },
         {
@@ -726,13 +758,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Look at the operation between the terms.",
-            "B": "Revisit the worked method: Look at the operation between the terms.",
-            "C": "Revisit the worked method: Look at the operation between the terms."
+            "A": "Choosing “The answer is always x⁵” suggests an absolute statement has replaced the stated mathematical condition. x² and x³ are unlike terms, so they do not combine through an exponent law. Use this check: Look at the operation between the terms.",
+            "B": "Choosing “Add the bases instead” suggests a different operation or condition has been applied than the one in the question. x² and x³ are unlike terms, so they do not combine through an exponent law. Use this check: Look at the operation between the terms.",
+            "C": "Choosing “Subtract the exponents” suggests a different operation or condition has been applied than the one in the question. x² and x³ are unlike terms, so they do not combine through an exponent law. Use this check: Look at the operation between the terms."
           },
           "solution": "x² and x³ are unlike terms, so they do not combine through an exponent law.",
           "hint": "Look at the operation between the terms.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.EXP-LAWS"
         }
       ],
@@ -758,13 +791,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: The base is non-zero.",
-            "C": "Revisit the worked method: The base is non-zero.",
-            "D": "Revisit the worked method: The base is non-zero."
+            "A": "Choosing “Undefined” suggests an absolute statement has replaced the stated mathematical condition. Any non-zero number to exponent zero equals 1. Use this check: The base is non-zero.",
+            "C": "Choosing “0” suggests a calculation step, scale factor, or place value has changed. Any non-zero number to exponent zero equals 1. Use this check: The base is non-zero.",
+            "D": "Choosing “9” suggests a calculation step, scale factor, or place value has changed. Any non-zero number to exponent zero equals 1. Use this check: The base is non-zero."
           },
           "solution": "Any non-zero number to exponent zero equals 1.",
           "hint": "The base is non-zero.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.EXP-ZERO-NEGATIVE"
         },
         {
@@ -778,13 +812,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Write the reciprocal first.",
-            "B": "Revisit the worked method: Write the reciprocal first.",
-            "D": "Revisit the worked method: Write the reciprocal first."
+            "A": "Choosing “100” suggests a calculation step, scale factor, or place value has changed. 10⁻² = 1/10² = 1/100 = 0.01. Use this check: Write the reciprocal first.",
+            "B": "Choosing “−0.01” suggests the sign rule has been applied incorrectly. 10⁻² = 1/10² = 1/100 = 0.01. Use this check: Write the reciprocal first.",
+            "D": "Choosing “−100” suggests the sign rule has been applied incorrectly. 10⁻² = 1/10² = 1/100 = 0.01. Use this check: Write the reciprocal first."
           },
           "solution": "10⁻² = 1/10² = 1/100 = 0.01.",
           "hint": "Write the reciprocal first.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.EXP-ZERO-NEGATIVE"
         },
         {
@@ -798,13 +833,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: The negative belongs to the exponent.",
-            "B": "Revisit the worked method: The negative belongs to the exponent.",
-            "C": "Revisit the worked method: The negative belongs to the exponent."
+            "A": "Choosing “−p⁵” suggests the sign rule has been applied incorrectly. By definition, p⁻⁵ = 1/p⁵ for p ≠ 0. Use this check: The negative belongs to the exponent.",
+            "B": "Choosing “p⁵” suggests a different operation or condition has been applied than the one in the question. By definition, p⁻⁵ = 1/p⁵ for p ≠ 0. Use this check: The negative belongs to the exponent.",
+            "C": "Choosing “1/5p” suggests a different operation or condition has been applied than the one in the question. By definition, p⁻⁵ = 1/p⁵ for p ≠ 0. Use this check: The negative belongs to the exponent."
           },
           "solution": "By definition, p⁻⁵ = 1/p⁵ for p ≠ 0.",
           "hint": "The negative belongs to the exponent.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.EXP-ZERO-NEGATIVE"
         },
         {
@@ -818,13 +854,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: What happens if the denominator is zero?",
-            "C": "Revisit the worked method: What happens if the denominator is zero?",
-            "D": "Revisit the worked method: What happens if the denominator is zero?"
+            "B": "Choosing “Zero has no powers” suggests a different operation or condition has been applied than the one in the question. The rule a⁰ comes from a¹ ÷ a¹, which needs a non-zero base. Use this check: What happens if the denominator is zero?",
+            "C": "Choosing “It must equal 1” suggests a calculation step, scale factor, or place value has changed. The rule a⁰ comes from a¹ ÷ a¹, which needs a non-zero base. Use this check: What happens if the denominator is zero?",
+            "D": "Choosing “It must equal 0” suggests a calculation step, scale factor, or place value has changed. The rule a⁰ comes from a¹ ÷ a¹, which needs a non-zero base. Use this check: What happens if the denominator is zero?"
           },
           "solution": "The rule a⁰ comes from a¹ ÷ a¹, which needs a non-zero base.",
           "hint": "What happens if the denominator is zero?",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.EXP-ZERO-NEGATIVE"
         }
       ],
@@ -835,9 +872,9 @@
       "grade": "Grade 9",
       "title": "Scientific notation extension",
       "objective": "By the end of this optional extension, you should be able to write large and small numbers in scientific notation.",
-      "explanation": "Scientific notation writes a number as a × 10ⁿ where 1 ≤ a < 10. Moving the decimal left gives a positive exponent; moving it right gives a negative exponent. This extension supports number sense but is not a required Term 1 mastery prerequisite.",
-      "workedExample": "Write 4 500 000 in scientific notation.\nMove the decimal six places left: 4.5.\nTherefore 4 500 000 = 4.5 × 10⁶.",
-      "misconception": "The first number must be at least 1 but less than 10; 45 × 10⁵ is not standard scientific notation.",
+      "explanation": "For a positive number, scientific notation writes a number as a × 10ⁿ where 1 ≤ a < 10. For any nonzero real number in standard scientific notation, the coefficient satisfies 1 ≤ |a| < 10, so negative numbers may have a negative coefficient. Moving the decimal left gives a positive exponent; moving it right gives a negative exponent. This optional extension supports number sense but is not a required Term 1 mastery prerequisite.",
+      "workedExample": "Write −4 500 000 in scientific notation.\nKeep the sign and move the decimal six places left: −4.5.\nBecause |−4.5| is between 1 and 10, −4 500 000 = −4.5 × 10⁶ is standard scientific notation.",
+      "misconception": "For a nonzero number, the absolute value of the coefficient must be at least 1 but less than 10; 45 × 10⁵ is not standard scientific notation.",
       "practiceQuestions": [
         {
           "code": "Q.G9.S4.PRACTICE.SCI-NOTATION.01",
@@ -850,13 +887,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Make the first number between 1 and 10.",
-            "C": "Revisit the worked method: Make the first number between 1 and 10.",
-            "D": "Revisit the worked method: Make the first number between 1 and 10."
+            "B": "Choosing “72 × 10³” suggests a calculation step, scale factor, or place value has changed. Move the decimal four places left: 72 000 = 7.2 × 10⁴. Use this check: Make the first number between 1 and 10.",
+            "C": "Choosing “7.2 × 10³” suggests a calculation step, scale factor, or place value has changed. Move the decimal four places left: 72 000 = 7.2 × 10⁴. Use this check: Make the first number between 1 and 10.",
+            "D": "Choosing “0.72 × 10⁵” suggests a calculation step, scale factor, or place value has changed. Move the decimal four places left: 72 000 = 7.2 × 10⁴. Use this check: Make the first number between 1 and 10."
           },
           "solution": "Move the decimal four places left: 72 000 = 7.2 × 10⁴.",
           "hint": "Make the first number between 1 and 10.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.SCI-NOTATION"
         },
         {
@@ -870,33 +908,35 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: A positive exponent makes a larger number.",
-            "C": "Revisit the worked method: A positive exponent makes a larger number.",
-            "D": "Revisit the worked method: A positive exponent makes a larger number."
+            "A": "Choosing “0.0036” suggests a calculation step, scale factor, or place value has changed. 10³ = 1000, so 3.6 × 1000 = 3600. Use this check: A positive exponent makes a larger number.",
+            "C": "Choosing “360” suggests a calculation step, scale factor, or place value has changed. 10³ = 1000, so 3.6 × 1000 = 3600. Use this check: A positive exponent makes a larger number.",
+            "D": "Choosing “36 000” suggests a calculation step, scale factor, or place value has changed. 10³ = 1000, so 3.6 × 1000 = 3600. Use this check: A positive exponent makes a larger number."
           },
           "solution": "10³ = 1000, so 3.6 × 1000 = 3600.",
           "hint": "A positive exponent makes a larger number.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.SCI-NOTATION"
         },
         {
           "code": "Q.G9.S4.PRACTICE.SCI-NOTATION.03",
-          "prompt": "Write 0.0042 in scientific notation.",
+          "prompt": "Write −0.0042 in standard scientific notation.",
           "options": {
-            "A": "42 × 10⁻⁴",
-            "B": "0.42 × 10⁻²",
-            "C": "4.2 × 10⁻³",
-            "D": "4.2 × 10³"
+            "A": "−4.2 × 10³",
+            "B": "−0.42 × 10⁻²",
+            "C": "−4.2 × 10⁻³",
+            "D": "4.2 × 10⁻³"
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Small decimals need negative powers of ten.",
-            "B": "Revisit the worked method: Small decimals need negative powers of ten.",
-            "D": "Revisit the worked method: Small decimals need negative powers of ten."
+            "A": "Choosing “−4.2 × 10³” suggests an exponent or operation has been used in place of the required inverse operation. Keep the negative sign. Move the decimal three places right to get −4.2, so use exponent −3; |−4.2| is between 1 and 10. Use this check: Small decimals need negative powers of ten; keep the original sign.",
+            "B": "Choosing “−0.42 × 10⁻²” suggests an exponent or operation has been used in place of the required inverse operation. Keep the negative sign. Move the decimal three places right to get −4.2, so use exponent −3; |−4.2| is between 1 and 10. Use this check: Small decimals need negative powers of ten; keep the original sign.",
+            "D": "Choosing “4.2 × 10⁻³” suggests an exponent or operation has been used in place of the required inverse operation. Keep the negative sign. Move the decimal three places right to get −4.2, so use exponent −3; |−4.2| is between 1 and 10. Use this check: Small decimals need negative powers of ten; keep the original sign."
           },
-          "solution": "Move the decimal three places right to get 4.2, so use exponent −3.",
-          "hint": "Small decimals need negative powers of ten.",
+          "solution": "Keep the negative sign. Move the decimal three places right to get −4.2, so use exponent −3; |−4.2| is between 1 and 10.",
+          "hint": "Small decimals need negative powers of ten; keep the original sign.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.SCI-NOTATION"
         },
         {
@@ -906,17 +946,18 @@
             "A": "The exponent must be negative",
             "B": "Scientific notation cannot use 10⁵",
             "C": "45 is too small",
-            "D": "45 is not less than 10"
+            "D": "|45| is not less than 10"
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Check the leading number.",
-            "B": "Revisit the worked method: Check the leading number.",
-            "C": "Revisit the worked method: Check the leading number."
+            "A": "Choosing “The exponent must be negative” suggests a different operation or condition has been applied than the one in the question. For any nonzero number in standard form, 1 ≤ |a| < 10. Here |45| is too large; rewrite it as 4.5 × 10⁶. Use this check: Check the absolute value of the coefficient.",
+            "B": "Choosing “Scientific notation cannot use 10⁵” suggests an absolute statement has replaced the stated mathematical condition. For any nonzero number in standard form, 1 ≤ |a| < 10. Here |45| is too large; rewrite it as 4.5 × 10⁶. Use this check: Check the absolute value of the coefficient.",
+            "C": "Choosing “45 is too small” suggests a calculation step, scale factor, or place value has changed. For any nonzero number in standard form, 1 ≤ |a| < 10. Here |45| is too large; rewrite it as 4.5 × 10⁶. Use this check: Check the absolute value of the coefficient."
           },
-          "solution": "Standard form requires 1 ≤ a < 10. Rewrite it as 4.5 × 10⁶.",
-          "hint": "Check the leading number.",
+          "solution": "For any nonzero number in standard form, 1 ≤ |a| < 10. Here |45| is too large; rewrite it as 4.5 × 10⁶.",
+          "hint": "Check the absolute value of the coefficient.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.SCI-NOTATION"
         }
       ],
@@ -942,13 +983,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Subtract consecutive terms.",
-            "C": "Revisit the worked method: Subtract consecutive terms.",
-            "D": "Revisit the worked method: Subtract consecutive terms."
+            "A": "Choosing “−5” suggests the sign rule has been applied incorrectly. 16 − 11 = 5, and the same change continues. Use this check: Subtract consecutive terms.",
+            "C": "Choosing “11” suggests a calculation step, scale factor, or place value has changed. 16 − 11 = 5, and the same change continues. Use this check: Subtract consecutive terms.",
+            "D": "Choosing “10” suggests a calculation step, scale factor, or place value has changed. 16 − 11 = 5, and the same change continues. Use this check: Subtract consecutive terms."
           },
           "solution": "16 − 11 = 5, and the same change continues.",
           "hint": "Subtract consecutive terms.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.PATTERN-STRUCTURE"
         },
         {
@@ -962,13 +1004,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Find the constant change.",
-            "B": "Revisit the worked method: Find the constant change.",
-            "D": "Revisit the worked method: Find the constant change."
+            "A": "Choosing “26, 36” suggests a calculation step, scale factor, or place value has changed. The first difference is 6, so add 6 twice. Use this check: Find the constant change.",
+            "B": "Choosing “18, 20” suggests a calculation step, scale factor, or place value has changed. The first difference is 6, so add 6 twice. Use this check: Find the constant change.",
+            "D": "Choosing “20, 24” suggests a calculation step, scale factor, or place value has changed. The first difference is 6, so add 6 twice. Use this check: Find the constant change."
           },
           "solution": "The first difference is 6, so add 6 twice.",
           "hint": "Find the constant change.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.PATTERN-STRUCTURE"
         },
         {
@@ -982,13 +1025,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Compare changes, not just values.",
-            "B": "Revisit the worked method: Compare changes, not just values.",
-            "C": "Revisit the worked method: Compare changes, not just values."
+            "A": "Choosing “Its terms are all even” suggests a different operation or condition has been applied than the one in the question. Constant first differences identify a linear pattern. Use this check: Compare changes, not just values.",
+            "B": "Choosing “Its ratio is constant” suggests a different operation or condition has been applied than the one in the question. Constant first differences identify a linear pattern. Use this check: Compare changes, not just values.",
+            "C": "Choosing “It starts at zero” suggests a different operation or condition has been applied than the one in the question. Constant first differences identify a linear pattern. Use this check: Compare changes, not just values."
           },
           "solution": "Constant first differences identify a linear pattern.",
           "hint": "Compare changes, not just values.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.PATTERN-STRUCTURE"
         },
         {
@@ -1002,13 +1046,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Count the jumps between term 1 and term 8.",
-            "C": "Revisit the worked method: Count the jumps between term 1 and term 8.",
-            "D": "Revisit the worked method: Count the jumps between term 1 and term 8."
+            "B": "Choosing “37” suggests a calculation step, scale factor, or place value has changed. The difference is 5. From T1 to T8 there are seven increases: 7 + 7×5 = 42. Use this check: Count the jumps between term 1 and term 8.",
+            "C": "Choosing “47” suggests a calculation step, scale factor, or place value has changed. The difference is 5. From T1 to T8 there are seven increases: 7 + 7×5 = 42. Use this check: Count the jumps between term 1 and term 8.",
+            "D": "Choosing “52” suggests a calculation step, scale factor, or place value has changed. The difference is 5. From T1 to T8 there are seven increases: 7 + 7×5 = 42. Use this check: Count the jumps between term 1 and term 8."
           },
           "solution": "The difference is 5. From T1 to T8 there are seven increases: 7 + 7×5 = 42.",
           "hint": "Count the jumps between term 1 and term 8.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.PATTERN-STRUCTURE"
         }
       ],
@@ -1034,13 +1079,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Use the first term to solve for c.",
-            "C": "Revisit the worked method: Use the first term to solve for c.",
-            "D": "Revisit the worked method: Use the first term to solve for c."
+            "B": "Choosing “4n + 3” suggests a calculation step, scale factor, or place value has changed. Difference is 4. At n=1, 4+c=3, so c=−1. Use this check: Use the first term to solve for c.",
+            "C": "Choosing “3n + 1” suggests a calculation step, scale factor, or place value has changed. Difference is 4. At n=1, 4+c=3, so c=−1. Use this check: Use the first term to solve for c.",
+            "D": "Choosing “n + 3” suggests a calculation step, scale factor, or place value has changed. Difference is 4. At n=1, 4+c=3, so c=−1. Use this check: Use the first term to solve for c."
           },
           "solution": "Difference is 4. At n=1, 4+c=3, so c=−1.",
           "hint": "Use the first term to solve for c.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.NTH-TERM"
         },
         {
@@ -1054,13 +1100,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Put 6 in place of n.",
-            "C": "Revisit the worked method: Put 6 in place of n.",
-            "D": "Revisit the worked method: Put 6 in place of n."
+            "A": "Choosing “13” suggests a calculation step, scale factor, or place value has changed. Substitute n=6: 5(6)+2=32. Use this check: Put 6 in place of n.",
+            "C": "Choosing “30” suggests a calculation step, scale factor, or place value has changed. Substitute n=6: 5(6)+2=32. Use this check: Put 6 in place of n.",
+            "D": "Choosing “37” suggests a calculation step, scale factor, or place value has changed. Substitute n=6: 5(6)+2=32. Use this check: Put 6 in place of n."
           },
           "solution": "Substitute n=6: 5(6)+2=32.",
           "hint": "Put 6 in place of n.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.NTH-TERM"
         },
         {
@@ -1074,13 +1121,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: A pattern rule must match the sequence, not one value.",
-            "B": "Revisit the worked method: A pattern rule must match the sequence, not one value.",
-            "D": "Revisit the worked method: A pattern rule must match the sequence, not one value."
+            "A": "Choosing “It makes c equal zero” suggests a different operation or condition has been applied than the one in the question. A second test catches a rule that only happens to fit the first term. Use this check: A pattern rule must match the sequence, not one value.",
+            "B": "Choosing “It removes the need for n = 1” suggests a different operation or condition has been applied than the one in the question. A second test catches a rule that only happens to fit the first term. Use this check: A pattern rule must match the sequence, not one value.",
+            "D": "Choosing “It changes the first difference” suggests a different operation or condition has been applied than the one in the question. A second test catches a rule that only happens to fit the first term. Use this check: A pattern rule must match the sequence, not one value."
           },
           "solution": "A second test catches a rule that only happens to fit the first term.",
           "hint": "A pattern rule must match the sequence, not one value.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.NTH-TERM"
         },
         {
@@ -1094,13 +1142,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Test the learner rule at n=1.",
-            "B": "Revisit the worked method: Test the learner rule at n=1.",
-            "C": "Revisit the worked method: Test the learner rule at n=1."
+            "A": "Choosing “It should be 8n + 3” suggests a calculation step, scale factor, or place value has changed. The difference is 3. At n=1, 3+c=8, so c=5. Use this check: Test the learner rule at n=1.",
+            "B": "Choosing “It should be 3n” suggests a calculation step, scale factor, or place value has changed. The difference is 3. At n=1, 3+c=8, so c=5. Use this check: Test the learner rule at n=1.",
+            "C": "Choosing “The learner rule is correct” suggests a different operation or condition has been applied than the one in the question. The difference is 3. At n=1, 3+c=8, so c=5. Use this check: Test the learner rule at n=1."
           },
           "solution": "The difference is 3. At n=1, 3+c=8, so c=5.",
           "hint": "Test the learner rule at n=1.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.NTH-TERM"
         }
       ],
@@ -1126,13 +1175,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Each new square adds 3, not 4.",
-            "B": "Revisit the worked method: Each new square adds 3, not 4.",
-            "C": "Revisit the worked method: Each new square adds 3, not 4."
+            "A": "Choosing “12” suggests a calculation step, scale factor, or place value has changed. M = 3n+1. For n=4, M=13. Use this check: Each new square adds 3, not 4.",
+            "B": "Choosing “16” suggests a calculation step, scale factor, or place value has changed. M = 3n+1. For n=4, M=13. Use this check: Each new square adds 3, not 4.",
+            "C": "Choosing “10” suggests a calculation step, scale factor, or place value has changed. M = 3n+1. For n=4, M=13. Use this check: Each new square adds 3, not 4."
           },
           "solution": "M = 3n+1. For n=4, M=13.",
           "hint": "Each new square adds 3, not 4.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.VISUAL-PATTERNS"
         },
         {
@@ -1146,13 +1196,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Find the difference, then test n=1.",
-            "C": "Revisit the worked method: Find the difference, then test n=1.",
-            "D": "Revisit the worked method: Find the difference, then test n=1."
+            "B": "Choosing “3n + 5” suggests a calculation step, scale factor, or place value has changed. Difference is 3. At n=1, 3+c=5, so c=2. Use this check: Find the difference, then test n=1.",
+            "C": "Choosing “5n + 3” suggests a calculation step, scale factor, or place value has changed. Difference is 3. At n=1, 3+c=5, so c=2. Use this check: Find the difference, then test n=1.",
+            "D": "Choosing “n + 4” suggests a calculation step, scale factor, or place value has changed. Difference is 3. At n=1, 3+c=5, so c=2. Use this check: Find the difference, then test n=1."
           },
           "solution": "Difference is 3. At n=1, 3+c=5, so c=2.",
           "hint": "Find the difference, then test n=1.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G9.S4.VISUAL-PATTERNS"
         },
         {
@@ -1166,13 +1217,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Look at what is shared between neighbours.",
-            "C": "Revisit the worked method: Look at what is shared between neighbours.",
-            "D": "Revisit the worked method: Look at what is shared between neighbours."
+            "A": "Choosing “Squares only need three sides” suggests a different operation or condition has been applied than the one in the question. The n−1 shared sides mean the total is 4n−(n−1)=3n+1. Use this check: Look at what is shared between neighbours.",
+            "C": "Choosing “The first square has no sides” suggests a different operation or condition has been applied than the one in the question. The n−1 shared sides mean the total is 4n−(n−1)=3n+1. Use this check: Look at what is shared between neighbours.",
+            "D": "Choosing “n is always one” suggests an absolute statement has replaced the stated mathematical condition. The n−1 shared sides mean the total is 4n−(n−1)=3n+1. Use this check: Look at what is shared between neighbours."
           },
           "solution": "The n−1 shared sides mean the total is 4n−(n−1)=3n+1.",
           "hint": "Look at what is shared between neighbours.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.VISUAL-PATTERNS"
         },
         {
@@ -1186,13 +1238,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: There are six increases from figure 1 to figure 7.",
-            "B": "Revisit the worked method: There are six increases from figure 1 to figure 7.",
-            "D": "Revisit the worked method: There are six increases from figure 1 to figure 7."
+            "A": "Choosing “34” suggests a calculation step, scale factor, or place value has changed. Tn=6+4(n−1). T7=6+4×6=30. Use this check: There are six increases from figure 1 to figure 7.",
+            "B": "Choosing “42” suggests a calculation step, scale factor, or place value has changed. Tn=6+4(n−1). T7=6+4×6=30. Use this check: There are six increases from figure 1 to figure 7.",
+            "D": "Choosing “28” suggests a calculation step, scale factor, or place value has changed. Tn=6+4(n−1). T7=6+4×6=30. Use this check: There are six increases from figure 1 to figure 7."
           },
           "solution": "Tn=6+4(n−1). T7=6+4×6=30.",
           "hint": "There are six increases from figure 1 to figure 7.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G9.S4.VISUAL-PATTERNS"
         }
       ],
@@ -1218,13 +1271,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Divide before adding.",
-            "B": "Revisit the worked method: Divide before adding.",
-            "D": "Revisit the worked method: Divide before adding."
+            "A": "Choosing “3” suggests a calculation step, scale factor, or place value has changed. 18 ÷ 3 = 6, then 6 + 4 = 10. Use this check: Divide before adding.",
+            "B": "Choosing “22” suggests a calculation step, scale factor, or place value has changed. 18 ÷ 3 = 6, then 6 + 4 = 10. Use this check: Divide before adding.",
+            "D": "Choosing “2” suggests a calculation step, scale factor, or place value has changed. 18 ÷ 3 = 6, then 6 + 4 = 10. Use this check: Divide before adding."
           },
           "solution": "18 ÷ 3 = 6, then 6 + 4 = 10.",
           "hint": "Divide before adding.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G8.S4.G8-FACTORS"
         },
         {
@@ -1238,13 +1292,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: A factor divides exactly.",
-            "B": "Revisit the worked method: A factor divides exactly.",
-            "C": "Revisit the worked method: A factor divides exactly."
+            "A": "Choosing “8” suggests a calculation step, scale factor, or place value has changed. 36 ÷ 9 = 4 with no remainder. Use this check: A factor divides exactly.",
+            "B": "Choosing “10” suggests a calculation step, scale factor, or place value has changed. 36 ÷ 9 = 4 with no remainder. Use this check: A factor divides exactly.",
+            "C": "Choosing “14” suggests a calculation step, scale factor, or place value has changed. 36 ÷ 9 = 4 with no remainder. Use this check: A factor divides exactly."
           },
           "solution": "36 ÷ 9 = 4 with no remainder.",
           "hint": "A factor divides exactly.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G8.S4.G8-FACTORS"
         },
         {
@@ -1258,13 +1313,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Multiplication comes before addition.",
-            "C": "Revisit the worked method: Multiplication comes before addition.",
-            "D": "Revisit the worked method: Multiplication comes before addition."
+            "B": "Choosing “32” suggests a calculation step, scale factor, or place value has changed. Multiply 3×4 first, then add 5. Use this check: Multiplication comes before addition.",
+            "C": "Choosing “20” suggests a calculation step, scale factor, or place value has changed. Multiply 3×4 first, then add 5. Use this check: Multiplication comes before addition.",
+            "D": "Choosing “12” suggests a calculation step, scale factor, or place value has changed. Multiply 3×4 first, then add 5. Use this check: Multiplication comes before addition."
           },
           "solution": "Multiply 3×4 first, then add 5.",
           "hint": "Multiplication comes before addition.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G8.S4.G8-FACTORS"
         },
         {
@@ -1278,13 +1334,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Test division for each number.",
-            "C": "Revisit the worked method: Test division for each number.",
-            "D": "Revisit the worked method: Test division for each number."
+            "A": "Choosing “It is a multiple of neither” suggests a different operation or condition has been applied than the one in the question. 18 ÷ 6 = 3 and 30 ÷ 6 = 5, so 6 divides both numbers exactly. Use this check: Test division for each number.",
+            "C": "Choosing “It is their sum” suggests a different operation or condition has been applied than the one in the question. 18 ÷ 6 = 3 and 30 ÷ 6 = 5, so 6 divides both numbers exactly. Use this check: Test division for each number.",
+            "D": "Choosing “It is bigger than both” suggests a different operation or condition has been applied than the one in the question. 18 ÷ 6 = 3 and 30 ÷ 6 = 5, so 6 divides both numbers exactly. Use this check: Test division for each number."
           },
-          "solution": "18÷6=3 and 30÷6=5.",
+          "solution": "18 ÷ 6 = 3 and 30 ÷ 6 = 5, so 6 divides both numbers exactly.",
           "hint": "Test division for each number.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G8.S4.G8-FACTORS"
         }
       ],
@@ -1310,13 +1367,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Keep the denominator 4.",
-            "C": "Revisit the worked method: Keep the denominator 4.",
-            "D": "Revisit the worked method: Keep the denominator 4."
+            "B": "Choosing “3/8” suggests a calculation step, scale factor, or place value has changed. The denominators match, so add the numerators. Use this check: Keep the denominator 4.",
+            "C": "Choosing “2/8” suggests a calculation step, scale factor, or place value has changed. The denominators match, so add the numerators. Use this check: Keep the denominator 4.",
+            "D": "Choosing “1/2” suggests a calculation step, scale factor, or place value has changed. The denominators match, so add the numerators. Use this check: Keep the denominator 4."
           },
           "solution": "The denominators match, so add the numerators.",
           "hint": "Keep the denominator 4.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G8.S4.G8-FRACTIONS"
         },
         {
@@ -1330,13 +1388,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: What makes 5 into 20?",
-            "C": "Revisit the worked method: What makes 5 into 20?",
-            "D": "Revisit the worked method: What makes 5 into 20?"
+            "A": "Choosing “8/20” suggests a calculation step, scale factor, or place value has changed. Multiply numerator and denominator by 4. Use this check: What makes 5 into 20?",
+            "C": "Choosing “3/20” suggests a calculation step, scale factor, or place value has changed. Multiply numerator and denominator by 4. Use this check: What makes 5 into 20?",
+            "D": "Choosing “15/20” suggests a calculation step, scale factor, or place value has changed. Multiply numerator and denominator by 4. Use this check: What makes 5 into 20?"
           },
           "solution": "Multiply numerator and denominator by 4.",
           "hint": "What makes 5 into 20?",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G8.S4.G8-FRACTIONS"
         },
         {
@@ -1350,13 +1409,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Use denominator 6.",
-            "B": "Revisit the worked method: Use denominator 6.",
-            "D": "Revisit the worked method: Use denominator 6."
+            "A": "Choosing “1/3” suggests a calculation step, scale factor, or place value has changed. 2/3=4/6. 4/6−1/6=3/6=1/2. Use this check: Use denominator 6.",
+            "B": "Choosing “1/18” suggests a calculation step, scale factor, or place value has changed. 2/3=4/6. 4/6−1/6=3/6=1/2. Use this check: Use denominator 6.",
+            "D": "Choosing “1/6” suggests a calculation step, scale factor, or place value has changed. 2/3=4/6. 4/6−1/6=3/6=1/2. Use this check: Use denominator 6."
           },
           "solution": "2/3=4/6. 4/6−1/6=3/6=1/2.",
           "hint": "Use denominator 6.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G8.S4.G8-FRACTIONS"
         },
         {
@@ -1364,19 +1424,20 @@
           "prompt": "Why is 2/4 equal to 1/2?",
           "options": {
             "A": "The denominators are added",
-            "B": "2 is always half of 4",
+            "B": "The numerator is smaller than the denominator",
             "C": "Fractions cannot be simplified",
-            "D": "Both simplify to the same part of a whole"
+            "D": "Dividing both numerator and denominator by 2 gives 1/2"
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Simplify the fraction.",
-            "B": "Revisit the worked method: Simplify the fraction.",
-            "C": "Revisit the worked method: Simplify the fraction."
+            "A": "Choosing “The denominators are added” suggests a different operation or condition has been applied than the one in the question. Divide numerator and denominator of 2/4 by the same non-zero number: 2÷2 / 4÷2 = 1/2. Use this check: Simplify both parts by the same factor.",
+            "B": "Choosing “The numerator is smaller than the denominator” suggests a different operation or condition has been applied than the one in the question. Divide numerator and denominator of 2/4 by the same non-zero number: 2÷2 / 4÷2 = 1/2. Use this check: Simplify both parts by the same factor.",
+            "C": "Choosing “Fractions cannot be simplified” suggests an absolute statement has replaced the stated mathematical condition. Divide numerator and denominator of 2/4 by the same non-zero number: 2÷2 / 4÷2 = 1/2. Use this check: Simplify both parts by the same factor."
           },
-          "solution": "Divide numerator and denominator of 2/4 by 2.",
-          "hint": "Simplify the fraction.",
+          "solution": "Divide numerator and denominator of 2/4 by the same non-zero number: 2÷2 / 4÷2 = 1/2.",
+          "hint": "Simplify both parts by the same factor.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G8.S4.G8-FRACTIONS"
         }
       ],
@@ -1402,13 +1463,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Write 6.2 as 6.20.",
-            "B": "Revisit the worked method: Write 6.2 as 6.20.",
-            "C": "Revisit the worked method: Write 6.2 as 6.20."
+            "A": "Choosing “5.25” suggests a calculation step, scale factor, or place value has changed. Write 6.2 as 6.20, then subtract: 6.20 − 1.45 = 4.75. Use this check: Write 6.2 as 6.20.",
+            "B": "Choosing “4.65” suggests a calculation step, scale factor, or place value has changed. Write 6.2 as 6.20, then subtract: 6.20 − 1.45 = 4.75. Use this check: Write 6.2 as 6.20.",
+            "C": "Choosing “4.85” suggests a calculation step, scale factor, or place value has changed. Write 6.2 as 6.20, then subtract: 6.20 − 1.45 = 4.75. Use this check: Write 6.2 as 6.20."
           },
-          "solution": "6.20−1.45=4.75.",
+          "solution": "Write 6.2 as 6.20, then subtract: 6.20 − 1.45 = 4.75.",
           "hint": "Write 6.2 as 6.20.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G8.S4.G8-DECIMALS"
         },
         {
@@ -1422,13 +1484,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Estimate: half of 0.4 is 0.2.",
-            "C": "Revisit the worked method: Estimate: half of 0.4 is 0.2.",
-            "D": "Revisit the worked method: Estimate: half of 0.4 is 0.2."
+            "B": "Choosing “2” suggests a calculation step, scale factor, or place value has changed. 4×5=20; two decimal places give 0.20. Use this check: Estimate whether multiplying two numbers smaller than one should make the result larger or smaller.",
+            "C": "Choosing “0.02” suggests a calculation step, scale factor, or place value has changed. 4×5=20; two decimal places give 0.20. Use this check: Estimate whether multiplying two numbers smaller than one should make the result larger or smaller.",
+            "D": "Choosing “0.9” suggests a calculation step, scale factor, or place value has changed. 4×5=20; two decimal places give 0.20. Use this check: Estimate whether multiplying two numbers smaller than one should make the result larger or smaller."
           },
           "solution": "4×5=20; two decimal places give 0.20.",
-          "hint": "Estimate: half of 0.4 is 0.2.",
+          "hint": "Estimate whether multiplying two numbers smaller than one should make the result larger or smaller.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G8.S4.G8-DECIMALS"
         },
         {
@@ -1442,13 +1505,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Multiply the amount, keeping cents.",
-            "C": "Revisit the worked method: Multiply the amount, keeping cents.",
-            "D": "Revisit the worked method: Multiply the amount, keeping cents."
+            "A": "Choosing “R125.00” suggests a calculation step, scale factor, or place value has changed. Multiply R12.50 by 3: 12.50 × 3 = 37.50, so the total is R37.50. Use this check: Multiply the amount, keeping cents.",
+            "C": "Choosing “R15.50” suggests a calculation step, scale factor, or place value has changed. Multiply R12.50 by 3: 12.50 × 3 = 37.50, so the total is R37.50. Use this check: Multiply the amount, keeping cents.",
+            "D": "Choosing “R36.50” suggests a calculation step, scale factor, or place value has changed. Multiply R12.50 by 3: 12.50 × 3 = 37.50, so the total is R37.50. Use this check: Multiply the amount, keeping cents."
           },
-          "solution": "12.50×3=37.50.",
+          "solution": "Multiply R12.50 by 3: 12.50 × 3 = 37.50, so the total is R37.50.",
           "hint": "Multiply the amount, keeping cents.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G8.S4.G8-DECIMALS"
         },
         {
@@ -1462,13 +1526,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Think about the size of the answer.",
-            "B": "Revisit the worked method: Think about the size of the answer.",
-            "D": "Revisit the worked method: Think about the size of the answer."
+            "A": "Choosing “It removes units” suggests a different operation or condition has been applied than the one in the question. An answer near 20 for 0.4×0.5 is unreasonable; estimate catches it. Use this check: Think about the size of the answer.",
+            "B": "Choosing “It makes all answers whole” suggests a different operation or condition has been applied than the one in the question. An answer near 20 for 0.4×0.5 is unreasonable; estimate catches it. Use this check: Think about the size of the answer.",
+            "D": "Choosing “It replaces calculation” suggests a different operation or condition has been applied than the one in the question. An answer near 20 for 0.4×0.5 is unreasonable; estimate catches it. Use this check: Think about the size of the answer."
           },
           "solution": "An answer near 20 for 0.4×0.5 is unreasonable; estimate catches it.",
           "hint": "Think about the size of the answer.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G8.S4.G8-DECIMALS"
         }
       ],
@@ -1494,13 +1559,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: The negative magnitude is larger.",
-            "B": "Revisit the worked method: The negative magnitude is larger.",
-            "C": "Revisit the worked method: The negative magnitude is larger."
+            "A": "Choosing “5” suggests a calculation step, scale factor, or place value has changed. Move four right from −9 to −5. Use this check: The negative magnitude is larger.",
+            "B": "Choosing “−13” suggests a calculation step, scale factor, or place value has changed. Move four right from −9 to −5. Use this check: The negative magnitude is larger.",
+            "C": "Choosing “13” suggests a calculation step, scale factor, or place value has changed. Move four right from −9 to −5. Use this check: The negative magnitude is larger."
           },
           "solution": "Move four right from −9 to −5.",
           "hint": "The negative magnitude is larger.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G8.S4.G8-INTEGERS"
         },
         {
@@ -1514,13 +1580,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Two negatives make a positive product.",
-            "C": "Revisit the worked method: Two negatives make a positive product.",
-            "D": "Revisit the worked method: Two negatives make a positive product."
+            "B": "Choosing “−15” suggests the sign rule has been applied incorrectly. Same signs give positive; 5×3=15. Use this check: Two negatives make a positive product.",
+            "C": "Choosing “−8” suggests the sign rule has been applied incorrectly. Same signs give positive; 5×3=15. Use this check: Two negatives make a positive product.",
+            "D": "Choosing “8” suggests a calculation step, scale factor, or place value has changed. Same signs give positive; 5×3=15. Use this check: Two negatives make a positive product."
           },
           "solution": "Same signs give positive; 5×3=15.",
           "hint": "Two negatives make a positive product.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G8.S4.G8-INTEGERS"
         },
         {
@@ -1534,13 +1601,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Rewrite as addition.",
-            "C": "Revisit the worked method: Rewrite as addition.",
-            "D": "Revisit the worked method: Rewrite as addition."
+            "A": "Choosing “−5” suggests the sign rule has been applied incorrectly. Subtracting −2 means add 2: 7+2=9. Use this check: Rewrite as addition.",
+            "C": "Choosing “5” suggests a calculation step, scale factor, or place value has changed. Subtracting −2 means add 2: 7+2=9. Use this check: Rewrite as addition.",
+            "D": "Choosing “−9” suggests the sign rule has been applied incorrectly. Subtracting −2 means add 2: 7+2=9. Use this check: Rewrite as addition."
           },
           "solution": "Subtracting −2 means add 2: 7+2=9.",
           "hint": "Rewrite as addition.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G8.S4.G8-INTEGERS"
         },
         {
@@ -1554,13 +1622,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Compare the signs first.",
-            "B": "Revisit the worked method: Compare the signs first.",
-            "D": "Revisit the worked method: Compare the signs first."
+            "A": "Choosing “Both numbers are negative” suggests a different operation or condition has been applied than the one in the question. A negative divided by a positive is negative. Use this check: Compare the signs first.",
+            "B": "Choosing “12 is greater than 3” suggests a different operation or condition has been applied than the one in the question. A negative divided by a positive is negative. Use this check: Compare the signs first.",
+            "D": "Choosing “Division ignores signs” suggests a different operation or condition has been applied than the one in the question. A negative divided by a positive is negative. Use this check: Compare the signs first."
           },
           "solution": "A negative divided by a positive is negative.",
           "hint": "Compare the signs first.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G8.S4.G8-INTEGERS"
         }
       ],
@@ -1586,13 +1655,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Write four factors of 2.",
-            "C": "Revisit the worked method: Write four factors of 2.",
-            "D": "Revisit the worked method: Write four factors of 2."
+            "B": "Choosing “8” suggests a calculation step, scale factor, or place value has changed. The exponent 4 means four factors: 2 × 2 × 2 × 2 = 16. Use this check: Write four factors of 2.",
+            "C": "Choosing “6” suggests a calculation step, scale factor, or place value has changed. The exponent 4 means four factors: 2 × 2 × 2 × 2 = 16. Use this check: Write four factors of 2.",
+            "D": "Choosing “24” suggests a calculation step, scale factor, or place value has changed. The exponent 4 means four factors: 2 × 2 × 2 × 2 = 16. Use this check: Write four factors of 2."
           },
-          "solution": "2×2×2×2=16.",
+          "solution": "The exponent 4 means four factors: 2 × 2 × 2 × 2 = 16.",
           "hint": "Write four factors of 2.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G8.S4.G8-EXPONENTS"
         },
         {
@@ -1606,13 +1676,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Keep the base x.",
-            "C": "Revisit the worked method: Keep the base x.",
-            "D": "Revisit the worked method: Keep the base x."
+            "A": "Choosing “x³” suggests a different operation or condition has been applied than the one in the question. Same base product: add 2+5. Use this check: Keep the base x.",
+            "C": "Choosing “x¹⁰” suggests a different operation or condition has been applied than the one in the question. Same base product: add 2+5. Use this check: Keep the base x.",
+            "D": "Choosing “2x⁷” suggests a different operation or condition has been applied than the one in the question. Same base product: add 2+5. Use this check: Keep the base x."
           },
           "solution": "Same base product: add 2+5.",
           "hint": "Keep the base x.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G8.S4.G8-EXPONENTS"
         },
         {
@@ -1626,13 +1697,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: The exponent sits outside the bracket.",
-            "B": "Revisit the worked method: The exponent sits outside the bracket.",
-            "D": "Revisit the worked method: The exponent sits outside the bracket."
+            "A": "Choosing “4 only” suggests a calculation step, scale factor, or place value has changed. Brackets make the complete signed number the base. Use this check: The exponent sits outside the bracket.",
+            "B": "Choosing “−3” suggests a calculation step, scale factor, or place value has changed. Brackets make the complete signed number the base. Use this check: The exponent sits outside the bracket.",
+            "D": "Choosing “3” suggests a calculation step, scale factor, or place value has changed. Brackets make the complete signed number the base. Use this check: The exponent sits outside the bracket."
           },
           "solution": "Brackets make the complete signed number the base.",
           "hint": "The exponent sits outside the bracket.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G8.S4.G8-EXPONENTS"
         },
         {
@@ -1646,13 +1718,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Count the total factors.",
-            "B": "Revisit the worked method: Count the total factors.",
-            "C": "Revisit the worked method: Count the total factors."
+            "A": "Choosing “Bases are added” suggests a different operation or condition has been applied than the one in the question. There are 3+2 factors of a, giving a⁵. Use this check: Count the total factors.",
+            "B": "Choosing “The base changes to 6” suggests a different operation or condition has been applied than the one in the question. There are 3+2 factors of a, giving a⁵. Use this check: Count the total factors.",
+            "C": "Choosing “It is always a⁶” suggests an absolute statement has replaced the stated mathematical condition. There are 3+2 factors of a, giving a⁵. Use this check: Count the total factors."
           },
           "solution": "There are 3+2 factors of a, giving a⁵.",
           "hint": "Count the total factors.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G8.S4.G8-EXPONENTS"
         }
       ],
@@ -1678,13 +1751,14 @@
           },
           "correctOption": "D",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Subtract consecutive terms.",
-            "B": "Revisit the worked method: Subtract consecutive terms.",
-            "C": "Revisit the worked method: Subtract consecutive terms."
+            "A": "Choosing “19” suggests a calculation step, scale factor, or place value has changed. The constant difference is 4. Use this check: Subtract consecutive terms.",
+            "B": "Choosing “20” suggests a calculation step, scale factor, or place value has changed. The constant difference is 4. Use this check: Subtract consecutive terms.",
+            "C": "Choosing “22” suggests a calculation step, scale factor, or place value has changed. The constant difference is 4. Use this check: Subtract consecutive terms."
           },
           "solution": "The constant difference is 4.",
           "hint": "Subtract consecutive terms.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G8.S4.G8-PATTERNS"
         },
         {
@@ -1698,13 +1772,14 @@
           },
           "correctOption": "A",
           "distractorExplanations": {
-            "B": "Revisit the worked method: Substitute n=4.",
-            "C": "Revisit the worked method: Substitute n=4.",
-            "D": "Revisit the worked method: Substitute n=4."
+            "B": "Choosing “7” suggests a calculation step, scale factor, or place value has changed. Substitute n = 4: T4 = 2(4) + 1 = 9. Use this check: Substitute n=4.",
+            "C": "Choosing “8” suggests a calculation step, scale factor, or place value has changed. Substitute n = 4: T4 = 2(4) + 1 = 9. Use this check: Substitute n=4.",
+            "D": "Choosing “12” suggests a calculation step, scale factor, or place value has changed. Substitute n = 4: T4 = 2(4) + 1 = 9. Use this check: Substitute n=4."
           },
-          "solution": "2(4)+1=9.",
+          "solution": "Substitute n = 4: T4 = 2(4) + 1 = 9.",
           "hint": "Substitute n=4.",
           "reasoning": false,
+          "reviewRecord": "computed_or_procedural_review_required",
           "activityCode": "A.G8.S4.G8-PATTERNS"
         },
         {
@@ -1718,13 +1793,14 @@
           },
           "correctOption": "B",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Test n=1.",
-            "C": "Revisit the worked method: Test n=1.",
-            "D": "Revisit the worked method: Test n=1."
+            "A": "Choosing “n + 3” suggests a calculation step, scale factor, or place value has changed. Difference is 3 and 3(1)+1=4. Use this check: Test n=1.",
+            "C": "Choosing “3n + 4” suggests a calculation step, scale factor, or place value has changed. Difference is 3 and 3(1)+1=4. Use this check: Test n=1.",
+            "D": "Choosing “4n − 1” suggests a calculation step, scale factor, or place value has changed. Difference is 3 and 3(1)+1=4. Use this check: Test n=1."
           },
           "solution": "Difference is 3 and 3(1)+1=4.",
           "hint": "Test n=1.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G8.S4.G8-PATTERNS"
         },
         {
@@ -1738,13 +1814,14 @@
           },
           "correctOption": "C",
           "distractorExplanations": {
-            "A": "Revisit the worked method: Substitute n=2.",
-            "B": "Revisit the worked method: Substitute n=2.",
-            "D": "Revisit the worked method: Substitute n=2."
+            "A": "Choosing “It removes the difference” suggests a different operation or condition has been applied than the one in the question. A second value can show whether a rule was fitted incorrectly. Use this check: Substitute n=2.",
+            "B": "Choosing “All rules work at n=2” suggests a different operation or condition has been applied than the one in the question. A second value can show whether a rule was fitted incorrectly. Use this check: Substitute n=2.",
+            "D": "Choosing “It changes n into 1” suggests a different operation or condition has been applied than the one in the question. A second value can show whether a rule was fitted incorrectly. Use this check: Substitute n=2."
           },
           "solution": "A second value can show whether a rule was fitted incorrectly.",
           "hint": "Substitute n=2.",
           "reasoning": true,
+          "reviewRecord": "mathematics_reviewer_required",
           "activityCode": "A.G8.S4.G8-PATTERNS"
         }
       ],
