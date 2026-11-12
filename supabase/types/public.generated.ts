@@ -3827,11 +3827,13 @@ export type Database = {
       }
       learning_skill_content: {
         Row: {
+          common_misconception: string | null
           created_at: string
           created_by: string | null
           curriculum_skill_id: string
           explanation: string
           id: string
+          learning_objective: string | null
           review_notes: string | null
           review_status: Database["public"]["Enums"]["question_review_status"]
           reviewed_at: string | null
@@ -3845,11 +3847,13 @@ export type Database = {
           worksheet_url: string | null
         }
         Insert: {
+          common_misconception?: string | null
           created_at?: string
           created_by?: string | null
           curriculum_skill_id: string
           explanation: string
           id?: string
+          learning_objective?: string | null
           review_notes?: string | null
           review_status?: Database["public"]["Enums"]["question_review_status"]
           reviewed_at?: string | null
@@ -3863,11 +3867,13 @@ export type Database = {
           worksheet_url?: string | null
         }
         Update: {
+          common_misconception?: string | null
           created_at?: string
           created_by?: string | null
           curriculum_skill_id?: string
           explanation?: string
           id?: string
+          learning_objective?: string | null
           review_notes?: string | null
           review_status?: Database["public"]["Enums"]["question_review_status"]
           reviewed_at?: string | null
@@ -8067,6 +8073,7 @@ export type Database = {
         Args: never
         Returns: Json
       }
+      get_grade9_term1_sprint4_content_qa: { Args: never; Returns: Json }
       get_learning_activity_content_catalog: { Args: never; Returns: Json }
       get_learning_assessment_management_catalog: { Args: never; Returns: Json }
       get_learning_assessment_publication_validation: {
@@ -8148,6 +8155,10 @@ export type Database = {
         }[]
       }
       get_my_due_learning_retention_step: { Args: never; Returns: Json }
+      get_my_grade8_learning_bridge: {
+        Args: { p_skill_code: string }
+        Returns: Json
+      }
       get_my_grade9_learning_catalogue: { Args: never; Returns: Json }
       get_my_grade9_learning_topic: {
         Args: { p_topic_code: string }
