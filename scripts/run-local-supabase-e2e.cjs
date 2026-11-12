@@ -429,13 +429,15 @@ async function seedGrade9Term1Fixture(status, request, profiles) {
   const definitionLinks = await request('/rest/v1/learning_assessment_definition_questions?select=learning_assessment_definition_id,question_version_id');
   const definitionIds = new Set(grade9Definitions.map((definition) => definition.id));
   const formalVersionIds = new Set(definitionLinks.filter((link) => definitionIds.has(link.learning_assessment_definition_id)).map((link) => link.question_version_id));
-  const versionsToApprove = versionRows.filter((version) => {
+  const instructionalV3Versions = versionRows.filter((version) => {
     const itemCode = nestedItemCode(version);
-    return formalVersionIds.has(version.id) || (version.version_number === 3 && instructionalCodes.has(itemCode));
+    return version.version_number === 3 && instructionalCodes.has(itemCode);
   });
+  const versionsToApprove = versionRows.filter((version) => formalVersionIds.has(version.id) || instructionalV3Versions.some((instructional) => instructional.id === version.id));
   const draftQuestionVersion = versionRows.find((version) => version.version_number === 2 && instructionalCodes.has(nestedItemCode(version)) && version.review_status === 'draft');
   if (!draftQuestionVersion) throw new Error('A historical v2 draft question is required to verify draft learner isolation.');
-  if (versionsToApprove.length < 328) throw new Error(`Grade 9 fixture expected formal plus v3 practice questions, found ${versionsToApprove.length}.`);
+  if (instructionalV3Versions.length !== 76) throw new Error(`Grade 9 fixture expected 76 explicit-feedback v3 practice questions, found ${instructionalV3Versions.length}.`);
+  if (formalVersionIds.size < 252) throw new Error(`Grade 9 fixture expected at least 252 linked formal-assessment questions, found ${formalVersionIds.size}.`);
   for (const version of versionsToApprove) {
     await reviewThroughAdmin(adminRequest, 'review_question_version_action', 'p_question_version_id', version.id, version.review_status, 'Disposable Sprint 4 release-gate fixture review.');
   }

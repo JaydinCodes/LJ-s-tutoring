@@ -128,7 +128,7 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20261112160000_sprint4_mathematics_corrections_v2.sql` | `eb1f6ec6069257e1acfbc091cbb1d55c71a75cb29182446beb4d8ef75c460d66` |
 | `20261112170000_sprint4_assessment_duration_and_validation.sql` | `10ba2f43b432ef84232a9a590d5ee598387fedeb37639467e28cef9d57d170a4` |
 | `20261112180000_sprint4_whole_numbers_assessment_blueprint_correction.sql` | `0893498f645fbe0b127ea9d1353cd5fa5cefc7e3726d69b1abb287e0f2703655` |
-| `20261112190000_sprint4_explicit_distractor_feedback_v3.sql` | `05099d42525c2d11421c775ae7629bb53f1a2ea666e069039d0d0137f1179466` |
+| `20261112190000_sprint4_explicit_distractor_feedback_v3.sql` | `dd240fd0d8eacbd2a363913f623ed2f89b65978bae49e4a8924b05d3d5ff936e` |
 
 ## Regeneration
 
