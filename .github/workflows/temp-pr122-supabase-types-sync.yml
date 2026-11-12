@@ -1,0 +1,56 @@
+name: Temporary PR 122 Supabase Types Sync
+
+on:
+  push:
+    branches:
+      - codex/grade9-term1-sprint4-pilot
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: codex/grade9-term1-sprint4-pilot
+
+      - name: Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: HUSKY=0 npm ci
+
+      - name: Start local Supabase
+        run: npm run supabase:start
+
+      - name: Apply all committed migrations
+        run: npm run supabase:reset
+
+      - name: Regenerate and verify public TypeScript definitions
+        run: |
+          npm run supabase:types:update
+          npm run supabase:types:check
+
+      - name: Verify schema manifest and run RLS tests
+        run: |
+          npm run supabase:docs:check
+          npm run test:rls:runtime
+
+      - name: Commit types to the PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/types/public.generated.ts
+          if git diff --cached --quiet; then
+            echo "Generated types are already synchronized."
+            exit 0
+          fi
+          HUSKY=0 git commit -m "chore: refresh Supabase types for Sprint 4 instructional content"
+          git push origin HEAD:codex/grade9-term1-sprint4-pilot
