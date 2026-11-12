@@ -173,7 +173,9 @@ from authored
 join public.question_items item on item.item_code=authored.item_code
 join public.question_versions version_three on version_three.question_item_id=item.id and version_three.version_number=3
 join public.curriculum_skills skill on skill.skill_code=authored.skill_code
-on conflict(question_version_id,skill_id,relationship_type) do nothing;
+-- The link's primary key is (question_version_id, skill_id); relationship_type
+-- is deliberately not part of its conflict target.
+on conflict do nothing;
 
 with authored(item_code,hint) as (
 values

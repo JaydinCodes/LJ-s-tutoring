@@ -69,6 +69,8 @@ test('v3 feedback is explicitly authored for every stable wrong answer and remai
   assert.match(feedbackV3Migration, /version_number,review_status/);
   assert.match(feedbackV3Migration, /,3,'draft'/);
   assert.match(feedbackV3Migration, /Versions 1 and 2 remain immutable/);
+  assert.match(feedbackV3Migration, /on conflict do nothing;/);
+  assert.doesNotMatch(feedbackV3Migration, /on conflict\(question_version_id,skill_id,relationship_type\)/);
 });
 
 test('Sprint 4 mathematics corrections retain v1 history and protect confirmed defect fixes', () => {
