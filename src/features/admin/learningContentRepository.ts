@@ -156,7 +156,7 @@ export async function reviewLearningActivity(activityId: string, action: 'submit
   if (error) throw error;
 }
 
-export type LearningSkillContent = { id:string; skillCode:string; skillName:string; title:string; status:'draft'|'in_review'|'approved'|'rejected'|'retired'; hasVideo:boolean; hasWorksheet:boolean; reviewNotes?:string|null };
+export type LearningSkillContent = { id:string; skillCode:string; skillName:string; grade?:string; title:string; objective?:string|null; explanation?:string|null; workedExample?:string|null; commonMisconception?:string|null; status:'draft'|'in_review'|'approved'|'rejected'|'retired'; hasVideo:boolean; hasWorksheet:boolean; reviewNotes?:string|null };
 export async function loadLearningSkillContentCatalog(): Promise<LearningSkillContent[]> {
   const client = requireSupabase() as unknown as { rpc: (name: 'get_learning_skill_content_catalog') => Promise<{ data: unknown; error: Error | null }> };
   const { data, error } = await client.rpc('get_learning_skill_content_catalog');

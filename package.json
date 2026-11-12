@@ -103,6 +103,7 @@
     "test": "npm run test:all",
     "typecheck:react": "tsc --noEmit -p tsconfig.app.json",
     "typecheck": "npm run typecheck:react",
+    "qa:grade9-term1-content": "node scripts/grade9-term1-content-qa.cjs --write",
     "perf:budget": "node scripts/check-frontend-performance-budget.cjs",
     "perf:ai-queue": "node scripts/check-ai-queue-capacity.cjs",
     "perf:lighthouse": "lhci autorun --config=./lighthouserc.js",
