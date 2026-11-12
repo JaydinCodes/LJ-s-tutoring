@@ -1,12 +1,21 @@
 # Grade 9 Term 1 instructional content review
 
-Content version: `sprint4-v1`
+Content version: `sprint4-v2-mathematics-corrections`
+Supersedes: `sprint4-v1` (question version 1 and a lesson snapshot are retained by the additive correction migration)
 Canonical source: `scripts/grade9-term1-learning-content.cjs`
 Machine-readable review export: `docs/product/GRADE9_TERM1_INSTRUCTIONAL_CONTENT_EXPORT.json`
 
 ## Review status
 
-The Sprint 4 pack is authored and validated, but deliberately starts as `draft`. No production content is automatically approved or published by a migration. An authorised administrator must inspect the objective, explanation, worked example, common misconception, practice questions, hints and feedback in Learning content before moving each record through the existing review workflow.
+The Sprint 4 pack is authored and structurally validated, but deliberately starts as `draft`. No production content is automatically approved or published by a migration. The project owner designated ChatGPT as the mathematics reviewer; this corrected pack is the material awaiting that explicit academic verdict. An authorised administrator remains responsible for database approval and publication after that verdict.
+
+## v2 mathematics corrections awaiting review
+
+- Corrected the ratio-equivalence item: `4 : 6` and `10 : 15` both simplify to `2 : 3`.
+- Clarified integer and rational radicands, including `√(1/4) = 1/2`.
+- Clarified signed standard scientific notation with `1 ≤ |a| < 10`; the extension remains non-compulsory.
+- Replaced repeated generic distractor feedback with option-specific corrective feedback for all 76 questions; `(-5)²` has explicit sign, doubling and expansion feedback.
+- Added the starting-together condition to the bus LCM question, separated refundable deposit from net rental cost, stated `y ≠ 0` for the exponent quotient, and removed the defensible fraction-equivalence distractor.
 
 | Scope | Lessons | Practice questions | Activities | Status |
 | --- | ---: | ---: | ---: | --- |
@@ -50,7 +59,7 @@ The Grade 8 delivery RPC exposes only approved material. The learner route keeps
 
 ## Mathematical QA
 
-`npm run qa:grade9-term1-content` validates stable codes, lesson structure, topic coverage, four distinct options, keyed answers, distractor feedback, worked solutions, hints, duplicate prompts, absence of placeholders, activity coverage, and representative deterministic calculations for compound interest, inverse proportion, nth-term rules and joined-square patterns.
+`npm run qa:grade9-term1-content` validates stable codes, lesson structure, meaningful objectives, topic and activity mapping, four distinct options, keyed answers, individually mapped feedback, worked solutions, non-revealing hints, duplicate prompts/feedback, required domain assumptions and representative deterministic mathematics. Reasoning questions carry an explicit `mathematics_reviewer_required` record: structural QA does not claim that they are academically signed off.
 
 The independent formal assessment bank remains separate. `node scripts/assessment-content-qa.cjs` validates its 252 questions across 17 forms, including critical-skill coverage and reasoning requirements.
 
@@ -64,4 +73,4 @@ Before approval, review the full material in **Admin → Learning content** and 
 4. The intended misconception is represented by a real distractor, not a trick option.
 5. A lesson and all linked questions are approved before approving its activity.
 
-No reviewer sign-off is recorded by this change. Optional videos remain outside the core learning path and require their own existing verification process.
+No academic sign-off is recorded by this change. Optional videos remain outside the core learning path and require their own existing verification process.

@@ -1,0 +1,497 @@
+{
+  "reportVersion": "sprint4-closure-v1",
+  "generatedAt": "2026-11-12",
+  "source": "scripts/grade9-term1-assessment-content.cjs",
+  "policyInterpretation": "Whole Numbers has five instructional areas, but the approved draft policy identifies real-number classification, HCF/LCM, and ratio/rate as its three critical skills. Direct/inverse proportion and financial applications remain essential sampling areas, not duplicate critical evidence targets.",
+  "formCount": 17,
+  "forms": [
+    {
+      "definitionCode": "G9-T1-ENTRY-BASELINE-A",
+      "topic": "ENTRY",
+      "assessmentForm": "ENTRY-BASELINE-A",
+      "policyVersion": null,
+      "policyCode": null,
+      "recommendedDurationMinutes": 20,
+      "questionCount": 12,
+      "countPerPrimarySkill": {
+        "G9-EXP-LAWS-EXTENDED": 1,
+        "G9-EXP-NEGATIVE-SCI": 2,
+        "G9-NUM-INTEGERS-OPERATIONS": 1,
+        "G9-NUM-INTEGERS-POWERS-ROOTS": 2,
+        "G9-NUM-RATIO-RATE": 1,
+        "G9-NUM-WHOLE-HCF-LCM": 2,
+        "G9-PAT-GENERAL-RULE": 1,
+        "G9-PAT-GEOMETRIC-VISUAL": 2
+      },
+      "countPerCriticalSkill": {},
+      "reasoningEvidenceCount": 1,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-EXPONENTS-MASTERY-CHALLENGE",
+      "topic": "EXP",
+      "assessmentForm": "MASTERY-CHALLENGE",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-EXPONENTS-MASTERY",
+      "recommendedDurationMinutes": 25,
+      "questionCount": 16,
+      "countPerPrimarySkill": {
+        "G9-EXP-LAWS-EXTENDED": 11,
+        "G9-EXP-NEGATIVE-SCI": 5
+      },
+      "countPerCriticalSkill": {
+        "G9-EXP-LAWS-EXTENDED": 11,
+        "G9-EXP-NEGATIVE-SCI": 5
+      },
+      "reasoningEvidenceCount": 5,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-EXPONENTS-MASTERY-ENDLINE",
+      "topic": "EXP",
+      "assessmentForm": "ENDLINE",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-EXPONENTS-MASTERY",
+      "recommendedDurationMinutes": 25,
+      "questionCount": 16,
+      "countPerPrimarySkill": {
+        "G9-EXP-LAWS-EXTENDED": 11,
+        "G9-EXP-NEGATIVE-SCI": 5
+      },
+      "countPerCriticalSkill": {
+        "G9-EXP-LAWS-EXTENDED": 11,
+        "G9-EXP-NEGATIVE-SCI": 5
+      },
+      "reasoningEvidenceCount": 5,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-EXPONENTS-MASTERY-ENDLINE-REASSESSMENT-B",
+      "topic": "EXP",
+      "assessmentForm": "ENDLINE-REASSESSMENT-B",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-EXPONENTS-MASTERY",
+      "recommendedDurationMinutes": 25,
+      "questionCount": 16,
+      "countPerPrimarySkill": {
+        "G9-EXP-LAWS-EXTENDED": 11,
+        "G9-EXP-NEGATIVE-SCI": 5
+      },
+      "countPerCriticalSkill": {
+        "G9-EXP-LAWS-EXTENDED": 11,
+        "G9-EXP-NEGATIVE-SCI": 5
+      },
+      "reasoningEvidenceCount": 5,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-EXPONENTS-MASTERY-TOPIC-BASELINE",
+      "topic": "EXP",
+      "assessmentForm": "TOPIC-BASELINE",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-EXPONENTS-MASTERY",
+      "recommendedDurationMinutes": 15,
+      "questionCount": 12,
+      "countPerPrimarySkill": {
+        "G9-EXP-LAWS-EXTENDED": 7,
+        "G9-EXP-NEGATIVE-SCI": 5
+      },
+      "countPerCriticalSkill": {
+        "G9-EXP-LAWS-EXTENDED": 7,
+        "G9-EXP-NEGATIVE-SCI": 5
+      },
+      "reasoningEvidenceCount": 3,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-INTEGERS-MASTERY-CHALLENGE",
+      "topic": "INT",
+      "assessmentForm": "MASTERY-CHALLENGE",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-INTEGERS-MASTERY",
+      "recommendedDurationMinutes": 25,
+      "questionCount": 16,
+      "countPerPrimarySkill": {
+        "G9-NUM-INTEGERS-OPERATIONS": 9,
+        "G9-NUM-INTEGERS-POWERS-ROOTS": 7
+      },
+      "countPerCriticalSkill": {
+        "G9-NUM-INTEGERS-OPERATIONS": 9,
+        "G9-NUM-INTEGERS-POWERS-ROOTS": 7
+      },
+      "reasoningEvidenceCount": 4,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-INTEGERS-MASTERY-ENDLINE",
+      "topic": "INT",
+      "assessmentForm": "ENDLINE",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-INTEGERS-MASTERY",
+      "recommendedDurationMinutes": 25,
+      "questionCount": 16,
+      "countPerPrimarySkill": {
+        "G9-NUM-INTEGERS-OPERATIONS": 9,
+        "G9-NUM-INTEGERS-POWERS-ROOTS": 7
+      },
+      "countPerCriticalSkill": {
+        "G9-NUM-INTEGERS-OPERATIONS": 9,
+        "G9-NUM-INTEGERS-POWERS-ROOTS": 7
+      },
+      "reasoningEvidenceCount": 4,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-INTEGERS-MASTERY-ENDLINE-REASSESSMENT-B",
+      "topic": "INT",
+      "assessmentForm": "ENDLINE-REASSESSMENT-B",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-INTEGERS-MASTERY",
+      "recommendedDurationMinutes": 25,
+      "questionCount": 16,
+      "countPerPrimarySkill": {
+        "G9-NUM-INTEGERS-OPERATIONS": 9,
+        "G9-NUM-INTEGERS-POWERS-ROOTS": 7
+      },
+      "countPerCriticalSkill": {
+        "G9-NUM-INTEGERS-OPERATIONS": 9,
+        "G9-NUM-INTEGERS-POWERS-ROOTS": 7
+      },
+      "reasoningEvidenceCount": 4,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-INTEGERS-MASTERY-TOPIC-BASELINE",
+      "topic": "INT",
+      "assessmentForm": "TOPIC-BASELINE",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-INTEGERS-MASTERY",
+      "recommendedDurationMinutes": 15,
+      "questionCount": 12,
+      "countPerPrimarySkill": {
+        "G9-NUM-INTEGERS-OPERATIONS": 7,
+        "G9-NUM-INTEGERS-POWERS-ROOTS": 5
+      },
+      "countPerCriticalSkill": {
+        "G9-NUM-INTEGERS-OPERATIONS": 7,
+        "G9-NUM-INTEGERS-POWERS-ROOTS": 5
+      },
+      "reasoningEvidenceCount": 3,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-PATTERNS-MASTERY-CHALLENGE",
+      "topic": "PAT",
+      "assessmentForm": "MASTERY-CHALLENGE",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-PATTERNS-MASTERY",
+      "recommendedDurationMinutes": 25,
+      "questionCount": 16,
+      "countPerPrimarySkill": {
+        "G9-PAT-GENERAL-RULE": 6,
+        "G9-PAT-GEOMETRIC-VISUAL": 5,
+        "G9-PAT-NUMERIC-STRUCTURE": 5
+      },
+      "countPerCriticalSkill": {
+        "G9-PAT-NUMERIC-STRUCTURE": 5,
+        "G9-PAT-GENERAL-RULE": 6,
+        "G9-PAT-GEOMETRIC-VISUAL": 5
+      },
+      "reasoningEvidenceCount": 7,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-PATTERNS-MASTERY-ENDLINE",
+      "topic": "PAT",
+      "assessmentForm": "ENDLINE",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-PATTERNS-MASTERY",
+      "recommendedDurationMinutes": 25,
+      "questionCount": 16,
+      "countPerPrimarySkill": {
+        "G9-PAT-GENERAL-RULE": 6,
+        "G9-PAT-GEOMETRIC-VISUAL": 5,
+        "G9-PAT-NUMERIC-STRUCTURE": 5
+      },
+      "countPerCriticalSkill": {
+        "G9-PAT-NUMERIC-STRUCTURE": 5,
+        "G9-PAT-GENERAL-RULE": 6,
+        "G9-PAT-GEOMETRIC-VISUAL": 5
+      },
+      "reasoningEvidenceCount": 7,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-PATTERNS-MASTERY-ENDLINE-REASSESSMENT-B",
+      "topic": "PAT",
+      "assessmentForm": "ENDLINE-REASSESSMENT-B",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-PATTERNS-MASTERY",
+      "recommendedDurationMinutes": 25,
+      "questionCount": 16,
+      "countPerPrimarySkill": {
+        "G9-PAT-GENERAL-RULE": 6,
+        "G9-PAT-GEOMETRIC-VISUAL": 5,
+        "G9-PAT-NUMERIC-STRUCTURE": 5
+      },
+      "countPerCriticalSkill": {
+        "G9-PAT-NUMERIC-STRUCTURE": 5,
+        "G9-PAT-GENERAL-RULE": 6,
+        "G9-PAT-GEOMETRIC-VISUAL": 5
+      },
+      "reasoningEvidenceCount": 7,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-PATTERNS-MASTERY-TOPIC-BASELINE",
+      "topic": "PAT",
+      "assessmentForm": "TOPIC-BASELINE",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-PATTERNS-MASTERY",
+      "recommendedDurationMinutes": 15,
+      "questionCount": 12,
+      "countPerPrimarySkill": {
+        "G9-PAT-GENERAL-RULE": 5,
+        "G9-PAT-GEOMETRIC-VISUAL": 3,
+        "G9-PAT-NUMERIC-STRUCTURE": 4
+      },
+      "countPerCriticalSkill": {
+        "G9-PAT-NUMERIC-STRUCTURE": 4,
+        "G9-PAT-GENERAL-RULE": 5,
+        "G9-PAT-GEOMETRIC-VISUAL": 3
+      },
+      "reasoningEvidenceCount": 5,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-WHOLE-MASTERY-CHALLENGE",
+      "topic": "WHOLE",
+      "assessmentForm": "MASTERY-CHALLENGE",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-WHOLE-MASTERY",
+      "recommendedDurationMinutes": 25,
+      "questionCount": 16,
+      "countPerPrimarySkill": {
+        "G9-NUM-DIRECT-INVERSE-PROPORTION": 2,
+        "G9-NUM-FINANCIAL-APPLICATIONS": 2,
+        "G9-NUM-RATIO-RATE": 4,
+        "G9-NUM-REAL-IRRATIONAL": 4,
+        "G9-NUM-WHOLE-HCF-LCM": 4
+      },
+      "countPerCriticalSkill": {
+        "G9-NUM-REAL-IRRATIONAL": 4,
+        "G9-NUM-WHOLE-HCF-LCM": 4,
+        "G9-NUM-RATIO-RATE": 4
+      },
+      "reasoningEvidenceCount": 8,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-WHOLE-MASTERY-ENDLINE",
+      "topic": "WHOLE",
+      "assessmentForm": "ENDLINE",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-WHOLE-MASTERY",
+      "recommendedDurationMinutes": 25,
+      "questionCount": 16,
+      "countPerPrimarySkill": {
+        "G9-NUM-DIRECT-INVERSE-PROPORTION": 2,
+        "G9-NUM-FINANCIAL-APPLICATIONS": 2,
+        "G9-NUM-RATIO-RATE": 4,
+        "G9-NUM-REAL-IRRATIONAL": 4,
+        "G9-NUM-WHOLE-HCF-LCM": 4
+      },
+      "countPerCriticalSkill": {
+        "G9-NUM-REAL-IRRATIONAL": 4,
+        "G9-NUM-WHOLE-HCF-LCM": 4,
+        "G9-NUM-RATIO-RATE": 4
+      },
+      "reasoningEvidenceCount": 8,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-WHOLE-MASTERY-ENDLINE-REASSESSMENT-B",
+      "topic": "WHOLE",
+      "assessmentForm": "ENDLINE-REASSESSMENT-B",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-WHOLE-MASTERY",
+      "recommendedDurationMinutes": 25,
+      "questionCount": 16,
+      "countPerPrimarySkill": {
+        "G9-NUM-DIRECT-INVERSE-PROPORTION": 2,
+        "G9-NUM-FINANCIAL-APPLICATIONS": 2,
+        "G9-NUM-RATIO-RATE": 4,
+        "G9-NUM-REAL-IRRATIONAL": 4,
+        "G9-NUM-WHOLE-HCF-LCM": 4
+      },
+      "countPerCriticalSkill": {
+        "G9-NUM-REAL-IRRATIONAL": 4,
+        "G9-NUM-WHOLE-HCF-LCM": 4,
+        "G9-NUM-RATIO-RATE": 4
+      },
+      "reasoningEvidenceCount": 8,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    },
+    {
+      "definitionCode": "G9-T1-WHOLE-MASTERY-TOPIC-BASELINE",
+      "topic": "WHOLE",
+      "assessmentForm": "TOPIC-BASELINE",
+      "policyVersion": 1,
+      "policyCode": "G9-T1-WHOLE-MASTERY",
+      "recommendedDurationMinutes": 15,
+      "questionCount": 12,
+      "countPerPrimarySkill": {
+        "G9-NUM-DIRECT-INVERSE-PROPORTION": 1,
+        "G9-NUM-FINANCIAL-APPLICATIONS": 1,
+        "G9-NUM-RATIO-RATE": 3,
+        "G9-NUM-REAL-IRRATIONAL": 4,
+        "G9-NUM-WHOLE-HCF-LCM": 3
+      },
+      "countPerCriticalSkill": {
+        "G9-NUM-REAL-IRRATIONAL": 4,
+        "G9-NUM-WHOLE-HCF-LCM": 3,
+        "G9-NUM-RATIO-RATE": 3
+      },
+      "reasoningEvidenceCount": 4,
+      "invalidQuestions": [],
+      "structuralBlockers": [],
+      "databasePublicationBlockers": [
+        "ASSESSMENT_DEFINITION_NOT_APPROVED",
+        "QUESTION_NOT_APPROVED_OR_INVALID",
+        "POLICY_NOT_APPROVED"
+      ],
+      "publicationEligible": false,
+      "publicationEligibilityReason": "STRUCTURALLY_READY_BUT_DRAFT_REVIEW_AND_DATABASE_VALIDATION_REQUIRED"
+    }
+  ],
+  "structuralFailures": [],
+  "allStructurallyReady": true,
+  "allDatabasePublishable": false
+}
