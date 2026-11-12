@@ -2,7 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { lessons, buildPracticeQuestions } = require('./grade9-term1-learning-content.cjs');
+const { lessons, buildPracticeQuestions, explicitFeedbackByQuestion } = require('./grade9-term1-learning-content.cjs');
 
 const requiredGrade9Skills = new Set([
   'G9-NUM-REAL-IRRATIONAL', 'G9-NUM-WHOLE-HCF-LCM', 'G9-NUM-RATIO-RATE', 'G9-NUM-DIRECT-INVERSE-PROPORTION', 'G9-NUM-FINANCIAL-APPLICATIONS',
@@ -10,13 +10,37 @@ const requiredGrade9Skills = new Set([
   'G9-PAT-NUMERIC-STRUCTURE', 'G9-PAT-GENERAL-RULE', 'G9-PAT-GEOMETRIC-VISUAL',
 ]);
 const banned = /placeholder|lorem ipsum|tbd|common operation error|unrelated answer/i;
-const genericFeedback = /revisit the worked method|choose the correct answer|try again/i;
+const genericFeedback = /revisit the worked method|choose the correct answer|try again|common operation error|use this check/i;
 const normalise = (value) => String(value).toLowerCase().replace(/\s+/g, ' ').trim();
+const feedbackKeyFor = (question) => question.code.replace(/^Q\.G[89]\.S4\.PRACTICE\./, '');
+
+function feedbackSemanticReviewChecklist(questions) {
+  const rows = [
+    '# Grade 9 Term 1 distractor-feedback semantic review checklist',
+    '',
+    'This checklist is intentionally a human academic review aid. The QA script validates stable mapping, completeness, uniqueness, option integrity and prohibited generic fallbacks; it does not certify that wording diagnoses every misconception correctly.',
+    '',
+    'For each row, confirm that the feedback identifies the misconception represented by the selected answer, states a correct next mathematical idea, remains grade appropriate, and does not reveal the complete solution too early.',
+    '',
+  ];
+  for (const question of questions) {
+    rows.push(`## ${question.code}`);
+    rows.push('');
+    rows.push(`- Prompt: ${question.prompt}`);
+    rows.push(`- Correct answer: ${question.options[question.correctOption]}`);
+    rows.push(`- Worked solution: ${question.solution}`);
+    for (const [option, feedback] of Object.entries(question.distractorExplanations).sort(([left], [right]) => left.localeCompare(right))) {
+      rows.push(`- ${option}. ${question.options[option]} — ${feedback}`);
+    }
+    rows.push('');
+  }
+  return `${rows.join('\n')}\n`;
+}
 
 function inventory() {
   const questions = buildPracticeQuestions();
   return {
-    contentVersion: 'sprint4-v2-mathematics-corrections', revisionOf: 'sprint4-v1', generatedAt: '2026-11-12',
+    contentVersion: 'sprint4-v3-explicit-distractor-feedback', revisionOf: 'sprint4-v2-mathematics-corrections', generatedAt: '2026-11-12',
     lessons: lessons.map((lesson) => ({
       skillCode: lesson.skillCode, grade: lesson.grade, title: lesson.title, objective: lesson.objective,
       explanation: lesson.explanation, workedExample: lesson.workedExample, misconception: lesson.misconception,
@@ -24,6 +48,7 @@ function inventory() {
         code: question.code, prompt: question.prompt, options: question.options, correctOption: question.correctOption,
         distractorExplanations: question.distractorExplanations, solution: question.solution, hint: question.hint,
         reasoning: question.reasoning, reviewRecord: question.reviewRecord, activityCode: question.activityCode,
+        feedbackSource: question.feedbackSource, feedbackByWrong: question.feedbackByWrong,
       })),
       publicationStatus: 'draft_requires_admin_review',
     })),
@@ -33,6 +58,8 @@ function inventory() {
 
 function validate() {
   const errors = []; const questions = buildPracticeQuestions();
+  const source = fs.readFileSync(path.join(__dirname, 'grade9-term1-learning-content.cjs'), 'utf8');
+  if (/inferredDistractorFeedback|\|\|\s*inferred|generic.*feedback.*fallback/i.test(source)) errors.push('Publication-ready content retains a generic inferred-feedback fallback.');
   const lessonSkills = new Set(lessons.map((item) => item.skillCode));
   for (const skill of requiredGrade9Skills) if (!lessonSkills.has(skill)) errors.push(`Missing Grade 9 lesson for ${skill}.`);
   for (const lesson of lessons) {
@@ -56,6 +83,17 @@ function validate() {
     if (new Set(Object.values(question.options)).size !== 4) errors.push(`${question.code}: options must be distinct.`);
     if (!question.options[question.correctOption]) errors.push(`${question.code}: correct option is absent.`);
     if (!knownSkills.has(question.skillCode)) errors.push(`${question.code}: maps to an unknown skill.`);
+    const feedbackKey = feedbackKeyFor(question);
+    const explicitMap = explicitFeedbackByQuestion[feedbackKey];
+    if (question.feedbackSource !== 'explicitly_authored_v3') errors.push(`${question.code}: feedback must declare the explicitly-authored v3 source.`);
+    if (!explicitMap) errors.push(`${question.code}: has no stable authored feedback mapping.`);
+    else {
+      const wrongValues = optionKeys.filter((key) => key !== question.correctOption).map((key) => question.options[key]).sort();
+      if (Object.keys(explicitMap).sort().join('\u0000') !== wrongValues.join('\u0000')) errors.push(`${question.code}: authored feedback keys do not exactly match the current wrong-option values.`);
+      for (const option of optionKeys.filter((key) => key !== question.correctOption)) {
+        if (question.distractorExplanations[option] !== explicitMap[question.options[option]]) errors.push(`${question.code}: ${option} is not using feedback explicitly authored for its selected wrong value.`);
+      }
+    }
     if (question.activityCode !== `A.${question.grade === 'Grade 8' ? 'G8' : 'G9'}.S4.${lessons.find((lesson) => lesson.skillCode === question.skillCode)?.slug}`) errors.push(`${question.code}: activity reference does not match its skill.`);
     const expectedDistractors = optionKeys.filter((key) => key !== question.correctOption).sort().join(',');
     if (Object.keys(question.distractorExplanations).sort().join(',') !== expectedDistractors) errors.push(`${question.code}: each distractor needs feedback.`);
@@ -93,6 +131,9 @@ const summary = inventory();
 if (process.argv.includes('--write')) {
   const output = path.join(__dirname, '..', 'docs', 'product', 'GRADE9_TERM1_INSTRUCTIONAL_CONTENT_EXPORT.json');
   fs.writeFileSync(output, `${JSON.stringify(summary, null, 2)}\n`);
+  const checklist = path.join(__dirname, '..', 'docs', 'product', 'GRADE9_TERM1_DISTRACTOR_FEEDBACK_SEMANTIC_REVIEW.md');
+  fs.writeFileSync(checklist, feedbackSemanticReviewChecklist(buildPracticeQuestions()));
   process.stdout.write(`Wrote ${output}\n`);
+  process.stdout.write(`Wrote ${checklist}\n`);
 }
 process.stdout.write(`Grade 9 Term 1 content QA passed: ${summary.totals.grade9Lessons} Grade 9 lessons, ${summary.totals.grade8BridgeLessons} Grade 8 bridges, ${summary.totals.practiceQuestions} practice questions and ${summary.totals.activities} activities.\n`);

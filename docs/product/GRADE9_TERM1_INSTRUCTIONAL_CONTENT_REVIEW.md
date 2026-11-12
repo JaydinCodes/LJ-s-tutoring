@@ -1,20 +1,20 @@
 # Grade 9 Term 1 instructional content review
 
-Content version: `sprint4-v2-mathematics-corrections`
-Supersedes: `sprint4-v1` (question version 1 and a lesson snapshot are retained by the additive correction migration)
+Content version: `sprint4-v3-explicit-distractor-feedback`
+Supersedes: `sprint4-v2-mathematics-corrections` for new draft question versions; v1 and v2 remain retained for audit and historical attempts.
 Canonical source: `scripts/grade9-term1-learning-content.cjs`
 Machine-readable review export: `docs/product/GRADE9_TERM1_INSTRUCTIONAL_CONTENT_EXPORT.json`
 
 ## Review status
 
-The Sprint 4 pack is authored and structurally validated, but deliberately starts as `draft`. No production content is automatically approved or published by a migration. The project owner designated ChatGPT as the mathematics reviewer; this corrected pack is the material awaiting that explicit academic verdict. An authorised administrator remains responsible for database approval and publication after that verdict.
+The Sprint 4 v3 pack is authored and structurally validated, but deliberately starts as `draft`. No production content is automatically approved or published by a migration. The project owner designated ChatGPT as the mathematics reviewer. The previous v2 pack received conditional academic review; the exact v3 feedback revision is awaiting an explicit verdict. An authorised administrator remains responsible for database approval and publication after that verdict.
 
-## v2 mathematics corrections awaiting review
+## v3 feedback correction, retaining the v2 mathematics corrections
 
 - Corrected the ratio-equivalence item: `4 : 6` and `10 : 15` both simplify to `2 : 3`.
 - Clarified integer and rational radicands, including `√(1/4) = 1/2`.
 - Clarified signed standard scientific notation with `1 ≤ |a| < 10`; the extension remains non-compulsory.
-- Replaced repeated generic distractor feedback with option-specific corrective feedback for all 76 questions; `(-5)²` has explicit sign, doubling and expansion feedback.
+- Replaced all inferred distractor feedback with 228 stable wrong-option-keyed, individually authored explanations for all 76 questions; `(-5)²` has explicit sign, doubling and expansion feedback.
 - Added the starting-together condition to the bus LCM question, separated refundable deposit from net rental cost, stated `y ≠ 0` for the exponent quotient, and removed the defensible fraction-equivalence distractor.
 
 | Scope | Lessons | Practice questions | Activities | Status |
@@ -40,7 +40,7 @@ The Sprint 4 pack is authored and structurally validated, but deliberately start
 | Patterns | `G9-PAT-GENERAL-RULE` | Linear nth-term rules and checks |
 | Patterns | `G9-PAT-GEOMETRIC-VISUAL` | Matchstick/tile patterns and shared edges |
 
-Each lesson has a learner objective, concise original explanation, step-by-step worked example, realistic misconception and four original practice questions: introductory/procedural work plus at least one reasoning or misconception item. Each question has four options, a keyed answer, three distractor explanations, a worked solution and an optional hint.
+Each lesson has a learner objective, concise original explanation, step-by-step worked example, realistic misconception and four original practice questions: introductory/procedural work plus at least one reasoning or misconception item. Each question has four options, a keyed answer, three individually authored distractor explanations, a worked solution and an optional hint. The detailed v3 handoff is [the final academic review pack](GRADE9_TERM1_FINAL_ACADEMIC_REVIEW.md) with [a feedback semantic-review checklist](GRADE9_TERM1_DISTRACTOR_FEEDBACK_SEMANTIC_REVIEW.md).
 
 Scientific notation is explicitly marked as an optional extension. It is not made a compulsory mastery prerequisite.
 

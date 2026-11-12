@@ -1,5 +1,7 @@
 const { execFileSync } = require('node:child_process');
+const fs = require('node:fs');
 const path = require('node:path');
+const { buildPracticeQuestions } = require('./grade9-term1-learning-content.cjs');
 
 const supabaseCli = require.resolve('supabase/dist/supabase.js');
 const playwrightCli = require.resolve('@playwright/test/cli');
@@ -13,6 +15,15 @@ const users = {
   parent: { email: 'parent.supabase-e2e@projectodysseus.test', fullName: 'Local Supabase Parent' },
   ngo_partner: { email: 'ngo.supabase-e2e@projectodysseus.test', fullName: 'Local Supabase NGO Partner' },
   ngo_learner: { email: 'ngo-learner.supabase-e2e@projectodysseus.test', fullName: 'Local NGO Learner' },
+  grade9_new: { email: 'grade9-new.supabase-e2e@projectodysseus.test', fullName: 'Grade 9 New Learner' },
+  grade9_weak: { email: 'grade9-weak.supabase-e2e@projectodysseus.test', fullName: 'Grade 9 Guided Learner' },
+  grade9_bridge: { email: 'grade9-bridge.supabase-e2e@projectodysseus.test', fullName: 'Grade 9 Bridge Learner' },
+  grade9_strong: { email: 'grade9-strong.supabase-e2e@projectodysseus.test', fullName: 'Grade 9 Strong Learner' },
+  grade9_endline: { email: 'grade9-endline.supabase-e2e@projectodysseus.test', fullName: 'Grade 9 Endline Learner' },
+  grade9_failed: { email: 'grade9-failed.supabase-e2e@projectodysseus.test', fullName: 'Grade 9 Reassessment Learner' },
+  grade9_persistence: { email: 'grade9-persistence.supabase-e2e@projectodysseus.test', fullName: 'Grade 9 Resume Learner' },
+  grade9_security: { email: 'grade9-security.supabase-e2e@projectodysseus.test', fullName: 'Grade 9 Security Learner A' },
+  grade9_peer: { email: 'grade9-peer.supabase-e2e@projectodysseus.test', fullName: 'Grade 9 Security Learner B' },
 };
 
 function localStatus() {
@@ -31,10 +42,14 @@ function assertLoopback(name, value) {
 }
 
 function makeRequester(status) {
+  return makeTokenRequester(status, status.SERVICE_ROLE_KEY, status.SERVICE_ROLE_KEY);
+}
+
+function makeTokenRequester(status, token, apiKey = status.ANON_KEY) {
   return async function request(path, { body, method = 'GET', prefer } = {}) {
     const headers = {
-      apikey: status.SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${status.SERVICE_ROLE_KEY}`,
+      apikey: apiKey,
+      Authorization: `Bearer ${token}`,
     };
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json';
@@ -55,6 +70,17 @@ function makeRequester(status) {
     }
     return data;
   };
+}
+
+async function signInForAccessToken(status, email) {
+  const response = await fetch(`${status.API_URL}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: status.ANON_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.access_token) throw new Error(`Could not authenticate disposable fixture user ${email}.`);
+  return data.access_token;
 }
 
 async function assertEdgeRuntimeAvailable(status) {
@@ -145,7 +171,7 @@ async function removePreviousFixtures(request) {
 async function createAuthAndProfiles(request) {
   const profiles = {};
   for (const [role, fixture] of Object.entries(users)) {
-    const profileRole = role === 'ngo_learner' ? 'student' : role;
+    const profileRole = role === 'ngo_learner' || role.startsWith('grade9_') ? 'student' : role;
     const authUser = await request('/auth/v1/admin/users', {
       method: 'POST',
       body: {
@@ -347,6 +373,158 @@ async function seedAcademicJourney(request, profiles) {
   return { assignmentId: assignment.id, studentId: student.id };
 }
 
+async function reviewThroughAdmin(adminRequest, rpc, idKey, id, status, note) {
+  if (status === 'approved') return;
+  if (status === 'draft' || status === 'rejected') {
+    await adminRequest(`/rest/v1/rpc/${rpc}`, { method: 'POST', body: { [idKey]: id, p_action: 'submit_for_review', p_notes: note } });
+  }
+  await adminRequest(`/rest/v1/rpc/${rpc}`, { method: 'POST', body: { [idKey]: id, p_action: 'approve', p_notes: note } });
+}
+
+function nestedItemCode(row) {
+  const item = Array.isArray(row.question_items) ? row.question_items[0] : row.question_items;
+  return item?.item_code || null;
+}
+
+function nestedSkillCode(row) {
+  const skill = Array.isArray(row.curriculum_skills) ? row.curriculum_skills[0] : row.curriculum_skills;
+  return skill?.skill_code || null;
+}
+
+async function seedGrade9Term1Fixture(status, request, profiles) {
+  const adminToken = await signInForAccessToken(status, users.admin.email);
+  const adminRequest = makeTokenRequester(status, adminToken);
+  const [directOrganization] = await request('/rest/v1/organizations?select=id&type=eq.direct&limit=1');
+  if (!directOrganization?.id) throw new Error('The disposable fixture needs the seeded direct organization.');
+
+  const grade9Roles = Object.keys(users).filter((role) => role.startsWith('grade9_'));
+  const students = {};
+  for (const role of grade9Roles) {
+    const [student] = await request('/rest/v1/students?select=*', {
+      method: 'POST', prefer: 'return=representation',
+      body: { profile_id: profiles[role].id, grade: 'Grade 9', school: 'Disposable Grade 9 Pilot School', status: 'active', organization_id: directOrganization.id },
+    });
+    students[role] = student;
+  }
+
+  // A publication attempt before review must be rejected by the same RPC that
+  // production administrators use. This verifies the validator is enforced,
+  // not merely reported by a structural script.
+  const definitions = await request('/rest/v1/learning_assessment_definitions?select=id,code,review_status,topic_mastery_policy_id,assessment_type,assessment_route');
+  const grade9Definitions = definitions.filter((definition) => definition.code?.startsWith('G9-T1-'));
+  const intentionallyInvalid = grade9Definitions.find((definition) => definition.review_status !== 'approved');
+  let invalidPublicationRejected = false;
+  if (intentionallyInvalid) {
+    try {
+      await adminRequest('/rest/v1/rpc/publish_learning_assessment_form', { method: 'POST', body: { p_assessment_definition_id: intentionallyInvalid.id } });
+    } catch (error) {
+      invalidPublicationRejected = /publication_invalid|must_be_approved|requires_approved/i.test(String(error));
+      if (!invalidPublicationRejected) throw error;
+    }
+    if (!invalidPublicationRejected) throw new Error('An invalid formal assessment form was unexpectedly publishable.');
+  }
+
+  const instructionalCodes = new Set(buildPracticeQuestions().map((question) => question.code));
+  const versionRows = await request('/rest/v1/question_versions?select=id,version_number,review_status,question_items(item_code)');
+  const definitionLinks = await request('/rest/v1/learning_assessment_definition_questions?select=learning_assessment_definition_id,question_version_id');
+  const definitionIds = new Set(grade9Definitions.map((definition) => definition.id));
+  const formalVersionIds = new Set(definitionLinks.filter((link) => definitionIds.has(link.learning_assessment_definition_id)).map((link) => link.question_version_id));
+  const versionsToApprove = versionRows.filter((version) => {
+    const itemCode = nestedItemCode(version);
+    return formalVersionIds.has(version.id) || (version.version_number === 3 && instructionalCodes.has(itemCode));
+  });
+  const draftQuestionVersion = versionRows.find((version) => version.version_number === 2 && instructionalCodes.has(nestedItemCode(version)) && version.review_status === 'draft');
+  if (!draftQuestionVersion) throw new Error('A historical v2 draft question is required to verify draft learner isolation.');
+  if (versionsToApprove.length < 328) throw new Error(`Grade 9 fixture expected formal plus v3 practice questions, found ${versionsToApprove.length}.`);
+  for (const version of versionsToApprove) {
+    await reviewThroughAdmin(adminRequest, 'review_question_version_action', 'p_question_version_id', version.id, version.review_status, 'Disposable Sprint 4 release-gate fixture review.');
+  }
+
+  const requiredSkillCodes = new Set(buildPracticeQuestions().map((question) => question.skillCode));
+  const lessonRows = await request('/rest/v1/learning_skill_content?select=id,review_status,curriculum_skills(skill_code)');
+  const lessons = lessonRows.filter((lesson) => requiredSkillCodes.has(nestedSkillCode(lesson)));
+  if (lessons.length !== 19) throw new Error(`Grade 9 fixture expected 19 Sprint 4 lessons, found ${lessons.length}.`);
+  for (const lesson of lessons) {
+    await reviewThroughAdmin(adminRequest, 'review_learning_skill_content_action', 'p_content_id', lesson.id, lesson.review_status, 'Disposable Sprint 4 release-gate fixture review.');
+  }
+
+  const activities = (await request('/rest/v1/learning_activity_templates?select=id,code,review_status'))
+    .filter((activity) => /^A\.G[89]\.S4\./.test(activity.code));
+  if (activities.length !== 19) throw new Error(`Grade 9 fixture expected 19 Sprint 4 activities, found ${activities.length}.`);
+  for (const activity of activities) {
+    await reviewThroughAdmin(adminRequest, 'review_learning_activity_action', 'p_activity_id', activity.id, activity.review_status, 'Disposable Sprint 4 release-gate fixture review.');
+  }
+
+  const policies = (await request('/rest/v1/topic_mastery_policies?select=id,code,review_status'))
+    .filter((policy) => policy.code?.startsWith('G9-T1-'));
+  if (policies.length !== 4) throw new Error(`Grade 9 fixture expected four topic policies, found ${policies.length}.`);
+  for (const policy of policies) {
+    await reviewThroughAdmin(adminRequest, 'review_topic_mastery_policy_action', 'p_policy_id', policy.id, policy.review_status, 'Disposable Sprint 4 release-gate fixture review.');
+  }
+
+  for (const definition of grade9Definitions) {
+    await reviewThroughAdmin(adminRequest, 'review_learning_assessment_action', 'p_assessment_id', definition.id, definition.review_status, 'Disposable Sprint 4 release-gate fixture review.');
+    const validation = await adminRequest('/rest/v1/rpc/get_learning_assessment_publication_validation', { method: 'POST', body: { p_assessment_definition_id: definition.id } });
+    if (!validation?.valid) throw new Error(`${definition.code} is not publication-valid: ${JSON.stringify(validation?.errors || [])}`);
+  }
+
+  const forms = await request('/rest/v1/learning_assessment_form_versions?select=id,learning_assessment_definition_id,review_status,retired_at');
+  for (const definition of grade9Definitions) {
+    const hasPublishedForm = forms.some((form) => form.learning_assessment_definition_id === definition.id && form.review_status === 'approved' && !form.retired_at);
+    if (!hasPublishedForm) await adminRequest('/rest/v1/rpc/publish_learning_assessment_form', { method: 'POST', body: { p_assessment_definition_id: definition.id } });
+  }
+
+  const evidence = {
+    fixture: 'sprint4-grade9-real-data',
+    publication: {
+      invalidFormRejected: invalidPublicationRejected || intentionallyInvalid === undefined,
+      reviewedPracticeQuestionVersions: versionsToApprove.filter((version) => instructionalCodes.has(nestedItemCode(version))).length,
+      reviewedFormalQuestionVersions: versionsToApprove.filter((version) => formalVersionIds.has(version.id)).length,
+      reviewedLessons: lessons.length,
+      reviewedActivities: activities.length,
+      reviewedPolicies: policies.length,
+      publishedForms: grade9Definitions.length,
+    },
+    students: Object.fromEntries(Object.entries(students).map(([role, student]) => [role, student.id])),
+    draftQuestionVersionId: draftQuestionVersion.id,
+  };
+  const evidenceDir = path.join(process.cwd(), 'test-results', 'sprint4-grade9-real');
+  fs.mkdirSync(evidenceDir, { recursive: true });
+  fs.writeFileSync(path.join(evidenceDir, 'fixture-publication-evidence.json'), `${JSON.stringify(evidence, null, 2)}\n`);
+  return evidence;
+}
+
+function grade9EvidenceFiles(directory) {
+  if (!fs.existsSync(directory)) return [];
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const target = path.join(directory, entry.name);
+    return entry.isDirectory() ? grade9EvidenceFiles(target) : [target];
+  });
+}
+
+function writeGrade9JourneySummary() {
+  const scenarios = [
+    ['A', 'A-new-learner.json'], ['B', 'B-weak-baseline.json'], ['C', 'C-grade8-bridge.json'], ['D', 'D-strong-baseline.json'],
+    ['E', 'E-normal-endline.json'], ['F', 'F-failed-endline.json'], ['G', 'G-persistence.json'], ['H', 'H-security.json'],
+  ];
+  const root = path.join(process.cwd(), 'test-results');
+  const discovered = new Set(grade9EvidenceFiles(root).map((file) => path.basename(file)));
+  const summaryDir = path.join(root, 'sprint4-grade9-real');
+  fs.mkdirSync(summaryDir, { recursive: true });
+  fs.writeFileSync(path.join(summaryDir, 'journey-scenario-summary.json'), `${JSON.stringify({
+    suite: 'Sprint 4 Grade 9 real learner journeys',
+    generatedAt: new Date().toISOString(),
+    scenarios: scenarios.map(([scenario, evidenceFile]) => ({
+      scenario,
+      status: discovered.has(evidenceFile) ? 'passed' : 'not-passed-or-blocked',
+      evidenceFile,
+      note: discovered.has(evidenceFile)
+        ? 'Scenario completed and wrote authenticated runtime evidence.'
+        : 'No passing scenario evidence was written; inspect the Playwright report and failure artifacts.',
+    })),
+  }, null, 2)}\n`);
+}
+
 function asRow(value) {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
@@ -416,6 +594,7 @@ async function main() {
   await removePreviousFixtures(request);
   const profiles = await createAuthAndProfiles(request);
   const seededJourney = await seedAcademicJourney(request, profiles);
+  const grade9Fixture = await seedGrade9Term1Fixture(status, request, profiles);
   await verifyConcurrentAiJobClaim(request, seededJourney);
   // Keep the Golden Demo in the same real local-Supabase browser gate as the
   // role journeys. The reset script rejects non-local targets and invokes the
@@ -429,6 +608,17 @@ async function main() {
     ...process.env,
     E2E_SUPABASE_RUNTIME: 'true',
     E2E_SUPABASE_ASSIGNMENT_ID: seededJourney.assignmentId,
+    E2E_GRADE9_REAL_JOURNEY: 'true',
+    E2E_GRADE9_FIXTURE_EVIDENCE: JSON.stringify(grade9Fixture),
+    E2E_GRADE9_NEW_EMAIL: users.grade9_new.email,
+    E2E_GRADE9_WEAK_EMAIL: users.grade9_weak.email,
+    E2E_GRADE9_BRIDGE_EMAIL: users.grade9_bridge.email,
+    E2E_GRADE9_STRONG_EMAIL: users.grade9_strong.email,
+    E2E_GRADE9_ENDLINE_EMAIL: users.grade9_endline.email,
+    E2E_GRADE9_FAILED_EMAIL: users.grade9_failed.email,
+    E2E_GRADE9_PERSISTENCE_EMAIL: users.grade9_persistence.email,
+    E2E_GRADE9_SECURITY_EMAIL: users.grade9_security.email,
+    E2E_GRADE9_PEER_EMAIL: users.grade9_peer.email,
     VITE_E2E_AUTH_MOCK: 'false',
     VITE_E2E_AUTH_PASSWORD: password,
     VITE_SUPABASE_URL: status.API_URL,
@@ -440,10 +630,16 @@ async function main() {
   if (process.env.E2E_SUPABASE_GREP) {
     playwrightArgs.push('--grep', process.env.E2E_SUPABASE_GREP);
   }
-  execFileSync(process.execPath, playwrightArgs, {
-    env,
-    stdio: 'inherit',
-  });
+  try {
+    execFileSync(process.execPath, playwrightArgs, {
+      env,
+      stdio: 'inherit',
+    });
+  } finally {
+    // This records only observed pass evidence. A missing per-scenario file is
+    // deliberately reported as not passed/blocked, never as a synthetic pass.
+    writeGrade9JourneySummary();
+  }
 
   // A completed Golden Demo mutates the local learner's activity progress.
   // Reapply the service-role-only reset, then verify the next rehearsal starts

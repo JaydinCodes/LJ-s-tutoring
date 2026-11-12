@@ -291,6 +291,8 @@ export type SubmitLearningAttemptEvaluation = {
     evidence: string;
   }>;
   explanationCode: string;
+  /** Returned only after a submitted, incorrect multiple-choice response. */
+  distractorExplanation?: string | null;
 };
 
 export type SubmitLearningAttemptResult = {
