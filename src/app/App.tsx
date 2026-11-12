@@ -69,6 +69,7 @@ const StudentDiagnosticRoute = lazy(() =>
 );
 const StudentActivityRoute = lazy(() => import('../features/learning/StudentActivityRoute').then((module) => ({ default: module.StudentActivityRoute })));
 const StudentLearningTopicRoute = lazy(() => import('../features/learning/StudentLearningTopicRoute').then((module) => ({ default: module.StudentLearningTopicRoute })));
+const StudentLearningBridgeRoute = lazy(() => import('../features/learning/StudentLearningBridgeRoute').then((module) => ({ default: module.StudentLearningBridgeRoute })));
 const StudentAssessmentIntroductionRoute = lazy(() => import('../features/learning/StudentAssessmentRoutes').then((module) => ({ default: module.StudentAssessmentIntroductionRoute })));
 const StudentAssessmentSessionRoute = lazy(() => import('../features/learning/StudentAssessmentRoutes').then((module) => ({ default: module.StudentAssessmentSessionRoute })));
 function RouteLoadingFallback() {
@@ -147,6 +148,7 @@ export function App() {
         <Route path="/dashboard/tutor/risk" element={<ProtectedRoute roles={['tutor']}><TutorRiskRoute /></ProtectedRoute>} />
         <Route path="/dashboard/tutor/settings" element={<ProtectedRoute roles={['tutor']}><PortalSettingsRoute role="tutor" /></ProtectedRoute>} />
 <Route path="/dashboard/student/learning/activity/:activityCode" element={<ProtectedRoute roles={['student']}><StudentActivityRoute /></ProtectedRoute>} />
+        <Route path="/dashboard/student/learning/bridge/:skillCode" element={<ProtectedRoute roles={['student']}><StudentLearningBridgeRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/learning/assessment/session/:sessionId" element={<ProtectedRoute roles={['student']}><StudentAssessmentSessionRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/learning/assessment/:definitionId" element={<ProtectedRoute roles={['student']}><StudentAssessmentIntroductionRoute /></ProtectedRoute>} />
         <Route path="/dashboard/student/learning/topic/:topicCode" element={<ProtectedRoute roles={['student']}><StudentLearningTopicRoute /></ProtectedRoute>} />

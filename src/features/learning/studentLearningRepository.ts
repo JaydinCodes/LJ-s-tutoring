@@ -122,8 +122,10 @@ export type LearningCatalogueTopic = {
 
 export type LearnerTopicContent = {
   title: string;
+  learningObjective?: string | null;
   explanation: string;
   workedExample: string;
+  commonMisconception?: string | null;
   videoUrl?: string | null;
   worksheetUrl?: string | null;
   worksheetPermissionNote?: string | null;
@@ -136,6 +138,15 @@ export type LearningTopicSkill = LearningCatalogueSkill & {
 
 export type LearningTopic = Omit<LearningCatalogueTopic, 'skills'> & {
   skills: LearningTopicSkill[];
+};
+
+export type LearningBridge = {
+  skillCode: string;
+  skillName: string;
+  skillDescription: string;
+  content: Required<Pick<LearnerTopicContent, 'title' | 'explanation' | 'workedExample'>> & Pick<LearnerTopicContent, 'learningObjective' | 'commonMisconception'>;
+  activityCode: string | null;
+  activityName: string | null;
 };
 
 export type LearnerVideoResource = {
@@ -548,6 +559,13 @@ export async function loadGrade9LearningTopic(topicCode: string): Promise<Learni
   const { data, error } = await client.rpc('get_my_grade9_learning_topic', { p_topic_code: topicCode });
   if (error) throw error;
   return objectValue(data) as unknown as LearningTopic | null;
+}
+
+export async function loadGrade8LearningBridge(skillCode: string): Promise<LearningBridge | null> {
+  const client = requireSupabase() as unknown as { rpc: (name: 'get_my_grade8_learning_bridge', args: { p_skill_code: string }) => Promise<{ data: unknown; error: Error | null }> };
+  const { data, error } = await client.rpc('get_my_grade8_learning_bridge', { p_skill_code: skillCode });
+  if (error) throw error;
+  return objectValue(data) as unknown as LearningBridge | null;
 }
 
 export async function loadApprovedLearningVideos(): Promise<LearnerVideoResource[]> {

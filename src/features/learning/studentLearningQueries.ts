@@ -16,6 +16,7 @@ import {
   loadDueRetentionStep,
   loadGrade9LearningCatalogue,
   loadGrade9LearningTopic,
+  loadGrade8LearningBridge,
   loadGrade9Term1LearningJourney,
   loadApprovedLearningVideos,
   loadAvailableLearningAssessments,
@@ -68,6 +69,7 @@ export const studentLearningQueryKeys = {
   retention: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'retention'] as const,
   catalogue: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'catalogue'] as const,
   topic: (studentScope: string, topicCode: string) => [...studentLearningQueryKeys.all, studentScope, 'topic', topicCode] as const,
+  bridge: (studentScope: string, skillCode: string) => [...studentLearningQueryKeys.all, studentScope, 'bridge', skillCode] as const,
   videos: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'videos'] as const,
   assessments: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'assessments'] as const,
   journey: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'journey'] as const,
@@ -97,6 +99,11 @@ export function useGrade9LearningCatalogue() {
 export function useGrade9LearningTopic(topicCode: string) {
   const studentScope = useStudentScope();
   return useQuery({ queryKey: studentLearningQueryKeys.topic(studentScope, topicCode), queryFn: () => loadGrade9LearningTopic(topicCode), enabled: Boolean(topicCode), staleTime: 60_000 });
+}
+
+export function useGrade8LearningBridge(skillCode: string) {
+  const studentScope = useStudentScope();
+  return useQuery({ queryKey: studentLearningQueryKeys.bridge(studentScope, skillCode), queryFn: () => loadGrade8LearningBridge(skillCode), enabled: Boolean(skillCode), staleTime: 60_000 });
 }
 
 export function useApprovedLearningVideos() {
