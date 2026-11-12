@@ -527,6 +527,18 @@ function writeGrade9JourneySummary() {
   }, null, 2)}\n`);
 }
 
+function writeGrade9FixtureFailure(error) {
+  const evidenceDir = path.join(process.cwd(), 'test-results', 'sprint4-grade9-real');
+  fs.mkdirSync(evidenceDir, { recursive: true });
+  fs.writeFileSync(path.join(evidenceDir, 'fixture-setup-failure.json'), `${JSON.stringify({
+    suite: 'Sprint 4 Grade 9 real learner journeys',
+    status: 'fixture-setup-failed',
+    generatedAt: new Date().toISOString(),
+    error: error instanceof Error ? error.message : String(error),
+    note: 'No learner scenario is represented as passed when fixture setup fails.',
+  }, null, 2)}\n`);
+}
+
 function asRow(value) {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
@@ -662,6 +674,7 @@ async function main() {
 }
 
 main().catch((error) => {
+  writeGrade9FixtureFailure(error);
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
   process.exitCode = 1;
 });
