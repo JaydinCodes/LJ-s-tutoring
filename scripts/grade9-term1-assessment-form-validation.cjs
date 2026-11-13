@@ -16,7 +16,11 @@ const policyByTopic = {
 const formDefinition = (topic, form) => {
   if (form === 'ENTRY-BASELINE-A') return 'G9-T1-ENTRY-BASELINE-A';
   const label = { WHOLE: 'WHOLE', INT: 'INTEGERS', EXP: 'EXPONENTS', PAT: 'PATTERNS' }[topic];
-  const suffix = { 'TOPIC-BASELINE': 'MASTERY-TOPIC-BASELINE', ENDLINE: 'MASTERY-ENDLINE', 'MASTERY-CHALLENGE': 'MASTERY-CHALLENGE', 'ENDLINE-REASSESSMENT-B': 'MASTERY-ENDLINE-REASSESSMENT-B' }[form];
+  // The historical definition was generated from a policy ending in MASTERY
+  // plus the MASTERY-CHALLENGE form suffix. It remains draft-only, so report
+  // the identifier the publication RPC actually resolves rather than a
+  // cosmetically normalised code that does not exist in the database.
+  const suffix = { 'TOPIC-BASELINE': 'MASTERY-TOPIC-BASELINE', ENDLINE: 'MASTERY-ENDLINE', 'MASTERY-CHALLENGE': 'MASTERY-MASTERY-CHALLENGE', 'ENDLINE-REASSESSMENT-B': 'MASTERY-ENDLINE-REASSESSMENT-B' }[form];
   return `G9-T1-${label}-${suffix}`;
 };
 const duration = (form) => ({ 'ENTRY-BASELINE-A': 20, 'TOPIC-BASELINE': 15, ENDLINE: 25, 'MASTERY-CHALLENGE': 25, 'ENDLINE-REASSESSMENT-B': 25 })[form];

@@ -137,6 +137,7 @@ test('Sprint 4 repairs every draft formal blueprint without rewriting approved a
   }
   assert.equal(byDefinition.size, 17);
   assert.equal([...byDefinition.values()].reduce((total, count) => total + count, 0), 252);
+  assert.equal(definitionCode('INT', 'MASTERY-CHALLENGE'), 'G9-T1-INTEGERS-MASTERY-MASTERY-CHALLENGE');
   assert.match(buildSql(), /grade9_term1_assessment_blueprint_count_mismatch/);
   assert.match(assessmentBlueprintRepairMigration, /definition\.review_status in \('draft','rejected'\)/);
   assert.match(assessmentBlueprintRepairMigration, /order by version\.version_number desc/);

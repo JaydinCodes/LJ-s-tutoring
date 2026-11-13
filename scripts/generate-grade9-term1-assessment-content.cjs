@@ -22,7 +22,9 @@ function topicDefinitionCode(topic, form) {
   const suffix = {
     'TOPIC-BASELINE': 'MASTERY-TOPIC-BASELINE',
     ENDLINE: 'MASTERY-ENDLINE',
-    'MASTERY-CHALLENGE': 'MASTERY-CHALLENGE',
+    // Existing draft definitions were formed by appending this suffix to a
+    // policy code that already ends in MASTERY. Keep the stored identifier.
+    'MASTERY-CHALLENGE': 'MASTERY-MASTERY-CHALLENGE',
     'ENDLINE-REASSESSMENT-B': 'MASTERY-ENDLINE-REASSESSMENT-B',
   }[form];
   return `G9-T1-${label}-${suffix}`;
