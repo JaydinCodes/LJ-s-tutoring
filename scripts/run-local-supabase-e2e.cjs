@@ -98,6 +98,21 @@ function inFilter(ids) {
   return `in.(${ids.map((id) => encodeURIComponent(id)).join(',')})`;
 }
 
+// PostgREST receives GET filters in the request URI.  A Grade 9 formal form
+// contains 252 distinct question-version UUIDs, which exceeds the URI limit
+// when they are placed in one `id=in.(...)` filter.  Keep the read scoped to
+// the fixture while fetching it in small, deterministic batches.
+async function selectQuestionVersionsInBatches(request, ids) {
+  const versions = [];
+  const batchSize = 75;
+  for (let offset = 0; offset < ids.length; offset += batchSize) {
+    const batch = ids.slice(offset, offset + batchSize);
+    const rows = await request(`/rest/v1/question_versions?select=id,version_number,review_status,question_items(item_code)&id=${inFilter(batch)}`);
+    versions.push(...rows);
+  }
+  return versions;
+}
+
 async function selectIds(request, table, filter) {
   const rows = await request(`/rest/v1/${table}?select=id&${filter}`);
   return rows.map((row) => row.id);
@@ -434,7 +449,10 @@ async function seedGrade9Term1Fixture(status, request, profiles) {
   const definitionLinks = await request(`/rest/v1/learning_assessment_definition_questions?select=learning_assessment_definition_id,question_version_id&learning_assessment_definition_id=${inFilter([...definitionIds])}`);
   const formalVersionIds = new Set(definitionLinks.filter((link) => definitionIds.has(link.learning_assessment_definition_id)).map((link) => link.question_version_id));
   if (formalVersionIds.size < 252) throw new Error(`Grade 9 fixture expected at least 252 linked formal-assessment questions, found ${formalVersionIds.size}.`);
-  const formalVersions = await request(`/rest/v1/question_versions?select=id,version_number,review_status,question_items(item_code)&id=${inFilter([...formalVersionIds])}`);
+  const formalVersions = await selectQuestionVersionsInBatches(request, [...formalVersionIds]);
+  if (formalVersions.length !== formalVersionIds.size) {
+    throw new Error(`Grade 9 fixture expected ${formalVersionIds.size} formal question versions, found ${formalVersions.length}.`);
+  }
   const instructionalItems = await request(`/rest/v1/question_items?select=id,item_code&item_code=${inFilter([...instructionalCodes])}`);
   if (instructionalItems.length !== 76) throw new Error(`Grade 9 fixture expected 76 canonical practice question items, found ${instructionalItems.length}.`);
   const instructionalVersions = await request(`/rest/v1/question_versions?select=id,version_number,review_status,question_items(item_code)&question_item_id=${inFilter(instructionalItems.map((item) => item.id))}`);
