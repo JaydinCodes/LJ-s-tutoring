@@ -128,6 +128,13 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20261112160000_sprint4_mathematics_corrections_v2.sql` | `eb1f6ec6069257e1acfbc091cbb1d55c71a75cb29182446beb4d8ef75c460d66` |
 | `20261112170000_sprint4_assessment_duration_and_validation.sql` | `10ba2f43b432ef84232a9a590d5ee598387fedeb37639467e28cef9d57d170a4` |
 | `20261112180000_sprint4_whole_numbers_assessment_blueprint_correction.sql` | `0893498f645fbe0b127ea9d1353cd5fa5cefc7e3726d69b1abb287e0f2703655` |
+| `20261112190000_sprint4_explicit_distractor_feedback_v3.sql` | `dd240fd0d8eacbd2a363913f623ed2f89b65978bae49e4a8924b05d3d5ff936e` |
+| `20261112200000_sprint4_grade9_assessment_blueprint_link_repair.sql` | `325d98ae446fdf415d35eaef3d75e720c76fb2681ccf44469610ec7d4feece34` |
+| `20261112210000_sprint4_policy_review_transition_fix.sql` | `d3de18cf36257c8347f10b6e9a8aa560f6fe4cc96f917b82e995e983f42eb201` |
+| `20261112220000_sprint4_assessment_review_transition_fix.sql` | `fe8ed8cc4f78c75ead5cf8107c2bafa98bf16ea7ae57300c87f68d46ab7b99a4` |
+| `20261112230000_sprint4_whole_numbers_critical_evidence_expansion.sql` | `102bd791f15606440734548a83b33959275520a0d83427cb9ba1934abbd22e7a` |
+| `20261113120000_sprint4_assessment_aggregate_scope_fix.sql` | `dc3bfb819de2baf549cf20abccdab43afd827ed07f919f85c99ad9556856176b` |
+| `20261113130000_sprint4_grade8_bridge_recommendation_stage_alignment.sql` | `b073e6bd1cb768dfc840c4a5ff8dd9bc4e6d5af81037c6cc6fe7ab323c9401df` |
 
 ## Regeneration
 

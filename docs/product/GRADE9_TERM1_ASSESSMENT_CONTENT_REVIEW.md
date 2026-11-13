@@ -4,43 +4,47 @@ Generated from [the version-controlled source](../../scripts/grade9-term1-assess
 
 ## Inventory
 
-- 17 formal assessment definitions; 252 authored MCQs.
+- 17 formal assessment definitions; 258 authored MCQs.
 - Entry baseline: 12 questions.
 - Four topic baselines: 48 questions.
-- Four endlines: 64 questions.
-- Four mastery challenges: 64 questions.
-- Four independent endline reassessments: 64 questions.
+- Four endlines: 66 questions.
+- Four mastery challenges: 66 questions.
+- Four independent endline reassessments: 66 questions.
 
 | Topic code | Questions | Primary-skill coverage |
 | --- | ---: | --- |
 | EXP | 63 | G9-EXP-LAWS-EXTENDED, G9-EXP-NEGATIVE-SCI |
 | INT | 63 | G9-NUM-INTEGERS-OPERATIONS, G9-NUM-INTEGERS-POWERS-ROOTS |
 | PAT | 63 | G9-PAT-GENERAL-RULE, G9-PAT-GEOMETRIC-VISUAL, G9-PAT-NUMERIC-STRUCTURE |
-| WHOLE | 63 | G9-NUM-DIRECT-INVERSE-PROPORTION, G9-NUM-FINANCIAL-APPLICATIONS, G9-NUM-RATIO-RATE, G9-NUM-REAL-IRRATIONAL, G9-NUM-WHOLE-HCF-LCM |
+| WHOLE | 69 | G9-NUM-DIRECT-INVERSE-PROPORTION, G9-NUM-FINANCIAL-APPLICATIONS, G9-NUM-RATIO-RATE, G9-NUM-REAL-IRRATIONAL, G9-NUM-WHOLE-HCF-LCM |
 
 ## Form blueprints and automated QA evidence
 
 | Form | Questions | Reasoning | Correct-option distribution | Primary skills | Publication readiness |
 | --- | ---: | ---: | --- | --- | --- |
-| G9-T1-ENTRY-BASELINE-A | 12 | 1 | A 3 · B 2 · C 4 · D 3 | G9-EXP-LAWS-EXTENDED, G9-EXP-NEGATIVE-SCI, G9-NUM-INTEGERS-OPERATIONS, G9-NUM-INTEGERS-POWERS-ROOTS, G9-NUM-RATIO-RATE, G9-NUM-WHOLE-HCF-LCM, G9-PAT-GENERAL-RULE, G9-PAT-GEOMETRIC-VISUAL | Draft — administrator publication required |
-| G9-T1-EXPONENTS-MASTERY-CHALLENGE | 16 | 5 | A 4 · B 4 · C 3 · D 5 | G9-EXP-LAWS-EXTENDED, G9-EXP-NEGATIVE-SCI | Draft — administrator publication required |
+| G9-T1-ENTRY-BASELINE-A | 12 | 1 | A 3 · B 3 · C 4 · D 2 | G9-EXP-LAWS-EXTENDED, G9-EXP-NEGATIVE-SCI, G9-NUM-INTEGERS-OPERATIONS, G9-NUM-INTEGERS-POWERS-ROOTS, G9-NUM-RATIO-RATE, G9-NUM-WHOLE-HCF-LCM, G9-PAT-GENERAL-RULE, G9-PAT-GEOMETRIC-VISUAL | Draft — administrator publication required |
 | G9-T1-EXPONENTS-MASTERY-ENDLINE | 16 | 5 | A 3 · B 5 · C 4 · D 4 | G9-EXP-LAWS-EXTENDED, G9-EXP-NEGATIVE-SCI | Draft — administrator publication required |
 | G9-T1-EXPONENTS-MASTERY-ENDLINE-REASSESSMENT-B | 16 | 5 | A 4 · B 4 · C 5 · D 3 | G9-EXP-LAWS-EXTENDED, G9-EXP-NEGATIVE-SCI | Draft — administrator publication required |
+| G9-T1-EXPONENTS-MASTERY-MASTERY-CHALLENGE | 16 | 5 | A 4 · B 4 · C 3 · D 5 | G9-EXP-LAWS-EXTENDED, G9-EXP-NEGATIVE-SCI | Draft — administrator publication required |
 | G9-T1-EXPONENTS-MASTERY-TOPIC-BASELINE | 12 | 3 | A 3 · B 3 · C 2 · D 4 | G9-EXP-LAWS-EXTENDED, G9-EXP-NEGATIVE-SCI | Draft — administrator publication required |
-| G9-T1-INTEGERS-MASTERY-CHALLENGE | 16 | 4 | A 3 · B 5 · C 4 · D 4 | G9-NUM-INTEGERS-OPERATIONS, G9-NUM-INTEGERS-POWERS-ROOTS | Draft — administrator publication required |
 | G9-T1-INTEGERS-MASTERY-ENDLINE | 16 | 4 | A 4 · B 4 · C 3 · D 5 | G9-NUM-INTEGERS-OPERATIONS, G9-NUM-INTEGERS-POWERS-ROOTS | Draft — administrator publication required |
 | G9-T1-INTEGERS-MASTERY-ENDLINE-REASSESSMENT-B | 16 | 4 | A 5 · B 3 · C 4 · D 4 | G9-NUM-INTEGERS-OPERATIONS, G9-NUM-INTEGERS-POWERS-ROOTS | Draft — administrator publication required |
+| G9-T1-INTEGERS-MASTERY-MASTERY-CHALLENGE | 16 | 4 | A 3 · B 5 · C 4 · D 4 | G9-NUM-INTEGERS-OPERATIONS, G9-NUM-INTEGERS-POWERS-ROOTS | Draft — administrator publication required |
 | G9-T1-INTEGERS-MASTERY-TOPIC-BASELINE | 12 | 3 | A 2 · B 4 · C 3 · D 3 | G9-NUM-INTEGERS-OPERATIONS, G9-NUM-INTEGERS-POWERS-ROOTS | Draft — administrator publication required |
-| G9-T1-PATTERNS-MASTERY-CHALLENGE | 16 | 7 | A 3 · B 5 · C 4 · D 4 | G9-PAT-GENERAL-RULE, G9-PAT-GEOMETRIC-VISUAL, G9-PAT-NUMERIC-STRUCTURE | Draft — administrator publication required |
 | G9-T1-PATTERNS-MASTERY-ENDLINE | 16 | 7 | A 4 · B 4 · C 3 · D 5 | G9-PAT-GENERAL-RULE, G9-PAT-GEOMETRIC-VISUAL, G9-PAT-NUMERIC-STRUCTURE | Draft — administrator publication required |
 | G9-T1-PATTERNS-MASTERY-ENDLINE-REASSESSMENT-B | 16 | 7 | A 5 · B 3 · C 4 · D 4 | G9-PAT-GENERAL-RULE, G9-PAT-GEOMETRIC-VISUAL, G9-PAT-NUMERIC-STRUCTURE | Draft — administrator publication required |
+| G9-T1-PATTERNS-MASTERY-MASTERY-CHALLENGE | 16 | 7 | A 3 · B 5 · C 4 · D 4 | G9-PAT-GENERAL-RULE, G9-PAT-GEOMETRIC-VISUAL, G9-PAT-NUMERIC-STRUCTURE | Draft — administrator publication required |
 | G9-T1-PATTERNS-MASTERY-TOPIC-BASELINE | 12 | 5 | A 2 · B 4 · C 3 · D 3 | G9-PAT-GENERAL-RULE, G9-PAT-GEOMETRIC-VISUAL, G9-PAT-NUMERIC-STRUCTURE | Draft — administrator publication required |
-| G9-T1-WHOLE-MASTERY-CHALLENGE | 16 | 5 | A 3 · B 5 · C 4 · D 4 | G9-NUM-DIRECT-INVERSE-PROPORTION, G9-NUM-FINANCIAL-APPLICATIONS, G9-NUM-RATIO-RATE, G9-NUM-REAL-IRRATIONAL, G9-NUM-WHOLE-HCF-LCM | Draft — administrator publication required |
-| G9-T1-WHOLE-MASTERY-ENDLINE | 16 | 5 | A 4 · B 4 · C 3 · D 5 | G9-NUM-DIRECT-INVERSE-PROPORTION, G9-NUM-FINANCIAL-APPLICATIONS, G9-NUM-RATIO-RATE, G9-NUM-REAL-IRRATIONAL, G9-NUM-WHOLE-HCF-LCM | Draft — administrator publication required |
-| G9-T1-WHOLE-MASTERY-ENDLINE-REASSESSMENT-B | 16 | 5 | A 5 · B 3 · C 4 · D 4 | G9-NUM-DIRECT-INVERSE-PROPORTION, G9-NUM-FINANCIAL-APPLICATIONS, G9-NUM-RATIO-RATE, G9-NUM-REAL-IRRATIONAL, G9-NUM-WHOLE-HCF-LCM | Draft — administrator publication required |
-| G9-T1-WHOLE-MASTERY-TOPIC-BASELINE | 12 | 1 | A 2 · B 4 · C 3 · D 3 | G9-NUM-DIRECT-INVERSE-PROPORTION, G9-NUM-FINANCIAL-APPLICATIONS, G9-NUM-RATIO-RATE, G9-NUM-REAL-IRRATIONAL, G9-NUM-WHOLE-HCF-LCM | Draft — administrator publication required |
+| G9-T1-WHOLE-MASTERY-ENDLINE | 18 | 9 | A 4 · B 5 · C 4 · D 5 | G9-NUM-DIRECT-INVERSE-PROPORTION, G9-NUM-FINANCIAL-APPLICATIONS, G9-NUM-RATIO-RATE, G9-NUM-REAL-IRRATIONAL, G9-NUM-WHOLE-HCF-LCM | Draft — administrator publication required |
+| G9-T1-WHOLE-MASTERY-ENDLINE-REASSESSMENT-B | 18 | 9 | A 6 · B 4 · C 4 · D 4 | G9-NUM-DIRECT-INVERSE-PROPORTION, G9-NUM-FINANCIAL-APPLICATIONS, G9-NUM-RATIO-RATE, G9-NUM-REAL-IRRATIONAL, G9-NUM-WHOLE-HCF-LCM | Draft — administrator publication required |
+| G9-T1-WHOLE-MASTERY-MASTERY-CHALLENGE | 18 | 9 | A 4 · B 5 · C 4 · D 5 | G9-NUM-DIRECT-INVERSE-PROPORTION, G9-NUM-FINANCIAL-APPLICATIONS, G9-NUM-RATIO-RATE, G9-NUM-REAL-IRRATIONAL, G9-NUM-WHOLE-HCF-LCM | Draft — administrator publication required |
+| G9-T1-WHOLE-MASTERY-TOPIC-BASELINE | 12 | 4 | A 2 · B 4 · C 3 · D 3 | G9-NUM-DIRECT-INVERSE-PROPORTION, G9-NUM-FINANCIAL-APPLICATIONS, G9-NUM-RATIO-RATE, G9-NUM-REAL-IRRATIONAL, G9-NUM-WHOLE-HCF-LCM | Draft — administrator publication required |
 
 The QA harness checks four choices, a single correct choice, actual non-placeholder distractors and rationales, worked-solution presence, mappings, duplicate codes, exact prompt collisions, independent-form overlap, reasoning evidence and answer-position distribution. Numeric families receive deterministic checks; conceptual/reasoning items are explicitly marked for reviewer inspection rather than falsely described as mechanically proven.
+
+## Whole Numbers policy correction
+
+The persisted Whole Numbers policy identifies real-number classification, HCF/LCM, ratio/rate, and financial applications as critical skills. Each independent Whole Numbers form therefore has 18 questions and 30 minutes: four distinct primary-skill questions for every critical skill. The two added financial questions are a commission calculation and a refundable-deposit rental-cost reasoning item. Direct/inverse proportion remains essential sampling rather than duplicate critical evidence.
 
 ## Curriculum coverage
 

@@ -12,7 +12,7 @@
 
 ## Assessment publication readiness
 
-The existing 252-question, 17-form formal assessment pack passed its structural QA. Sprint 4 does not auto-approve a policy or form. The existing per-form server validation remains the publication authority, including Whole Numbers critical-skill and reasoning evidence checks. Administrators should use that report to resolve remaining form-specific blockers.
+The 258-question, 17-form formal assessment pack passes structural QA. Whole Numbers independent forms now contain 18 questions: four primary-skill samples for each of the four persisted critical skills, including Financial Applications. Sprint 4 does not auto-approve a policy or form. The existing per-form server validation remains the publication authority, including Whole Numbers critical-skill and reasoning evidence checks. Administrators should use that report to resolve remaining form-specific blockers.
 
 ## Verification run
 
