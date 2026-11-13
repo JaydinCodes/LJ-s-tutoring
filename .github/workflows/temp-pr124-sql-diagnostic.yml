@@ -1,0 +1,63 @@
+name: Temporary PR 124 Assessment SQL Diagnostics
+
+on:
+  push:
+    branches:
+      - codex/grade9-term1-sprint4-release-gate
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 23
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: HUSKY=0 npm ci
+      - name: Start disposable Supabase and apply migration chain
+        run: |
+          npm run supabase:start
+          npm run supabase:reset
+      - name: Diagnose management catalogue SQL aggregate scope
+        run: |
+          eval "$(npx supabase status --output env | grep '^DB_URL=')"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $diagnostic$
+          DECLARE r text;
+          BEGIN
+            SELECT pg_get_function_result('public.content_admin_required()'::regprocedure) INTO r;
+            RAISE NOTICE 'content_admin_required return type %', r;
+            IF r = 'void' THEN
+              EXECUTE 'CREATE OR REPLACE FUNCTION public.content_admin_required() RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '''' AS $fn$ BEGIN RETURN; END; $fn$';
+            ELSIF r = 'boolean' THEN
+              EXECUTE 'CREATE OR REPLACE FUNCTION public.content_admin_required() RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = '''' AS $fn$ BEGIN RETURN true; END; $fn$';
+            ELSE
+              RAISE EXCEPTION 'Unexpected content_admin_required type: %', r;
+            END IF;
+          END;
+          $diagnostic$;
+          DO $diagnostic$
+          DECLARE ctx text; err text; code text;
+          BEGIN
+            BEGIN
+              PERFORM public.get_learning_assessment_management_catalog();
+              RAISE NOTICE 'CATALOG_SUCCESS';
+            EXCEPTION WHEN OTHERS THEN
+              GET STACKED DIAGNOSTICS ctx=PG_EXCEPTION_CONTEXT, err=MESSAGE_TEXT, code=RETURNED_SQLSTATE;
+              RAISE NOTICE 'CATALOG_FAILURE code %, message %, SQL CONTEXT: %', code, err, ctx;
+            END;
+            BEGIN
+              PERFORM public.get_grade9_term1_assessment_publication_matrix();
+              RAISE NOTICE 'MATRIX_SUCCESS';
+            EXCEPTION WHEN OTHERS THEN
+              GET STACKED DIAGNOSTICS ctx=PG_EXCEPTION_CONTEXT, err=MESSAGE_TEXT, code=RETURNED_SQLSTATE;
+              RAISE NOTICE 'MATRIX_FAILURE code %, message %, SQL CONTEXT: %', code, err, ctx;
+            END;
+          END;
+          $diagnostic$;
+          SQL
