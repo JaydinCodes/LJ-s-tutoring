@@ -104,14 +104,21 @@ async function completeActivity(page: Page, mode: 'correct' | 'incorrect', stopA
     const keyed = [...practiceAnswer.entries()].find(([text]) => prompt.includes(text));
     expect(keyed, `Test answer key must contain the persisted practice prompt: ${prompt}`).toBeTruthy();
     const correct = keyed![1];
-    if (mode === 'correct') await page.getByRole('radio', { name: correct, exact: true }).click();
-    else {
-      const radios = page.locator('input[name="mcq-answer"]');
-      const values = await radios.evaluateAll((inputs) => inputs.map((input) => input.value));
-      const wrong = values.find((value) => value !== correct);
-      await page.getByRole('radio', { name: wrong!, exact: true }).click();
-    }
-    await page.getByLabel('A little sure').check();
+    const radios = questionCard.locator('input[name="mcq-answer"]');
+    // The stored answer is the option's *displayed text*, while the radio
+    // input values are option codes (A/B/C/D). Compare visible labels rather
+    // than mistaking a code for the answer text.
+    const labels = await radios.evaluateAll((inputs) => inputs.map((input) => input.closest('label')?.textContent()?.trim() ?? ''));
+    const correctIndex = labels.findIndex((label) => label === correct);
+    expect(correctIndex, `Correct option must be visible for: ${prompt}`).toBeGreaterThanOrEqual(0);
+    const chosenIndex = mode === 'correct' ? correctIndex : labels.findIndex((_, index) => index !== correctIndex);
+    expect(chosenIndex).toBeGreaterThanOrEqual(0);
+    await radios.nth(chosenIndex).click();
+    // The radio input is visually hidden inside a styled, clickable label.
+    // Clicking the user-visible label avoids Playwright's click interception
+    // on the sr-only input and exercises the real learner interaction.
+    await page.getByText('A little sure', { exact: true }).click();
+    await expect(page.locator('input[name="activity-confidence"][value="2"]')).toBeChecked();
     await page.getByRole('button', { name: 'Check answer', exact: true }).click();
     await expect(page.getByText(/Marks awarded:/)).toBeVisible();
     if (stopAfterFirst) return;
@@ -152,7 +159,7 @@ test('B — a weak learner reads the recommended Integers lesson and receives sp
   await completeAssessment(page, 'incorrect');
   await page.goto('/dashboard/student/learning/topic/INTEGERS');
   await expect(page.getByText('Integer operations and order')).toBeVisible();
-  await expect(page.getByText('Worked example')).toBeVisible();
+  await expect(page.getByRole('article').filter({ hasText: 'Integer operations and order' }).getByRole('heading', { name: 'Worked example' })).toBeVisible();
   await capture(page, testInfo, 'integers-lesson-worked-example', 360, 844);
   await page.getByRole('link', { name: 'Start short practice' }).first().click();
   await expect(page.getByText('Calculate −8 + 13.')).toBeVisible();
@@ -162,7 +169,8 @@ test('B — a weak learner reads the recommended Integers lesson and receives sp
   await capture(page, testInfo, 'practice-incorrect-feedback', 360, 844);
   await page.getByRole('button', { name: 'Try again with this insight' }).click();
   await page.getByLabel('5', { exact: true }).check();
-  await page.getByLabel('Quite sure').check();
+  await page.getByText('Quite sure', { exact: true }).click();
+  await expect(page.locator('input[name="activity-confidence"][value="3"]')).toBeChecked();
   await page.getByRole('button', { name: 'Check answer', exact: true }).click();
   await expect(page.getByText('Marks awarded: 1 / 1')).toBeVisible();
   await capture(page, testInfo, 'practice-correct-feedback', 390, 844);
