@@ -120,9 +120,12 @@ async function completeActivity(page: Page, mode: 'correct' | 'incorrect', stopA
     await page.getByText('A little sure', { exact: true }).click();
     await expect(page.locator('input[name="activity-confidence"][value="2"]')).toBeChecked();
     await page.getByRole('button', { name: 'Check answer', exact: true }).click();
+    if (mode === 'incorrect') {
+      await expect(page.getByText('Why this choice is not correct')).toBeVisible();
+      return;
+    }
     await expect(page.getByText(/Marks awarded:/)).toBeVisible();
     if (stopAfterFirst) return;
-    if (mode === 'incorrect') return;
     await page.getByRole('button', { name: 'Continue to next step' }).click();
     if (await page.getByRole('heading', { name: 'Activity complete' }).isVisible()) return;
   }
