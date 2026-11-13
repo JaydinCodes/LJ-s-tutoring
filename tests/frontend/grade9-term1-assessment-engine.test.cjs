@@ -9,6 +9,7 @@ const engineMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations'
 const closureMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261108120000_grade9_term1_assessment_closure.sql'), 'utf8');
 const contentMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261107130000_grade9_term1_assessment_drafts.sql'), 'utf8');
 const reconstructionMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261109120000_grade9_term1_content_reconstruction.sql'), 'utf8');
+const assessmentBlueprintRepairMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261112200000_sprint4_grade9_assessment_blueprint_link_repair.sql'), 'utf8');
 const assignmentEvidenceMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261109130000_grade9_term1_assignment_evidence_combination.sql'), 'utf8');
 
 function contracts() {
@@ -123,6 +124,23 @@ test('reconstructed content source has 252 inspectable questions with shuffled c
     assert.ok(positions.size >= 3, `${form} should not concentrate answers in one position`);
   }
   assert.match(reconstructionMigration, /get_grade9_term1_assessment_content_qa/);
+});
+
+test('Sprint 4 repairs every draft formal blueprint without rewriting approved assessment history', () => {
+  const { buildSql, definitionCode } = require(path.join(root, 'scripts', 'generate-grade9-term1-assessment-link-repair.cjs'));
+  const { buildBank } = require(path.join(root, 'scripts', 'grade9-term1-assessment-content.cjs'));
+  const bank = buildBank();
+  const byDefinition = new Map();
+  for (const question of bank) {
+    const code = definitionCode(question.topic, question.form);
+    byDefinition.set(code, (byDefinition.get(code) ?? 0) + 1);
+  }
+  assert.equal(byDefinition.size, 17);
+  assert.equal([...byDefinition.values()].reduce((total, count) => total + count, 0), 252);
+  assert.match(buildSql(), /grade9_term1_assessment_blueprint_count_mismatch/);
+  assert.match(assessmentBlueprintRepairMigration, /definition\.review_status in \('draft','rejected'\)/);
+  assert.match(assessmentBlueprintRepairMigration, /order by version\.version_number desc/);
+  assert.doesNotMatch(assessmentBlueprintRepairMigration, /update public\.learning_assessment_definitions\s+set\s+review_status/i);
 });
 
 test('assignment evidence is a conservative, traceable skill-level contribution rather than an overall-mark shortcut', () => {
