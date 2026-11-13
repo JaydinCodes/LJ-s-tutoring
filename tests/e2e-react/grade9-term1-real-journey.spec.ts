@@ -77,7 +77,11 @@ async function completeAssessment(page: Page, mode: 'correct' | 'incorrect') {
     expect(correct, `Test answer key must contain the persisted question prompt: ${prompt}`).toBeTruthy();
     const selected = mode === 'correct' ? correct! : (['A', 'B', 'C', 'D'] as const).find((option) => option !== correct)!;
     const saved = page.waitForResponse((response) => response.url().includes('/rest/v1/rpc/save_my_learning_assessment_answer') && response.ok());
-    await choices.locator(`input[value="${selected}"]`).check();
+    // Selecting a formal answer immediately persists and can replace this
+    // controlled input. Click like a learner, then prove the real RPC saved;
+    // `check()` would incorrectly re-check the stale DOM node after React's
+    // successful re-render.
+    await choices.locator(`input[value="${selected}"]`).click();
     await saved;
     const next = page.getByRole('button', { name: 'Next' });
     if (await next.isVisible()) {
@@ -93,16 +97,19 @@ async function completeAssessment(page: Page, mode: 'correct' | 'incorrect') {
 
 async function completeActivity(page: Page, mode: 'correct' | 'incorrect', stopAfterFirst = false) {
   for (;;) {
-    const prompt = (await page.locator('h2').last().textContent()) ?? '';
+    const answerInput = page.locator('input[name="mcq-answer"]').first();
+    await expect(answerInput).toBeVisible();
+    const questionCard = answerInput.locator('xpath=ancestor::section[1]');
+    const prompt = (await questionCard.getByRole('heading', { level: 2 }).textContent())?.trim() ?? '';
     const keyed = [...practiceAnswer.entries()].find(([text]) => prompt.includes(text));
     expect(keyed, `Test answer key must contain the persisted practice prompt: ${prompt}`).toBeTruthy();
     const correct = keyed![1];
-    if (mode === 'correct') await page.getByLabel(correct, { exact: true }).check();
+    if (mode === 'correct') await page.getByRole('radio', { name: correct, exact: true }).click();
     else {
       const radios = page.locator('input[name="mcq-answer"]');
       const values = await radios.evaluateAll((inputs) => inputs.map((input) => input.value));
       const wrong = values.find((value) => value !== correct);
-      await page.getByLabel(wrong!, { exact: true }).check();
+      await page.getByRole('radio', { name: wrong!, exact: true }).click();
     }
     await page.getByLabel('A little sure').check();
     await page.getByRole('button', { name: 'Check answer', exact: true }).click();
@@ -125,7 +132,7 @@ test('A — a new Grade 9 learner completes a real Integers baseline and receive
   await signIn(page, emails.newLearner);
   await capture(page, testInfo, 'learning-dashboard', 390, 844);
   await page.goto('/dashboard/student/learning/topic/INTEGERS');
-  await expect(page.getByRole('heading', { name: 'Integers' })).toBeVisible();
+  await expect(page.locator('h1').filter({ hasText: /^Integers$/ })).toBeVisible();
   await capture(page, testInfo, 'topic-roadmap', 390, 844);
   const sessionId = await startAssessment(page, assessmentTitle('Integers', 'topic baseline'), { testInfo, name: 'baseline-introduction' });
   await capture(page, testInfo, 'active-formal-assessment', 1440);
