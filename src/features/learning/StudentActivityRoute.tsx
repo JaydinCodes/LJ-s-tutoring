@@ -263,6 +263,14 @@ export function StudentActivityRoute() {
   }
 
   async function handleContinue() {
+    // Clear question-local responses before loading the next question. Without
+    // this, the previous radio selection can briefly appear on the next prompt
+    // and an eager learner may submit that stale option.
+    setAnswer('');
+    setConfidence(null);
+    setHintIds([]);
+    setSubmissionKey(null);
+    setSubmissionMessage(null);
     setActiveFeedback(null);
     await progressQuery.refetch();
   }
