@@ -390,10 +390,17 @@ async function seedAcademicJourney(request, profiles) {
 
 async function reviewThroughAdmin(adminRequest, rpc, idKey, id, status, note) {
   if (status === 'approved') return;
+  // The established question-version review RPC predates the learning-content
+  // review RPCs and names its note parameter `p_review_notes`; the newer
+  // review actions use `p_notes`.  PostgREST resolves RPC overloads by named
+  // JSON keys, so sending the newer key to the established RPC is a 404, not
+  // a harmless ignored field.
+  const noteKey = rpc === 'review_question_version_action' ? 'p_review_notes' : 'p_notes';
+  const payload = (action) => ({ [idKey]: id, p_action: action, [noteKey]: note });
   if (status === 'draft' || status === 'rejected') {
-    await adminRequest(`/rest/v1/rpc/${rpc}`, { method: 'POST', body: { [idKey]: id, p_action: 'submit_for_review', p_notes: note } });
+    await adminRequest(`/rest/v1/rpc/${rpc}`, { method: 'POST', body: payload('submit_for_review') });
   }
-  await adminRequest(`/rest/v1/rpc/${rpc}`, { method: 'POST', body: { [idKey]: id, p_action: 'approve', p_notes: note } });
+  await adminRequest(`/rest/v1/rpc/${rpc}`, { method: 'POST', body: payload('approve') });
 }
 
 function nestedItemCode(row) {
