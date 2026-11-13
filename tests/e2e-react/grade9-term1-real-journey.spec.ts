@@ -108,7 +108,7 @@ async function completeActivity(page: Page, mode: 'correct' | 'incorrect', stopA
     // The stored answer is the option's *displayed text*, while the radio
     // input values are option codes (A/B/C/D). Compare visible labels rather
     // than mistaking a code for the answer text.
-    const labels = await radios.evaluateAll((inputs) => inputs.map((input) => input.closest('label')?.textContent()?.trim() ?? ''));
+    const labels = await radios.evaluateAll((inputs) => inputs.map((input) => input.closest('label')?.textContent?.trim() ?? ''));
     const correctIndex = labels.findIndex((label) => label === correct);
     expect(correctIndex, `Correct option must be visible for: ${prompt}`).toBeGreaterThanOrEqual(0);
     const chosenIndex = mode === 'correct' ? correctIndex : labels.findIndex((_, index) => index !== correctIndex);
