@@ -1,4 +1,4 @@
-name: Temporary PR 124 Assessment SQL Diagnostics
+name: Temporary PR 124 Supabase Release Repair Verification
 
 on:
   push:
@@ -6,58 +6,76 @@ on:
       - codex/grade9-term1-sprint4-release-gate
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  verify-and-sync:
     runs-on: ubuntu-24.04
-    timeout-minutes: 23
+    timeout-minutes: 25
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - name: Checkout PR branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: codex/grade9-term1-sprint4-release-gate
+      - name: Set up Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: 'npm'
-      - run: HUSKY=0 npm ci
-      - name: Start disposable Supabase and apply migration chain
+      - name: Install dependencies
+        run: HUSKY=0 npm ci
+      - name: Start local Supabase
+        run: npm run supabase:start
+      - name: Apply migrations
+        run: npm run supabase:reset
+      - name: Generate canonical docs and public types
         run: |
-          npm run supabase:start
-          npm run supabase:reset
-      - name: Diagnose management catalogue SQL aggregate scope
+          npm run supabase:docs:update
+          npm run supabase:docs:check
+          npm run supabase:types:update
+          npm run supabase:types:check
+      - name: Run real RLS database test suite
+        run: npm run test:rls:runtime
+      - name: Verify repaired admin SQL functions on disposable DB
         run: |
           eval "$(npx supabase status --output env | grep '^DB_URL=')"
           psql "$DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
-          DO $diagnostic$
-          DECLARE r text;
+          -- This admin-gate override is TEMPORARY and affects only this
+          -- disposable runner database, after all role/RLS tests have run.
+          create or replace function public.content_admin_required()
+          returns void language plpgsql security definer set search_path = ''
+          as $fn$ begin return; end; $fn$;
+          DO $verify$
+          DECLARE
+            catalogue jsonb;
+            quality jsonb;
+            publication_matrix jsonb;
           BEGIN
-            SELECT pg_get_function_result('public.content_admin_required()'::regprocedure) INTO r;
-            RAISE NOTICE 'content_admin_required return type %', r;
-            IF r = 'void' THEN
-              EXECUTE 'CREATE OR REPLACE FUNCTION public.content_admin_required() RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '''' AS $fn$ BEGIN RETURN; END; $fn$';
-            ELSIF r = 'boolean' THEN
-              EXECUTE 'CREATE OR REPLACE FUNCTION public.content_admin_required() RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = '''' AS $fn$ BEGIN RETURN true; END; $fn$';
-            ELSE
-              RAISE EXCEPTION 'Unexpected content_admin_required type: %', r;
+            catalogue := public.get_learning_assessment_management_catalog();
+            quality := public.get_grade9_term1_assessment_content_qa();
+            publication_matrix := public.get_grade9_term1_assessment_publication_matrix();
+            IF jsonb_typeof(catalogue->'definitions') <> 'array'
+              OR jsonb_typeof(quality) <> 'array'
+              OR jsonb_typeof(publication_matrix) <> 'array' THEN
+              RAISE EXCEPTION 'Assessment admin RPCs did not return expected JSON arrays';
             END IF;
+            IF jsonb_array_length(quality) = 0
+              OR jsonb_array_length(publication_matrix) = 0 THEN
+              RAISE EXCEPTION 'Grade 9 assessment content audit unexpectedly empty';
+            END IF;
+            RAISE NOTICE 'ASSESSMENT_ADMIN_SQL_VERIFIED: qa rows %, publication rows %',
+              jsonb_array_length(quality), jsonb_array_length(publication_matrix);
           END;
-          $diagnostic$;
-          DO $diagnostic$
-          DECLARE ctx text; err text; code text;
-          BEGIN
-            BEGIN
-              PERFORM public.get_learning_assessment_management_catalog();
-              RAISE NOTICE 'CATALOG_SUCCESS';
-            EXCEPTION WHEN OTHERS THEN
-              GET STACKED DIAGNOSTICS ctx=PG_EXCEPTION_CONTEXT, err=MESSAGE_TEXT, code=RETURNED_SQLSTATE;
-              RAISE NOTICE 'CATALOG_FAILURE code %, message %, SQL CONTEXT: %', code, err, ctx;
-            END;
-            BEGIN
-              PERFORM public.get_grade9_term1_assessment_publication_matrix();
-              RAISE NOTICE 'MATRIX_SUCCESS';
-            EXCEPTION WHEN OTHERS THEN
-              GET STACKED DIAGNOSTICS ctx=PG_EXCEPTION_CONTEXT, err=MESSAGE_TEXT, code=RETURNED_SQLSTATE;
-              RAISE NOTICE 'MATRIX_FAILURE code %, message %, SQL CONTEXT: %', code, err, ctx;
-            END;
-          END;
-          $diagnostic$;
+          $verify$;
           SQL
+      - name: Commit regenerated metadata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/supabase/SCHEMA_AND_POLICY_INVENTORY.md supabase/types/public.generated.ts
+          if git diff --cached --quiet; then
+            echo "Generated metadata already matches."
+            exit 0
+          fi
+          HUSKY=0 git commit -m "chore: sync schema documentation for Sprint 4 SQL repair"
+          git push origin HEAD:codex/grade9-term1-sprint4-release-gate
