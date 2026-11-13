@@ -1,8 +1,8 @@
 {
-  "reportVersion": "sprint4-closure-v1",
-  "generatedAt": "2026-11-12",
+  "reportVersion": "sprint4-closure-v2",
+  "generatedAt": "2026-11-13",
   "source": "scripts/grade9-term1-assessment-content.cjs",
-  "policyInterpretation": "Whole Numbers has five instructional areas, but the approved draft policy identifies real-number classification, HCF/LCM, and ratio/rate as its three critical skills. Direct/inverse proportion and financial applications remain essential sampling areas, not duplicate critical evidence targets.",
+  "policyInterpretation": "Whole Numbers has five instructional areas. The persisted approved-policy draft identifies real-number classification, HCF/LCM, ratio/rate, and financial applications as four critical skills. The independent endline, mastery challenge and reassessment are therefore expanded to 18 questions, with four distinct primary-skill samples for each critical skill. Direct/inverse proportion remains essential sampling rather than duplicate critical evidence.",
   "formCount": 17,
   "forms": [
     {
@@ -372,11 +372,11 @@
       "assessmentForm": "ENDLINE",
       "policyVersion": 1,
       "policyCode": "G9-T1-WHOLE-MASTERY",
-      "recommendedDurationMinutes": 25,
-      "questionCount": 16,
+      "recommendedDurationMinutes": 30,
+      "questionCount": 18,
       "countPerPrimarySkill": {
         "G9-NUM-DIRECT-INVERSE-PROPORTION": 2,
-        "G9-NUM-FINANCIAL-APPLICATIONS": 2,
+        "G9-NUM-FINANCIAL-APPLICATIONS": 4,
         "G9-NUM-RATIO-RATE": 4,
         "G9-NUM-REAL-IRRATIONAL": 4,
         "G9-NUM-WHOLE-HCF-LCM": 4
@@ -384,9 +384,10 @@
       "countPerCriticalSkill": {
         "G9-NUM-REAL-IRRATIONAL": 4,
         "G9-NUM-WHOLE-HCF-LCM": 4,
-        "G9-NUM-RATIO-RATE": 4
+        "G9-NUM-RATIO-RATE": 4,
+        "G9-NUM-FINANCIAL-APPLICATIONS": 4
       },
-      "reasoningEvidenceCount": 8,
+      "reasoningEvidenceCount": 9,
       "invalidQuestions": [],
       "structuralBlockers": [],
       "databasePublicationBlockers": [
@@ -403,11 +404,11 @@
       "assessmentForm": "ENDLINE-REASSESSMENT-B",
       "policyVersion": 1,
       "policyCode": "G9-T1-WHOLE-MASTERY",
-      "recommendedDurationMinutes": 25,
-      "questionCount": 16,
+      "recommendedDurationMinutes": 30,
+      "questionCount": 18,
       "countPerPrimarySkill": {
         "G9-NUM-DIRECT-INVERSE-PROPORTION": 2,
-        "G9-NUM-FINANCIAL-APPLICATIONS": 2,
+        "G9-NUM-FINANCIAL-APPLICATIONS": 4,
         "G9-NUM-RATIO-RATE": 4,
         "G9-NUM-REAL-IRRATIONAL": 4,
         "G9-NUM-WHOLE-HCF-LCM": 4
@@ -415,9 +416,10 @@
       "countPerCriticalSkill": {
         "G9-NUM-REAL-IRRATIONAL": 4,
         "G9-NUM-WHOLE-HCF-LCM": 4,
-        "G9-NUM-RATIO-RATE": 4
+        "G9-NUM-RATIO-RATE": 4,
+        "G9-NUM-FINANCIAL-APPLICATIONS": 4
       },
-      "reasoningEvidenceCount": 8,
+      "reasoningEvidenceCount": 9,
       "invalidQuestions": [],
       "structuralBlockers": [],
       "databasePublicationBlockers": [
@@ -434,11 +436,11 @@
       "assessmentForm": "MASTERY-CHALLENGE",
       "policyVersion": 1,
       "policyCode": "G9-T1-WHOLE-MASTERY",
-      "recommendedDurationMinutes": 25,
-      "questionCount": 16,
+      "recommendedDurationMinutes": 30,
+      "questionCount": 18,
       "countPerPrimarySkill": {
         "G9-NUM-DIRECT-INVERSE-PROPORTION": 2,
-        "G9-NUM-FINANCIAL-APPLICATIONS": 2,
+        "G9-NUM-FINANCIAL-APPLICATIONS": 4,
         "G9-NUM-RATIO-RATE": 4,
         "G9-NUM-REAL-IRRATIONAL": 4,
         "G9-NUM-WHOLE-HCF-LCM": 4
@@ -446,9 +448,10 @@
       "countPerCriticalSkill": {
         "G9-NUM-REAL-IRRATIONAL": 4,
         "G9-NUM-WHOLE-HCF-LCM": 4,
-        "G9-NUM-RATIO-RATE": 4
+        "G9-NUM-RATIO-RATE": 4,
+        "G9-NUM-FINANCIAL-APPLICATIONS": 4
       },
-      "reasoningEvidenceCount": 8,
+      "reasoningEvidenceCount": 9,
       "invalidQuestions": [],
       "structuralBlockers": [],
       "databasePublicationBlockers": [
@@ -477,7 +480,8 @@
       "countPerCriticalSkill": {
         "G9-NUM-REAL-IRRATIONAL": 4,
         "G9-NUM-WHOLE-HCF-LCM": 3,
-        "G9-NUM-RATIO-RATE": 3
+        "G9-NUM-RATIO-RATE": 3,
+        "G9-NUM-FINANCIAL-APPLICATIONS": 1
       },
       "reasoningEvidenceCount": 4,
       "invalidQuestions": [],

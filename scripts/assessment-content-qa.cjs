@@ -1,7 +1,7 @@
 /* Structural, coverage and deterministic-arithmetic QA for the Grade 9 pack. */
 'use strict';
 
-const { buildBank, FORMS, TOPICS } = require('./grade9-term1-assessment-content.cjs');
+const { buildBank, FORMS, TOPICS, questionCountFor } = require('./grade9-term1-assessment-content.cjs');
 
 const allowedSkills = new Set([
   'G9-NUM-REAL-IRRATIONAL', 'G9-NUM-WHOLE-HCF-LCM', 'G9-NUM-RATIO-RATE', 'G9-NUM-DIRECT-INVERSE-PROPORTION', 'G9-NUM-FINANCIAL-APPLICATIONS',
@@ -54,9 +54,10 @@ function main() {
     if (!['procedural', 'mathematical_reasoning'].includes(q.reasoningClassification)) errors.push(`${q.code}: invalid reasoning classification.`);
     if (!forms.has(q.form)) forms.set(q.form, []); forms.get(q.form).push(q); validateDeterministic(q, errors);
   }
-  if (bank.length !== 252) errors.push(`expected 252 questions, found ${bank.length}.`);
+  if (bank.length !== 258) errors.push(`expected 258 questions, found ${bank.length}.`);
   for (const topic of TOPICS) {
-    for (const [form, count] of FORMS) {
+    for (const [form, defaultCount] of FORMS) {
+      const count = questionCountFor(topic, form, defaultCount);
       const questions = bank.filter((q) => q.topic === topic && q.form === form);
       if (questions.length !== count) errors.push(`${topic}/${form}: expected ${count}, found ${questions.length}.`);
       const prompts = new Set();

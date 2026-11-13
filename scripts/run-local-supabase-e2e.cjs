@@ -99,7 +99,7 @@ function inFilter(ids) {
 }
 
 // PostgREST receives GET filters in the request URI.  A Grade 9 formal form
-// contains 252 distinct question-version UUIDs, which exceeds the URI limit
+// contains 258 distinct question-version UUIDs, which exceeds the URI limit
 // when they are placed in one `id=in.(...)` filter.  Keep the read scoped to
 // the fixture while fetching it in small, deterministic batches.
 async function selectQuestionVersionsInBatches(request, ids) {
@@ -470,11 +470,11 @@ async function seedGrade9Term1Fixture(status, request, profiles) {
   // Do not read the unfiltered links/version tables here.  The disposable
   // stack is intentionally seeded with other assessment content, and a
   // PostgREST default range can otherwise truncate this Grade 9 fixture's
-  // exact 252-question evidence set.  Scope each read to the authoritative
+  // exact 258-question evidence set. Scope each read to the authoritative
   // fixture records before counting or approving them.
   const definitionLinks = await request(`/rest/v1/learning_assessment_definition_questions?select=learning_assessment_definition_id,question_version_id&learning_assessment_definition_id=${inFilter([...definitionIds])}`);
   const formalVersionIds = new Set(definitionLinks.filter((link) => definitionIds.has(link.learning_assessment_definition_id)).map((link) => link.question_version_id));
-  if (formalVersionIds.size < 252) throw new Error(`Grade 9 fixture expected at least 252 linked formal-assessment questions, found ${formalVersionIds.size}.`);
+  if (formalVersionIds.size < 258) throw new Error(`Grade 9 fixture expected at least 258 linked formal-assessment questions, found ${formalVersionIds.size}.`);
   const formalVersions = await selectQuestionVersionsInBatches(request, [...formalVersionIds]);
   if (formalVersions.length !== formalVersionIds.size) {
     throw new Error(`Grade 9 fixture expected ${formalVersionIds.size} formal question versions, found ${formalVersions.length}.`);

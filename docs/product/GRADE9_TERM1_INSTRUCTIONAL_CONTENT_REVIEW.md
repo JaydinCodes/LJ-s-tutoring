@@ -61,7 +61,7 @@ The Grade 8 delivery RPC exposes only approved material. The learner route keeps
 
 `npm run qa:grade9-term1-content` validates stable codes, lesson structure, meaningful objectives, topic and activity mapping, four distinct options, keyed answers, individually mapped feedback, worked solutions, non-revealing hints, duplicate prompts/feedback, required domain assumptions and representative deterministic mathematics. Reasoning questions carry an explicit `mathematics_reviewer_required` record: structural QA does not claim that they are academically signed off.
 
-The independent formal assessment bank remains separate. `node scripts/assessment-content-qa.cjs` validates its 252 questions across 17 forms, including critical-skill coverage and reasoning requirements.
+The independent formal assessment bank remains separate. `node scripts/assessment-content-qa.cjs` validates its 258 questions across 17 forms, including four independent samples for every persisted Whole Numbers critical skill and required reasoning evidence.
 
 ## Reviewer checklist
 

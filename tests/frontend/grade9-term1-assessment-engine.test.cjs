@@ -12,6 +12,7 @@ const reconstructionMigration = fs.readFileSync(path.join(root, 'supabase', 'mig
 const assessmentBlueprintRepairMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261112200000_sprint4_grade9_assessment_blueprint_link_repair.sql'), 'utf8');
 const policyReviewTransitionFixMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261112210000_sprint4_policy_review_transition_fix.sql'), 'utf8');
 const assessmentReviewTransitionFixMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261112220000_sprint4_assessment_review_transition_fix.sql'), 'utf8');
+const wholeCriticalEvidenceExpansionMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261112230000_sprint4_whole_numbers_critical_evidence_expansion.sql'), 'utf8');
 const assignmentEvidenceMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261109130000_grade9_term1_assignment_evidence_combination.sql'), 'utf8');
 
 function contracts() {
@@ -109,11 +110,11 @@ test('author draft bank covers all four topics and keeps new content draft/revie
   assert.match(contentMigration, /Requires authorised curriculum review before publication/);
 });
 
-test('reconstructed content source has 252 inspectable questions with shuffled correct-option positions and no placeholder distractors', () => {
+test('reconstructed content source has 258 inspectable questions with shuffled correct-option positions and no placeholder distractors', () => {
   const { buildBank } = require(path.join(root, 'scripts', 'grade9-term1-assessment-content.cjs'));
   const bank = buildBank();
-  assert.equal(bank.length, 252);
-  assert.equal(new Set(bank.map((question) => question.code)).size, 252);
+  assert.equal(bank.length, 258);
+  assert.equal(new Set(bank.map((question) => question.code)).size, 258);
   for (const question of bank) {
     assert.deepEqual(Object.keys(question.options).sort(), ['A', 'B', 'C', 'D']);
     assert.ok(question.options[question.correctOption]);
@@ -138,12 +139,34 @@ test('Sprint 4 repairs every draft formal blueprint without rewriting approved a
     byDefinition.set(code, (byDefinition.get(code) ?? 0) + 1);
   }
   assert.equal(byDefinition.size, 17);
-  assert.equal([...byDefinition.values()].reduce((total, count) => total + count, 0), 252);
+  assert.equal([...byDefinition.values()].reduce((total, count) => total + count, 0), 258);
   assert.equal(definitionCode('INT', 'MASTERY-CHALLENGE'), 'G9-T1-INTEGERS-MASTERY-MASTERY-CHALLENGE');
   assert.match(buildSql(), /grade9_term1_assessment_blueprint_count_mismatch/);
   assert.match(assessmentBlueprintRepairMigration, /definition\.review_status in \('draft','rejected'\)/);
   assert.match(assessmentBlueprintRepairMigration, /order by version\.version_number desc/);
   assert.doesNotMatch(assessmentBlueprintRepairMigration, /update public\.learning_assessment_definitions\s+set\s+review_status/i);
+});
+
+test('Whole Numbers expands independent financial evidence instead of lowering the persisted critical-skill requirement', () => {
+  const { expansionQuestions } = require(path.join(root, 'scripts', 'generate-sprint4-whole-critical-evidence-expansion.cjs'));
+  const { report } = require(path.join(root, 'scripts', 'grade9-term1-assessment-form-validation.cjs'));
+  const expansion = expansionQuestions();
+  assert.equal(expansion.length, 6);
+  assert.ok(expansion.every((question) => question.skillCode === 'G9-NUM-FINANCIAL-APPLICATIONS'));
+  for (const form of ['ENDLINE', 'MASTERY-CHALLENGE', 'ENDLINE-REASSESSMENT-B']) {
+    assert.equal(expansion.filter((question) => question.form === form).length, 2);
+  }
+  const wholeIndependent = report().forms.filter((form) => form.topic === 'WHOLE' && ['ENDLINE', 'MASTERY-CHALLENGE', 'ENDLINE-REASSESSMENT-B'].includes(form.assessmentForm));
+  assert.equal(wholeIndependent.length, 3);
+  for (const form of wholeIndependent) {
+    assert.equal(form.questionCount, 18);
+    assert.equal(form.recommendedDurationMinutes, 30);
+    assert.equal(form.countPerCriticalSkill['G9-NUM-FINANCIAL-APPLICATIONS'], 4);
+    assert.equal(form.structuralBlockers.length, 0);
+  }
+  assert.match(wholeCriticalEvidenceExpansionMigration, /duration_minutes=30/);
+  assert.match(wholeCriticalEvidenceExpansionMigration, /definition\.review_status in \('draft','rejected'\)/);
+  assert.doesNotMatch(wholeCriticalEvidenceExpansionMigration, /set\s+review_status/i);
 });
 
 test('policy review uses the admin transition RPC without violating approved-review metadata invariants', () => {

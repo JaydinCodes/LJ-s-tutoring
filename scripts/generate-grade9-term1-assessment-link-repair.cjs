@@ -42,7 +42,12 @@ function questionRows(bank) {
 }
 
 function buildSql() {
-  const bank = buildBank();
+  // This generator reproduces the already-applied 20261112200000 repair. Its
+  // scope must remain frozen: later additive form expansions have their own
+  // migration rather than silently rewriting a historical migration.
+  const bank = buildBank().filter((question) => !(question.topic === 'WHOLE'
+    && ['ENDLINE', 'MASTERY-CHALLENGE', 'ENDLINE-REASSESSMENT-B'].includes(question.form)
+    && question.sequence > 16));
   const expected = [...new Map(
     bank.map((question) => [definitionCode(question.topic, question.form), 0]),
   ).keys()].map((code) => [sql(code), String(bank.filter((question) => definitionCode(question.topic, question.form) === code).length)]);

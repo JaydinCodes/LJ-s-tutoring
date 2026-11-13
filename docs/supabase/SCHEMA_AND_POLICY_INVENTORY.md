@@ -132,6 +132,7 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20261112200000_sprint4_grade9_assessment_blueprint_link_repair.sql` | `325d98ae446fdf415d35eaef3d75e720c76fb2681ccf44469610ec7d4feece34` |
 | `20261112210000_sprint4_policy_review_transition_fix.sql` | `d3de18cf36257c8347f10b6e9a8aa560f6fe4cc96f917b82e995e983f42eb201` |
 | `20261112220000_sprint4_assessment_review_transition_fix.sql` | `fe8ed8cc4f78c75ead5cf8107c2bafa98bf16ea7ae57300c87f68d46ab7b99a4` |
+| `20261112230000_sprint4_whole_numbers_critical_evidence_expansion.sql` | `102bd791f15606440734548a83b33959275520a0d83427cb9ba1934abbd22e7a` |
 
 ## Regeneration
 
