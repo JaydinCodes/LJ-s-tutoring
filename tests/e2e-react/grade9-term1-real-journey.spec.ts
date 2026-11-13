@@ -127,7 +127,15 @@ async function completeActivity(page: Page, mode: 'correct' | 'incorrect', stopA
     await expect(page.getByText(/Marks awarded:/)).toBeVisible();
     if (stopAfterFirst) return;
     await page.getByRole('button', { name: 'Continue to next step' }).click();
-    if (await page.getByRole('heading', { name: 'Activity complete' }).isVisible()) return;
+    await expect.poll(async () => {
+      if (await page.getByRole('heading', { name: 'Activity complete' }).count()) return 'done';
+      const nextHeading = await page.locator('input[name="mcq-answer"]').first()
+        .locator('xpath=ancestor::section[1]')
+        .getByRole('heading', { level: 2 }).textContent().catch(() => null);
+      return nextHeading?.trim() ?? prompt;
+    }, { timeout: 15_000 }).not.toBe(prompt);
+    if (await page.getByRole('heading', { name: 'Activity complete' }).count()) return;
+    await expect(page.locator('input[name="mcq-answer"]:checked')).toHaveCount(0);
   }
 }
 
