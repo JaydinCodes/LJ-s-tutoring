@@ -413,6 +413,25 @@ function nestedSkillCode(row) {
   return skill?.skill_code || null;
 }
 
+async function publicationCriticalSkillEvidence(request, definition, definitionLinks) {
+  if (!definition.topic_mastery_policy_id) return null;
+  const versionIds = definitionLinks
+    .filter((link) => link.learning_assessment_definition_id === definition.id)
+    .map((link) => link.question_version_id);
+  const [policy] = await request(`/rest/v1/topic_mastery_policies?select=minimum_questions_per_critical_skill&id=eq.${definition.topic_mastery_policy_id}`);
+  const criticalSkills = await request(`/rest/v1/topic_mastery_policy_skills?select=skill_id,curriculum_skills(skill_code)&topic_mastery_policy_id=eq.${definition.topic_mastery_policy_id}&is_critical=eq.true`);
+  const primaryLinks = versionIds.length
+    ? await request(`/rest/v1/question_version_skill_links?select=question_version_id,skill_id&relationship_type=eq.primary&question_version_id=${inFilter(versionIds)}`)
+    : [];
+  return {
+    minimumQuestionsPerCriticalSkill: policy?.minimum_questions_per_critical_skill ?? null,
+    criticalSkillQuestionCounts: Object.fromEntries(criticalSkills.map((skill) => [
+      nestedSkillCode(skill),
+      new Set(primaryLinks.filter((link) => link.skill_id === skill.skill_id).map((link) => link.question_version_id)).size,
+    ])),
+  };
+}
+
 async function seedGrade9Term1Fixture(status, request, profiles) {
   const adminToken = await signInForAccessToken(status, users.admin.email);
   const adminRequest = makeTokenRequester(status, adminToken);
@@ -497,7 +516,10 @@ async function seedGrade9Term1Fixture(status, request, profiles) {
   for (const definition of grade9Definitions) {
     await reviewThroughAdmin(adminRequest, 'review_learning_assessment_action', 'p_assessment_id', definition.id, definition.review_status, 'Disposable Sprint 4 release-gate fixture review.');
     const validation = await adminRequest('/rest/v1/rpc/get_learning_assessment_publication_validation', { method: 'POST', body: { p_assessment_definition_id: definition.id } });
-    if (!validation?.valid) throw new Error(`${definition.code} is not publication-valid: ${JSON.stringify(validation?.errors || [])}`);
+    if (!validation?.valid) {
+      const criticalEvidence = await publicationCriticalSkillEvidence(request, definition, definitionLinks);
+      throw new Error(`${definition.code} is not publication-valid: ${JSON.stringify(validation?.errors || [])}; critical evidence: ${JSON.stringify(criticalEvidence)}`);
+    }
   }
 
   const forms = await request('/rest/v1/learning_assessment_form_versions?select=id,learning_assessment_definition_id,review_status,retired_at');
