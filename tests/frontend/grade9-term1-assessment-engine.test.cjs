@@ -10,6 +10,7 @@ const closureMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations
 const contentMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261107130000_grade9_term1_assessment_drafts.sql'), 'utf8');
 const reconstructionMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261109120000_grade9_term1_content_reconstruction.sql'), 'utf8');
 const assessmentBlueprintRepairMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261112200000_sprint4_grade9_assessment_blueprint_link_repair.sql'), 'utf8');
+const policyReviewTransitionFixMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261112210000_sprint4_policy_review_transition_fix.sql'), 'utf8');
 const assignmentEvidenceMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261109130000_grade9_term1_assignment_evidence_combination.sql'), 'utf8');
 
 function contracts() {
@@ -142,6 +143,13 @@ test('Sprint 4 repairs every draft formal blueprint without rewriting approved a
   assert.match(assessmentBlueprintRepairMigration, /definition\.review_status in \('draft','rejected'\)/);
   assert.match(assessmentBlueprintRepairMigration, /order by version\.version_number desc/);
   assert.doesNotMatch(assessmentBlueprintRepairMigration, /update public\.learning_assessment_definitions\s+set\s+review_status/i);
+});
+
+test('policy review uses the admin transition RPC without violating approved-review metadata invariants', () => {
+  assert.match(policyReviewTransitionFixMigration, /create or replace function public\.review_topic_mastery_policy_action/);
+  assert.match(policyReviewTransitionFixMigration, /reviewed_by = case when v_to = 'approved' then public\.current_profile_id\(\) else null end/);
+  assert.match(policyReviewTransitionFixMigration, /reviewed_at = case when v_to = 'approved' then now\(\) else null end/);
+  assert.match(policyReviewTransitionFixMigration, /topic_mastery_policy_requires_critical_skill/);
 });
 
 test('assignment evidence is a conservative, traceable skill-level contribution rather than an overall-mark shortcut', () => {
