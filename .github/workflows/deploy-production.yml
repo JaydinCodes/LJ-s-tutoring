@@ -6,6 +6,11 @@ on:
     branches: [ main ]
     types: [completed]
 
+# Automatic production deployment is disabled for the Grade 9 code-integration
+# merge until a release owner explicitly opts in with the repository variable
+# ODYSSEUS_GRADE9_PILOT_RELEASE_APPROVED=true. A merge to main must not
+# automatically publish unapproved assessment content or run production migrations.
+#
 # Never overlap deployments. A newer main push cancels its older release gate;
 # the SHA assertion below also prevents an already-completed older gate from
 # deploying after main has moved.
@@ -22,7 +27,8 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main' &&
-      github.event.workflow_run.head_repository.full_name == github.repository
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      vars.ODYSSEUS_GRADE9_PILOT_RELEASE_APPROVED == 'true'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 30
