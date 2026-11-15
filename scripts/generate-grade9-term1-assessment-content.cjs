@@ -164,10 +164,11 @@ const bank = buildBank();
 const historicalBank = historicalMigrationBank(bank);
 // Applied migrations are historical artefacts. Their contents must not be
 // rewritten by a current-content export; additive migrations own all changes
-// after their committed snapshots.
+// after their committed snapshots. Keep the legacy emitters as traceability
+// readers only: writing either migration can invalidate a real migration
+// history and must never be part of this generator's normal workflow.
 if (process.argv.includes('--write-historical-migrations')) {
-  fs.writeFileSync(migration, migrationText(historicalBank));
-  fs.writeFileSync(backfillMigration, backfillMigrationText(historicalBank));
+  throw new Error('Refusing to rewrite applied historical migrations; create an additive migration instead.');
 }
 fs.writeFileSync(exportPath, `${JSON.stringify({ generatedAt: 'source-controlled', questionCount: bank.length, questions: bank }, null, 2)}\n`);
 fs.writeFileSync(reviewPath, reviewText(bank));
