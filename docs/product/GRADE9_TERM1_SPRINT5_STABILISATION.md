@@ -69,7 +69,9 @@ An authorised administrator still must inspect the intended production versions,
 
 ## Production Verification
 
-The shared public page at https://student.projectodysseus.live/dashboard/login loads the sign-in form. No authenticated production learner or read-only production database session was supplied, so deployment of the Learning Map RPC and authenticated Learning page are **not verified**. Source compatibility is not proof that production project `jscrgpwyniphagitliuz` is up to date.
+On 2026-11-16, the user supplied an authenticated production Learning browser page. Read-only verification confirmed four live topic checkpoints and a successful call to `get_my_grade9_term1_topic_learning_map` for `INTEGERS`: **HTTP 200**, `topicCode = INTEGERS`, two skills. A fresh return/reload of Learning captured no failing RPC responses while the map and reviewed-content empty state rendered. Earlier browser events contained HTTP 500s, but they were not reproduced in this fresh check. No topic was selected, answer submitted, approval made or student record changed.
+
+Most production topics remain content-awaiting-publication; the page does not demonstrate full pilot publication. No read-only SQL session was supplied, so deployed database function definitions/grants, migration history and deployment of the admin catalog repair remain **unverified**. The successful live map response proves that RPC is callable with the expected learner signature, not that every committed production migration is current.
 
 The frontend calls `get_my_grade9_term1_topic_learning_map` with `{ p_topic_code: string }`. Committed migration `20261115120000_sprint5_learning_map_projection.sql` supplies `public.get_my_grade9_term1_topic_learning_map(p_topic_code text) returns jsonb`, stable, SECURITY DEFINER with an empty search path and a current-student check.
 

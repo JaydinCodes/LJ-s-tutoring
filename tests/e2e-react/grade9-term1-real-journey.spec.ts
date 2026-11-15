@@ -463,7 +463,9 @@ test('Sprint 5 authorised admin inspects content, approves a disposable question
   const formalDefinitions = catalogue.definitions.filter((definition: { code: string }) => definition.code.startsWith('G9-T1-'));
   expect(formalDefinitions).toHaveLength(17);
   expect(formalDefinitions.every((definition: { publicationValidation: { valid: boolean } }) => definition.publicationValidation.valid)).toBe(true);
-  await page.getByRole('row').filter({ hasText: formalDefinitions[0].name }).getByRole('button', { name: 'Edit', exact: true }).click();
+  const publishedSource = formalDefinitions.find((definition: { publishedFormVersion: number | null }) => definition.publishedFormVersion != null);
+  expect(publishedSource).toBeTruthy();
+  await page.getByRole('row').filter({ hasText: publishedSource.name }).getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Publish immutable form', exact: true })).toHaveCount(0);
   const revisionCode = `E2E-SPRINT5-FORMAL-${crypto.randomUUID().toUpperCase()}`;
   const revisionName = `Disposable Sprint 5 publication ${revisionCode}`;
