@@ -15,6 +15,14 @@ const FORMS = [
   ['ENDLINE-REASSESSMENT-B', 16],
 ];
 const TOPICS = ['WHOLE', 'INT', 'EXP', 'PAT'];
+const WHOLE_CRITICAL_EVIDENCE_FORMS = new Set(['ENDLINE', 'MASTERY-CHALLENGE', 'ENDLINE-REASSESSMENT-B']);
+
+// Financial applications is a fourth policy-critical Whole Numbers skill.
+// The three independent Whole Numbers forms therefore need 18 questions: four
+// unique samples for each critical skill, without counting one response twice.
+function questionCountFor(topic, form, defaultCount) {
+  return topic === 'WHOLE' && WHOLE_CRITICAL_EVIDENCE_FORMS.has(form) ? 18 : defaultCount;
+}
 
 function hash(value) {
   return [...value].reduce((total, character) => ((total * 31) + character.charCodeAt(0)) >>> 0, 17);
@@ -65,6 +73,8 @@ function whole(formIndex, slot, form, sequence) {
     () => { const scale = k + 3; const map = k + 5.5; return question({ code, topic: 'WHOLE', form, sequence, skillCode: 'G9-NUM-RATIO-RATE', prompt: `Map set ${formIndex + 1} has scale 1 cm : ${scale} km. Which calculation models ${map} cm on the map?`, correct: `${map} × ${scale} = ${map * scale} km`, distractors: [{ label: `${map} ÷ ${scale} km`, explanation: 'Dividing reverses the scale relationship.' }, { label: `${map} + ${scale} km`, explanation: 'A scale is multiplicative, not additive.' }, { label: `${map} km`, explanation: `This ignores that 1 cm represents ${scale} km.` }], solution: `Each centimetre represents ${scale} km. Therefore ${map} cm represents ${map} × ${scale} = ${map * scale} km.`, reasoning: true }); },
     () => { const principal = 800 + 100 * k; const rate = 5 + k; const first = principal * (1 + rate / 100); return question({ code, topic: 'WHOLE', form, sequence, skillCode: 'G9-NUM-FINANCIAL-APPLICATIONS', prompt: `Why is compound interest on R${principal} at ${rate}% for two years greater than simple interest at the same rate?`, correct: `The second year’s interest is calculated on R${first.toFixed(2)}, not on R${principal}.`, distractors: [{ label: `The percentage becomes ${2 * rate}% in the second year.`, explanation: 'The annual rate remains unchanged.' }, { label: 'Interest is subtracted in the first year and added in the second.', explanation: 'Both years add interest for a positive investment.' }, { label: 'The principal is divided by the rate each year.', explanation: 'The rate is applied to the growing balance.' }], solution: `After year 1 the balance is R${principal} × ${(1 + rate / 100).toFixed(2)} = R${first.toFixed(2)}. Year 2 interest is calculated from that balance.`, reasoning: true }); },
     () => { const situations = ['For a fixed painting job, more equal-rate painters take fewer days.', 'For a fixed journey, a faster constant speed gives a shorter travel time.', 'For a fixed amount of concrete, more equal-rate mixers finish in fewer hours.', 'For a fixed data file, a higher download rate needs less time.']; return question({ code, topic: 'WHOLE', form, sequence, skillCode: 'G9-NUM-DIRECT-INVERSE-PROPORTION', prompt: `Which situation in set ${formIndex + 1} is inverse proportion?`, correct: situations[formIndex], distractors: [{ label: 'At a fixed unit price, buying more pens increases the total cost.', explanation: 'Both quantities increase together, so this is direct proportion.' }, { label: 'A recipe doubles every ingredient when the number of portions doubles.', explanation: 'Both quantities increase together, so this is direct proportion.' }, { label: 'A taxi fare rises when more kilometres are travelled at a fixed rate.', explanation: 'Distance and fare increase together, so this is direct proportion.' }], solution: 'For a fixed total task, rate × time is constant. Increasing the rate or workers therefore decreases the time.', reasoning: true }); },
+    () => { const sales = 10000 + (500 * k); const rate = 4 + formIndex; const commission = sales * rate / 100; return question({ code, topic: 'WHOLE', form, sequence, skillCode: 'G9-NUM-FINANCIAL-APPLICATIONS', prompt: `A salesperson earns ${rate}% commission on R${sales} of sales. What commission is earned?`, correct: `R${commission.toFixed(2)}`, distractors: [{ label: `R${(sales / rate).toFixed(2)}`, explanation: 'This divides by the percentage number instead of taking the stated percent of sales.' }, { label: `R${(sales * rate).toFixed(2)}`, explanation: 'This treats the percentage as a whole-number multiplier rather than ${rate}/100.' }, { label: `R${(commission + rate).toFixed(2)}`, explanation: 'This adds the rate after calculating the percentage instead of using the commission amount.' }], solution: `${rate}% = ${rate / 100}. Commission = R${sales} × ${rate / 100} = R${commission.toFixed(2)}.`, verification: { kind: 'percentage', expected: commission } }); },
+    () => { const daily = 90 + (10 * formIndex); const days = formIndex + 2; const fee = 45 + (5 * formIndex); const deposit = 300 + (25 * formIndex); const cost = (daily * days) + fee; return question({ code, topic: 'WHOLE', form, sequence, skillCode: 'G9-NUM-FINANCIAL-APPLICATIONS', prompt: `A bicycle rents for R${daily} per day for ${days} days, with a non-refundable booking fee of R${fee} and a refundable R${deposit} deposit. The bicycle is returned undamaged. What is the final rental cost after the deposit is returned?`, correct: `R${cost}`, distractors: [{ label: `R${cost + deposit}`, explanation: 'This counts the refundable deposit as a cost even though it is returned.' }, { label: `R${daily + fee}`, explanation: 'This charges for one day only instead of all ${days} rental days.' }, { label: `R${daily * days}`, explanation: 'This omits the non-refundable booking fee.' }], solution: `Rental charge = ${days} × R${daily} = R${daily * days}. Add the non-refundable fee: R${daily * days} + R${fee} = R${cost}. The R${deposit} deposit is returned, so it is not part of the final cost.`, reasoning: true, verification: { kind: 'rental', expected: cost } }); },
   ];
   return data[slot]();
 }
@@ -145,7 +155,8 @@ function buildBank() {
   const builders = { WHOLE: whole, INT: integer, EXP: exponent, PAT: pattern };
   const questions = [];
   for (const topic of TOPICS) {
-    FORMS.forEach(([form, count], formIndex) => {
+    FORMS.forEach(([form, defaultCount], formIndex) => {
+      const count = questionCountFor(topic, form, defaultCount);
       for (let slot = 0; slot < count; slot += 1) questions.push(builders[topic](formIndex, slot, form, slot + 1));
     });
     // Entry questions are independent additional contexts, not links to a topic form.
@@ -159,4 +170,4 @@ function buildBank() {
   return questions;
 }
 
-module.exports = { buildBank, FORMS, TOPICS };
+module.exports = { buildBank, FORMS, TOPICS, questionCountFor, WHOLE_CRITICAL_EVIDENCE_FORMS };

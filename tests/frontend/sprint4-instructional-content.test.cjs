@@ -8,6 +8,7 @@ const pack = require(path.join(root, 'scripts', 'grade9-term1-learning-content.c
 const migration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261112140000_grade9_term1_sprint4_instructional_content.sql'), 'utf8');
 const bridgeMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261112150000_sprint4_bridge_lesson_delivery.sql'), 'utf8');
 const correctionsMigration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261112160000_sprint4_mathematics_corrections_v2.sql'), 'utf8');
+const feedbackV3Migration = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261112190000_sprint4_explicit_distractor_feedback_v3.sql'), 'utf8');
 const bridgeRoute = fs.readFileSync(path.join(root, 'src', 'features', 'learning', 'StudentLearningBridgeRoute.tsx'), 'utf8');
 const learningDashboard = fs.readFileSync(path.join(root, 'src', 'features', 'learning', 'StudentLearningRoute.tsx'), 'utf8');
 
@@ -36,6 +37,7 @@ test('guided-practice bank contains full multiple-choice feedback and stable act
     assert.ok(question.options[question.correctOption]);
     assert.equal(Object.keys(question.distractorExplanations).length, 3);
     assert.equal(new Set(Object.values(question.distractorExplanations)).size, 3);
+    assert.equal(question.feedbackSource, 'explicitly_authored_v3');
     assert.ok(Object.values(question.distractorExplanations).every((feedback) => feedback.length >= 45 && !feedback.includes('Revisit the worked method')));
     assert.ok(question.solution.length >= 8);
     assert.ok(question.hint.length >= 8);
@@ -44,11 +46,40 @@ test('guided-practice bank contains full multiple-choice feedback and stable act
   assert.match(migration, /learning_activity_stage_questions/);
 });
 
+test('v3 feedback is explicitly authored for every stable wrong answer and remains additive', () => {
+  const questions = pack.buildPracticeQuestions();
+  assert.equal(Object.keys(pack.explicitFeedbackByQuestion).length, 76);
+  assert.equal(
+    questions.reduce((count, question) => count + Object.keys(question.distractorExplanations).length, 0),
+    228,
+  );
+  for (const question of questions) {
+    const wrongValues = Object.entries(question.options)
+      .filter(([key]) => key !== question.correctOption)
+      .map(([, value]) => value)
+      .sort();
+    const feedbackValues = Object.entries(question.options)
+      .filter(([key]) => key !== question.correctOption)
+      .map(([key]) => question.distractorExplanations[key])
+      .sort();
+    assert.equal(wrongValues.length, feedbackValues.length);
+    assert.ok(feedbackValues.every((feedback) => feedback.length >= 45));
+  }
+  assert.doesNotMatch(fs.readFileSync(path.join(root, 'scripts', 'grade9-term1-learning-content.cjs'), 'utf8'), /function inferredDistractorFeedback/);
+  assert.match(feedbackV3Migration, /version_number,review_status/);
+  assert.match(feedbackV3Migration, /,3,'draft'/);
+  assert.match(feedbackV3Migration, /Versions 1 and 2 remain immutable/);
+  assert.match(feedbackV3Migration, /on conflict do nothing;/);
+  assert.doesNotMatch(feedbackV3Migration, /on conflict\(question_version_id,skill_id,relationship_type\)/);
+  assert.match(feedbackV3Migration, /curriculum\.grade=authored\.grade and curriculum\.is_active/);
+  assert.match(feedbackV3Migration, /version_previous\.version_number in \(1,2\)/);
+});
+
 test('Sprint 4 mathematics corrections retain v1 history and protect confirmed defect fixes', () => {
   const questions = pack.buildPracticeQuestions();
   const byCode = (code) => questions.find((question) => question.code === code);
   assert.equal(byCode('Q.G9.S4.PRACTICE.RATIO-RATE.04').options[byCode('Q.G9.S4.PRACTICE.RATIO-RATE.04').correctOption], 'The claim is incorrect: 4 : 6 = 2 : 3 and 10 : 15 = 2 : 3');
-  assert.equal(byCode('Q.G9.S4.PRACTICE.POWERS-ROOTS.01').distractorExplanations[Object.entries(byCode('Q.G9.S4.PRACTICE.POWERS-ROOTS.01').options).find(([, value]) => value === '−25')[0]], '−25 keeps a negative sign after squaring. The bracket makes both factors negative, and (−5) × (−5) is +25.');
+  assert.match(byCode('Q.G9.S4.PRACTICE.POWERS-ROOTS.01').distractorExplanations[Object.entries(byCode('Q.G9.S4.PRACTICE.POWERS-ROOTS.01').options).find(([, value]) => value === '−25')[0]], /two negative factors multiply to a positive/);
   assert.match(byCode('Q.G9.S4.PRACTICE.HCF-LCM.03').prompt, /starting time/);
   assert.match(byCode('Q.G9.S4.PRACTICE.FINANCE.02').prompt, /refundable/);
   assert.match(byCode('Q.G9.S4.PRACTICE.EXP-LAWS.02').prompt, /y ≠ 0/);

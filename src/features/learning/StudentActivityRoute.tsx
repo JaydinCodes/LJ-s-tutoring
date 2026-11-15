@@ -45,6 +45,7 @@ interface QuestionFeedbackState {
   marksAvailable: number;
   misconception?: MisconceptionDetail | null;
   explanationCode?: string;
+  distractorExplanation?: string | null;
 }
 
 export function StudentActivityRoute() {
@@ -244,6 +245,7 @@ export function StudentActivityRoute() {
         marksAvailable,
         misconception: misconceptionDetail,
         explanationCode: evalData?.explanationCode,
+        distractorExplanation: evalData?.distractorExplanation ?? null,
       };
 
       setActiveFeedback(feedbackItem);
@@ -261,6 +263,14 @@ export function StudentActivityRoute() {
   }
 
   async function handleContinue() {
+    // Clear question-local responses before loading the next question. Without
+    // this, the previous radio selection can briefly appear on the next prompt
+    // and an eager learner may submit that stale option.
+    setAnswer('');
+    setConfidence(null);
+    setHintIds([]);
+    setSubmissionKey(null);
+    setSubmissionMessage(null);
     setActiveFeedback(null);
     await progressQuery.refetch();
   }
@@ -352,6 +362,17 @@ export function StudentActivityRoute() {
                         <p className="mt-1 text-sm leading-6 text-amber-900 dark:text-amber-200">
                           {confidenceInsight.message}
                         </p>
+
+                        {activeFeedback.distractorExplanation ? (
+                          <div className="mt-4 rounded-xl border border-amber-200 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/80">
+                            <p className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                              Why this choice is not correct
+                            </p>
+                            <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                              {activeFeedback.distractorExplanation}
+                            </p>
+                          </div>
+                        ) : null}
 
                         {misconception ? (
                           <div className="mt-4 rounded-xl border border-amber-200 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/80">

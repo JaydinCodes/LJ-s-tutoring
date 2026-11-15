@@ -82,6 +82,14 @@ export function StudentLearningRoute() {
   const masteredTopicCount = journey?.topics.filter((topic) => topic.status === 'mastered').length ?? 0;
   const currentFocus = journey?.currentTopic?.focusSkillCode ?? journey?.context.focusSkillCode ?? journey?.primary.topicCode ?? 'Choose a topic when you are ready';
   const prerequisite = journey?.prerequisiteRecommendation ?? null;
+  // Preserve the Grade 9 origin when the optional origin field is empty.
+  // Selected topic and the current journey topic are safe fallbacks.
+  const bridgeReturnTopic =
+    journey?.context.originTopicCode
+    || journey?.context.selectedTopicCode
+    || journey?.currentTopic?.topicCode
+    || journey?.primary.topicCode
+    || '';
   const prerequisiteVideos = prerequisite
     ? foundationVideos.filter((video) => video.skillCode === prerequisite.skillCode)
     : [];
@@ -121,9 +129,9 @@ export function StudentLearningRoute() {
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-aegean">Grade 8 foundations</p>
         <h2 id="foundation-heading" className="mt-1 text-xl font-semibold">A useful foundation before your next step</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-brand-marble">Existing evidence suggests that this prerequisite would make your Grade 9 focus easier. This is targeted support, not a judgement that you have failed Grade 8.</p>
-        <Link className="academy-btn-primary mt-4 inline-flex min-h-11 items-center gap-2 rounded-full px-5" to={`/dashboard/student/learning/bridge/${encodeURIComponent(prerequisite.skillCode)}?returnTopic=${encodeURIComponent(journey?.context.originTopicCode ?? journey?.context.selectedTopicCode ?? '')}`}>Open the bridge lesson <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+        <Link className="academy-btn-primary mt-4 inline-flex min-h-11 items-center gap-2 rounded-full px-5" to={`/dashboard/student/learning/bridge/${encodeURIComponent(prerequisite.skillCode)}?returnTopic=${encodeURIComponent(bridgeReturnTopic)}`}>Open the bridge lesson <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
         {prerequisiteVideos.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2">{prerequisiteVideos.map((video) => <a key={video.resourceCode} className="rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-brand-navy hover:border-brand-aegean dark:border-white/10 dark:bg-slate-950 dark:text-brand-parchment" href={video.youtubeUrl} target="_blank" rel="noreferrer">{video.title}<span className="mt-1 block text-xs font-normal text-slate-500 dark:text-brand-marble">{video.channelName} · Watch on YouTube</span></a>)}</div> : null}
-        {journey?.context.originTopicCode || journey?.context.selectedTopicCode ? <Link className="mt-4 inline-flex text-sm font-semibold text-brand-aegean underline-offset-4 hover:underline" to={`/dashboard/student/learning/topic/${encodeURIComponent(journey.context.originTopicCode ?? journey.context.selectedTopicCode ?? '')}`}>Return to your Grade 9 topic</Link> : null}
+        {bridgeReturnTopic ? <Link className="mt-4 inline-flex text-sm font-semibold text-brand-aegean underline-offset-4 hover:underline" to={`/dashboard/student/learning/topic/${encodeURIComponent(bridgeReturnTopic)}`}>Return to your Grade 9 topic</Link> : null}
       </section> : null}
 
       {mastery.length ? <section aria-labelledby="skills-heading"><h2 id="skills-heading" className="text-xl font-semibold">Current learning progress</h2><div className="mt-4 grid gap-3 sm:grid-cols-2">{mastery.map((item) => <article className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900" key={item.skillCode}><span className="font-medium">{item.skillName}</span><span className="rounded-full bg-brand-aegean/10 px-3 py-1 text-sm capitalize text-brand-aegean">{item.state}</span></article>)}</div></section> : null}

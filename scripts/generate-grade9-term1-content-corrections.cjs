@@ -3,8 +3,6 @@
 /* Generates the additive v2 correction migration. The original Sprint 4
  * migration remains immutable; question version 1 and a lesson snapshot stay
  * available for audit while this migration creates draft version 2 content. */
-const fs = require('node:fs');
-const path = require('node:path');
 const { lessons, buildPracticeQuestions } = require('./grade9-term1-learning-content.cjs');
 
 const sql = (value) => `'${String(value).replaceAll("'", "''")}'`;
@@ -24,9 +22,12 @@ function buildCorrectionsSql() {
 }
 
 if (require.main === module) {
-  const output = path.join(__dirname, '..', 'supabase', 'migrations', '20261112160000_sprint4_mathematics_corrections_v2.sql');
-  fs.writeFileSync(output, buildCorrectionsSql());
-  process.stdout.write(`Generated ${output} with ${buildPracticeQuestions().length} corrected practice revisions.\n`);
+  // This generator is retained only to document how the already-applied v2
+  // artifact was produced.  The canonical source now contains v3 feedback,
+  // so regenerating this historical migration would silently corrupt the
+  // audited v2 snapshot.  Use the v3 generator for new corrective versions.
+  process.stderr.write('The v2 correction migration is immutable. Use scripts/generate-grade9-term1-feedback-v3.cjs for new revisions.\n');
+  process.exitCode = 1;
 }
 
 module.exports = { buildCorrectionsSql };

@@ -6,19 +6,396 @@
  * questions can be reviewed here without reading a large data migration.
  */
 
-const q = (prompt, correct, wrong, solution, hint, reasoning = false, feedbackByWrong = null) => ({ prompt, correct, wrong, solution, hint, reasoning, feedbackByWrong, reviewRecord: reasoning ? 'mathematics_reviewer_required' : 'computed_or_procedural_review_required' });
+const q = (prompt, correct, wrong, solution, hint, reasoning = false) => ({ prompt, correct, wrong, solution, hint, reasoning, reviewRecord: reasoning ? 'mathematics_reviewer_required' : 'computed_or_procedural_review_required' });
 const lesson = (skillCode, grade, slug, title, objective, explanation, workedExample, misconception, questions) => ({ skillCode, grade, slug, title, objective, explanation, workedExample, misconception, questions });
 
-function inferredDistractorFeedback(question, selected) {
-  const answer = String(selected);
-  const correct = String(question.correct);
-  let misconception = 'a different operation or condition has been applied than the one in the question';
-  if (/^[−-]/.test(answer) && !/^[−-]/.test(correct)) misconception = 'the sign rule has been applied incorrectly';
-  else if (/always|never|cannot|not real|undefined/i.test(answer)) misconception = 'an absolute statement has replaced the stated mathematical condition';
-  else if (/×|\*|\^|²|³/.test(answer) && /÷|\/|−/.test(question.prompt)) misconception = 'an exponent or operation has been used in place of the required inverse operation';
-  else if (/\d/.test(answer) && /\d/.test(correct)) misconception = 'a calculation step, scale factor, or place value has changed';
-  return `Choosing “${answer}” suggests ${misconception}. ${question.solution} Use this check: ${question.hint}`;
-}
+/*
+ * Publication-ready feedback is authored against the stable question suffix
+ * and the literal distractor value.  It is deliberately data, not inference:
+ * a new question, renamed option, or missing explanation must fail generation.
+ */
+const explicitFeedbackByQuestion = Object.freeze({
+  'REAL.01': {
+    '0.25': '0.25 is rational because it equals 1/4. A terminating decimal can be written as a fraction of integers.',
+    '−7': '−7 is rational because it equals −7/1. A negative sign does not make a number irrational.',
+    '3/5': '3/5 is already a ratio of two integers, so it is rational. An irrational number cannot be expressed in that form.',
+  },
+  'REAL.02': {
+    'An irrational number': '√121 is not irrational: 121 is the perfect square 11 × 11, so its root is the integer 11.',
+    'A negative integer': 'The principal square root √121 is 11, not −11. The root symbol names the non-negative root.',
+    'Not a real number': '√121 is real because 121 is positive. Find the number whose square is 121: it is 11.',
+  },
+  'REAL.03': {
+    'It has infinitely many digits': 'Having infinitely many digits is not enough; non-repeating decimals can be irrational. Here the digits repeat, giving 1/3.',
+    'It is close to zero': 'Being close to zero does not decide whether a number is rational. The repeating decimal 0.333… equals 1/3.',
+    'It contains a decimal point': 'A decimal point alone does not prove a number rational. This decimal is rational because its repeating pattern equals 1/3.',
+  },
+  'REAL.04': {
+    'It is irrational because 1/4 is not an integer': '1/4 need not be an integer for its root to be rational. Since (1/2)² = 1/4, √(1/4) = 1/2.',
+    'It equals 1/16 because both parts are squared': 'Taking a square root reverses squaring; it does not square the numerator and denominator. Test (1/2)² to find the root.',
+    'It is not real': '1/4 is non-negative, so it has a real square root. The principal root is the non-negative fraction 1/2.',
+  },
+  'HCF-LCM.01': {
+    '2 × 3 × 7': '2 × 3 × 7 equals 42, so one factor of 2 is missing. Divide 84 by 2 twice before using 3 and 7.',
+    '2³ × 3 × 7': '2³ × 3 × 7 equals 168, so this includes one too many factors of 2. Check that the factors multiply back to 84.',
+    '2² × 3² × 7': '2² × 3² × 7 equals 252, so the factor 3 has been used twice. Prime-factor products must equal the original number.',
+  },
+  'HCF-LCM.02': {
+    '5': '5 is common, but it is not the highest common factor. Both 30 and 45 are also divisible by 15.',
+    '10': '10 divides 30 but not 45, so it cannot be a common factor. Check divisibility in both numbers.',
+    '90': '90 is the product-related LCM, not a factor of 30 or 45. An HCF must divide each number exactly.',
+  },
+  'HCF-LCM.03': {
+    '6 minutes': '6 is the HCF of 12 and 18, not their next shared multiple. A future shared arrival must be a multiple of both intervals.',
+    '30 minutes': '30 is not divisible by 12 or 18, so the buses would not both arrive then. List common multiples until the first one.',
+    '216 minutes': '216 is a common multiple, but not the least one. The question asks for the next time after starting together: 36 minutes.',
+  },
+  'HCF-LCM.04': {
+    'HCF is 40, because factors are added': 'Adding 16 and 24 gives 40, but a common factor must divide both numbers. Test divisors such as 8 instead.',
+    'HCF is 384, because numbers are multiplied': '384 is the product of 16 and 24, not a shared divisor. HCF means the greatest number that divides both exactly.',
+    'HCF is 16, because it is the smaller number': 'The smaller number is not automatically a common factor: 24 is not divisible by 16. Check which factors both numbers share.',
+  },
+  'RATIO-RATE.01': {
+    '6 : 8 : 2': '6 : 8 : 2 has introduced a third part, so it no longer compares the same two quantities. Divide both original parts by 6.',
+    '9 : 12': '9 : 12 is equivalent to 18 : 24, but it is not fully simplified. Divide both parts by their HCF, 3.',
+    '42 : 1': '42 : 1 changes the relationship rather than simplifying it. A ratio is simplified by dividing every part by the same factor.',
+  },
+  'RATIO-RATE.02': {
+    '153 km/h': '153 adds the distance and time instead of finding a rate. Average speed is distance divided by time: 150 ÷ 3.',
+    '450 km/h': '450 multiplies distance by time, but speed is kilometres per one hour. Divide 150 km by 3 hours.',
+    '47 km/h': '47 subtracts the time from the distance. To find a unit rate, divide 150 by 3.',
+  },
+  'RATIO-RATE.03': {
+    '11 cups': '11 adds the two ratio parts rather than scaling the white part. Red changes from 2 to 6 by a factor of 3.',
+    '30 cups': '30 scales white by 6 instead of using the ratio scale factor. Since 2 becomes 6, multiply 5 by 3.',
+    '5 cups': '5 is the white part in the original ratio, before scaling. The red amount has tripled, so white must also triple.',
+  },
+  'RATIO-RATE.04': {
+    'The claim is correct because the numbers in each ratio are different': 'Different-looking numbers can name the same ratio. Simplify 4 : 6 and 10 : 15 before comparing their multiplicative relationship.',
+    'The claim is correct because only ratios already in lowest terms can be equivalent': 'A ratio need not already be simplified to be equivalent. Both ratios simplify to 2 : 3.',
+    'The claim is incorrect because all ratios are equivalent': 'The claim is incorrect here, but not all ratios are equivalent. Equivalence requires the same simplified ratio, which is 2 : 3.',
+  },
+  'PROPORTION.01': {
+    'R48': 'R48 uses R6 per notebook, but R40 shared by 5 notebooks is R8 each. Multiply the unit price by 8.',
+    'R320': 'R320 multiplies the total R40 by 8 without first finding one notebook’s price. Use R40 ÷ 5, then multiply by 8.',
+    'R13': 'R13 is not the cost of eight notebooks at the constant rate. Find the R8 unit price, then scale it to eight.',
+  },
+  'PROPORTION.02': {
+    '9 hours': '9 hours treats more taps as taking more time. With the same tank, more identical taps mean fewer hours.',
+    '18 hours': '18 hours multiplies both quantities as if the relationship were direct. Keep the tap-hour product 8 × 6 constant.',
+    '6 hours': '6 hours ignores the extra four taps. Divide the fixed 48 tap-hours by 12 taps.',
+  },
+  'PROPORTION.03': {
+    'More loaves cost more at one price': 'More loaves costing more is direct proportion: both quantities increase together. Inverse proportion has a fixed product or task.',
+    'More litres give a higher water bill': 'A higher bill for more litres is direct proportion at a constant price. It does not show one quantity decreasing as the other increases.',
+    'More pages mean more printing': 'More pages requiring more printing is direct, not inverse. Look for a fixed trip or task where one quantity rises while the other falls.',
+  },
+  'PROPORTION.04': {
+    'They simplified the ratio too far': 'The error is not about simplifying a ratio. For one fixed job, workers and days should change in opposite directions.',
+    'They forgot a decimal point': 'No decimal placement causes the problem. Doubling workers should halve days to keep total worker-days unchanged.',
+    'They should add workers and days': 'Adding workers and days does not model a fixed job. Multiply workers by days, then keep that product constant.',
+  },
+  'FINANCE.01': {
+    'R21': 'R21 treats 7% as 0.007 or uses the wrong place value. Convert 7% to 0.07 before multiplying R3 000.',
+    'R2 790': 'R2 790 is the amount left after subtracting commission, not the commission itself. Calculate 7% of R3 000.',
+    'R700': 'R700 treats 7% as 7/30 or a much larger percentage. Use 7 ÷ 100 = 0.07, then multiply.',
+  },
+  'FINANCE.02': {
+    'R390 upfront; R390 net rental': 'R390 counts the R50 deposit three times and never returns it. Add the deposit once to R240, then remove it from net cost.',
+    'R240 upfront; R240 net rental': 'R240 is the rental fee only; the refundable R50 must still be paid upfront. Add it once at collection.',
+    'R290 upfront; R290 net rental': 'R290 is paid upfront, but the R50 deposit is refundable. After it is returned, only the R240 rental fee remains.',
+  },
+  'FINANCE.03': {
+    'R1 620.00': 'R1 620.00 is the balance after only one 8% increase. Compound interest applies the second 8% to R1 620.',
+    'R1 740.00': 'R1 740.00 adds two simple 8% increases to the original amount. Compound interest uses the increased balance in year two.',
+    'R1 620.80': 'R1 620.80 applies an incorrect small second increase. Calculate 8% of R1 620, then add it to that balance.',
+  },
+  'FINANCE.04': {
+    'The percentage doubles automatically': 'The percentage stays the same; its base changes. In year two, the same rate is applied to the larger balance.',
+    'The original balance is ignored': 'The original balance remains part of the accumulated balance. What changes is that first-year interest also earns interest.',
+    'Interest is subtracted first': 'Interest is added to grow the balance, not subtracted. The second calculation uses the balance after year-one interest.',
+  },
+  'INTEGER-OPS.01': {
+    '−21': '−21 combines the magnitudes as if both numbers were negative. Adding +13 moves 13 units right from −8.',
+    '−5': '−5 subtracts 13 from 8 rather than adding a positive number. Compare magnitudes: 13 is five more than 8.',
+    '21': '21 adds magnitudes but ignores the negative starting value. Start at −8 and move right 13 to reach 5.',
+  },
+  'INTEGER-OPS.02': {
+    '42': '42 has the right magnitude but misses the sign rule. A negative factor times a positive factor gives a negative product.',
+    '−13': '−13 adds −7 and 6 instead of multiplying. First multiply the magnitudes, then apply the different-sign rule.',
+    '13': '13 adds the magnitudes and ignores multiplication. Calculate 7 × 6, then use the negative sign from unlike factors.',
+  },
+  'INTEGER-OPS.03': {
+    '6': '6 uses the magnitude of the divisor but ignores its negative sign. Evaluate the bracket first: 3 + (−6) is −3.',
+    '0': '0 may come from adding 3 and −6 incorrectly. The bracket is −3, and 18 divided by −3 is not zero.',
+    '−3': '−3 is the bracket value, not the completed division. After finding −3, divide 18 by it.',
+  },
+  'INTEGER-OPS.04': {
+    'The signs cancel': 'Signs do not cancel in subtraction this way. Subtracting positive 7 means moving left seven units from −4.',
+    'Only 7 is negative': '7 is positive in −4 − 7; the subtraction operation changes the movement direction. Use a number line to move left.',
+    'All subtraction answers are negative': 'Subtraction can give positive, zero, or negative results. Here it is negative because starting at −4 and moving left gives −11.',
+  },
+  'POWERS-ROOTS.01': {
+    '−25': '−25 keeps a negative sign after squaring. The whole negative number is squared, and two negative factors multiply to a positive.',
+    '−10': '−10 doubles −5 instead of squaring it. Squaring means multiplying the base by itself: (−5) × (−5).',
+    '10': '10 doubles the magnitude rather than squaring. Expand (−5)² as (−5) × (−5) to get a positive product.',
+  },
+  'POWERS-ROOTS.02': {
+    '6': '6 cubed is positive 216, not −216. A cube root of a negative number must be negative.',
+    '−36': '−36 is not a cube root; cubing it would be far from −216. Find the number that multiplied by itself three times gives −216.',
+    '36': '36 confuses a square-related value with a cube root. Test −6 × −6 × −6 instead.',
+  },
+  'POWERS-ROOTS.03': {
+    '9': '9 treats −3 as the bracketed base, but there are no brackets. The exponent applies to 3, then the leading negative remains.',
+    '−6': '−6 doubles −3 instead of applying the exponent. Calculate 3² first, then apply the outside negative sign.',
+    '6': '6 changes the expression into doubling and also loses the leading negative. Without brackets, −3² means −(3 × 3).',
+  },
+  'POWERS-ROOTS.04': {
+    'Square roots have no value': '√64 does have a value: 8 × 8 = 64. The root symbol is defined to select the principal non-negative root.',
+    'Both signs are always written': '± is used when solving x² = 64, not when evaluating √64. The radical symbol alone means the non-negative root.',
+    '64 has only one square root equation': 'The equation x² = 64 has two solutions, 8 and −8. The notation √64 still names just the principal value 8.',
+  },
+  'EXP-LAWS.01': {
+    'a¹²': 'a¹² multiplies the exponents, which is for a power of a power. With a⁴ × a³, count factors and add exponents.',
+    'a¹': 'a¹ subtracts exponents as if dividing. Multiplication of the same base requires 4 + 3.',
+    '7a': '7a treats exponents as ordinary coefficients. The base stays a and the total number of factors is a⁷.',
+  },
+  'EXP-LAWS.02': {
+    'y¹³': 'y¹³ adds exponents as in multiplication. Division of equal non-zero bases cancels four factors, leaving 9 − 4.',
+    'y³⁶': 'y³⁶ multiplies exponents, which is for a power of a power. Here divide y⁹ by y⁴ and subtract exponents.',
+    '1/y⁵': '1/y⁵ would be y⁻⁵, not y⁹ ÷ y⁴. Cancel the four denominator factors from the nine numerator factors.',
+  },
+  'EXP-LAWS.03': {
+    'm⁴n⁵': 'm⁴ is correct, but n³ squared multiplies 3 by 2, giving n⁶. Apply the outside power to every factor.',
+    'm⁴n⁹': 'n⁹ adds exponents instead of multiplying for a power of a power. Square n³ by using 3 × 2.',
+    'm²n⁶': 'n⁶ is correct, but m² must also be squared. Multiply both inner exponents by the outer 2.',
+  },
+  'EXP-LAWS.04': {
+    'The answer is always x⁵': 'x⁵ would follow from multiplying x² and x³, but the operation here is addition. Exponent laws do not combine unlike addends.',
+    'Add the bases instead': 'The bases are both x, so adding bases does not simplify x² + x³. The terms have different exponents and remain separate.',
+    'Subtract the exponents': 'Subtracting exponents is a division rule, not an addition rule. Keep x² + x³ as written.',
+  },
+  'EXP-ZERO-NEGATIVE.01': {
+    '0': '0 confuses a zero exponent with a zero base. For non-zero 9, the zero-exponent rule gives 9⁰ = 1.',
+    '9': '9 keeps the base but ignores the exponent. A non-zero base raised to zero equals 1.',
+    'Undefined': '9⁰ is defined because the base is non-zero. The undefined case to avoid is 0⁰, not 9⁰.',
+  },
+  'EXP-ZERO-NEGATIVE.02': {
+    '−100': '−100 treats the negative exponent as a negative answer and reverses the reciprocal. First write 10⁻² as 1/10².',
+    '100': '100 ignores the negative exponent. A negative exponent means reciprocal, so use 1 divided by 100.',
+    '−0.01': '−0.01 adds a negative sign that is not in the base. The negative exponent changes position, not the sign.',
+  },
+  'EXP-ZERO-NEGATIVE.03': {
+    '−p⁵': '−p⁵ changes the sign of the expression, but it is not a reciprocal. A negative exponent means 1 divided by p⁵.',
+    'p⁵': 'p⁵ has the reciprocal backwards. Move p⁵ to the denominator by giving it exponent −5.',
+    '1/5p': '1/5p divides by 5 and then multiplies by p; it is not 1 divided by p⁵. Keep p as the base with exponent −5.',
+  },
+  'EXP-ZERO-NEGATIVE.04': {
+    'Zero has no powers': 'Zero can be raised to positive powers, such as 0² = 0. The issue is specifically the undefined form 0⁰.',
+    'It must equal 1': 'The non-zero rule a⁰ = 1 cannot be applied with a = 0. Its quotient-law argument would require division by zero.',
+    'It must equal 0': '0⁰ is not set to 0 by the zero-base pattern. The usual zero-exponent proof fails because it would divide 0 by 0.',
+  },
+  'SCI-NOTATION.01': {
+    '72 × 10³': '72 × 10³ has the right value but 72 is not between 1 and 10. Shift the decimal once more and increase the exponent.',
+    '7.2 × 10³': '7.2 is correctly sized, but 10³ moves the decimal only three places to 7 200. Count four places for 72 000.',
+    '0.72 × 10⁵': '0.72 × 10⁵ has the right value but the coefficient is below 1. Standard notation needs 1 ≤ |a| < 10.',
+  },
+  'SCI-NOTATION.02': {
+    '360': '360 moves the decimal only two places. The exponent 3 means multiply 3.6 by 1 000.',
+    '36 000': '36 000 shifts the decimal four places, not three. Starting at 3.6, move it three places right.',
+    '0.0036': '0.0036 treats the positive exponent as a negative one. A positive power of 10 makes the number larger.',
+  },
+  'SCI-NOTATION.03': {
+    '4.2 × 10⁻³': '4.2 × 10⁻³ has the right magnitude but loses the original negative sign. Keep the sign in the coefficient.',
+    '−4.2 × 10³': '−4.2 × 10³ is −4 200, much larger than −0.0042. Moving the decimal right for a small number needs a negative exponent.',
+    '−0.42 × 10⁻²': '−0.42 × 10⁻² equals −0.0042, but −0.42 is not a standard coefficient. Shift it to −4.2 and adjust the exponent.',
+  },
+  'SCI-NOTATION.04': {
+    'The exponent must be negative': 'Positive exponents are valid for large numbers. The issue is the coefficient 45, whose absolute value is not less than 10.',
+    'Scientific notation cannot use 10⁵': '10⁵ is allowed in scientific notation. Standard form restricts the coefficient, not whether a positive exponent is used.',
+    '45 is too small': '45 is too large for the coefficient range 1 ≤ |a| < 10. Rewrite it as 4.5 × 10⁶ instead.',
+  },
+  'PATTERN-STRUCTURE.01': {
+    '11': '11 is the first term, not the difference. Subtract consecutive terms: 16 − 11 and 21 − 16.',
+    '10': '10 does not match the increase from 11 to 16. Calculate the difference by subtraction, not by combining non-adjacent terms.',
+    '−5': '−5 reverses the subtraction order. The pattern increases, so use later term minus earlier term to get +5.',
+  },
+  'PATTERN-STRUCTURE.02': {
+    '20, 24': '20, 24 uses an increase of 4, but the given terms increase by 6. Continue the same first difference.',
+    '26, 36': '26, 36 changes the step size after the first new term. Add 6 each time to preserve the linear pattern.',
+    '18, 20': '18, 20 does not continue the +6 difference. Compare 10 − 4 and 16 − 10 before extending.',
+  },
+  'PATTERN-STRUCTURE.03': {
+    'Its terms are all even': 'Even terms alone do not ensure a linear pattern; their differences could change. A linear sequence has a constant first difference.',
+    'Its ratio is constant': 'A constant ratio identifies a geometric pattern, not generally a linear one. Check successive differences instead.',
+    'It starts at zero': 'A linear pattern can start at any value. What matters is that the increase or decrease stays constant.',
+  },
+  'PATTERN-STRUCTURE.04': {
+    '37': '37 adds the difference six times from 7, but reaching T8 requires seven increases. Count the jumps from term 1 to term 8.',
+    '47': '47 uses too many increases or the wrong starting point. Use T8 = 7 + 5(8 − 1).',
+    '52': '52 adds 5 nine times rather than seven. From T1 to T8 there are exactly seven equal steps.',
+  },
+  'NTH-TERM.01': {
+    '4n + 3': '4n + 3 gives 7 when n = 1, not the first term 3. Keep the difference 4, then choose a constant that fits n = 1.',
+    '3n + 1': '3n + 1 gives the wrong constant difference of 3. The sequence rises by 4 each time.',
+    'n + 3': 'n + 3 increases by only 1 per term. The coefficient of n must match the first difference, 4.',
+  },
+  'NTH-TERM.02': {
+    '30': '30 uses 5 × 6 but omits the +2 in the rule. Substitute both parts of Tn = 5n + 2.',
+    '37': '37 adds 2 to the wrong multiple of 5. Calculate 5 × 6 first, then add 2 once.',
+    '13': '13 appears to substitute the wrong n-value. The question asks for T6, so use n = 6.',
+  },
+  'NTH-TERM.03': {
+    'It changes the first difference': 'Testing n = 2 does not change the pattern. It checks whether the proposed rule gives the actual second term.',
+    'It makes c equal zero': 'The constant c is set by fitting a term, not automatically made zero by testing n = 2. Testing provides another check.',
+    'It removes the need for n = 1': 'n = 1 is still useful to find the constant. n = 2 confirms the same rule works beyond one term.',
+  },
+  'NTH-TERM.04': {
+    'It should be 8n + 3': '8n + 3 uses the first term as the difference, but the sequence increases by 3. Use coefficient 3 and fit the constant.',
+    'It should be 3n': '3n has the correct difference but gives 3 at n = 1, not 8. Add a constant so the first term fits.',
+    'The learner rule is correct': '3n + 8 gives 11 for n = 1, so it does not match the first term 8. Test a rule at n = 1.',
+  },
+  'VISUAL-PATTERNS.01': {
+    '12': '12 uses 3 matchsticks per square but omits the first square’s extra side. A joined row follows 3n + 1.',
+    '16': '16 counts four sides for every square and double-counts shared sides. Each extra square adds only 3 matchsticks.',
+    '10': '10 treats the first square as if it also adds only 3 sides. Start with 4, then add 3 for each of the next squares.',
+  },
+  'VISUAL-PATTERNS.02': {
+    '3n + 5': '3n + 5 has the right difference but gives 8 at n = 1, not 5. Test the rule using the first figure.',
+    '5n + 3': '5n + 3 uses a difference of 5, but the pattern increases by 3. The coefficient must match the first difference.',
+    'n + 4': 'n + 4 increases by only 1 each term. The sequence rises by 3, so its n coefficient must be 3.',
+  },
+  'VISUAL-PATTERNS.03': {
+    'The first square has no sides': 'The first square has four sides. The reduction comes because each later square shares one side with its neighbour.',
+    'n is always one': 'n counts the number of squares and changes from figure to figure. The +1 comes from the first unshared side, not from n being fixed.',
+    'Squares only need three sides': 'A single square has four sides. In a joined row, a shared side is counted once rather than requiring only three sides per square.',
+  },
+  'VISUAL-PATTERNS.04': {
+    '28': '28 makes only five increases of 4 from figure 1. Figure 7 is six steps after figure 1.',
+    '34': '34 uses seven increases after figure 1 instead of six. Count the gaps between figure 1 and figure 7.',
+    '42': '42 multiplies 6 by 7 as if the total were scaled, but the pattern adds 4 tiles each new figure.',
+  },
+  'G8-FACTORS.01': {
+    '2': '2 subtracts or divides in the wrong order. Do the division 18 ÷ 3 first, then add 4.',
+    '3': '3 may be the divisor, but it is not the full expression’s value. Follow order of operations before adding.',
+    '22': '22 adds 18 and 4 before dividing, which changes the expression. Division comes before addition here.',
+  },
+  'G8-FACTORS.02': {
+    '8': '8 does not divide 36 exactly; 36 ÷ 8 leaves a remainder. A factor must divide with no remainder.',
+    '10': '10 is not a factor because 36 ÷ 10 is not whole. Test division to check a proposed factor.',
+    '14': '14 does not divide 36 exactly. Look for a number that makes a whole-number quotient, such as 9.',
+  },
+  'G8-FACTORS.03': {
+    '32': '32 adds 5 and 3 before multiplying by 4. Multiplication has priority, so calculate 3 × 4 first.',
+    '20': '20 multiplies 5 by 4 and ignores the 3. Follow the expression as written: only 3 is multiplied by 4.',
+    '12': '12 is the product 3 × 4, but the leading +5 still needs to be included.',
+  },
+  'G8-FACTORS.04': {
+    'It is their sum': '6 is not the sum of 18 and 30. It is common because both numbers can be divided by 6 with no remainder.',
+    'It is bigger than both': '6 is smaller than both numbers, and size alone does not make a factor. Test whether it divides each exactly.',
+    'It is a multiple of neither': 'Whether 6 is a multiple is not the definition of a common factor. Check 18 ÷ 6 and 30 ÷ 6.',
+  },
+  'G8-FRACTIONS.01': {
+    '3/8': '3/8 adds the denominators, which is not allowed when they already match. Keep denominator 4 and add the numerators.',
+    '2/8': '2/8 changes both the numerator total and the common denominator. With fourths, 1 fourth plus 2 fourths is 3 fourths.',
+    '1/2': '1/2 is equivalent to 2/4, not 3/4. Add the numerators first, then simplify only if possible.',
+  },
+  'G8-FRACTIONS.02': {
+    '3/20': '3/20 changes only the denominator, so it is not equivalent to 3/5. Multiply numerator and denominator by 4.',
+    '15/20': '15/20 multiplies the numerator by 5 while the denominator is multiplied by 4. Use the same factor on both parts.',
+    '8/20': '8/20 does not keep the fraction’s value because 3 was not multiplied by 4. Make 5 into 20, then do the same to 3.',
+  },
+  'G8-FRACTIONS.03': {
+    '1/6': '1/6 subtracts numerators without first changing 2/3 to sixths. Rewrite 2/3 as 4/6.',
+    '1/3': '1/3 may come from using a denominator of 3, but 1/6 must be converted to a common denominator before subtraction.',
+    '1/18': '1/18 multiplies denominators, which is not the method for subtracting fractions. Use the common denominator 6.',
+  },
+  'G8-FRACTIONS.04': {
+    'The denominators are added': 'Adding denominators does not show equivalent fractions. Divide both numerator and denominator of 2/4 by the same number.',
+    'The numerator is smaller than the denominator': 'Many proper fractions have a smaller numerator, but that does not prove they equal 1/2. Simplify 2/4 using a common factor.',
+    'Fractions cannot be simplified': 'Fractions can be simplified when numerator and denominator share a factor. Divide both 2 and 4 by 2.',
+  },
+  'G8-DECIMALS.01': {
+    '5.25': '5.25 misaligns place values during subtraction. Write 6.2 as 6.20, then subtract hundredths, tenths, and ones.',
+    '4.65': '4.65 subtracts digits without correctly borrowing across decimal places. Line up the decimal points before subtracting.',
+    '4.85': '4.85 has an incorrect tenths or hundredths subtraction. Use 6.20 − 1.45 with aligned columns.',
+  },
+  'G8-DECIMALS.02': {
+    '2': '2 ignores decimal places and is too large: multiplying two numbers below 1 should give a number below 1.',
+    '0.02': '0.02 places the decimal one position too far left. Four tenths times five tenths is twenty hundredths, or 0.20.',
+    '0.9': '0.9 adds 0.4 and 0.5 rather than multiplying. Estimate first: the product should be about one fifth.',
+  },
+  'G8-DECIMALS.03': {
+    'R15.50': 'R15.50 adds a small amount instead of multiplying the full price by 3. Multiply R12.50 three times.',
+    'R36.50': 'R36.50 has the right tens but an incorrect cents calculation. Add 12.50 + 12.50 + 12.50 carefully.',
+    'R125.00': 'R125.00 shifts the decimal point and is ten times too large. Keep cents when multiplying 12.50 by 3.',
+  },
+  'G8-DECIMALS.04': {
+    'It replaces calculation': 'Estimating checks whether a calculation is reasonable; it does not replace the exact calculation when an exact answer is needed.',
+    'It removes units': 'Estimation still needs units, such as rand or kilometres. Its purpose is to spot unreasonable sizes or decimal placement.',
+    'It makes all answers whole': 'Estimates can be decimal values too. They help predict the size of an answer, not force it to be whole.',
+  },
+  'G8-INTEGERS.01': {
+    '5': '5 ignores that −9 has the greater magnitude. Starting at −9 and moving 4 right lands on −5.',
+    '−13': '−13 treats +4 as another negative addend. Adding a positive moves toward zero, from −9 to −5.',
+    '13': '13 adds magnitudes but loses the sign of the larger magnitude. Compare 9 and 4, then keep the sign of −9.',
+  },
+  'G8-INTEGERS.02': {
+    '−15': '−15 has the right magnitude but the wrong sign. Two negative factors multiply to a positive result.',
+    '−8': '−8 adds −5 and −3 instead of multiplying. Multiply the magnitudes first, then use the same-sign rule.',
+    '8': '8 adds magnitudes rather than multiplying. Calculate 5 × 3 and remember that matching negative signs give positive.',
+  },
+  'G8-INTEGERS.03': {
+    '5': '5 treats subtracting −2 as subtracting positive 2. Rewrite 7 − (−2) as 7 + 2.',
+    '−9': '−9 changes both signs and does not follow the subtraction rule. A double negative here becomes addition.',
+    '−5': '−5 uses the difference of the magnitudes with an unsupported negative sign. Add 2 to 7 after rewriting the expression.',
+  },
+  'G8-INTEGERS.04': {
+    'Division ignores signs': 'Division does use signs. A negative divided by a positive has unlike signs, so the quotient is negative.',
+    'Both numbers are negative': 'Only −12 is negative; 3 is positive. The different signs explain why the quotient is negative.',
+    '12 is greater than 3': 'Magnitude comparison does not set the sign of a quotient. Check whether the two signs match or differ.',
+  },
+  'G8-EXPONENTS.01': {
+    '8': '8 is 2³, so it uses only three factors. The exponent 4 requires 2 × 2 × 2 × 2.',
+    '6': '6 multiplies the base by the exponent instead of using repeated multiplication. Write four factors of 2.',
+    '24': '24 may come from 2 × 3 × 4, but exponents repeat the base, not consecutive numbers. Multiply four 2s.',
+  },
+  'G8-EXPONENTS.02': {
+    'x¹⁰': 'x¹⁰ multiplies exponents, which is for a power of a power. For multiplication of the same base, add 2 and 5.',
+    '2x⁷': '2x⁷ adds an unnecessary coefficient 2. The exponents add while the base remains x.',
+    'x³': 'x³ subtracts the exponents as if dividing. Multiplying x² and x⁵ gives seven factors of x.',
+  },
+  'G8-EXPONENTS.03': {
+    '3': '3 is the exponent, not the base. The base is the complete quantity being repeatedly multiplied.',
+    '4 only': 'The brackets include the negative sign in the base. The repeated factor is −4, not just 4.',
+    '−3': '−3 combines the sign and exponent incorrectly. Read the expression: −4 is inside the brackets and 3 is outside.',
+  },
+  'G8-EXPONENTS.04': {
+    'Bases are added': 'The bases stay a; they are not added. Count the total factors of a to see that exponents add.',
+    'The base changes to 6': '6 is not a new base. The base remains a and the exponents 3 and 2 combine by addition.',
+    'It is always a⁶': 'a⁶ would result from multiplying exponents, not from multiplying powers with the same base. Use 3 + 2.',
+  },
+  'G8-PATTERNS.01': {
+    '19': '19 adds 2 instead of the constant difference 4. Compare 13 − 9 and 17 − 13.',
+    '20': '20 does not continue the +4 pattern. Add the same difference to 17.',
+    '22': '22 adds 5, not the established difference 4. Keep the change consistent from term to term.',
+  },
+  'G8-PATTERNS.02': {
+    '7': '7 may use n = 3 rather than n = 4. Substitute the requested value 4 into 2n + 1.',
+    '8': '8 doubles 4 but omits the +1 in the rule. Apply both operations in 2(4) + 1.',
+    '12': '12 adds or multiplies the rule incorrectly. Evaluate 2 × 4 first, then add 1 once.',
+  },
+  'G8-PATTERNS.03': {
+    '3n + 4': '3n + 4 has the right difference but gives 7 at n = 1, not 4. Test the rule against the first term.',
+    '4n − 1': '4n − 1 changes by 4 each term, but the sequence changes by 3. The coefficient must match the difference.',
+    'n + 3': 'n + 3 increases by only 1, not 3. Use 3n plus a constant that makes the first term 4.',
+  },
+  'G8-PATTERNS.04': {
+    'It changes n into 1': 'Testing n = 2 does not change n; it substitutes 2 to predict the second term. This checks the proposed rule.',
+    'It removes the difference': 'The common difference remains part of the pattern. Testing another n-value verifies that the rule preserves it.',
+    'All rules work at n=2': 'A wrong rule can fail at n = 2, so testing it is useful. Compare the predicted second term with the actual one.',
+  },
+});
 
 const lessons = [
   lesson('G9-NUM-REAL-IRRATIONAL', 'Grade 9', 'REAL', 'Real numbers: rational or irrational',
@@ -86,11 +463,7 @@ const lessons = [
     'A square multiplies a number by itself; a cube uses three factors. Brackets decide whether a negative sign belongs to the base. √ gives the principal non-negative square root, while cube roots can be negative.',
     'Evaluate (−4)².\nThe brackets make −4 the base.\n(−4)² = (−4) × (−4) = 16.',
     'Without brackets, −4² means −(4²) = −16. The brackets matter.', [
-      q('What is (−5)²?', '25', ['−25', '−10', '10'], '(−5)² = (−5) × (−5) = 25.', 'Square the whole bracketed number.', false, {
-        '−25': '−25 keeps a negative sign after squaring. The bracket makes both factors negative, and (−5) × (−5) is +25.',
-        '−10': '−10 doubles −5 instead of squaring it. Squaring means multiplying the base by itself: (−5) × (−5).',
-        '10': '10 treats the exponent as an instruction to change the sign or add. Expand (−5)² as (−5) × (−5), which is 25.',
-      }),
+      q('What is (−5)²?', '25', ['−25', '−10', '10'], '(−5)² = (−5) × (−5) = 25.', 'Square the whole bracketed number.'),
       q('What is ∛(−216)?', '−6', ['6', '−36', '36'], '(−6) × (−6) × (−6) = −216.', 'Which negative number cubed gives −216?'),
       q('Evaluate −3².', '−9', ['9', '−6', '6'], 'The exponent applies to 3 first: −3² = −(3²) = −9.', 'There are no brackets around −3.', true),
       q('Why is √64 not ±8?', '√ means the principal non-negative root', ['Square roots have no value', 'Both signs are always written', '64 has only one square root equation'], 'The equation x² = 64 has ±8 solutions, but the symbol √64 is defined as the principal root 8.', 'Separate a root symbol from solving an equation.', true),
@@ -193,10 +566,16 @@ function buildPracticeQuestions() {
     const labels = [question.correct, ...question.wrong];
     const options = {};
     const distractorExplanations = {};
+    const feedbackKey = `${entry.slug}.${String(index + 1).padStart(2, '0')}`;
+    const authoredFeedback = explicitFeedbackByQuestion[feedbackKey];
+    if (!authoredFeedback) throw new Error(`${feedbackKey}: explicit distractor feedback is required for publication-ready content.`);
+    const authoredAnswers = Object.keys(authoredFeedback).sort();
+    const expectedAnswers = question.wrong.slice().sort();
+    if (authoredAnswers.join('\u0000') !== expectedAnswers.join('\u0000')) throw new Error(`${feedbackKey}: authored feedback must map exactly to its three stable wrong-answer values.`);
     ['A', 'B', 'C', 'D'].forEach((key, optionIndex) => {
       const label = labels[(optionIndex - ['A', 'B', 'C', 'D'].indexOf(position) + 4) % 4];
       options[key] = label;
-      if (key !== position) distractorExplanations[key] = question.feedbackByWrong?.[label] || inferredDistractorFeedback(question, label);
+      if (key !== position) distractorExplanations[key] = authoredFeedback[label];
     });
     return {
       code: `Q.${entry.grade === 'Grade 8' ? 'G8' : 'G9'}.S4.PRACTICE.${entry.slug}.${String(index + 1).padStart(2, '0')}`,
@@ -204,8 +583,9 @@ function buildPracticeQuestions() {
       activityTitle: `${entry.title}: short practice`, prompt: question.prompt, options, correctOption: position,
       distractorExplanations, solution: question.solution, hint: question.hint,
       reasoning: question.reasoning, reviewRecord: question.reviewRecord,
+      feedbackSource: 'explicitly_authored_v3', feedbackByWrong: authoredFeedback,
     };
   }));
 }
 
-module.exports = { lessons, buildPracticeQuestions };
+module.exports = { lessons, buildPracticeQuestions, explicitFeedbackByQuestion };

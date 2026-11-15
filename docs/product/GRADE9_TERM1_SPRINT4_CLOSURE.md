@@ -1,6 +1,6 @@
 # Grade 9 Term 1 Sprint 4 closure
 
-## Current recommendation: not yet pilot-ready
+## Current recommendation: technically validated, not yet pilot-ready
 
 This closure corrects the identified mathematics defects, records a formal-assessment blueprint matrix and makes the no-content Learning action non-clickable. It does not fabricate a mathematics approval, database publication or real-data journey result.
 
@@ -9,8 +9,8 @@ This closure corrects the identified mathematics defects, records a formal-asses
 | State | Instructional content | Formal assessments | Pilot |
 | --- | --- | --- | --- |
 | Authored | v2 draft authored | 17-form bank authored | Fixture/test plan authored |
-| Tested | Source QA and regression tests | Source QA and blueprint matrix | Local runtime is environment-blocked |
-| Mathematically reviewed | Pending designated ChatGPT verdict | Pending designated ChatGPT verdict | Not applicable |
+| Tested | Content QA and regression tests passed | 17-form matrix and publication validation passed in disposable CI | Real A–H journeys, RLS and browser capture passed in disposable CI |
+| Mathematically reviewed | v2 conditional verdict historical; v3 explicit verdict pending | Pending policy/form content approval | Not applicable |
 | Admin approved | No | No | No |
 | Published | No | No | No |
 | Pilot-ready | No | No | No |
@@ -26,19 +26,19 @@ The corrected instructional export is the package for the designated ChatGPT mat
 
 ## Assessment interpretation
 
-Whole Numbers has five instructional areas. The draft policy’s critical skills are real-number classification, HCF/LCM, and ratio/rate; direct/inverse proportion and financial applications remain sampled but are not silently counted as duplicate critical evidence. Every independent Whole Numbers form now has four questions for each critical skill, two or more questions for each remaining area, at least two reasoning questions, and a 25-minute recommended duration. Topic baselines remain diagnostic and do not establish mastery without the independent challenge/endline evidence required by the policy.
+Whole Numbers has five instructional areas. The persisted policy’s critical skills are real-number classification, HCF/LCM, ratio/rate and financial applications; direct/inverse proportion remains essential sampling rather than duplicate critical evidence. Each independent Whole Numbers endline, mastery challenge and reassessment now has 18 questions, a 30-minute duration, four distinct primary-skill questions for every critical skill, and the required reasoning evidence. Topic baselines remain diagnostic and do not establish mastery without independent challenge/endline evidence.
 
 The matrix reports structural sufficiency only. Every form still reports database publication blockers until the existing approval RPCs approve its definition, policy and question versions. It never labels a draft form publishable.
 
 ## Real-data and visual evidence
 
-No real-Supabase Journey A–H run or non-intercepted Sprint 4 screenshot is claimed by this branch yet. The managed environment cannot pull `supabase/postgres:15.8.1.085` (`Forbidden`); the prior system-Chromium visual fallback also exhausted artifact space. GitHub Actions already starts a disposable local Supabase stack and runs database/RLS/browser gates; this branch adds the content and assessment gates to that workflow, and its PR run is the next evidence source.
+All real-Supabase Journey A–H scenarios passed in [App CI 43697944135](https://github.com/JaydinCodes/LJ-s-tutoring/actions/runs/43697944135). The job rebuilt a disposable database from committed migrations, passed runtime RLS and Edge authorization, and captured real-data mobile/desktop screenshots in [the Sprint 4 artifact](https://github.com/JaydinCodes/LJ-s-tutoring/actions/runs/43697944135/artifacts/14155077723). The workspace could not download that Azure Blob artifact for manual pixel inspection; screenshot review remains a release-owner task. No production data, deployment or publication is claimed.
 
 ## Administrator activation checklist after academic approval
 
 1. Apply migrations in staging and run the review-export and assessment-matrix commands.
-2. In Admin → Learning content, inspect and approve the v2 lessons and question versions; do not approve the v1 corrections by mistake.
-3. Approve only activities whose linked v2 questions are approved.
+2. In Admin → Learning content, inspect and approve the corrected v3 question drafts and the relevant lessons; retain v1/v2 records as historical versions.
+3. Approve only activities whose linked v3 questions are approved.
 4. In assessment management, inspect the publication validation result for every definition, approve the policy revision/questions/definition, then call the existing publication control.
 5. Use a disposable Grade 9 student to verify the published learner path, bridge return route, answer redaction and reassessment authorisation.
 6. Capture the non-intercepted desktop and mobile artifacts in CI before inviting the controlled pilot cohort.

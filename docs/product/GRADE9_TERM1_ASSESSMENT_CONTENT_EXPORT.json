@@ -1,6 +1,6 @@
 {
   "generatedAt": "source-controlled",
-  "questionCount": 252,
+  "questionCount": 258,
   "questions": [
     {
       "code": "Q.G9.T1C.WHOLE.TOPIC-BASELINE.1",
@@ -230,26 +230,26 @@
       "topic": "WHOLE",
       "form": "TOPIC-BASELINE",
       "sequence": 9,
-      "skillCode": "G9-NUM-DIRECT-INVERSE-PROPORTION",
-      "prompt": "Four workers complete a job in 6 days at the same rate. How many days would eight workers take?",
+      "skillCode": "G9-NUM-RATIO-RATE",
+      "prompt": "A paint mix has red : white = 4 : 3. If the red paint is increased to 8 cups, how much white paint is needed to keep the same mix?",
       "options": {
-        "A": "24 days",
-        "B": "3 days",
-        "C": "12 days",
-        "D": "6 days"
+        "A": "12 cups",
+        "B": "6 cups",
+        "C": "3 cups",
+        "D": "8 cups"
       },
       "correctOption": "B",
       "distractorExplanations": {
-        "A": "This gives worker-days rather than days for eight workers.",
-        "C": "This treats days as directly proportional to workers.",
-        "D": "This ignores the increase in workers."
+        "A": "This multiplies by the original red amount rather than the scale factor 2.",
+        "C": "This leaves the white amount unchanged while the red amount doubles.",
+        "D": "This copies the red amount instead of scaling the white part."
       },
-      "solution": "The job needs 4 × 6 = 24 worker-days. With 8 workers: 24 ÷ 8 = 3 days.",
+      "solution": "The red amount doubles from 4 to 8, so the white amount must also double: 3 × 2 = 6 cups.",
       "difficulty": 2,
-      "reasoningClassification": "procedural",
+      "reasoningClassification": "mathematical_reasoning",
       "verification": {
-        "kind": "inverse-proportion",
-        "expected": 3
+        "kind": "direct-ratio",
+        "expected": 6
       }
     },
     {
@@ -257,26 +257,26 @@
       "topic": "WHOLE",
       "form": "TOPIC-BASELINE",
       "sequence": 10,
-      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
-      "prompt": "A salesperson earns 6% commission on sales of R1000. What is the commission?",
+      "skillCode": "G9-NUM-REAL-IRRATIONAL",
+      "prompt": "Which statement correctly classifies √484?",
       "options": {
-        "A": "R600",
-        "B": "R1006",
-        "C": "R6",
-        "D": "R60"
+        "A": "√484 is irrational because it has a root sign.",
+        "B": "√484 = −22.",
+        "C": "√484 is not real.",
+        "D": "√484 = 22, so it is rational."
       },
       "correctOption": "D",
       "distractorExplanations": {
-        "A": "This uses 60% instead of 6%.",
-        "B": "This adds 6 rand instead of taking 6%.",
-        "C": "This uses 0.6% instead of 6%."
+        "A": "The radicand is a perfect square, so its principal root is an integer.",
+        "B": "The square-root symbol denotes the principal non-negative root.",
+        "C": "The square root of a positive perfect square is real."
       },
-      "solution": "6% = 0.06. Commission = 0.06 × R1000 = R60.",
+      "solution": "Because 22 × 22 = 484, √484 = 22. Every integer is rational.",
       "difficulty": 2,
-      "reasoningClassification": "procedural",
+      "reasoningClassification": "mathematical_reasoning",
       "verification": {
-        "kind": "percentage",
-        "expected": 60
+        "kind": "editorial",
+        "evidence": "Worked solution and distractor rationale are authored for administrator review."
       }
     },
     {
@@ -284,26 +284,26 @@
       "topic": "WHOLE",
       "form": "TOPIC-BASELINE",
       "sequence": 11,
-      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
-      "prompt": "A bicycle rental costs R45 per day plus a once-off R20 deposit. What is paid at collection for 3 days?",
+      "skillCode": "G9-NUM-REAL-IRRATIONAL",
+      "prompt": "Which value is √(1/16)?",
       "options": {
-        "A": "R195",
-        "B": "R65",
-        "C": "R155",
-        "D": "R135"
+        "A": "4",
+        "B": "−1/4",
+        "C": "1/4",
+        "D": "1/16"
       },
       "correctOption": "C",
       "distractorExplanations": {
-        "A": "This charges the once-off deposit three times.",
-        "B": "This includes only one rental day.",
-        "D": "This omits the once-off deposit."
+        "A": "This is the denominator rather than the positive fractional root.",
+        "B": "The principal square root is non-negative.",
+        "D": "This repeats the radicand rather than taking its square root."
       },
-      "solution": "Rental = 3 × R45 = R135. Add one deposit of R20: R155.",
+      "solution": "(1/4)² = 1/16, so √(1/16) = 1/4. This is rational.",
       "difficulty": 2,
-      "reasoningClassification": "procedural",
+      "reasoningClassification": "mathematical_reasoning",
       "verification": {
-        "kind": "rental",
-        "expected": 155
+        "kind": "editorial",
+        "evidence": "Worked solution and distractor rationale are authored for administrator review."
       }
     },
     {
@@ -564,26 +564,26 @@
       "topic": "WHOLE",
       "form": "ENDLINE",
       "sequence": 9,
-      "skillCode": "G9-NUM-DIRECT-INVERSE-PROPORTION",
-      "prompt": "Four workers complete a job in 9 days at the same rate. How many days would eight workers take?",
+      "skillCode": "G9-NUM-RATIO-RATE",
+      "prompt": "A paint mix has red : white = 5 : 3. If the red paint is increased to 10 cups, how much white paint is needed to keep the same mix?",
       "options": {
-        "A": "18 days",
-        "B": "9 days",
-        "C": "36 days",
-        "D": "4.5 days"
+        "A": "3 cups",
+        "B": "10 cups",
+        "C": "15 cups",
+        "D": "6 cups"
       },
       "correctOption": "D",
       "distractorExplanations": {
-        "A": "This treats days as directly proportional to workers.",
-        "B": "This ignores the increase in workers.",
-        "C": "This gives worker-days rather than days for eight workers."
+        "A": "This leaves the white amount unchanged while the red amount doubles.",
+        "B": "This copies the red amount instead of scaling the white part.",
+        "C": "This multiplies by the original red amount rather than the scale factor 2."
       },
-      "solution": "The job needs 4 × 9 = 36 worker-days. With 8 workers: 36 ÷ 8 = 4.5 days.",
+      "solution": "The red amount doubles from 5 to 10, so the white amount must also double: 3 × 2 = 6 cups.",
       "difficulty": 2,
-      "reasoningClassification": "procedural",
+      "reasoningClassification": "mathematical_reasoning",
       "verification": {
-        "kind": "inverse-proportion",
-        "expected": 4.5
+        "kind": "direct-ratio",
+        "expected": 6
       }
     },
     {
@@ -591,26 +591,26 @@
       "topic": "WHOLE",
       "form": "ENDLINE",
       "sequence": 10,
-      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
-      "prompt": "A salesperson earns 6% commission on sales of R1500. What is the commission?",
+      "skillCode": "G9-NUM-REAL-IRRATIONAL",
+      "prompt": "Which statement correctly classifies √529?",
       "options": {
-        "A": "R9",
-        "B": "R90",
-        "C": "R900",
-        "D": "R1506"
+        "A": "√529 is not real.",
+        "B": "√529 = 23, so it is rational.",
+        "C": "√529 is irrational because it has a root sign.",
+        "D": "√529 = −23."
       },
       "correctOption": "B",
       "distractorExplanations": {
-        "A": "This uses 0.6% instead of 6%.",
-        "C": "This uses 60% instead of 6%.",
-        "D": "This adds 6 rand instead of taking 6%."
+        "A": "The square root of a positive perfect square is real.",
+        "C": "The radicand is a perfect square, so its principal root is an integer.",
+        "D": "The square-root symbol denotes the principal non-negative root."
       },
-      "solution": "6% = 0.06. Commission = 0.06 × R1500 = R90.",
+      "solution": "Because 23 × 23 = 529, √529 = 23. Every integer is rational.",
       "difficulty": 2,
-      "reasoningClassification": "procedural",
+      "reasoningClassification": "mathematical_reasoning",
       "verification": {
-        "kind": "percentage",
-        "expected": 90
+        "kind": "editorial",
+        "evidence": "Worked solution and distractor rationale are authored for administrator review."
       }
     },
     {
@@ -618,26 +618,26 @@
       "topic": "WHOLE",
       "form": "ENDLINE",
       "sequence": 11,
-      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
-      "prompt": "A bicycle rental costs R50 per day plus a once-off R30 deposit. What is paid at collection for 3 days?",
+      "skillCode": "G9-NUM-REAL-IRRATIONAL",
+      "prompt": "Which value is √(1/25)?",
       "options": {
-        "A": "R180",
-        "B": "R150",
-        "C": "R240",
-        "D": "R80"
+        "A": "1/5",
+        "B": "1/25",
+        "C": "5",
+        "D": "−1/5"
       },
       "correctOption": "A",
       "distractorExplanations": {
-        "B": "This omits the once-off deposit.",
-        "C": "This charges the once-off deposit three times.",
-        "D": "This includes only one rental day."
+        "B": "This repeats the radicand rather than taking its square root.",
+        "C": "This is the denominator rather than the positive fractional root.",
+        "D": "The principal square root is non-negative."
       },
-      "solution": "Rental = 3 × R50 = R150. Add one deposit of R30: R180.",
+      "solution": "(1/5)² = 1/25, so √(1/25) = 1/5. This is rational.",
       "difficulty": 2,
-      "reasoningClassification": "procedural",
+      "reasoningClassification": "mathematical_reasoning",
       "verification": {
-        "kind": "rental",
-        "expected": 180
+        "kind": "editorial",
+        "evidence": "Worked solution and distractor rationale are authored for administrator review."
       }
     },
     {
@@ -776,6 +776,60 @@
       "verification": {
         "kind": "editorial",
         "evidence": "Worked solution and distractor rationale are authored for administrator review."
+      }
+    },
+    {
+      "code": "Q.G9.T1C.WHOLE.ENDLINE.17",
+      "topic": "WHOLE",
+      "form": "ENDLINE",
+      "sequence": 17,
+      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
+      "prompt": "A salesperson earns 5% commission on R11500 of sales. What commission is earned?",
+      "options": {
+        "A": "R57500.00",
+        "B": "R580.00",
+        "C": "R575.00",
+        "D": "R2300.00"
+      },
+      "correctOption": "C",
+      "distractorExplanations": {
+        "A": "This treats the percentage as a whole-number multiplier rather than ${rate}/100.",
+        "B": "This adds the rate after calculating the percentage instead of using the commission amount.",
+        "D": "This divides by the percentage number instead of taking the stated percent of sales."
+      },
+      "solution": "5% = 0.05. Commission = R11500 × 0.05 = R575.00.",
+      "difficulty": 2,
+      "reasoningClassification": "procedural",
+      "verification": {
+        "kind": "percentage",
+        "expected": 575
+      }
+    },
+    {
+      "code": "Q.G9.T1C.WHOLE.ENDLINE.18",
+      "topic": "WHOLE",
+      "form": "ENDLINE",
+      "sequence": 18,
+      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
+      "prompt": "A bicycle rents for R100 per day for 3 days, with a non-refundable booking fee of R50 and a refundable R325 deposit. The bicycle is returned undamaged. What is the final rental cost after the deposit is returned?",
+      "options": {
+        "A": "R300",
+        "B": "R350",
+        "C": "R675",
+        "D": "R150"
+      },
+      "correctOption": "B",
+      "distractorExplanations": {
+        "A": "This omits the non-refundable booking fee.",
+        "C": "This counts the refundable deposit as a cost even though it is returned.",
+        "D": "This charges for one day only instead of all ${days} rental days."
+      },
+      "solution": "Rental charge = 3 × R100 = R300. Add the non-refundable fee: R300 + R50 = R350. The R325 deposit is returned, so it is not part of the final cost.",
+      "difficulty": 2,
+      "reasoningClassification": "mathematical_reasoning",
+      "verification": {
+        "kind": "rental",
+        "expected": 350
       }
     },
     {
@@ -1006,25 +1060,25 @@
       "topic": "WHOLE",
       "form": "MASTERY-CHALLENGE",
       "sequence": 9,
-      "skillCode": "G9-NUM-DIRECT-INVERSE-PROPORTION",
-      "prompt": "Four workers complete a job in 12 days at the same rate. How many days would eight workers take?",
+      "skillCode": "G9-NUM-RATIO-RATE",
+      "prompt": "A paint mix has red : white = 6 : 3. If the red paint is increased to 12 cups, how much white paint is needed to keep the same mix?",
       "options": {
-        "A": "48 days",
-        "B": "6 days",
-        "C": "24 days",
-        "D": "12 days"
+        "A": "18 cups",
+        "B": "6 cups",
+        "C": "3 cups",
+        "D": "12 cups"
       },
       "correctOption": "B",
       "distractorExplanations": {
-        "A": "This gives worker-days rather than days for eight workers.",
-        "C": "This treats days as directly proportional to workers.",
-        "D": "This ignores the increase in workers."
+        "A": "This multiplies by the original red amount rather than the scale factor 2.",
+        "C": "This leaves the white amount unchanged while the red amount doubles.",
+        "D": "This copies the red amount instead of scaling the white part."
       },
-      "solution": "The job needs 4 × 12 = 48 worker-days. With 8 workers: 48 ÷ 8 = 6 days.",
+      "solution": "The red amount doubles from 6 to 12, so the white amount must also double: 3 × 2 = 6 cups.",
       "difficulty": 2,
-      "reasoningClassification": "procedural",
+      "reasoningClassification": "mathematical_reasoning",
       "verification": {
-        "kind": "inverse-proportion",
+        "kind": "direct-ratio",
         "expected": 6
       }
     },
@@ -1033,26 +1087,26 @@
       "topic": "WHOLE",
       "form": "MASTERY-CHALLENGE",
       "sequence": 10,
-      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
-      "prompt": "A salesperson earns 6% commission on sales of R2000. What is the commission?",
+      "skillCode": "G9-NUM-REAL-IRRATIONAL",
+      "prompt": "Which statement correctly classifies √576?",
       "options": {
-        "A": "R1200",
-        "B": "R2006",
-        "C": "R12",
-        "D": "R120"
+        "A": "√576 is irrational because it has a root sign.",
+        "B": "√576 = −24.",
+        "C": "√576 is not real.",
+        "D": "√576 = 24, so it is rational."
       },
       "correctOption": "D",
       "distractorExplanations": {
-        "A": "This uses 60% instead of 6%.",
-        "B": "This adds 6 rand instead of taking 6%.",
-        "C": "This uses 0.6% instead of 6%."
+        "A": "The radicand is a perfect square, so its principal root is an integer.",
+        "B": "The square-root symbol denotes the principal non-negative root.",
+        "C": "The square root of a positive perfect square is real."
       },
-      "solution": "6% = 0.06. Commission = 0.06 × R2000 = R120.",
+      "solution": "Because 24 × 24 = 576, √576 = 24. Every integer is rational.",
       "difficulty": 2,
-      "reasoningClassification": "procedural",
+      "reasoningClassification": "mathematical_reasoning",
       "verification": {
-        "kind": "percentage",
-        "expected": 120
+        "kind": "editorial",
+        "evidence": "Worked solution and distractor rationale are authored for administrator review."
       }
     },
     {
@@ -1060,26 +1114,26 @@
       "topic": "WHOLE",
       "form": "MASTERY-CHALLENGE",
       "sequence": 11,
-      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
-      "prompt": "A bicycle rental costs R55 per day plus a once-off R40 deposit. What is paid at collection for 3 days?",
+      "skillCode": "G9-NUM-REAL-IRRATIONAL",
+      "prompt": "Which value is √(1/36)?",
       "options": {
-        "A": "R285",
-        "B": "R95",
-        "C": "R205",
-        "D": "R165"
+        "A": "6",
+        "B": "−1/6",
+        "C": "1/6",
+        "D": "1/36"
       },
       "correctOption": "C",
       "distractorExplanations": {
-        "A": "This charges the once-off deposit three times.",
-        "B": "This includes only one rental day.",
-        "D": "This omits the once-off deposit."
+        "A": "This is the denominator rather than the positive fractional root.",
+        "B": "The principal square root is non-negative.",
+        "D": "This repeats the radicand rather than taking its square root."
       },
-      "solution": "Rental = 3 × R55 = R165. Add one deposit of R40: R205.",
+      "solution": "(1/6)² = 1/36, so √(1/36) = 1/6. This is rational.",
       "difficulty": 2,
-      "reasoningClassification": "procedural",
+      "reasoningClassification": "mathematical_reasoning",
       "verification": {
-        "kind": "rental",
-        "expected": 205
+        "kind": "editorial",
+        "evidence": "Worked solution and distractor rationale are authored for administrator review."
       }
     },
     {
@@ -1218,6 +1272,60 @@
       "verification": {
         "kind": "editorial",
         "evidence": "Worked solution and distractor rationale are authored for administrator review."
+      }
+    },
+    {
+      "code": "Q.G9.T1C.WHOLE.MASTERY-CHALLENGE.17",
+      "topic": "WHOLE",
+      "form": "MASTERY-CHALLENGE",
+      "sequence": 17,
+      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
+      "prompt": "A salesperson earns 6% commission on R12000 of sales. What commission is earned?",
+      "options": {
+        "A": "R720.00",
+        "B": "R2000.00",
+        "C": "R72000.00",
+        "D": "R726.00"
+      },
+      "correctOption": "A",
+      "distractorExplanations": {
+        "B": "This divides by the percentage number instead of taking the stated percent of sales.",
+        "C": "This treats the percentage as a whole-number multiplier rather than ${rate}/100.",
+        "D": "This adds the rate after calculating the percentage instead of using the commission amount."
+      },
+      "solution": "6% = 0.06. Commission = R12000 × 0.06 = R720.00.",
+      "difficulty": 2,
+      "reasoningClassification": "procedural",
+      "verification": {
+        "kind": "percentage",
+        "expected": 720
+      }
+    },
+    {
+      "code": "Q.G9.T1C.WHOLE.MASTERY-CHALLENGE.18",
+      "topic": "WHOLE",
+      "form": "MASTERY-CHALLENGE",
+      "sequence": 18,
+      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
+      "prompt": "A bicycle rents for R110 per day for 4 days, with a non-refundable booking fee of R55 and a refundable R350 deposit. The bicycle is returned undamaged. What is the final rental cost after the deposit is returned?",
+      "options": {
+        "A": "R845",
+        "B": "R165",
+        "C": "R440",
+        "D": "R495"
+      },
+      "correctOption": "D",
+      "distractorExplanations": {
+        "A": "This counts the refundable deposit as a cost even though it is returned.",
+        "B": "This charges for one day only instead of all ${days} rental days.",
+        "C": "This omits the non-refundable booking fee."
+      },
+      "solution": "Rental charge = 4 × R110 = R440. Add the non-refundable fee: R440 + R55 = R495. The R350 deposit is returned, so it is not part of the final cost.",
+      "difficulty": 2,
+      "reasoningClassification": "mathematical_reasoning",
+      "verification": {
+        "kind": "rental",
+        "expected": 495
       }
     },
     {
@@ -1448,26 +1556,26 @@
       "topic": "WHOLE",
       "form": "ENDLINE-REASSESSMENT-B",
       "sequence": 9,
-      "skillCode": "G9-NUM-DIRECT-INVERSE-PROPORTION",
-      "prompt": "Four workers complete a job in 15 days at the same rate. How many days would eight workers take?",
+      "skillCode": "G9-NUM-RATIO-RATE",
+      "prompt": "A paint mix has red : white = 7 : 3. If the red paint is increased to 14 cups, how much white paint is needed to keep the same mix?",
       "options": {
-        "A": "7.5 days",
-        "B": "30 days",
-        "C": "15 days",
-        "D": "60 days"
+        "A": "6 cups",
+        "B": "3 cups",
+        "C": "14 cups",
+        "D": "21 cups"
       },
       "correctOption": "A",
       "distractorExplanations": {
-        "B": "This treats days as directly proportional to workers.",
-        "C": "This ignores the increase in workers.",
-        "D": "This gives worker-days rather than days for eight workers."
+        "B": "This leaves the white amount unchanged while the red amount doubles.",
+        "C": "This copies the red amount instead of scaling the white part.",
+        "D": "This multiplies by the original red amount rather than the scale factor 2."
       },
-      "solution": "The job needs 4 × 15 = 60 worker-days. With 8 workers: 60 ÷ 8 = 7.5 days.",
+      "solution": "The red amount doubles from 7 to 14, so the white amount must also double: 3 × 2 = 6 cups.",
       "difficulty": 2,
-      "reasoningClassification": "procedural",
+      "reasoningClassification": "mathematical_reasoning",
       "verification": {
-        "kind": "inverse-proportion",
-        "expected": 7.5
+        "kind": "direct-ratio",
+        "expected": 6
       }
     },
     {
@@ -1475,26 +1583,26 @@
       "topic": "WHOLE",
       "form": "ENDLINE-REASSESSMENT-B",
       "sequence": 10,
-      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
-      "prompt": "A salesperson earns 6% commission on sales of R2500. What is the commission?",
+      "skillCode": "G9-NUM-REAL-IRRATIONAL",
+      "prompt": "Which statement correctly classifies √625?",
       "options": {
-        "A": "R150",
-        "B": "R1500",
-        "C": "R2506",
-        "D": "R15"
+        "A": "√625 = 25, so it is rational.",
+        "B": "√625 is irrational because it has a root sign.",
+        "C": "√625 = −25.",
+        "D": "√625 is not real."
       },
       "correctOption": "A",
       "distractorExplanations": {
-        "B": "This uses 60% instead of 6%.",
-        "C": "This adds 6 rand instead of taking 6%.",
-        "D": "This uses 0.6% instead of 6%."
+        "B": "The radicand is a perfect square, so its principal root is an integer.",
+        "C": "The square-root symbol denotes the principal non-negative root.",
+        "D": "The square root of a positive perfect square is real."
       },
-      "solution": "6% = 0.06. Commission = 0.06 × R2500 = R150.",
+      "solution": "Because 25 × 25 = 625, √625 = 25. Every integer is rational.",
       "difficulty": 2,
-      "reasoningClassification": "procedural",
+      "reasoningClassification": "mathematical_reasoning",
       "verification": {
-        "kind": "percentage",
-        "expected": 150
+        "kind": "editorial",
+        "evidence": "Worked solution and distractor rationale are authored for administrator review."
       }
     },
     {
@@ -1502,26 +1610,26 @@
       "topic": "WHOLE",
       "form": "ENDLINE-REASSESSMENT-B",
       "sequence": 11,
-      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
-      "prompt": "A bicycle rental costs R60 per day plus a once-off R50 deposit. What is paid at collection for 3 days?",
+      "skillCode": "G9-NUM-REAL-IRRATIONAL",
+      "prompt": "Which value is √(1/49)?",
       "options": {
-        "A": "R180",
-        "B": "R330",
-        "C": "R110",
-        "D": "R230"
+        "A": "1/49",
+        "B": "7",
+        "C": "−1/7",
+        "D": "1/7"
       },
       "correctOption": "D",
       "distractorExplanations": {
-        "A": "This omits the once-off deposit.",
-        "B": "This charges the once-off deposit three times.",
-        "C": "This includes only one rental day."
+        "A": "This repeats the radicand rather than taking its square root.",
+        "B": "This is the denominator rather than the positive fractional root.",
+        "C": "The principal square root is non-negative."
       },
-      "solution": "Rental = 3 × R60 = R180. Add one deposit of R50: R230.",
+      "solution": "(1/7)² = 1/49, so √(1/49) = 1/7. This is rational.",
       "difficulty": 2,
-      "reasoningClassification": "procedural",
+      "reasoningClassification": "mathematical_reasoning",
       "verification": {
-        "kind": "rental",
-        "expected": 230
+        "kind": "editorial",
+        "evidence": "Worked solution and distractor rationale are authored for administrator review."
       }
     },
     {
@@ -1663,6 +1771,60 @@
       }
     },
     {
+      "code": "Q.G9.T1C.WHOLE.ENDLINE-REASSESSMENT-B.17",
+      "topic": "WHOLE",
+      "form": "ENDLINE-REASSESSMENT-B",
+      "sequence": 17,
+      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
+      "prompt": "A salesperson earns 7% commission on R12500 of sales. What commission is earned?",
+      "options": {
+        "A": "R882.00",
+        "B": "R875.00",
+        "C": "R1785.71",
+        "D": "R87500.00"
+      },
+      "correctOption": "B",
+      "distractorExplanations": {
+        "A": "This adds the rate after calculating the percentage instead of using the commission amount.",
+        "C": "This divides by the percentage number instead of taking the stated percent of sales.",
+        "D": "This treats the percentage as a whole-number multiplier rather than ${rate}/100."
+      },
+      "solution": "7% = 0.07. Commission = R12500 × 0.07 = R875.00.",
+      "difficulty": 2,
+      "reasoningClassification": "procedural",
+      "verification": {
+        "kind": "percentage",
+        "expected": 875
+      }
+    },
+    {
+      "code": "Q.G9.T1C.WHOLE.ENDLINE-REASSESSMENT-B.18",
+      "topic": "WHOLE",
+      "form": "ENDLINE-REASSESSMENT-B",
+      "sequence": 18,
+      "skillCode": "G9-NUM-FINANCIAL-APPLICATIONS",
+      "prompt": "A bicycle rents for R120 per day for 5 days, with a non-refundable booking fee of R60 and a refundable R375 deposit. The bicycle is returned undamaged. What is the final rental cost after the deposit is returned?",
+      "options": {
+        "A": "R660",
+        "B": "R1035",
+        "C": "R180",
+        "D": "R600"
+      },
+      "correctOption": "A",
+      "distractorExplanations": {
+        "B": "This counts the refundable deposit as a cost even though it is returned.",
+        "C": "This charges for one day only instead of all ${days} rental days.",
+        "D": "This omits the non-refundable booking fee."
+      },
+      "solution": "Rental charge = 5 × R120 = R600. Add the non-refundable fee: R600 + R60 = R660. The R375 deposit is returned, so it is not part of the final cost.",
+      "difficulty": 2,
+      "reasoningClassification": "mathematical_reasoning",
+      "verification": {
+        "kind": "rental",
+        "expected": 660
+      }
+    },
+    {
       "code": "Q.G9.T1C.ENTRY.WHOLE.1",
       "topic": "WHOLE",
       "form": "ENTRY-BASELINE-A",
@@ -1670,16 +1832,16 @@
       "skillCode": "G9-NUM-WHOLE-HCF-LCM",
       "prompt": "Determine the HCF of 36 and 54.",
       "options": {
-        "A": "18",
-        "B": "6",
-        "C": "36",
-        "D": "54"
+        "A": "36",
+        "B": "54",
+        "C": "18",
+        "D": "6"
       },
-      "correctOption": "A",
+      "correctOption": "C",
       "distractorExplanations": {
-        "B": "This is common, but not the highest common factor.",
-        "C": "This is one of the numbers, not a factor of 54.",
-        "D": "This is one of the numbers, not a factor of 36."
+        "A": "This is one of the numbers, not a factor of 54.",
+        "B": "This is one of the numbers, not a factor of 36.",
+        "D": "This is common, but not the highest common factor."
       },
       "solution": "36 = 2 × 3 × 6 and 54 = 3² × 6. The common factors give 3 × 6 = 18.",
       "difficulty": 2,
@@ -1699,16 +1861,16 @@
       "skillCode": "G9-NUM-WHOLE-HCF-LCM",
       "prompt": "Two bells ring every 24 and 36 minutes. After how many minutes will they next ring together?",
       "options": {
-        "A": "12",
-        "B": "60",
-        "C": "144",
-        "D": "72"
+        "A": "144",
+        "B": "72",
+        "C": "12",
+        "D": "60"
       },
-      "correctOption": "D",
+      "correctOption": "B",
       "distractorExplanations": {
-        "A": "This is the HCF, not the first common multiple.",
-        "B": "This is not divisible by both intervals.",
-        "C": "This doubles the LCM unnecessarily."
+        "A": "This doubles the LCM unnecessarily.",
+        "C": "This is the HCF, not the first common multiple.",
+        "D": "This is not divisible by both intervals."
       },
       "solution": "LCM(24, 36) = LCM(2² × 6, 2 × 3 × 6) = 2² × 3 × 6 = 72.",
       "difficulty": 2,
@@ -1728,16 +1890,16 @@
       "skillCode": "G9-NUM-RATIO-RATE",
       "prompt": "A fruit drink uses 8:3 cups of juice to water. How many cups of water are needed for 16 cups of juice?",
       "options": {
-        "A": "16",
-        "B": "24",
-        "C": "6",
-        "D": "3"
+        "A": "6",
+        "B": "3",
+        "C": "16",
+        "D": "24"
       },
-      "correctOption": "C",
+      "correctOption": "A",
       "distractorExplanations": {
-        "A": "This repeats the juice amount as water.",
-        "B": "This multiplies the water by the juice amount rather than by the scale factor.",
-        "D": "This keeps the original water amount instead of scaling it."
+        "B": "This keeps the original water amount instead of scaling it.",
+        "C": "This repeats the juice amount as water.",
+        "D": "This multiplies the water by the juice amount rather than by the scale factor."
       },
       "solution": "The juice amount doubles from 8 to 16. Water must also double: 3 × 2 = 6 cups.",
       "difficulty": 2,
@@ -3375,16 +3537,16 @@
       "skillCode": "G9-NUM-INTEGERS-OPERATIONS",
       "prompt": "Calculate: (−42) ÷ 7.",
       "options": {
-        "A": "-35",
-        "B": "35",
-        "C": "-6",
-        "D": "6"
+        "A": "6",
+        "B": "-35",
+        "C": "35",
+        "D": "-6"
       },
-      "correctOption": "C",
+      "correctOption": "D",
       "distractorExplanations": {
-        "A": "This subtracts instead of divides.",
-        "B": "This subtracts and loses the sign.",
-        "D": "The magnitude is correct but the sign is lost."
+        "A": "The magnitude is correct but the sign is lost.",
+        "B": "This subtracts instead of divides.",
+        "C": "This subtracts and loses the sign."
       },
       "solution": "A negative divided by a positive is negative: −42 ÷ 7 = −6.",
       "difficulty": 2,
@@ -3402,16 +3564,16 @@
       "skillCode": "G9-NUM-INTEGERS-POWERS-ROOTS",
       "prompt": "Evaluate: −7².",
       "options": {
-        "A": "14",
-        "B": "-49",
-        "C": "49",
-        "D": "-14"
+        "A": "-14",
+        "B": "14",
+        "C": "-49",
+        "D": "49"
       },
-      "correctOption": "B",
+      "correctOption": "C",
       "distractorExplanations": {
-        "A": "This multiplies by 2 and loses the negative.",
-        "C": "Without brackets, the exponent is applied before the leading negative.",
-        "D": "This multiplies by 2 rather than squaring."
+        "A": "This multiplies by 2 rather than squaring.",
+        "B": "This multiplies by 2 and loses the negative.",
+        "D": "Without brackets, the exponent is applied before the leading negative."
       },
       "solution": "Exponent first: 7² = 49. The leading negative gives −49.",
       "difficulty": 2,
@@ -3429,15 +3591,15 @@
       "skillCode": "G9-NUM-INTEGERS-POWERS-ROOTS",
       "prompt": "Evaluate: (−7)².",
       "options": {
-        "A": "49",
-        "B": "-49",
-        "C": "-14",
-        "D": "14"
+        "A": "14",
+        "B": "49",
+        "C": "-49",
+        "D": "-14"
       },
-      "correctOption": "A",
+      "correctOption": "B",
       "distractorExplanations": {
-        "B": "The brackets make the negative number the base, so the product is positive.",
-        "C": "This doubles rather than squares.",
+        "A": "This doubles rather than squares.",
+        "C": "The brackets make the negative number the base, so the product is positive.",
         "D": "This doubles rather than squares."
       },
       "solution": "(−7)² = (−7) × (−7) = 49.",
@@ -5076,16 +5238,16 @@
       "skillCode": "G9-EXP-NEGATIVE-SCI",
       "prompt": "What is (9)⁰?",
       "options": {
-        "A": "0",
-        "B": "9",
-        "C": "54",
-        "D": "1"
+        "A": "1",
+        "B": "0",
+        "C": "9",
+        "D": "54"
       },
-      "correctOption": "D",
+      "correctOption": "A",
       "distractorExplanations": {
-        "A": "A zero exponent does not make a non-zero base zero.",
-        "B": "This is the value with exponent 1.",
-        "C": "This is unrelated multiplication."
+        "B": "A zero exponent does not make a non-zero base zero.",
+        "C": "This is the value with exponent 1.",
+        "D": "This is unrelated multiplication."
       },
       "solution": "Any non-zero number divided by itself is 1: (9)¹ ÷ (9)¹ = (9)⁰ = 1.",
       "difficulty": 2,
@@ -5103,16 +5265,16 @@
       "skillCode": "G9-EXP-NEGATIVE-SCI",
       "prompt": "What is 2^−7?",
       "options": {
-        "A": "128",
-        "B": "1/7",
-        "C": "1/128",
-        "D": "−128"
+        "A": "−128",
+        "B": "128",
+        "C": "1/7",
+        "D": "1/128"
       },
-      "correctOption": "C",
+      "correctOption": "D",
       "distractorExplanations": {
-        "A": "This ignores the negative exponent.",
-        "B": "The reciprocal applies to the power of 2, not to the exponent.",
-        "D": "A negative exponent gives a reciprocal, not a negative value."
+        "A": "A negative exponent gives a reciprocal, not a negative value.",
+        "B": "This ignores the negative exponent.",
+        "C": "The reciprocal applies to the power of 2, not to the exponent."
       },
       "solution": "2^−7 = 1 ÷ 2^7 = 1/128.",
       "difficulty": 2,
@@ -5130,16 +5292,16 @@
       "skillCode": "G9-EXP-LAWS-EXTENDED",
       "prompt": "Simplify: (7x²y)^2.",
       "options": {
-        "A": "7x⁴y²",
-        "B": "49x⁴y²",
-        "C": "14x⁴y²",
-        "D": "49x⁴y"
+        "A": "49x⁴y",
+        "B": "7x⁴y²",
+        "C": "49x⁴y²",
+        "D": "14x⁴y²"
       },
-      "correctOption": "B",
+      "correctOption": "C",
       "distractorExplanations": {
-        "A": "The coefficient 7 must be squared.",
-        "C": "The coefficient 7 is squared, not doubled.",
-        "D": "The exponent on y must also be multiplied by 2."
+        "A": "The exponent on y must also be multiplied by 2.",
+        "B": "The coefficient 7 must be squared.",
+        "D": "The coefficient 7 is squared, not doubled."
       },
       "solution": "(7x²y)² = 7² × (x²)² × y² = 49x⁴y².",
       "difficulty": 2,
@@ -6786,16 +6948,16 @@
       "skillCode": "G9-PAT-GENERAL-RULE",
       "prompt": "For Tn = 7n − 2, what is T10?",
       "options": {
-        "A": "68",
-        "B": "70",
-        "C": "15",
-        "D": "72"
+        "A": "15",
+        "B": "72",
+        "C": "68",
+        "D": "70"
       },
-      "correctOption": "A",
+      "correctOption": "C",
       "distractorExplanations": {
-        "B": "This omits the −2.",
-        "C": "This adds n and the coefficient instead of multiplying.",
-        "D": "This uses +2 rather than −2."
+        "A": "This adds n and the coefficient instead of multiplying.",
+        "B": "This uses +2 rather than −2.",
+        "D": "This omits the −2."
       },
       "solution": "Substitute n = 10: T10 = 7(10) − 2 = 68.",
       "difficulty": 2,
@@ -6813,16 +6975,16 @@
       "skillCode": "G9-PAT-GEOMETRIC-VISUAL",
       "prompt": "A diagram in set 5 shows n joined unit squares in one row, sharing full sides. Which rule gives its matchsticks M?",
       "options": {
-        "A": "M = 4n",
-        "B": "M = 3n",
-        "C": "M = n + 3",
-        "D": "M = 3n + 1"
+        "A": "M = n + 3",
+        "B": "M = 3n + 1",
+        "C": "M = 4n",
+        "D": "M = 3n"
       },
-      "correctOption": "D",
+      "correctOption": "B",
       "distractorExplanations": {
-        "A": "This counts shared sides twice.",
-        "B": "This omits the one extra side at the end.",
-        "C": "This adds only one matchstick per additional square."
+        "A": "This adds only one matchstick per additional square.",
+        "C": "This counts shared sides twice.",
+        "D": "This omits the one extra side at the end."
       },
       "solution": "One square needs 4 matchsticks. Each additional square shares one side and adds 3. Thus M = 4 + 3(n−1) = 3n + 1.",
       "difficulty": 3,
@@ -6840,16 +7002,16 @@
       "skillCode": "G9-PAT-GEOMETRIC-VISUAL",
       "prompt": "Using M = 3n + 1 for a row of joined squares, how many matchsticks are needed for n = 12?",
       "options": {
-        "A": "36",
-        "B": "15",
-        "C": "37",
-        "D": "48"
+        "A": "37",
+        "B": "48",
+        "C": "36",
+        "D": "15"
       },
-      "correctOption": "C",
+      "correctOption": "A",
       "distractorExplanations": {
-        "A": "This omits the +1.",
-        "B": "This adds rather than multiplies the figure number.",
-        "D": "This counts every square as isolated."
+        "B": "This counts every square as isolated.",
+        "C": "This omits the +1.",
+        "D": "This adds rather than multiplies the figure number."
       },
       "solution": "Substitute n = 12: M = 3(12) + 1 = 37.",
       "difficulty": 2,

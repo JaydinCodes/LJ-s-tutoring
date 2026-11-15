@@ -8,16 +8,16 @@ All content below is original Odysseus-authored, four-option multiple-choice dra
 | --- | ---: | ---: | ---: |
 | Term 1 entry baseline A | 1 | 12 | 12 |
 | Topic baseline A | 4 | 12 | 48 |
-| Endline A | 4 | 16 | 64 |
-| Mastery challenge A | 4 | 16 | 64 |
-| Independent endline reassessment B | 4 | 16 | 64 |
-| **Closure-pack total** | **17** | — | **252** |
+| Endline A | 3 at 16; Whole Numbers at 18 | 66 |
+| Mastery challenge A | 3 at 16; Whole Numbers at 18 | 66 |
+| Independent endline reassessment B | 3 at 16; Whole Numbers at 18 | 66 |
+| **Closure-pack total** | **17** | — | **258** |
 
 The pre-existing 26 Sprint 2 candidates remain in the question bank as separate drafts. The closure forms use different question-item codes and do not attach those candidates, avoiding accidental reuse as a reassessment form.
 
 ## Curriculum coverage
 
-- Whole Numbers: real-number classification, HCF, ratio/rate, direct proportion, commission, rental and compound growth. HCF, real-number and ratio/rate critical skills each receive four independently scored questions in every 16-question mastery form.
+- Whole Numbers: real-number classification, HCF, ratio/rate, direct proportion, commission, rental and compound growth. The persisted policy marks HCF/LCM, real-number classification, ratio/rate and financial applications as critical. Each Whole Numbers independent form has four independently scored questions for each critical skill, so it has 18 questions and a 30-minute duration. No response is counted for more than one primary skill.
 - Integers: addition/subtraction, multiplication, sign reasoning, squares and cube roots. The two critical skills each have at least four items in every 16-question mastery form.
 - Exponents: product and quotient reasoning, powers of powers, zero/negative exponents, simplification and error analysis. Scientific notation remains excluded from the critical-mastery sampling.
 - Numeric and Geometric Patterns: first differences, nth-term rules, table-style values, joined-square pattern models, justification and rule-error identification.
