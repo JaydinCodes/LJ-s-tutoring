@@ -715,7 +715,10 @@ async function main() {
       cwd: process.cwd(),
       stdio: 'inherit',
     });
-    execFileSync(process.execPath, [playwrightCli, 'test', '--config', 'playwright.supabase.config.ts', '--grep', 'Golden Demo reset restores Lethabo'], {
+    // Preserve the main Grade 9 screenshot files and HTML report: the second
+    // Playwright invocation must not wipe the first run's output directory or
+    // replace its authenticated Grade 9 report.
+    execFileSync(process.execPath, [playwrightCli, 'test', '--config', 'playwright.supabase.config.ts', '--grep', 'Golden Demo reset restores Lethabo', '--output', 'test-results/golden-demo-reset', '--reporter', 'list'], {
       env: {
         ...env,
         E2E_GOLDEN_DEMO_RESET_VERIFICATION: 'true',
