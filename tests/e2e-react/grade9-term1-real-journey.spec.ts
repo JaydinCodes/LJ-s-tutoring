@@ -464,8 +464,28 @@ test('Sprint 5 authorised admin inspects content, approves a disposable question
   expect(formalDefinitions).toHaveLength(17);
   expect(formalDefinitions.every((definition: { publicationValidation: { valid: boolean } }) => definition.publicationValidation.valid)).toBe(true);
   await page.getByRole('row').filter({ hasText: formalDefinitions[0].name }).getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Publish immutable form', exact: true })).toHaveCount(0);
+  const revisionCode = `E2E-SPRINT5-FORMAL-${crypto.randomUUID()}`;
+  const revisionName = `Disposable Sprint 5 publication ${revisionCode}`;
+  const answerRevisionPrompt = async (dialog: import('@playwright/test').Dialog) => {
+    await dialog.accept(dialog.message().includes('Revision name') ? revisionName : revisionCode);
+  };
+  page.on('dialog', answerRevisionPrompt);
+  await page.getByRole('button', { name: 'Create revision', exact: true }).click();
+  await expect(page.getByText('Revision draft created. Select it from the form list to edit.', { exact: true })).toBeVisible();
+  page.off('dialog', answerRevisionPrompt);
+  await page.getByRole('row').filter({ hasText: revisionName }).getByRole('button', { name: 'Edit', exact: true }).click();
+  const editor = page.getByRole('heading', { name: 'Assessment editor', exact: true }).locator('xpath=ancestor::section[1]');
+  await expect(editor.getByRole('button', { name: 'Publish immutable form', exact: true })).toHaveCount(0);
+  await editor.getByRole('button', { name: 'Submit for review', exact: true }).click();
+  await expect(editor.getByRole('button', { name: 'Approve configuration', exact: true })).toBeVisible();
+  await editor.getByRole('button', { name: 'Approve configuration', exact: true }).click();
+  await expect(editor.getByRole('button', { name: 'Publish immutable form', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Publish immutable form', exact: true }).click();
   await expect(page.getByText('Immutable assessment form published.', { exact: true })).toBeVisible();
+  const { data: publishedCatalogue, error: publishedCatalogueError } = await admin.rpc('get_learning_assessment_management_catalog');
+  expect(publishedCatalogueError).toBeNull();
+  expect(publishedCatalogue.definitions.find((definition: { code: string }) => definition.code === revisionCode)?.publishedFormVersion).toBe(1);
   await capture(page, testInfo, 'admin-form-publication-readiness', 1440, 1000);
   writeEvidence(testInfo, 'sprint5-admin-publication', { observed: 'admin-only learner wording, worked example, linked activity dependencies, explicit question-version review transitions and eligible immutable fixture form publication', academicBoundary: 'Disposable functional approval only; no production academic sign-off or publication.' });
 });
