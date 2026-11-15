@@ -25,6 +25,34 @@ const users = {
   grade9_security: { email: 'grade9-security.supabase-e2e@projectodysseus.test', fullName: 'Grade 9 Security Learner A' },
   grade9_peer: { email: 'grade9-peer.supabase-e2e@projectodysseus.test', fullName: 'Grade 9 Security Learner B' },
 };
+let failureStage = 'fixture-setup-failed';
+let fixtureEvidence;
+
+function failureCategory(error, fallback = failureStage) {
+  const message = error instanceof Error ? `${error.message}\n${error.stack}` : String(error);
+  if (/screenshot|page\.screenshot|artifact|capture\s*\(|ENOENT.*(?:png|webm|zip)/i.test(message)) return 'artifact-collection-failed';
+  if (/webServer|server.*(?:start|exit)|EADDRINUSE|ERR_CONNECTION_REFUSED/i.test(message)) return 'application-start-failed';
+  if (/authenticate|authentication|signIn|\/auth\/v1\//i.test(message)) return 'authentication-failed';
+  if (/\/rest\/v1\/|\brpc\b|Postgrest|database|publication.valid/i.test(message)) return 'database-rpc-failed';
+  return fallback;
+}
+
+function reportSpecs(suites = []) {
+  return suites.flatMap((suite) => [...(suite.specs ?? []), ...reportSpecs(suite.suites)]);
+}
+
+function journeyResults(report) {
+  const specs = reportSpecs(report?.suites).filter((spec) => spec.file?.endsWith('grade9-term1-real-journey.spec.ts'));
+  return 'ABCDEFGH'.split('').map((scenario) => {
+    const spec = specs.find((candidate) => candidate.title.startsWith(`${scenario} `));
+    const result = spec?.tests?.[0]?.results?.at(-1);
+    const errors = (result?.errors ?? []).map((error) => error.message ?? error.value ?? '').join('\n');
+    const status = !result ? 'not-run' : result.status === 'passed' ? 'passed' : result.status === 'skipped' ? 'skipped' : 'failed';
+    return { scenario, title: spec?.title ?? null, status,
+      category: status === 'failed' ? failureCategory(errors, 'browser-scenario-assertion-failed') : null,
+      errors, artifacts: result?.attachments ?? [] };
+  });
+}
 
 function localStatus() {
   const raw = execFileSync(process.execPath, [supabaseCli, 'status', '-o', 'json'], {
@@ -125,7 +153,7 @@ async function deleteByIds(request, table, column, ids) {
 }
 
 async function removePreviousFixtures(request) {
-  const fixtureEmails = new Set(Object.values(users).map((user) => user.email));
+  const fixtureEmails = new Set(Object.entries(users).filter(([role]) => role !== 'admin').map(([, user]) => user.email));
   const profileEmailFilter = [...fixtureEmails].map((email) => encodeURIComponent(email)).join(',');
   const profileIds = await selectIds(request, 'profiles', `email=${inFilter([...fixtureEmails])}`);
   const studentIds = await selectIds(request, 'students', `profile_id=${inFilter(profileIds.length ? profileIds : ['00000000-0000-0000-0000-000000000000'])}`);
@@ -142,6 +170,31 @@ async function removePreviousFixtures(request) {
     ...await selectIds(request, 'assignments', `created_by=${inFilter(profileIds.length ? profileIds : ['00000000-0000-0000-0000-000000000000'])}`),
   ])];
   const classIds = await selectIds(request, 'classes', `name=eq.${encodeURIComponent(fixtureClassName)}`);
+
+  if (studentIds.length) {
+    const sessionIds = await selectIds(request, 'learning_assessment_sessions', `student_id=${inFilter(studentIds)}`);
+    const evaluationIds = await selectIds(request, 'topic_mastery_evaluations', `student_id=${inFilter(studentIds)}`);
+    await deleteByIds(request, 'topic_mastery_evaluation_evidence', 'topic_mastery_evaluation_id', evaluationIds);
+    await deleteByIds(request, 'topic_mastery_evaluation_skill_evidence', 'topic_mastery_evaluation_id', evaluationIds);
+    await deleteByIds(request, 'topic_mastery_evaluations', 'id', evaluationIds);
+    await deleteByIds(request, 'learning_assessment_session_question_results', 'learning_assessment_session_id', sessionIds);
+    await deleteByIds(request, 'learning_assessment_session_extensions', 'learning_assessment_session_id', sessionIds);
+    await deleteByIds(request, 'learning_assessment_reassessment_authorizations', 'student_id', studentIds);
+    await deleteByIds(request, 'learning_assessment_sessions', 'id', sessionIds);
+    await deleteByIds(request, 'qualifying_assignment_mastery_evidence', 'student_id', studentIds);
+    const masteryIds = await selectIds(request, 'skill_mastery_evaluations', `student_id=${inFilter(studentIds)}`);
+    const recommendationIds = await selectIds(request, 'grade9_learning_recommendations', `student_id=${inFilter(studentIds)}`);
+    await deleteByIds(request, 'skill_mastery_evaluation_evidence', 'mastery_evaluation_id', masteryIds);
+    await deleteByIds(request, 'intervention_outcomes', 'mastery_evaluation_id', masteryIds);
+    await deleteByIds(request, 'learning_recommendation_reasons', 'recommendation_id', recommendationIds);
+    await deleteByIds(request, 'grade9_learning_recommendations', 'id', recommendationIds);
+    await deleteByIds(request, 'learning_retention_checks', 'student_id', studentIds);
+    await deleteByIds(request, 'skill_mastery_evaluations', 'id', masteryIds);
+    const attemptIds = await selectIds(request, 'learning_attempts', `student_id=${inFilter(studentIds)}`);
+    for (const table of ['learning_attempt_skill_evidence', 'learner_misconception_evidence', 'learning_attempt_reviews']) {
+      await deleteByIds(request, table, 'learning_attempt_id', attemptIds);
+    }
+  }
 
   // Delete the fixture graph from leaves to owners. Several foreign keys use
   // SET NULL, so deleting a profile first leaves uniquely constrained orphan
@@ -186,6 +239,13 @@ async function removePreviousFixtures(request) {
 async function createAuthAndProfiles(request) {
   const profiles = {};
   for (const [role, fixture] of Object.entries(users)) {
+    if (role === 'admin') {
+      const [existing] = await request(`/rest/v1/profiles?select=*&email=eq.${encodeURIComponent(fixture.email)}`);
+      if (existing) {
+        profiles[role] = existing;
+        continue;
+      }
+    }
     const profileRole = role === 'ngo_learner' || role.startsWith('grade9_') ? 'student' : role;
     const authUser = await request('/auth/v1/admin/users', {
       method: 'POST',
@@ -435,6 +495,7 @@ async function publicationCriticalSkillEvidence(request, definition, definitionL
 async function seedGrade9Term1Fixture(status, request, profiles) {
   const adminToken = await signInForAccessToken(status, users.admin.email);
   const adminRequest = makeTokenRequester(status, adminToken);
+  const beforeReviewReadiness = await adminRequest('/rest/v1/rpc/get_grade9_term1_learning_journey_readiness', { method: 'POST', body: {} });
   const [directOrganization] = await request('/rest/v1/organizations?select=id&type=eq.direct&limit=1');
   if (!directOrganization?.id) throw new Error('The disposable fixture needs the seeded direct organization.');
 
@@ -530,8 +591,11 @@ async function seedGrade9Term1Fixture(status, request, profiles) {
 
   const evidence = {
     fixture: 'sprint4-grade9-real-data',
+    beforeReviewReadiness,
+    afterReviewReadiness: await adminRequest('/rest/v1/rpc/get_grade9_term1_learning_journey_readiness', { method: 'POST', body: {} }),
     publication: {
-      invalidFormRejected: invalidPublicationRejected || intentionallyInvalid === undefined,
+      invalidFormRejected: intentionallyInvalid ? invalidPublicationRejected : null,
+      invalidFormCheckStatus: intentionallyInvalid ? 'executed' : 'not-run-already-approved',
       reviewedPracticeQuestionVersions: versionsToApprove.filter((version) => instructionalCodes.has(nestedItemCode(version))).length,
       reviewedFormalQuestionVersions: versionsToApprove.filter((version) => formalVersionIds.has(version.id)).length,
       reviewedLessons: lessons.length,
@@ -557,37 +621,43 @@ function grade9EvidenceFiles(directory) {
 }
 
 function writeGrade9JourneySummary() {
-  const scenarios = [
-    ['A', 'A-new-learner.json'], ['B', 'B-weak-baseline.json'], ['C', 'C-grade8-bridge.json'], ['D', 'D-strong-baseline.json'],
-    ['E', 'E-normal-endline.json'], ['F', 'F-failed-endline.json'], ['G', 'G-persistence.json'], ['H', 'H-security.json'],
-  ];
   const root = path.join(process.cwd(), 'test-results');
-  const discovered = new Set(grade9EvidenceFiles(root).map((file) => path.basename(file)));
+  const reportPath = path.join(process.cwd(), 'playwright-report', 'supabase', 'results.json');
+  const report = fs.existsSync(reportPath) ? JSON.parse(fs.readFileSync(reportPath, 'utf8')) : null;
   const summaryDir = path.join(root, 'sprint4-grade9-real');
   fs.mkdirSync(summaryDir, { recursive: true });
-  fs.writeFileSync(path.join(summaryDir, 'journey-scenario-summary.json'), `${JSON.stringify({
-    suite: 'Sprint 4 Grade 9 real learner journeys',
-    generatedAt: new Date().toISOString(),
-    scenarios: scenarios.map(([scenario, evidenceFile]) => ({
-      scenario,
-      status: discovered.has(evidenceFile) ? 'passed' : 'not-passed-or-blocked',
-      evidenceFile,
-      note: discovered.has(evidenceFile)
-        ? 'Scenario completed and wrote authenticated runtime evidence.'
-        : 'No passing scenario evidence was written; inspect the Playwright report and failure artifacts.',
+  const summary = { suite: 'Grade 9 real learner journeys', generatedAt: new Date().toISOString(),
+    fixtureStatus: fixtureEvidence ? 'passed' : 'not-completed', scenarios: journeyResults(report),
+    browserFailures: reportSpecs(report?.suites).flatMap((spec) => (spec.tests ?? []).flatMap((test) => {
+      const result = test.results?.at(-1);
+      if (!result || ['passed', 'skipped'].includes(result.status)) return [];
+      const errors = (result.errors ?? []).map((error) => error.message ?? error.value ?? '').join('\n');
+      return [{ title: spec.title, file: spec.file, status: result.status,
+        category: failureCategory(errors, 'browser-scenario-assertion-failed'), errors, artifacts: result.attachments ?? [] }];
     })),
+    runnerErrors: report?.errors ?? [] };
+  fs.writeFileSync(path.join(summaryDir, 'journey-scenario-summary.json'), `${JSON.stringify({
+    ...summary,
   }, null, 2)}\n`);
+  if (fixtureEvidence) fs.writeFileSync(path.join(summaryDir, 'fixture-publication-evidence.json'), `${JSON.stringify(fixtureEvidence, null, 2)}\n`);
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### Grade 9 Real Journeys\n\nFixture: ${summary.fixtureStatus}\n\n| Scenario | Result | Failure category |\n| --- | --- | --- |\n${summary.scenarios.map((result) => `| ${result.scenario} | ${result.status} | ${result.category ?? ''} |`).join('\n')}\n\nSee uploaded results.json, journey-scenario-summary.json and Playwright artifacts for full errors.\n`);
+  }
+  return report;
 }
 
-function writeGrade9FixtureFailure(error) {
+function writeGrade9RunFailure(error) {
   const evidenceDir = path.join(process.cwd(), 'test-results', 'sprint4-grade9-real');
   fs.mkdirSync(evidenceDir, { recursive: true });
-  fs.writeFileSync(path.join(evidenceDir, 'fixture-setup-failure.json'), `${JSON.stringify({
-    suite: 'Sprint 4 Grade 9 real learner journeys',
-    status: 'fixture-setup-failed',
+  const category = failureCategory(error);
+  fs.writeFileSync(path.join(evidenceDir, category === 'fixture-setup-failed' ? 'fixture-setup-failure.json' : 'run-failure.json'), `${JSON.stringify({
+    suite: 'Grade 9 real learner journeys',
+    status: category,
+    stage: failureStage,
+    fixtureStatus: fixtureEvidence ? 'passed' : 'not-completed',
     generatedAt: new Date().toISOString(),
     error: error instanceof Error ? error.message : String(error),
-    note: 'No learner scenario is represented as passed when fixture setup fails.',
+    note: 'Unexecuted scenarios are never represented as passed.',
   }, null, 2)}\n`);
 }
 
@@ -647,6 +717,8 @@ async function verifyConcurrentAiJobClaim(request, seededJourney) {
 }
 
 async function main() {
+  fs.rmSync(path.join(process.cwd(), 'playwright-report', 'supabase', 'results.json'), { force: true });
+  fs.rmSync(path.join(process.cwd(), 'test-results', 'sprint4-grade9-real'), { recursive: true, force: true });
   const status = localStatus();
   assertLoopback('Supabase API URL', status.API_URL);
   assertLoopback('Supabase database URL', status.DB_URL);
@@ -669,6 +741,8 @@ async function main() {
     cwd: process.cwd(),
     stdio: 'inherit',
   });
+  fixtureEvidence = grade9Fixture;
+  failureStage = 'browser-scenario-assertion-failed';
 
   const env = {
     ...process.env,
@@ -701,6 +775,14 @@ async function main() {
       env,
       stdio: 'inherit',
     });
+  } catch (error) {
+    const reportPath = path.join(process.cwd(), 'playwright-report', 'supabase', 'results.json');
+    if (fs.existsSync(reportPath)) {
+      const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+      const runnerError = report.errors?.[0];
+      if (runnerError) failureStage = failureCategory(runnerError.message ?? runnerError.value, failureStage);
+    }
+    throw error;
   } finally {
     // This records only observed pass evidence. A missing per-scenario file is
     // deliberately reported as not passed/blocked, never as a synthetic pass.
@@ -728,8 +810,10 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  writeGrade9FixtureFailure(error);
+module.exports = { failureCategory, journeyResults };
+if (require.main === module) main().catch((error) => {
+  writeGrade9RunFailure(error);
+  writeGrade9JourneySummary();
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
   process.exitCode = 1;
 });

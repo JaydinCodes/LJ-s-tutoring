@@ -26,10 +26,11 @@ export default defineConfig({
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report/supabase', open: 'never' }],
+    ['json', { outputFile: 'playwright-report/supabase/results.json' }],
   ],
   use: {
     baseURL: webBaseUrl,
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video,
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
