@@ -465,7 +465,7 @@ test('Sprint 5 authorised admin inspects content, approves a disposable question
   expect(formalDefinitions.every((definition: { publicationValidation: { valid: boolean } }) => definition.publicationValidation.valid)).toBe(true);
   await page.getByRole('row').filter({ hasText: formalDefinitions[0].name }).getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Publish immutable form', exact: true })).toHaveCount(0);
-  const revisionCode = `E2E-SPRINT5-FORMAL-${crypto.randomUUID()}`;
+  const revisionCode = `E2E-SPRINT5-FORMAL-${crypto.randomUUID().toUpperCase()}`;
   const revisionName = `Disposable Sprint 5 publication ${revisionCode}`;
   const answerRevisionPrompt = async (dialog: import('@playwright/test').Dialog) => {
     await dialog.accept(dialog.message().includes('Revision name') ? revisionName : revisionCode);
