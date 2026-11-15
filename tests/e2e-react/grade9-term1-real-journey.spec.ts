@@ -219,7 +219,11 @@ test('C — Grade 8 bridge support preserves return context to the original Grad
   await page.getByRole('link', { name: 'Practise this foundation' }).click();
   await completeActivity(page, 'correct', true);
   const bridgeProgress = await activityState(emails.bridge, 'A.G8.S4.G8-INTEGERS');
-  expect(bridgeProgress.filter((item) => item.attempt_id && item.attempt_status === 'evaluated')).toHaveLength(2);
+  // Retrying the same guided-practice question updates the existing
+  // retry-safe attempt rather than manufacturing a second evidence row.
+  // Prove that the bridge practice remains durably evaluated without
+  // treating a retry as independent evidence.
+  expect(bridgeProgress.filter((item) => item.attempt_id && item.attempt_status === 'evaluated')).toHaveLength(1);
   await page.goto('/dashboard/student/learning/bridge/G8-NUM-INTEGERS-OPERATIONS?returnTopic=INTEGERS');
   await page.getByRole('link', { name: 'Return to your Grade 9 topic' }).click();
   await expect(page).toHaveURL('/dashboard/student/learning/topic/INTEGERS');
