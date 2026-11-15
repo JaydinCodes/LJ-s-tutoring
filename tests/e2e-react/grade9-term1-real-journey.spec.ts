@@ -498,5 +498,5 @@ test('Sprint 5 authorised admin inspects content, approves a disposable question
   expect(publishedCatalogue.definitions.find((definition: { id: string }) => definition.id === fixture.adminPublicationDefinitionId)?.publishedFormVersion).toBe(1);
   expect(publishedCatalogue.definitions.find((definition: { code: string }) => definition.code === revisionCode)?.publishedFormVersion).toBeNull();
   await capture(page, testInfo, 'admin-form-publication-readiness', 1440, 1000);
-  writeEvidence(testInfo, 'sprint5-admin-publication', { observed: 'admin-only learner wording, worked example, linked activity dependencies, explicit question-version review transitions and eligible immutable fixture form publication', academicBoundary: 'Disposable functional approval only; no production academic sign-off or publication.' });
+  writeEvidence(testInfo, 'sprint5-admin-publication', { role: 'admin', observed: 'admin-only learner wording, worked example, linked activity dependencies, explicit question-version review transitions and eligible immutable fixture form publication', academicBoundary: 'Disposable functional approval only; no production academic sign-off or publication.' });
 });
