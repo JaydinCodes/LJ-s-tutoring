@@ -584,7 +584,10 @@ async function seedGrade9Term1Fixture(status, request, profiles) {
   }
 
   const forms = await request('/rest/v1/learning_assessment_form_versions?select=id,learning_assessment_definition_id,review_status,retired_at');
+  const adminPublicationDefinition = grade9Definitions.find((definition) => definition.code === 'G9-T1-EXPONENTS-MASTERY-ENDLINE-REASSESSMENT-B');
+  if (!adminPublicationDefinition) throw new Error('The disposable admin publication check requires the Exponents reassessment B definition.');
   for (const definition of grade9Definitions) {
+    if (definition.id === adminPublicationDefinition.id) continue;
     const hasPublishedForm = forms.some((form) => form.learning_assessment_definition_id === definition.id && form.review_status === 'approved' && !form.retired_at);
     if (!hasPublishedForm) await adminRequest('/rest/v1/rpc/publish_learning_assessment_form', { method: 'POST', body: { p_assessment_definition_id: definition.id } });
   }
@@ -601,10 +604,11 @@ async function seedGrade9Term1Fixture(status, request, profiles) {
       reviewedLessons: lessons.length,
       reviewedActivities: activities.length,
       reviewedPolicies: policies.length,
-      publishedForms: grade9Definitions.length,
+      publishedForms: grade9Definitions.filter((definition) => definition.id !== adminPublicationDefinition.id).length,
     },
     students: Object.fromEntries(Object.entries(students).map(([role, student]) => [role, student.id])),
     draftQuestionVersionId: draftQuestionVersion.id,
+    adminPublicationDefinitionId: adminPublicationDefinition.id,
   };
   const evidenceDir = path.join(process.cwd(), 'test-results', 'sprint4-grade9-real');
   fs.mkdirSync(evidenceDir, { recursive: true });

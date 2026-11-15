@@ -10,7 +10,8 @@ type AssessmentDraft = AssessmentManagementCatalog['definitions'][number];
 type PolicyDraft = AssessmentManagementCatalog['policies'][number];
 
 function errorText(error: unknown) {
-  return error instanceof Error ? error.message : 'The requested update could not be saved.';
+  return error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+    ? error.message : 'The requested update could not be saved.';
 }
 function asNumber(value: string, fallback: number) {
   const parsed = Number(value);
