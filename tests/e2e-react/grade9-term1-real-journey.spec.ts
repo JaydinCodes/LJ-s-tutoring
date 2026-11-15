@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -23,21 +23,22 @@ function writeEvidence(testInfo: TestInfo, scenario: string, evidence: Record<st
   writeFileSync(destination, `${JSON.stringify({ scenario, status: 'passed', role: 'student', ...evidence }, null, 2)}\n`);
 }
 
-async function capture(page: Page, testInfo: TestInfo, name: string, width: number, height = 900) {
+async function capture(page: Page, testInfo: TestInfo, name: string, width: number, height = 900, target?: Locator) {
   await page.setViewportSize({ width, height });
   const dimensions = await page.evaluate(() => ({ viewport: window.innerWidth, scrollWidth: document.documentElement.scrollWidth }));
   expect(dimensions.scrollWidth, `${name} must not overflow a ${width}px viewport`).toBeLessThanOrEqual(dimensions.viewport);
   const destination = testInfo.outputPath(`sprint4-grade9-real/${name}-${width}.png`);
   mkdirSync(dirname(destination), { recursive: true });
-  await page.screenshot({ path: destination, fullPage: false });
+  if (target) await target.screenshot({ path: destination });
+  else await page.screenshot({ path: destination, fullPage: false });
 }
 
-async function signIn(page: Page, email: string) {
+async function signIn(page: Page, email: string, destination = /\/dashboard\/student\/?$/) {
   await page.goto('/dashboard/login');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page).toHaveURL(/\/dashboard\/student\/?$/);
+  await expect(page).toHaveURL(destination);
 }
 
 async function authenticatedClient(email: string) {
@@ -100,6 +101,8 @@ async function completeActivity(page: Page, mode: 'correct' | 'incorrect', stopA
     const answerInput = page.locator('input[name="mcq-answer"]').first();
     await expect(answerInput).toBeVisible();
     const questionCard = answerInput.locator('xpath=ancestor::section[1]');
+    const questionId = await questionCard.getAttribute('data-question-id');
+    expect(questionId).toBeTruthy();
     const prompt = (await questionCard.getByRole('heading', { level: 2 }).textContent())?.trim() ?? '';
     const keyed = [...practiceAnswer.entries()].find(([text]) => prompt.includes(text));
     expect(keyed, `Test answer key must contain the persisted practice prompt: ${prompt}`).toBeTruthy();
@@ -126,15 +129,18 @@ async function completeActivity(page: Page, mode: 'correct' | 'incorrect', stopA
     }
     await expect(page.getByText(/Marks awarded:/)).toBeVisible();
     if (stopAfterFirst) return;
+    const progressResponse = page.waitForResponse((response) => response.url().includes('/rest/v1/rpc/get_my_learning_activity_state') && response.ok());
     await page.getByRole('button', { name: 'Continue to next step' }).click();
-    await expect.poll(async () => {
-      if (await page.getByRole('heading', { name: 'Activity complete' }).count()) return 'done';
-      const nextHeading = await page.locator('input[name="mcq-answer"]').first()
-        .locator('xpath=ancestor::section[1]')
-        .getByRole('heading', { level: 2 }).textContent().catch(() => null);
-      return nextHeading?.trim() ?? prompt;
-    }, { timeout: 15_000 }).not.toBe(prompt);
-    if (await page.getByRole('heading', { name: 'Activity complete' }).count()) return;
+    const persisted = await (await progressResponse).json() as Array<{ question_version_id: string; attempt_id: string | null }>;
+    expect(persisted.find((item) => item.question_version_id === questionId)?.attempt_id).toBeTruthy();
+    const next = persisted.find((item) => !item.attempt_id);
+    const state = page.getByTestId('activity-state');
+    await expect(state).toHaveAttribute('data-state', next ? 'question' : 'complete');
+    if (!next) {
+      await expect(page.getByRole('heading', { name: 'Activity complete', exact: true })).toBeVisible();
+      return;
+    }
+    await expect(state).toHaveAttribute('data-question-id', next.question_version_id);
     await expect(page.locator('input[name="mcq-answer"]:checked')).toHaveCount(0);
   }
 }
@@ -266,6 +272,14 @@ test('E — normal learning followed by an endline awards mastery without a comp
   const client = await authenticatedClient(emails.endline);
   const { data } = await client.rpc('get_my_learning_assessment_session', { p_session_id: endlineSession });
   expect(JSON.stringify(data)).toContain('mastered');
+  const { data: map, error: mapError } = await client.rpc('get_my_grade9_term1_topic_learning_map', { p_topic_code: 'INTEGERS' });
+  expect(mapError).toBeNull();
+  expect(map.skills.find((skill: { activityCode: string }) => skill.activityCode === 'A.G9.S4.INTEGER-OPS').practiceStatus).toBe('completed');
+  expect(map.skills.some((skill: { skillEvidenceState: string | null }) => skill.skillEvidenceState !== null)).toBeTruthy();
+  await page.goto('/dashboard/student/learning/topic/INTEGERS');
+  await expect(page.getByText('Practice completed', { exact: true })).toBeVisible();
+  await expect(page.getByText('Formal evidence has recorded mastery.', { exact: true })).toBeVisible();
+  await capture(page, testInfo, 'persisted-topic-mastery-map', 390, 844);
   writeEvidence(testInfo, 'E-normal-endline', { authenticatedUser: emails.endline, persistedAssessmentSessionId: endlineSession, observed: 'completed guided practice and eligible endline; endline itself awarded mastery' });
 });
 
@@ -348,4 +362,90 @@ test('real no-content and error states remain learner-safe against the disposabl
   await expect(page.getByText('Activity could not be loaded')).toBeVisible();
   await capture(page, testInfo, 'activity-error-state', 390, 844);
   writeEvidence(testInfo, 'visual-no-content-and-error', { authenticatedUser: emails.security, observed: 'actual unavailable topic and activity routes showed bounded learner-safe states without mocked RPC responses' });
+});
+
+test('Sprint 5 real Learning Map has ordered checkpoints, keyboard focus and responsive persisted skill states', async ({ page }, testInfo) => {
+  await signIn(page, emails.persistence);
+  await page.goto('/dashboard/student/learning/activity/A.G9.S4.INTEGER-OPS');
+  await completeActivity(page, 'correct', true);
+  await page.goto('/dashboard/student/learning/topic/INTEGERS');
+  await page.getByRole('button', { name: /Make this my current topic|This is my current topic/ }).click();
+  await page.goto('/dashboard/student/learning');
+  const map = page.getByRole('list', { name: 'Grade 9 Term 1 topic map' });
+  const links = map.getByRole('link');
+  await expect(links).toHaveCount(4);
+  const routes = await links.evaluateAll((elements) => elements.map((element) => element.getAttribute('href')));
+  expect(routes).toEqual(['WHOLE-NUMBERS', 'INTEGERS', 'EXPONENTS', 'NUMERIC-GEOMETRIC-PATTERNS'].map((code) => `/dashboard/student/learning/topic/${code}`));
+  await expect(map.locator('[aria-current="step"]')).toHaveAttribute('href', '/dashboard/student/learning/topic/INTEGERS');
+  await expect(map.getByText('Mastered', { exact: true })).toHaveCount(0);
+  for (const width of [360, 390, 1440]) {
+    await capture(page, testInfo, 'sprint5-learning-map', width, width === 1440 ? 1000 : 844, map.locator('xpath=ancestor::section[1]'));
+  }
+  await links.first().focus();
+  await expect(links.first()).toBeFocused();
+  const focusStyle = await links.first().evaluate((element) => ({ style: getComputedStyle(element).outlineStyle, width: getComputedStyle(element).outlineWidth }));
+  expect(focusStyle.style).not.toBe('none');
+  expect(parseFloat(focusStyle.width)).toBeGreaterThan(0);
+  await page.keyboard.press('Tab');
+  await expect(links.nth(1)).toBeFocused();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(map.locator('.animate-pulse')).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL('/dashboard/student/learning/topic/INTEGERS');
+  await expect(page.getByRole('list', { name: 'Integers curriculum skills' })).toBeVisible();
+  await expect(page.getByText('Practice attempted', { exact: true })).toBeVisible();
+  for (const width of [360, 390, 1440]) {
+    await capture(page, testInfo, 'sprint5-topic-skill-map', width, width === 1440 ? 1000 : 844,
+      page.getByRole('list', { name: 'Integers curriculum skills' }).locator('xpath=ancestor::section[1]'));
+  }
+  const client = await authenticatedClient(emails.persistence);
+  const { data: persisted, error } = await client.rpc('get_my_grade9_term1_topic_learning_map', { p_topic_code: 'INTEGERS' });
+  expect(error).toBeNull();
+  expect(persisted.skills.find((skill: { activityCode: string }) => skill.activityCode === 'A.G9.S4.INTEGER-OPS').practiceAttempted).toBe(true);
+  writeEvidence(testInfo, 'sprint5-learning-map', { observed: 'four ordered connected topics, selected checkpoint, no false mastery, keyboard entry, visible focus, reduced motion, and persisted skill practice at 360/390/1440' });
+});
+
+test('Sprint 5 authorised admin inspects content, approves a disposable question version and publishes only an eligible fixture form', async ({ page }, testInfo) => {
+  const fixture = JSON.parse(process.env.E2E_GRADE9_FIXTURE_EVIDENCE ?? '{}');
+  expect(fixture.publication.reviewedPracticeQuestionVersions).toBe(76);
+  expect(fixture.publication.reviewedFormalQuestionVersions).toBe(258);
+  expect(fixture.publication.reviewedLessons).toBe(19);
+  expect(fixture.publication.reviewedActivities).toBe(19);
+  expect(fixture.afterReviewReadiness).toHaveLength(4);
+  expect(fixture.afterReviewReadiness.every((topic: { learnerContentReady: boolean; assessmentReady: boolean; blockers: string[] }) => topic.learnerContentReady && topic.assessmentReady && topic.blockers.length === 0)).toBe(true);
+  const admin = await authenticatedClient('admin.supabase-e2e@projectodysseus.test');
+  const { data: bundle, error } = await admin.rpc('get_question_version_review_bundle', { p_question_version_id: fixture.draftQuestionVersionId });
+  expect(error).toBeNull();
+  await signIn(page, 'admin.supabase-e2e@projectodysseus.test', /\/dashboard\/admin\/?$/);
+  await page.goto('/dashboard/admin/learning-content');
+  await expect(page.getByRole('heading', { name: 'Grade 9 Term 1 learner readiness' })).toBeVisible();
+  const lesson = page.getByRole('article').filter({ hasText: 'Integer operations and order' });
+  await lesson.getByText('Inspect learner material', { exact: true }).click();
+  await expect(lesson.getByText('Objective:', { exact: true })).toBeVisible();
+  await expect(lesson.getByText('Worked example:', { exact: true })).toBeVisible();
+  await capture(page, testInfo, 'admin-lesson-inspection', 1440, 1000, lesson);
+  const activity = page.getByRole('article').filter({ hasText: 'A.G9.S4.INTEGER-OPS' });
+  await expect(activity.getByText('Approval check', { exact: true })).toBeVisible();
+  await capture(page, testInfo, 'admin-linked-activity-readiness', 1440, 1000, activity);
+  await page.getByLabel('Search questions').fill(bundle.itemCode);
+  await page.getByLabel('Review status', { exact: true }).selectOption('draft');
+  await page.getByRole('row').filter({ hasText: `${bundle.itemCode} v2` }).getByRole('button', { name: 'Review', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `Review ${bundle.itemCode}`, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Submit for review', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Approve', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Approve', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Create revision draft', exact: true })).toBeVisible();
+  const { data: reviewed, error: reviewError } = await admin.rpc('get_question_version_review_bundle', { p_question_version_id: fixture.draftQuestionVersionId });
+  expect(reviewError).toBeNull();
+  expect(reviewed.reviewStatus).toBe('approved');
+  await page.goto('/dashboard/admin/assessments');
+  await expect(page.getByRole('heading', { name: 'Assessment forms', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Administrator question preview', exact: true })).toBeVisible();
+  const { data: catalogue, error: catalogueError } = await admin.rpc('get_learning_assessment_management_catalog');
+  expect(catalogueError).toBeNull();
+  expect(catalogue.definitions.every((definition: { publicationValidation: { valid: boolean } }) => definition.publicationValidation.valid)).toBe(true);
+  await page.getByRole('button', { name: 'Publish immutable form', exact: true }).click();
+  await expect(page.getByText('Immutable assessment form published.', { exact: true })).toBeVisible();
+  await capture(page, testInfo, 'admin-form-publication-readiness', 1440, 1000);
+  writeEvidence(testInfo, 'sprint5-admin-publication', { observed: 'admin-only learner wording, worked example, linked activity dependencies, explicit question-version review transitions and eligible immutable fixture form publication', academicBoundary: 'Disposable functional approval only; no production academic sign-off or publication.' });
 });

@@ -7,6 +7,8 @@ import {
 import { useStudentScope } from '../students/studentQueries';
 
 import {
+  completeLearnerActivity,
+  completeLearnerRetentionCheck,
   loadAvailableLearningDiagnostics,
   loadActivityProgress,
   loadDiagnosticProgress,
@@ -226,6 +228,26 @@ export function useLearnerActivity(activityCode: string) {
 export function useActivityProgress(activityCode: string) {
   const studentScope = useStudentScope();
   return useQuery({ queryKey: studentLearningQueryKeys.activityProgress(studentScope, activityCode), queryFn: () => loadActivityProgress(activityCode), enabled: Boolean(activityCode), staleTime: 5_000 });
+}
+
+export function useCompleteLearningActivityMutation() {
+  const studentScope = useStudentScope();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ activityCode, retentionCheckId }: { activityCode: string; retentionCheckId: string | null }) => {
+      await completeLearnerActivity(activityCode);
+      if (retentionCheckId) await completeLearnerRetentionCheck(retentionCheckId, activityCode);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        studentLearningQueryKeys.nextStep(studentScope),
+        studentLearningQueryKeys.mastery(studentScope),
+        studentLearningQueryKeys.retention(studentScope),
+        studentLearningQueryKeys.journey(studentScope),
+        [...studentLearningQueryKeys.all, studentScope, 'topic-map'],
+      ].map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+    },
+  });
 }
 
 export function useAvailableLearningDiagnostics() {

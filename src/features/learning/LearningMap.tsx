@@ -26,7 +26,7 @@ const TOPIC_STATUS: Record<LearningJourneyTopicStatus, { label: string; detail: 
 };
 
 function MapConnector() {
-  return <span aria-hidden="true" className="absolute left-4 top-full h-3 w-px bg-brand-aegean/10 xl:left-auto xl:right-[-0.75rem] xl:top-1/2 xl:h-px xl:w-3" />;
+  return <span aria-hidden="true" className="absolute left-4 top-full h-3 w-0.5 bg-brand-aegean/40 xl:left-auto xl:right-[-0.75rem] xl:top-1/2 xl:h-0.5 xl:w-3" />;
 }
 
 export function JourneyMap({ journey }: { journey: LearningJourney }) {
@@ -52,7 +52,7 @@ export function JourneyMap({ journey }: { journey: LearningJourney }) {
             <Link
               to={`/dashboard/student/learning/topic/${encodeURIComponent(topic.topicCode)}`}
               aria-current={isCurrent ? 'step' : undefined}
-              className={`group relative z-10 flex min-h-32 w-full items-start gap-3 rounded-2xl border p-4 text-left shadow-sm transition focus-visible:outline-none ${isCurrent ? 'border-brand-gold bg-brand-navy text-white shadow-lg' : 'border-slate-200 bg-slate-50 hover:border-brand-aegean hover:bg-white dark:border-white/10 dark:bg-slate-950/50'}`}
+              className={`group relative z-10 flex min-h-32 w-full items-start gap-3 rounded-2xl border p-4 text-left shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-aegean ${isCurrent ? 'border-brand-gold bg-brand-navy text-white shadow-lg' : 'border-slate-200 bg-slate-50 hover:border-brand-aegean hover:bg-white dark:border-white/10 dark:bg-slate-950/50'}`}
             >
               <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${isCurrent ? 'bg-brand-gold text-brand-navy' : meta.tone}`}>
                 <Icon className="h-5 w-5" aria-hidden="true" />
