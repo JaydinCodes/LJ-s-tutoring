@@ -419,7 +419,7 @@ test('Sprint 5 authorised admin inspects content, approves a disposable question
   await signIn(page, 'admin.supabase-e2e@projectodysseus.test', /\/dashboard\/admin\/?$/);
   await page.goto('/dashboard/admin/learning-content');
   await expect(page.getByRole('heading', { name: 'Grade 9 Term 1 learner readiness' })).toBeVisible();
-  const lesson = page.getByRole('article').filter({ hasText: 'Integer operations and order' });
+  const lesson = page.getByRole('article').filter({ hasText: 'Integer operations and order', has: page.getByText('Inspect learner material', { exact: true }) });
   await lesson.getByText('Inspect learner material', { exact: true }).click();
   await expect(lesson.getByText('Objective:', { exact: true })).toBeVisible();
   await expect(lesson.getByText('Worked example:', { exact: true })).toBeVisible();
