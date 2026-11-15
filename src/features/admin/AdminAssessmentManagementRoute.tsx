@@ -10,7 +10,8 @@ type AssessmentDraft = AssessmentManagementCatalog['definitions'][number];
 type PolicyDraft = AssessmentManagementCatalog['policies'][number];
 
 function errorText(error: unknown) {
-  return error instanceof Error ? error.message : 'The requested update could not be saved.';
+  return error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+    ? error.message : 'The requested update could not be saved.';
 }
 function asNumber(value: string, fallback: number) {
   const parsed = Number(value);
@@ -340,10 +341,16 @@ function AssessmentEditor({ definition, questions, policies, onSaved, onError }:
           ) : null}
           {draft.reviewStatus === 'approved' ? (
             <>
-              <button className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-700 px-4 font-semibold text-white disabled:opacity-50" disabled={busy} onClick={() => void action('publish')} type="button">
-                <Send className="h-4 w-4" />
-                Publish immutable form
-              </button>
+              {draft.publishedFormVersion ? (
+                <span className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Published form v{draft.publishedFormVersion}
+                </span>
+              ) : (
+                <button className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-700 px-4 font-semibold text-white disabled:opacity-50" disabled={busy || !draft.publicationValidation?.valid} onClick={() => void action('publish')} type="button">
+                  <Send className="h-4 w-4" />
+                  Publish immutable form
+                </button>
+              )}
               <button className="min-h-11 rounded-xl border px-4 font-semibold" disabled={busy} onClick={() => void action('create_revision')} type="button">
                 Create revision
               </button>

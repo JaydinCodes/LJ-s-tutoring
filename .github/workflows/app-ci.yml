@@ -134,7 +134,7 @@ jobs:
       - name: Surface Sprint 4 Grade 9 failure evidence
         if: failure()
         run: >-
-          node -e "const fs=require('node:fs');const root='test-results/sprint4-grade9-real';const files=['fixture-setup-failure.json','journey-scenario-summary.json'];const found=files.map(name=>[name,root+'/'+name]).find(([,file])=>fs.existsSync(file));const detail=found?fs.readFileSync(found[1],'utf8').replace(/\\s+/g,' ').slice(0,1500):'No Grade 9 fixture evidence file was written.';console.log('::error title=Sprint 4 Grade 9 real-journey evidence::'+detail);"
+          node -e "const fs=require('node:fs');const root='test-results/sprint4-grade9-real';for(const name of ['fixture-setup-failure.json','run-failure.json','journey-scenario-summary.json']){const file=root+'/'+name;if(fs.existsSync(file)){const detail=fs.readFileSync(file,'utf8').replace(/\\s+/g,' ').slice(0,6000);console.log('::error title=Grade 9 '+name+'::'+detail);}}"
 
       - name: Upload Sprint 4 Grade 9 real-journey evidence
         if: always()
@@ -142,8 +142,7 @@ jobs:
         with:
           name: sprint4-grade9-real-journey-evidence
           path: |
-            test-results/sprint4-grade9-real/**
-            test-results/**/sprint4-grade9-real/**
+            test-results/**
             playwright-report/supabase/**
           if-no-files-found: error
           retention-days: 14

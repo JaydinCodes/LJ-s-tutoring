@@ -6,6 +6,29 @@ const test = require('node:test');
 const root = path.resolve(__dirname, '..', '..');
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 
+test('real journey reporting separates failures and never passes missing or skipped scenarios', () => {
+  const { failureCategory, journeyResults } = require('../../scripts/run-local-supabase-e2e.cjs');
+  for (const [message, category] of [
+    ['fixture user creation failed', 'fixture-setup-failed'],
+    ['webServer process exited', 'application-start-failed'],
+    ['Could not authenticate fixture user', 'authentication-failed'],
+    ['POST /rest/v1/rpc/example failed', 'database-rpc-failed'],
+    ['expect(locator).toBeVisible failed', 'browser-scenario-assertion-failed'],
+    ['page.screenshot failed', 'artifact-collection-failed'],
+  ]) assert.equal(failureCategory(message, message.startsWith('fixture') ? 'fixture-setup-failed' : 'browser-scenario-assertion-failed'), category);
+  const result = journeyResults({ suites: [{ specs: [
+    { file: 'tests/e2e-react/grade9-term1-real-journey.spec.ts', title: 'A new learner', tests: [{ results: [{ status: 'passed' }] }] },
+    { file: 'tests/e2e-react/grade9-term1-real-journey.spec.ts', title: 'B weak learner', tests: [{ results: [{ status: 'skipped' }] }] },
+    { file: 'tests/e2e-react/grade9-term1-real-journey.spec.ts', title: 'E endline', tests: [{ results: [{ status: 'failed', errors: [{ message: 'expect failed' }], attachments: [{ name: 'trace', path: 'trace.zip' }] }] }] },
+  ] }] });
+  assert.equal(result[0].status, 'passed');
+  assert.equal(result[1].status, 'skipped');
+  assert.equal(result[2].status, 'not-run');
+  assert.equal(result[4].category, 'browser-scenario-assertion-failed');
+  assert.equal(result[4].artifacts[0].name, 'trace');
+  assert.ok(journeyResults(null).every((scenario) => scenario.status === 'not-run'));
+});
+
 test('active tooling and CI use the supported Node 24 and npm 11 runtime', () => {
   const packageJson = JSON.parse(read('package.json'));
   const packageLock = JSON.parse(read('package-lock.json'));

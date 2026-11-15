@@ -20,15 +20,12 @@ import {
 } from '../../components/dashboard/DashboardDesignSystem';
 import {
   useActivityProgress,
+  useCompleteLearningActivityMutation,
   useLearnerActivity,
   useLearnerQuestion,
   useSubmitLearningAttemptMutation,
 } from './studentLearningQueries';
-import {
-  completeLearnerActivity,
-  completeLearnerRetentionCheck,
-  type LearnerConfidence,
-} from './studentLearningRepository';
+import { type LearnerConfidence } from './studentLearningRepository';
 import {
   getConfidenceFeedback,
   getMisconceptionExplanation,
@@ -59,6 +56,8 @@ export function StudentActivityRoute() {
   const current = progress.find((item) => !item.attemptId) ?? null;
   const questionQuery = useLearnerQuestion(current?.questionVersionId ?? null);
   const submit = useSubmitLearningAttemptMutation('', activityCode);
+  const completion = useCompleteLearningActivityMutation();
+  const { mutate: complete, variables: completionContext, isPending: completionPending } = completion;
 
   const [answer, setAnswer] = useState('');
   const [confidence, setConfidence] = useState<LearnerConfidence | null>(null);
@@ -80,13 +79,12 @@ export function StudentActivityRoute() {
   }, [current?.questionVersionId]);
 
   useEffect(() => {
-    if (activityCode && progress.length > 0 && progress.every((item) => item.attemptId)) {
-      void (async () => {
-        await completeLearnerActivity(activityCode);
-        if (retentionCheckId) await completeLearnerRetentionCheck(retentionCheckId, activityCode);
-      })();
+    if (activityQuery.isSuccess && progressQuery.isSuccess && activityCode && progress.length > 0
+      && progress.every((item) => item.attemptId) && !completionPending
+      && (completionContext?.activityCode !== activityCode || completionContext.retentionCheckId !== retentionCheckId)) {
+      complete({ activityCode, retentionCheckId });
     }
-  }, [activityCode, progress, retentionCheckId]);
+  }, [activityCode, activityQuery.isSuccess, progressQuery.isSuccess, progress, retentionCheckId, complete, completionContext, completionPending]);
 
   if (activityQuery.isPending || progressQuery.isPending) {
     return (
@@ -125,13 +123,31 @@ export function StudentActivityRoute() {
 
   // Activity Completion View
   if (!current) {
+    if (progress.length === 0) {
+      return (
+        <PageShell title="Practice unavailable" subtitle={activity.name} section="student">
+          <EmptyState title="No reviewed questions available" description="Return to Learning for another available step." />
+          <Link to="/dashboard/student/learning">Return to Learning</Link>
+        </PageShell>
+      );
+    }
+    if (completionContext?.activityCode !== activityCode || completionContext.retentionCheckId !== retentionCheckId || !completion.isSuccess) {
+      return (
+        <PageShell title="Saving activity progress" subtitle={activity.name} section="student">
+          {completion.isError ? (
+            <ErrorState title="Activity completion could not be saved" description="Your answers are saved. Retry recording completion before continuing."
+              onRetry={() => complete({ activityCode, retentionCheckId })} />
+          ) : <div role="status">Recording your completed activity...</div>}
+        </PageShell>
+      );
+    }
     const totalQuestions = progress.length;
     const correctCount = sessionResults.filter((r) => r.status === 'correct').length;
     const reviewedMisconceptions = sessionResults.flatMap((r) => (r.misconception ? [r.misconception] : []));
 
     return (
       <PageShell title="Activity complete" subtitle={activity.name} section="student">
-        <div className="space-y-6">
+        <div className="space-y-6" data-testid="activity-state" data-state="complete" data-activity-code={activityCode}>
           <section className="relative overflow-hidden rounded-[2rem] border border-brand-gold/30 bg-brand-navy p-8 text-brand-parchment shadow-xl sm:p-10">
             <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-brand-gold/10 blur-3xl" aria-hidden="true" />
             <div className="relative">
@@ -290,7 +306,8 @@ export function StudentActivityRoute() {
         </div>
 
         {/* Main Question / Evaluation Card */}
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-900 sm:p-8">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-900 sm:p-8"
+          data-testid="activity-state" data-state={activeFeedback ? 'feedback' : 'question'} data-question-id={question.id} data-activity-code={activityCode}>
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-brand-aegean">

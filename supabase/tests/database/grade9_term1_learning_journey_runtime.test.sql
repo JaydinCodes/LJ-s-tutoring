@@ -1,6 +1,6 @@
 begin;
 
-select plan(11);
+select plan(19);
 
 create temp table learning_journey_fixture(
   student_user_id uuid,
@@ -153,6 +153,56 @@ select is(
   (select public.get_my_grade9_term1_learning_journey() #>> '{context,selectedTopicCode}'),
   null::text,
   'another learner cannot retrieve the first learner’s saved journey context'
+);
+
+select throws_ok(
+  'select public.get_learning_activity_content_catalog()',
+  '42501', 'not_authorized',
+  'ordinary students cannot inspect the administrative activity review catalog'
+);
+update public.profiles set role = 'admin'
+where auth_user_id = (select other_student_user_id from learning_journey_fixture);
+select lives_ok(
+  'select public.get_learning_activity_content_catalog()',
+  'the authorised activity catalog aggregates question rows before stage rows'
+);
+select is(
+  (select count(*)::integer from jsonb_array_elements(public.get_learning_activity_content_catalog() -> 'activities') activity
+   where activity ->> 'code' ~ '^A\.G[89]\.S4\.'),
+  19,
+  'all nineteen instructional activities are available for administrative review'
+);
+select is(
+  (select jsonb_array_length(activity -> 'stages') from jsonb_array_elements(public.get_learning_activity_content_catalog() -> 'activities') activity
+   where activity ->> 'code' = 'A.G9.S4.INTEGER-OPS'),
+  2,
+  'the activity catalog preserves its ordered stage array'
+);
+select is(
+  (select (activity #>> '{stages,0,questionCount}')::integer from jsonb_array_elements(public.get_learning_activity_content_catalog() -> 'activities') activity
+   where activity ->> 'code' = 'A.G9.S4.INTEGER-OPS'),
+  2,
+  'the first practice stage reports its two linked questions'
+);
+select is(
+  (select jsonb_array_length(activity #> '{stages,0,questions}') from jsonb_array_elements(public.get_learning_activity_content_catalog() -> 'activities') activity
+   where activity ->> 'code' = 'A.G9.S4.INTEGER-OPS'),
+  2,
+  'the first practice stage exposes both question review records to administrators'
+);
+select is(
+  (select sum((stage ->> 'questionCount')::integer)::integer
+   from jsonb_array_elements(public.get_learning_activity_content_catalog() -> 'activities') activity
+   cross join lateral jsonb_array_elements(activity -> 'stages') stage
+   where activity ->> 'code' = 'A.G9.S4.INTEGER-OPS'),
+  4,
+  'the activity catalog includes all four questions across its two stages'
+);
+select ok(
+  (select (activity -> 'approvalBlockers') @> '["Approve every linked question version before approving this activity."]'::jsonb
+   from jsonb_array_elements(public.get_learning_activity_content_catalog() -> 'activities') activity
+   where activity ->> 'code' = 'A.G9.S4.INTEGER-OPS'),
+  'the catalog explains the draft-question blocker without approving any content'
 );
 
 select * from finish();
