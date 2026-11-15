@@ -16,6 +16,7 @@ import {
   loadDueRetentionStep,
   loadGrade9LearningCatalogue,
   loadGrade9LearningTopic,
+  loadGrade9Term1TopicLearningMap,
   loadGrade8LearningBridge,
   loadGrade9Term1LearningJourney,
   loadApprovedLearningVideos,
@@ -69,6 +70,7 @@ export const studentLearningQueryKeys = {
   retention: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'retention'] as const,
   catalogue: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'catalogue'] as const,
   topic: (studentScope: string, topicCode: string) => [...studentLearningQueryKeys.all, studentScope, 'topic', topicCode] as const,
+  topicMap: (studentScope: string, topicCode: string) => [...studentLearningQueryKeys.all, studentScope, 'topic-map', topicCode] as const,
   bridge: (studentScope: string, skillCode: string) => [...studentLearningQueryKeys.all, studentScope, 'bridge', skillCode] as const,
   videos: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'videos'] as const,
   assessments: (studentScope: string) => [...studentLearningQueryKeys.all, studentScope, 'assessments'] as const,
@@ -99,6 +101,17 @@ export function useGrade9LearningCatalogue() {
 export function useGrade9LearningTopic(topicCode: string) {
   const studentScope = useStudentScope();
   return useQuery({ queryKey: studentLearningQueryKeys.topic(studentScope, topicCode), queryFn: () => loadGrade9LearningTopic(topicCode), enabled: Boolean(topicCode), staleTime: 60_000 });
+}
+
+export function useGrade9Term1TopicLearningMap(topicCode: string) {
+  const studentScope = useStudentScope();
+  return useQuery({
+    queryKey: studentLearningQueryKeys.topicMap(studentScope, topicCode),
+    queryFn: () => loadGrade9Term1TopicLearningMap(topicCode),
+    enabled: Boolean(topicCode),
+    staleTime: 10_000,
+    refetchOnReconnect: true,
+  });
 }
 
 export function useGrade8LearningBridge(skillCode: string) {
@@ -167,6 +180,7 @@ export function useStartLearningAssessmentMutation() {
         queryKey: studentLearningQueryKeys.journey(studentScope),
         exact: true
       });
+      await queryClient.invalidateQueries({ queryKey: [...studentLearningQueryKeys.all, studentScope, 'topic-map'] });
     }
   });
 }
@@ -199,6 +213,7 @@ export function useSubmitLearningAssessmentMutation(sessionId: string) {
         exact: true
       });
       await queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.journey(studentScope), exact: true });
+      await queryClient.invalidateQueries({ queryKey: [...studentLearningQueryKeys.all, studentScope, 'topic-map'] });
     }
   });
 }
@@ -312,6 +327,7 @@ export function useSubmitLearningAttemptMutation(
           queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.mastery(studentScope), exact: true }),
           queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.retention(studentScope), exact: true }),
           queryClient.invalidateQueries({ queryKey: studentLearningQueryKeys.journey(studentScope), exact: true }),
+          queryClient.invalidateQueries({ queryKey: [...studentLearningQueryKeys.all, studentScope, 'topic-map'] }),
         ] : []),
 
         queryClient.invalidateQueries({

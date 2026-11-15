@@ -8204,6 +8204,10 @@ export type Database = {
         Returns: Json
       }
       get_my_grade9_term1_learning_journey: { Args: never; Returns: Json }
+      get_my_grade9_term1_topic_learning_map: {
+        Args: { p_topic_code: string }
+        Returns: Json
+      }
       get_my_learning_activity: {
         Args: { p_activity_code: string }
         Returns: Json
