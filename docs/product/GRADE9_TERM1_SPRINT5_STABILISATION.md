@@ -2,7 +2,9 @@
 
 ## Scope and Safety
 
-PR: https://github.com/JaydinCodes/LJ-s-tutoring/pull/128
+Implementation PR: https://github.com/JaydinCodes/LJ-s-tutoring/pull/128
+
+The repository owner externally merged PR #128 at green functional commit `ec7a314` into main commit `aafeec1`. The assistant did not merge or deploy. This evidence-only follow-up finalises the observed completion record and corrects administrator evidence metadata; it does not change application behaviour.
 
 Base: `main`, Sprint 5 PR #127 (`70ade21`). The stabilisation branch preserves the existing learning map, OLA recommendation logic, three-attempt practice rules, formal-assessment eligibility and server-authoritative mastery. It does not begin Sprint 6.
 
@@ -47,13 +49,13 @@ Executed checks include `npm run test:e2e:supabase`, typecheck, full lint, front
 
 Local limitations are retained as evidence: running draft-dependent RLS tests after fixture approval caused predictable draft/policy conflicts; rerunning after reset passed. Some local browser attempts failed on Vite startup/cold route loading or the local assignment-storage environment. These are not represented as passing executions. CI's isolated runners passed the original role/assignment workflows.
 
-Final PR checks and the post-repair admin result must be green before technical stabilisation is declared complete. The current status is available on the PR's Checks tab; the completion record below is updated only from observed results.
+Final functional verification is green: App CI and Release Gates succeeded at `ec7a314`, and all fifteen PR checks were observed successful. All 503 frontend unit/source-contract tests passed; the complete database suite passed 716 checks. The completion record below links the observed runs and artifacts.
 
 ## Learning Map UX
 
 Real-Supabase Playwright covers 360 px, 390 px and 1440 px, with screenshots named `sprint5-learning-map-*` and `sprint5-topic-skill-map-*` inside the uploaded evidence. Topic order is Whole Numbers, Integers, Exponents, Numeric and Geometric Patterns. Checks cover the selected checkpoint, no mastery from practice alone, persisted practice/skill evidence, keyboard focus and entry, reduced motion, and document-width overflow. E also checks persisted completed practice and formal mastery on the topic map. C verifies the Grade 8 branch and return context. Existing visual scenarios cover content-awaiting-publication states.
 
-The initial mobile viewport screenshot framing was inadequate and was corrected to capture the full map element. Only justified focus/connector changes were made; the application and Learning Journey layout were not redesigned.
+The initial mobile viewport screenshot framing was inadequate and was corrected to capture the full map element. The 360/390/1440 captures were inspected: connectors and the current checkpoint are legible, long labels wrap inside the available width, and skill/practice/assessment states remain distinct. Mobile element captures include the fixed navigation bar at the viewport boundary; that screenshot limitation does not invalidate the measured no-horizontal-overflow checks. Only justified focus/connector changes were made; the application and Learning Journey layout were not redesigned.
 
 Initial CI screenshots, page context and failure traces: [real-journey evidence](https://github.com/JaydinCodes/LJ-s-tutoring/actions/runs/43758208291/artifacts/14179880169). These artifacts include A-H and the real responsive maps even though the admin scenario failed. Final artifact links are recorded below after verification.
 
@@ -105,8 +107,34 @@ After a separately reviewed migration deployment, use a designated production pi
 
 ## Pilot Readiness Verdict
 
-Technical pilot readiness requires all eight real journeys, the responsive map, admin workflow and complete required CI to pass on this PR. Production pilot release remains **not authorised** until live RPC/deployment checks and deliberate instructional publication are complete. Formal assessments remain blocked pending complete independent academic sign-off and all existing publication requirements. No merge or deployment has been performed.
+**Technical stabilisation is complete for controlled-pilot preparation:** all eight real journeys, the responsive map, the admin approval/publication workflow and the complete required CI passed. **Production pilot release remains not authorised** until the reviewed admin-catalog migration/deployment checks and deliberate instructional publication are complete. Formal assessments remain blocked pending complete independent academic sign-off and all existing publication requirements. The assistant did not merge or deploy; PR #128 was merged externally by the repository owner, and this evidence-only follow-up remains unmerged.
 
 ## Final Completion Record
 
-Post-repair CI/admin verification and final screenshot artifact links: pending at the time this document was first written. Replace this sentence only after observing the completed required checks.
+Observed green functional commit: `ec7a3142a161c17319c02fff7a156a06782ff484`.
+
+- [App CI](https://github.com/JaydinCodes/LJ-s-tutoring/actions/runs/43770338854): successful. Real suite: 19 passed, one deliberately skipped Golden Demo reset-only test, zero unexpected/flaky results. The runner executes that reset verification separately; the complete workflow passed.
+- [Release Gates](https://github.com/JaydinCodes/LJ-s-tutoring/actions/runs/43770338821): successful, including migration rebuild, RLS, type/schema checks, dependency/security checks, real and mock browser gates, production build, accessibility, links, Lighthouse and release evidence validation.
+- A-H scenario summary: every scenario passed; fixture setup passed; `browserFailures` and `runnerErrors` are empty.
+- Authenticated admin scenario: passed in 6.06 seconds. Invalid historical question approval and overlapping form publication remained rejected. A mapped immutable question revision was approved, and the reserved original Exponents reassessment B form was explicitly published and read back as form version 1. No production mutation occurred.
+- [Real screenshots and structured scenario/admin evidence](https://github.com/JaydinCodes/LJ-s-tutoring/actions/runs/43770338854/artifacts/14183533809).
+- [Independent Release Gates browser evidence](https://github.com/JaydinCodes/LJ-s-tutoring/actions/runs/43770338821/artifacts/14184535417).
+- [Release evidence bundle](https://github.com/JaydinCodes/LJ-s-tutoring/actions/runs/43770338821/artifacts/14184133409).
+
+## Exact Files Changed
+
+- `.github/workflows/app-ci.yml`
+- `.github/workflows/release-gates.yml`
+- `docs/product/GRADE9_TERM1_SPRINT5_STABILISATION.md`
+- `docs/supabase/SCHEMA_AND_POLICY_INVENTORY.md`
+- `playwright.supabase.config.ts`
+- `scripts/run-local-supabase-e2e.cjs`
+- `src/features/admin/AdminAssessmentManagementRoute.tsx`
+- `src/features/admin/AdminLearningContentRoute.tsx`
+- `src/features/learning/LearningMap.tsx`
+- `src/features/learning/StudentActivityRoute.tsx`
+- `src/features/learning/studentLearningQueries.ts`
+- `supabase/migrations/20261115130000_sprint5_activity_catalog_stage_aggregation.sql`
+- `supabase/tests/database/grade9_term1_learning_journey_runtime.test.sql`
+- `tests/e2e-react/grade9-term1-real-journey.spec.ts`
+- `tests/frontend/ci-quality-gates.test.cjs`
