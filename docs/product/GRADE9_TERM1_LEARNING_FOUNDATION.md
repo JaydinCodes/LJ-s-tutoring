@@ -1,6 +1,6 @@
 # Grade 9 Term 1 Learning Foundation
 
-**Status:** Sprint 1 implementation contract. The curriculum taxonomy, topic policies, and assessment forms added by this sprint are all review-gated. No new learner-facing questions, activities, or assessments are published by this work.
+**Status:** Sprint 1 foundation, extended by the Sprint 2 assessment engine. The curriculum taxonomy, topic policies, authored questions, and assessment forms remain review-gated. No new learner-facing Grade 9 Term 1 content is published by this work.
 
 ## Scope and sources
 
@@ -17,7 +17,7 @@ The supplied Grade 8 material is a targeted bridge, not a mandatory Grade 8 rest
 
 | Topic | Essential Grade 9 skills | Targeted Grade 8 bridge |
 | --- | --- | --- |
-| Whole numbers | `G9-NUM-REAL-IRRATIONAL` (critical, reasoning), `G9-NUM-WHOLE-HCF-LCM` (critical), `G9-NUM-DIRECT-INVERSE-PROPORTION` | `G8-NUM-WHOLE-PROPERTIES`, plus fraction/decimal operations for proportion |
+| Whole numbers | `G9-NUM-REAL-IRRATIONAL` (critical, reasoning), `G9-NUM-WHOLE-HCF-LCM` (critical), `G9-NUM-DIRECT-INVERSE-PROPORTION`, `G9-NUM-RATIO-RATE` (critical, reasoning), `G9-NUM-FINANCIAL-APPLICATIONS` (critical) | `G8-NUM-WHOLE-PROPERTIES`, plus fraction/decimal operations for proportion, rate and financial contexts |
 | Integers | `G9-NUM-INTEGERS-OPERATIONS` (critical), `G9-NUM-INTEGERS-POWERS-ROOTS` (critical) | `G8-NUM-INTEGERS-OPERATIONS` |
 | Exponents | `G9-EXP-LAWS-EXTENDED` (critical), `G9-EXP-NEGATIVE-SCI` (critical); `G9-EXP-SCI-NOTATION-EXTENSION` is supplementary | `G8-EXP-LAWS-SCI` and integer operations |
 | Numeric and geometric patterns | `G9-PAT-NUMERIC-STRUCTURE` (critical, reasoning), `G9-PAT-GENERAL-RULE` (critical, reasoning), `G9-PAT-GEOMETRIC-VISUAL` (critical, reasoning) | `G8-PAT-REPRESENT-RULE` |
@@ -39,7 +39,7 @@ The seeded values are draft pilot values, not a universal research claim:
 
 - at least 80% overall achievement;
 - 100% critical-skill coverage;
-- at least one independent mathematical-reasoning item at 80% or better;
+- at least two independent mathematical-reasoning items at 80% or better;
 - a 90% strong-baseline threshold; and
 - a mastery challenge when the approved policy requires it.
 
@@ -63,7 +63,7 @@ Progression is evaluated as follows:
 1. A learner with no or unknown prerequisite evidence may take the entry/topic baseline; an optional prerequisite diagnostic is offered, not enforced as a failure.
 2. A known prerequisite gap offers focused Grade 8 remediation and a later topic baseline. It does not impose a global sequence lock.
 3. A strong topic baseline with secure critical skills and reasoning evidence makes the mastery challenge available immediately.
-4. A weaker baseline supplies the skill-level focus for remediation, practice, then an endline.
+4. A weaker baseline supplies the skill-level focus for remediation, practice, then an endline. A qualifying endline and a qualifying mastery challenge are alternate routes to topic mastery.
 5. Only demonstrated topic mastery makes the next dependent topic ready. Unrelated topics remain self-paced.
 
 ## Question specification
@@ -94,17 +94,18 @@ The record is append-only and keeps the original assignment/submission evidence 
 
 ## Security and review gates
 
-The new tables have RLS enabled. Direct reads are platform-admin scoped; writes occur only through security-definer functions that require the existing content-admin authorization boundary. Functions revoke `public` access and grant only authenticated execution, where the function rechecks administrator access. No existing student identity boundary, assignment RLS policy, learning-attempt history, mastery history, or question-answer-key boundary was changed.
+The new tables have RLS enabled and have no direct authenticated table-read grant. Learner payloads come only from owner-checked, redacted RPCs; administrator management payloads come from the existing content-admin boundary. Writes occur only through security-definer functions. Functions revoke `public` access and grant only authenticated execution, where each function rechecks role authority. No existing student identity boundary, assignment RLS policy, learning-attempt history, mastery history, or question-answer-key boundary was changed.
 
-## Sprint 2 handover
+## Sprint 2 implementation and Sprint 3 handover
 
-Sprint 2 should:
+Sprint 2 has implemented immutable form snapshots, server-authoritative timed sessions, append-only answer events, result evidence and topic-mastery evaluation. The full operating and deployment handover is in [Grade 9 Term 1 Assessment Engine — Sprint 2 Handover](GRADE9_TERM1_SPRINT2_HANDOVER.md).
+
+Sprint 3 should:
 
 1. Obtain mathematical/CAPS review for each mapped skill, policy, question family, and external resource before approving any record.
 2. Author parallel, reviewed question forms and link only approved immutable question versions to the assessment definitions.
-3. Build the assessment delivery/session layer on the existing secure attempt/evaluation path, enforcing the configured duration server-side and preserving all attempts.
-4. Persist append-only topic-level decisions that cite assessment attempts and, only when explicitly selected, `qualifying_assignment_mastery_evidence`.
-5. Expose learner-facing recommendations using the established sanitized RPC pattern; do not expose answer keys, distractor rationales, draft content, or internal policy notes.
+3. Author parallel reviewed endline and mastery-challenge forms, then exercise expiry, idempotency, RLS and Assignment-evidence paths against real Supabase fixtures before publishing any form.
+4. Regenerate database types once the migration target is available and keep learner payloads sanitized: never expose answer keys, distractor rationales, draft content, or internal policy notes.
 6. Validate the future ATP before a live roll-out and retain the current resource register as a review queue, not publishing material automatically.
 
 ## Known limitations

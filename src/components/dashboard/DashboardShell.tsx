@@ -103,6 +103,7 @@ const navigation = {
       items: [
         { to: '/dashboard/admin/results', label: 'Learning quality', shortLabel: 'Teaching', icon: Brain },
         { to: '/dashboard/admin/learning-content', label: 'Learning content', icon: BookOpen },
+        { to: '/dashboard/admin/assessments', label: 'Assessments', icon: ClipboardList },
         { to: '/dashboard/admin/classes', label: 'Classes', icon: BookOpen },
         { to: '/dashboard/admin/approvals', label: 'Session approvals', icon: ShieldCheck },
         { to: '/dashboard/admin/ai-grading', label: 'AI grading', icon: Sparkles },

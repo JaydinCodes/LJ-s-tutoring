@@ -2,6 +2,11 @@ import { defineConfig } from '@playwright/test';
 
 const port = Number(process.env.REACT_E2E_PORT ?? 5174);
 const webBaseUrl = process.env.REACT_E2E_BASE_URL ?? `http://127.0.0.1:${port}`;
+// Cloud and locked-down CI runners can provide a managed Chromium without the
+// Playwright download cache. Opt in explicitly so ordinary CI still uses the
+// version installed by `playwright install`.
+const executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
+const video = process.env.PLAYWRIGHT_NO_VIDEO === 'true' ? 'off' : 'retain-on-failure';
 
 export default defineConfig({
   testDir: './tests/e2e-react',
@@ -17,6 +22,9 @@ export default defineConfig({
   // CPU-contention test.
   workers: 2,
   retries: process.env.CI ? 1 : 0,
+  // The visual-QA suite captures evidence on successful journeys as well as
+  // failures. Retain those files so CI can publish the review artefact.
+  preserveOutput: 'always',
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report/react', open: 'never' }],
@@ -25,7 +33,8 @@ export default defineConfig({
     baseURL: webBaseUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video,
+    ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
   webServer: {
     command: `npx vite --config vite.app.config.ts --host 127.0.0.1 --port ${port}`,

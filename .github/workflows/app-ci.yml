@@ -2,6 +2,7 @@ name: App CI
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches: [ main ]
 
@@ -73,6 +74,14 @@ jobs:
       - name: Run unit tests (web helpers)
         run: npm test
 
+      - name: Verify Grade 9 Term 1 assessment content pack
+        run: npm run assessment:content:qa
+
+      - name: Verify corrected Sprint 4 instructional and assessment blueprints
+        run: |
+          npm run qa:grade9-term1-content
+          npm run qa:grade9-term1-assessment-forms
+
   supabase-rls-runtime:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -119,8 +128,34 @@ jobs:
       - name: Install Playwright Chromium
         run: npm run test:e2e:install
 
-      - name: Run seeded local-Supabase role journeys
+      - name: Run seeded local-Supabase role journeys and Sprint 4 Grade 9 A–H
         run: npm run test:e2e:supabase
+
+      - name: Surface Sprint 4 Grade 9 failure evidence
+        if: failure()
+        run: >-
+          node -e "const fs=require('node:fs');const root='test-results/sprint4-grade9-real';const files=['fixture-setup-failure.json','journey-scenario-summary.json'];const found=files.map(name=>[name,root+'/'+name]).find(([,file])=>fs.existsSync(file));const detail=found?fs.readFileSync(found[1],'utf8').replace(/\\s+/g,' ').slice(0,1500):'No Grade 9 fixture evidence file was written.';console.log('::error title=Sprint 4 Grade 9 real-journey evidence::'+detail);"
+
+      - name: Upload Sprint 4 Grade 9 real-journey evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sprint4-grade9-real-journey-evidence
+          path: |
+            test-results/sprint4-grade9-real/**
+            test-results/**/sprint4-grade9-real/**
+            playwright-report/supabase/**
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload supporting real-Supabase role journey artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sprint4-real-supabase-role-journeys
+          path: test-results/**/sprint4-real/**
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Run local Edge Function authorization matrix
         run: npm run test:edge:auth:runtime
@@ -148,6 +183,15 @@ jobs:
       # journeys remain required in the separate database gate above.
       - name: Run frontend mock smoke journeys
         run: npm run test:e2e
+
+      - name: Upload Sprint 3 visual-QA evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sprint3-learning-journey-visual-qa
+          path: test-results/**/sprint3-visual-qa/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload Playwright report on failure
         if: failure()

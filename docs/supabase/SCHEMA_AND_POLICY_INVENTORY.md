@@ -114,6 +114,27 @@ The ordered, immutable migrations below are the canonical database and RLS polic
 | `20261106000000_grade8_bridge_and_source_question_drafts.sql` | `7272c1983be7b5b98ec88a33edbdf5ee89436509366e407b7b8d7e0b8c193bed` |
 | `20261106120000_grade9_term1_learning_foundation.sql` | `00660d6aaa4252c5789a34a2b294eea35e30a03a257096ae8d65f10fdd45cfb0` |
 | `20261107000000_curated_learning_video_resources.sql` | `c269e49dca8ae19790f0ee3fe51f18828f864b37dfe7454ed684983ec6fd7a6d` |
+| `20261107120000_grade9_term1_assessment_engine.sql` | `9473a6a76a5b3aa3d4ea2423e7dd91681cea2edaa7788d2c3bfb74dd3ba1fa2c` |
+| `20261107130000_grade9_term1_assessment_drafts.sql` | `70be9303297c3a47884b80a2163b145701ab2fc734d4d4d28c10b502dcdc8f80` |
+| `20261108120000_grade9_term1_assessment_closure.sql` | `e706566e7da41d8a3b7e7a097400de9baf13422234e8e8b1cd762dd42e5b3257` |
+| `20261108130000_grade9_term1_complete_assessment_bank.sql` | `2ffcda6b7c378bd22b9ebdd7643b3077793306d87b09889bf4b0a917dfeb4e19` |
+| `20261109120000_grade9_term1_content_reconstruction.sql` | `e4f8b53e3486dc7f158f026600826d681a18bbe8ffb6253546c0b0ea5ba7a066` |
+| `20261109130000_grade9_term1_assignment_evidence_combination.sql` | `ffbd6fd3781f38db684af6fd4e127fefddb046ba9dae14cc935aa019f2ff5880` |
+| `20261109140000_grade9_term1_content_reconstruction_backfill.sql` | `e6761721537c2ad2f330d9529e81f36ec6cf451eb60ea37ce4840c0e548edc33` |
+| `20261110120000_grade9_term1_learning_journey.sql` | `487e0b5455bc334cd2d1884485763137c87de7f20544a869df0587532f304f6a` |
+| `20261111120000_grade9_term1_selected_topic_baseline_precedence.sql` | `b936055ddd04623c38323b8dd5ef5d9edca7f673a3fd3b1846620e67aabb63c0` |
+| `20261112140000_grade9_term1_sprint4_instructional_content.sql` | `46983438f71f5853e76df3741350ccfad073fd4aa439fd02483bfd5e5c9dde02` |
+| `20261112150000_sprint4_bridge_lesson_delivery.sql` | `ac0cd4fd7718183f01fa629efea560077cc8af6cea88e6a01764a8b57f19e65b` |
+| `20261112160000_sprint4_mathematics_corrections_v2.sql` | `eb1f6ec6069257e1acfbc091cbb1d55c71a75cb29182446beb4d8ef75c460d66` |
+| `20261112170000_sprint4_assessment_duration_and_validation.sql` | `10ba2f43b432ef84232a9a590d5ee598387fedeb37639467e28cef9d57d170a4` |
+| `20261112180000_sprint4_whole_numbers_assessment_blueprint_correction.sql` | `0893498f645fbe0b127ea9d1353cd5fa5cefc7e3726d69b1abb287e0f2703655` |
+| `20261112190000_sprint4_explicit_distractor_feedback_v3.sql` | `dd240fd0d8eacbd2a363913f623ed2f89b65978bae49e4a8924b05d3d5ff936e` |
+| `20261112200000_sprint4_grade9_assessment_blueprint_link_repair.sql` | `325d98ae446fdf415d35eaef3d75e720c76fb2681ccf44469610ec7d4feece34` |
+| `20261112210000_sprint4_policy_review_transition_fix.sql` | `d3de18cf36257c8347f10b6e9a8aa560f6fe4cc96f917b82e995e983f42eb201` |
+| `20261112220000_sprint4_assessment_review_transition_fix.sql` | `fe8ed8cc4f78c75ead5cf8107c2bafa98bf16ea7ae57300c87f68d46ab7b99a4` |
+| `20261112230000_sprint4_whole_numbers_critical_evidence_expansion.sql` | `102bd791f15606440734548a83b33959275520a0d83427cb9ba1934abbd22e7a` |
+| `20261113120000_sprint4_assessment_aggregate_scope_fix.sql` | `dc3bfb819de2baf549cf20abccdab43afd827ed07f919f85c99ad9556856176b` |
+| `20261113130000_sprint4_grade8_bridge_recommendation_stage_alignment.sql` | `b073e6bd1cb768dfc840c4a5ff8dd9bc4e6d5af81037c6cc6fe7ab323c9401df` |
 
 ## Regeneration
 

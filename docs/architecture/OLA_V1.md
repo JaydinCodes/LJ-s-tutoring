@@ -82,3 +82,13 @@ The catalogue reads the existing Grade 9 CAPS taxonomy, so Algebraic
 Equations and Linear Graphs can appear when reviewed learner content exists.
 OLA v1 releases no fabricated availability and adds no competing question bank
 or mastery score.
+
+## Formal-assessment boundary
+
+OLA may recommend a topic baseline, targeted remediation or reviewed practice,
+but it neither starts nor scores formal assessments. Grade 9 Term 1 formal
+delivery is a separate server-timed session contract over the same immutable
+question bank: it freezes a reviewed form/policy snapshot, permits one final
+scored `A`–`D` response per question, and writes cited topic-level decisions.
+Unknown prerequisite evidence remains a diagnostic recommendation rather than
+an eligibility failure. See the [Sprint 2 assessment handover](../product/GRADE9_TERM1_SPRINT2_HANDOVER.md).

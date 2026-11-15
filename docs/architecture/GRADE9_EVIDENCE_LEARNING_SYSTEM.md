@@ -5,9 +5,10 @@ and content-review boundary are documented in
 [Grade 9 Instructional Pilot](GRADE9_INSTRUCTIONAL_PILOT.md).
 The validation workflow, human-review checklist and synthetic regression matrix
 are documented in [Grade 9 Instructional Validation](GRADE9_INSTRUCTIONAL_VALIDATION.md).
-The Term 1 curriculum graph, review-gated topic policy configuration and
-Sprint 2 handover are documented in
-[Grade 9 Term 1 Learning Foundation](../product/GRADE9_TERM1_LEARNING_FOUNDATION.md).
+The Term 1 curriculum graph and review-gated topic policy configuration are
+documented in [Grade 9 Term 1 Learning Foundation](../product/GRADE9_TERM1_LEARNING_FOUNDATION.md).
+The secure formal-session contract, topic-level decision record and delivery
+handover are documented in [Grade 9 Term 1 Assessment Engine — Sprint 2 Handover](../product/GRADE9_TERM1_SPRINT2_HANDOVER.md).
 
 ## Scope and audit
 
@@ -74,6 +75,14 @@ RLS is enabled for every new public table. Students may read only their own atte
 ## Formal versus formative assessment
 
 `evidence_context` explicitly labels each item attempt `formative` or `formal_caps_assessment`. Formal assessment may add a cited evidence point, but `assignment_submissions`/percentages and `competency_evidence` do not become mastery state. Mastery is always an explainable evaluation under a versioned rule set.
+
+The Grade 9 Term 1 assessment engine uses a dedicated session layer instead of
+trying to make formal responses look like practice attempts. It snapshots a
+reviewed form and policy, retains answer revisions and scores only the final
+server-timed answer. Its `topic_mastery_evaluations` are append-only and cite
+the exact session results plus only explicitly qualified Assignment evidence.
+This avoids a parallel question bank or identity system while preserving the
+different integrity requirements of a formal assessment.
 
 ## Operating flow
 

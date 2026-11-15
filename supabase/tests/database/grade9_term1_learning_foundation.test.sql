@@ -39,8 +39,8 @@ select ok(
 );
 select is(
   (select count(*) from public.learning_assessment_definitions where code like 'G9-T1-%'),
-  13::bigint,
-  'entry baseline plus each topic baseline, endline and mastery challenge are represented as drafts'
+  17::bigint,
+  'entry baseline, topic pathways and independent reassessment forms are represented as drafts'
 );
 
 select ok(
@@ -81,11 +81,11 @@ select ok(
   'anon cannot execute the topic-policy RPC'
 );
 select ok(
-  has_function_privilege('authenticated', 'public.qualify_assignment_mastery_evidence(uuid,uuid,uuid,numeric,boolean,text)', 'execute'),
+  has_function_privilege('authenticated', 'public.qualify_assignment_mastery_evidence(uuid,uuid,uuid,numeric,boolean,text,smallint,text,jsonb)', 'execute'),
   'authenticated reaches the controlled assignment-evidence RPC, which rechecks admin authority'
 );
 select ok(
-  not has_function_privilege('anon', 'public.qualify_assignment_mastery_evidence(uuid,uuid,uuid,numeric,boolean,text)', 'execute'),
+  not has_function_privilege('anon', 'public.qualify_assignment_mastery_evidence(uuid,uuid,uuid,numeric,boolean,text,smallint,text,jsonb)', 'execute'),
   'anon cannot execute the assignment-evidence RPC'
 );
 
