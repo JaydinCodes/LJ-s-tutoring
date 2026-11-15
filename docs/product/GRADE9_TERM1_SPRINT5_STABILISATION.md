@@ -2,7 +2,9 @@
 
 ## Scope and Safety
 
-PR: https://github.com/JaydinCodes/LJ-s-tutoring/pull/128
+Implementation PR: https://github.com/JaydinCodes/LJ-s-tutoring/pull/128
+
+The repository owner externally merged PR #128 at green functional commit `ec7a314` into main commit `aafeec1`. The assistant did not merge or deploy. This evidence-only follow-up finalises the observed completion record and corrects administrator evidence metadata; it does not change application behaviour.
 
 Base: `main`, Sprint 5 PR #127 (`70ade21`). The stabilisation branch preserves the existing learning map, OLA recommendation logic, three-attempt practice rules, formal-assessment eligibility and server-authoritative mastery. It does not begin Sprint 6.
 
@@ -105,7 +107,7 @@ After a separately reviewed migration deployment, use a designated production pi
 
 ## Pilot Readiness Verdict
 
-**Technical stabilisation is complete for controlled-pilot preparation:** all eight real journeys, the responsive map, the admin approval/publication workflow and the complete required CI passed. **Production pilot release remains not authorised** until the reviewed admin-catalog migration/deployment checks and deliberate instructional publication are complete. Formal assessments remain blocked pending complete independent academic sign-off and all existing publication requirements. No merge or deployment has been performed.
+**Technical stabilisation is complete for controlled-pilot preparation:** all eight real journeys, the responsive map, the admin approval/publication workflow and the complete required CI passed. **Production pilot release remains not authorised** until the reviewed admin-catalog migration/deployment checks and deliberate instructional publication are complete. Formal assessments remain blocked pending complete independent academic sign-off and all existing publication requirements. The assistant did not merge or deploy; PR #128 was merged externally by the repository owner, and this evidence-only follow-up remains unmerged.
 
 ## Final Completion Record
 
