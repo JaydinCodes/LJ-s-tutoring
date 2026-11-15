@@ -139,10 +139,34 @@ export async function dryRunImport(records: Json[]) {
   return data;
 }
 
-export async function loadLearningActivityContentCatalog() {
+export type LearningActivityReviewItem = {
+  itemCode: string;
+  reviewStatus: string;
+  retired: boolean;
+};
+
+export type LearningActivityContent = {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  status: 'draft'|'in_review'|'approved'|'rejected'|'retired';
+  reviewNotes?: string | null;
+  targetSkillCode: string;
+  approvalBlockers: string[];
+  stages: Array<{
+    sequence: number;
+    type: string;
+    instruction: string;
+    questionCount: number;
+    questions: LearningActivityReviewItem[];
+  }>;
+};
+
+export async function loadLearningActivityContentCatalog(): Promise<{ activities: LearningActivityContent[] }> {
   const { data, error } = await requireSupabase().rpc('get_learning_activity_content_catalog');
   if (error) throw error;
-  return data as { activities: Array<{ id:string; code:string; title:string; description:string; status:string; targetSkillCode:string; stages:Array<{ sequence:number; type:string; instruction:string; questionCount:number }> }> };
+  return data as { activities: LearningActivityContent[] };
 }
 
 export async function saveLearningActivityDraft(payload: Json, activityId?: string) {

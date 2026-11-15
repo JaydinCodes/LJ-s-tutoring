@@ -226,6 +226,29 @@ export type LearningJourney = {
   context: { selectedTopicCode?: string | null; focusSkillCode?: string | null; originTopicCode?: string | null; updatedAt?: string | null };
 };
 
+/**
+ * Learner-scoped map projection. It reports only persisted progress and
+ * review-gated content availability; it is not a second recommendation or
+ * mastery engine.
+ */
+export type TopicLearningMap = {
+  topicCode: string;
+  topicName: string;
+  skills: Array<{
+    skillCode: string;
+    skillName: string;
+    skillDescription: string;
+    lessonAvailable: boolean;
+    activityCode: string | null;
+    practiceStatus: 'not_started' | 'in_progress' | 'completed';
+    practiceAttempted: boolean;
+    skillEvidenceState: LearnerMasterySummary['state'] | null;
+    skillEvidenceAt: string | null;
+  }>;
+  baseline: { status: 'available' | 'in_progress' | 'completed' | 'unavailable' };
+  endline: { status: 'available' | 'in_progress' | 'completed' | 'unavailable' };
+};
+
 export type LearningAssessmentSession = {
   sessionId: string;
   status: 'in_progress' | 'submitted' | 'timed_out' | 'cancelled' | 'invalidated';
@@ -561,6 +584,17 @@ export async function loadGrade9LearningTopic(topicCode: string): Promise<Learni
   const { data, error } = await client.rpc('get_my_grade9_learning_topic', { p_topic_code: topicCode });
   if (error) throw error;
   return objectValue(data) as unknown as LearningTopic | null;
+}
+
+export async function loadGrade9Term1TopicLearningMap(topicCode: string): Promise<TopicLearningMap | null> {
+  const client = requireSupabase() as unknown as {
+    rpc: (name: 'get_my_grade9_term1_topic_learning_map', args: { p_topic_code: string }) => Promise<{ data: unknown; error: Error | null }>;
+  };
+  const { data, error } = await client.rpc('get_my_grade9_term1_topic_learning_map', { p_topic_code: topicCode });
+  if (error) throw error;
+  const map = objectValue(data);
+  if (!map || typeof map.topicCode !== 'string' || !Array.isArray(map.skills)) return null;
+  return map as unknown as TopicLearningMap;
 }
 
 export async function loadGrade8LearningBridge(skillCode: string): Promise<LearningBridge | null> {

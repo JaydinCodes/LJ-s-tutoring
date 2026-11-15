@@ -31,6 +31,8 @@ Scenarios A–H were executed successfully by [App CI 43697944135](https://githu
 
 See [the Sprint 4 closure record](GRADE9_TERM1_SPRINT4_CLOSURE.md) for the original correction history and [the current release gate](GRADE9_TERM1_PILOT_RELEASE_GATE.md) for CI evidence, v3 academic review, and the activation checklist.
 
+Sprint 5 adds the repository-level [publication investigation and learning-map record](GRADE9_TERM1_SPRINT5_READINESS.md). It confirms that the learner-empty state is review gating in the authored database records—not a frontend assumption—and documents the remaining authorised review and publication actions. It is not a production database audit.
+
 ## Security and rollback
 
 - The learner catalogue and bridge RPCs return approved content only, never answers or drafts.

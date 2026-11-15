@@ -11,11 +11,15 @@
 | State | Meaning | Current status |
 | --- | --- | --- |
 | Implemented | Source, additive migrations, fixtures, tests and review materials are committed. | Yes. |
-| Mathematically reviewed | Explicit academic verdict for this exact version. | v2 conditional approval is historical only; explicit v3 verdict remains pending. |
+| Mathematically reviewed | Explicit academic verdict for this exact version. | Sprint 4 v3 instructional content is recorded as academically approved in the project handover; the 258 formal assessment questions/forms still require comprehensive independent academic sign-off. |
 | Technically tested | Observed execution, rather than source inspection. | Yes — the disposable Supabase run passed. |
 | Admin approved | Existing authorised administrator completed a deliberate production review transition. | No. Fixture-admin workflow passed only in disposable data. |
 | Published | Learner-visible production publication completed deliberately. | No. |
-| Pilot-ready | Academic, technical and production-administration gates are all complete. | No — pending v3 academic verdict, authorised production approval/publication, and release-owner review of the attached screenshots. |
+| Pilot-ready | Academic, technical and production-administration gates are all complete. | No — pending formal-assessment academic sign-off, authorised production approval/publication, and release-owner review of the attached screenshots. |
+
+## Sprint 5 overlay
+
+Sprint 5 does not change this release verdict or authorise a production transition. Its [publication investigation and learning-map record](GRADE9_TERM1_SPRINT5_READINESS.md) identifies review-gated drafts—not a learner-page defect—as the reason current topics show unavailable content. It adds the missing activity-review controls and learner-scoped map projection while keeping formal assessments behind the existing academic review and immutable-form publication gates.
 
 ## Observed technical evidence
 
@@ -48,11 +52,11 @@ The same real-data suite captured learning dashboard, topic roadmap, baseline in
 
 ## Academic review handoff
 
-Review [the complete v3 academic pack](GRADE9_TERM1_FINAL_ACADEMIC_REVIEW.md) and [the semantic feedback checklist](GRADE9_TERM1_DISTRACTOR_FEEDBACK_SEMANTIC_REVIEW.md). The conditional v2 verdict is historical context, not approval of v3. The designated ChatGPT reviewer must provide an explicit v3 verdict before a production administrator approves the revised content.
+The Sprint 4 v3 instructional-content handover records academic approval, but that handover does not create database review records. An authorised administrator must still use the normal lesson/question/activity review transitions. The [complete v3 academic pack](GRADE9_TERM1_FINAL_ACADEMIC_REVIEW.md) and [semantic feedback checklist](GRADE9_TERM1_DISTRACTOR_FEEDBACK_SEMANTIC_REVIEW.md) remain review material. The 258 formal assessment questions/forms have only passed structural validation; obtain independent comprehensive academic sign-off before any administrator approves policies/forms or publishes immutable forms.
 
 ## Controlled pilot activation — authorised administrator only
 
-After the explicit v3 academic verdict and release-owner screenshot review:
+After formal-assessment academic sign-off and release-owner screenshot review:
 
 1. Sign in with the existing authorised administrator account; do not alter roles or use raw SQL.
 2. Review and approve the intended v3 questions, then the lessons and activities that reference them, using the existing content-review controls.
@@ -63,4 +67,4 @@ After the explicit v3 academic verdict and release-owner screenshot review:
 
 ## Current release verdict
 
-**Technically passed, but not pilot-ready.** The release gate has observed real-data evidence, but production remains deliberately unpublished. The remaining release conditions are the designated reviewer’s explicit v3 academic verdict, authorised administrator approval/publication in the target environment, and human review of the attached real-data screenshots.
+**Technically passed, but not pilot-ready.** The release gate has observed real-data evidence, but production remains deliberately unpublished. The remaining release conditions are independent academic sign-off for the formal assessment bank, authorised administrator approval/publication in the target environment, and human review of the attached real-data screenshots.

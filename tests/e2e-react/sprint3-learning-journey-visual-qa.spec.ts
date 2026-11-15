@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 
 type Scenario =
   | 'new'
@@ -125,11 +125,25 @@ async function useScenario(page: Page, scenario: Scenario) {
     const topicData = input?.p_topic_code === patterns && scenario === 'unavailable'
       ? { topicCode: patterns, topicName: topicNames[patterns], topicDescription: 'No approved test-only content is available.', areaName: 'Patterns', skills: [] }
       : { ...catalogue[0], skills: [{ ...catalogue[0].skills[0], activityName: 'Practise integer signs', content: { title: 'Integer signs', explanation: 'Use a number line to check the direction of each move.', workedExample: '−8 + 13 = 5 because 13 moves right from −8.' } }] };
+    const mapTopicCode = input?.p_topic_code ?? integers;
+    const topicMap = {
+      topicCode: mapTopicCode,
+      topicName: topicNames[mapTopicCode],
+      skills: [{
+        skillCode: 'G9-INT-SIGNED-OPERATIONS', skillName: 'Signed integer operations', skillDescription: 'Work accurately with positive and negative integers.',
+        lessonAvailable: !(mapTopicCode === patterns && scenario === 'unavailable'), activityCode: mapTopicCode === patterns && scenario === 'unavailable' ? null : activityCode,
+        practiceStatus: practiceComplete ? 'completed' : scenario === 'unfinished' ? 'in_progress' : 'not_started', practiceAttempted: practiceComplete,
+        skillEvidenceState: scenario === 'mastered' ? 'secure' : null, skillEvidenceAt: scenario === 'mastered' ? '2026-11-09T12:00:00.000Z' : null,
+      }],
+      baseline: { status: scenario === 'baseline' ? 'available' : scenario === 'weak-prerequisite' || scenario === 'mastered' ? 'completed' : 'unavailable' },
+      endline: { status: scenario === 'mastered' ? 'completed' : 'unavailable' },
+    };
     const activity = { activityCode, name: 'Practise integer signs', description: 'A short, guided test-only practice activity.', targetSkillCode: 'G9-INT-SIGNED-OPERATIONS', stages: [{ id: 'stage-1', sequence: 1, type: 'guided_practice', instruction: 'Choose an answer, then check your reasoning.', questionVersionIds: ['question-1'] }] };
     const answers: Record<string, unknown> = {
       get_my_available_learning_diagnostics: [], get_my_learning_mastery_summary: [], get_my_grade9_learning_catalogue: catalogue,
       get_my_approved_learning_video_resources: [], get_my_available_learning_assessments: assessments,
       get_my_grade9_term1_learning_journey: journey, get_my_due_learning_retention_step: null,
+      get_my_grade9_term1_topic_learning_map: topicMap,
       get_my_next_learning_step: scenario === 'practice' ? { activityCode, name: activity.name, description: activity.description, targetSkillCode: activity.targetSkillCode, targetSkillName: 'Signed integer operations', estimatedMinutes: 8, learnerReason: 'Practise a common sign misconception.' } : null,
       get_my_grade9_learning_topic: topicData, start_my_learning_activity: null, get_my_learning_activity: activity,
       get_my_learning_activity_state: [{ question_version_id: 'question-1', stage_id: 'stage-1', stage_sequence: 1, stage_type: 'guided_practice', stage_instruction: 'Choose an answer, then check your reasoning.', question_sequence: 1, attempt_id: practiceComplete ? 'attempt-1' : null, attempt_status: practiceComplete ? 'submitted' : null }],
@@ -151,8 +165,9 @@ async function useScenario(page: Page, scenario: Scenario) {
   });
 }
 
-async function capture(page: Page, testInfo: TestInfo, scenario: Scenario, width: number) {
+async function capture(page: Page, testInfo: TestInfo, scenario: string, width: number, focus?: Locator) {
   await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+  if (focus) await focus.evaluate((element) => element.scrollIntoView({ block: 'start' }));
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath(`sprint3-visual-qa/${capturePhase}/${scenario}-${width}.png`), fullPage: false });
 }
@@ -163,6 +178,7 @@ async function openLearning(page: Page, scenario: Scenario, testInfo: TestInfo) 
   await expect(page.getByRole('heading', { level: 1, name: 'Learning' })).toBeVisible();
   await capture(page, testInfo, scenario, 1440);
   await capture(page, testInfo, scenario, 390);
+  await capture(page, testInfo, scenario, 360);
 }
 
 test('visual QA — new learner sees a calm topic-choice starting point', async ({ page }, testInfo) => {
@@ -173,8 +189,13 @@ test('visual QA — new learner sees a calm topic-choice starting point', async 
 test('visual QA — selected topic makes its baseline the clear next step', async ({ page }, testInfo) => {
   await openLearning(page, 'selected', testInfo);
   await expect(page.getByText('Understand your starting point', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'View roadmap' }).nth(1).click();
+  await page.getByRole('link', { name: /Integers/ }).first().click();
   await expect(page.getByRole('button', { name: 'This is my current topic' })).toBeVisible();
+  await expect(page.getByText('Interactive skill map')).toBeVisible();
+  const mapHeading = page.getByRole('heading', { name: /Learn at your own pace through Integers/ });
+  await capture(page, testInfo, 'integers-topic-map', 1440, mapHeading);
+  await capture(page, testInfo, 'integers-topic-map', 390, mapHeading);
+  await capture(page, testInfo, 'integers-topic-map', 360, mapHeading);
 });
 
 test('visual QA — learner can start a baseline on mobile', async ({ page }, testInfo) => {
@@ -191,6 +212,9 @@ test('visual QA — learner can start a baseline on mobile', async ({ page }, te
 test('visual QA — weak prerequisite evidence is supportive rather than punitive', async ({ page }, testInfo) => {
   await openLearning(page, 'weak-prerequisite', testInfo);
   await expect(page.getByText('A useful foundation before your next step')).toBeVisible();
+  await page.goto(`/dashboard/student/learning/topic/${integers}`);
+  await expect(page.getByText('Helpful Grade 8 detour')).toBeVisible();
+  await capture(page, testInfo, 'grade8-prerequisite-branch', 390, page.getByText('Helpful Grade 8 detour'));
 });
 
 test('visual QA — strong baseline learner sees a mastery challenge', async ({ page }, testInfo) => {
@@ -198,17 +222,18 @@ test('visual QA — strong baseline learner sees a mastery challenge', async ({ 
   await expect(page.getByText('Your mastery challenge is ready', { exact: true })).toBeVisible();
 });
 
-test('visual QA — successful mastery result is legible and roadmap ticks are evidence-based', async ({ page }, testInfo) => {
+test('visual QA — successful mastery result is legible and the map uses formal evidence', async ({ page }, testInfo) => {
   await useScenario(page, 'mastered');
   await page.goto(`/dashboard/student/learning/assessment/session/${sessionId}`);
   await expect(page.getByText('Assessment submitted')).toBeVisible();
   await capture(page, testInfo, 'mastery-result', 1440);
   await capture(page, testInfo, 'mastery-result', 390);
   await page.goto(`/dashboard/student/learning/topic/${wholeNumbers}`);
-  await expect(page.getByText('Step 5 — Mastery and next steps')).toBeVisible();
-  const checks = page.locator('[aria-labelledby="topic-roadmap-heading"] svg');
-  if (capturePhase === 'before') await expect(checks).toHaveCount(5);
-  else await expect(checks).toHaveCount(2);
+  await expect(page.getByText('Interactive skill map')).toBeVisible();
+  await expect(page.getByText('Formal evidence has recorded mastery.')).toBeVisible();
+  const mapHeading = page.getByRole('heading', { name: /Learn at your own pace through Whole Numbers/ });
+  await capture(page, testInfo, 'whole-numbers-topic-map', 1440, mapHeading);
+  await capture(page, testInfo, 'whole-numbers-topic-map', 390, mapHeading);
 });
 
 test('visual QA — returning learner resumes unfinished guided work', async ({ page }, testInfo) => {
