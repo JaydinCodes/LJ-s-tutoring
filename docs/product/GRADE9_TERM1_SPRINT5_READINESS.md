@@ -78,7 +78,7 @@ OLA remains the sole recommender. When its persisted recommendation contains `PR
 
 Completed locally:
 
-- TypeScript typecheck, full lint, production build, and `git diff --check`.
+- TypeScript typecheck, full lint, production build, static asset performance budget, and `git diff --check`.
 - 502 frontend unit tests, plus the focused Grade 9, Sprint 3, Sprint 4, and OLA contract suite (24 tests).
 - Grade 9 content QA (13 Grade 9 lessons, six Grade 8 lessons, 76 guided-practice questions, and 19 activities), formal assessment structural QA (258 questions / 17 forms), and the assessment-form QA command.
 - 184 static RLS/security contract tests, edge-function policy verification, and the security-definer search-path check.
