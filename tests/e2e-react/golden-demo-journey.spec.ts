@@ -1,6 +1,6 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
-const password = 'ProjectOdysseus!23';
+const password = process.env.VITE_E2E_AUTH_PASSWORD ?? '';
 const activityPath = '/dashboard/student/learning/activity/ACT.G9.ALG.FACTOR.DOTS.CONTRASTING-PRACTICE';
 
 async function signIn(page: Page) {
@@ -113,6 +113,10 @@ test('Golden Demo reset restores Lethabo to Question 1, Starting, and the origin
   await expect(dotsProgress.locator('span').filter({ hasText: /^Starting$/ })).toBeVisible();
 
   await page.goto(activityPath);
-  await expect(page.getByText('Question 1 of 4', { exact: true })).toBeVisible();
+  // The redesigned question player exposes semantic progress rather than
+  // the former visible "Question 1 of 4" label.
+  const progress = page.getByRole('progressbar');
+  await expect(progress).toHaveAttribute('aria-valuenow', '1');
+  await expect(progress).toHaveAttribute('aria-valuemax', '4');
   await expect(page.getByText(/Factorise:\s*x.*16\./)).toBeVisible();
 });
