@@ -151,6 +151,7 @@ async function useScenario(page: Page, scenario: Scenario) {
       set_my_grade9_term1_learning_context: null, start_my_learning_assessment: sessionId,
       get_my_learning_assessment_session: resultSession(submitted ? 'submitted' : 'in_progress', selectedOption, scenario === 'mastered'),
       save_my_learning_assessment_answer: null, submit_my_learning_assessment: sessionId, complete_my_learning_activity: null,
+      get_my_grade8_learning_bridge: { skillCode: 'G8-INT-OPERATIONS', skillName: 'Adding and subtracting integers', skillDescription: 'Use a number line to reason about integer operations.', content: { title: 'Integer operations', learningObjective: 'Use a number line to add and subtract integers with confidence.', explanation: 'Start at the first number. Adding moves right and subtracting moves left on the number line.', workedExample: '−8 + 13 = 5 because 13 moves right from −8.', commonMisconception: 'A negative sign belongs to the number, not to the operation.' }, activityCode, activityName: 'Practise integer signs' },
     };
     if (rpc === 'set_my_grade9_term1_learning_context') selectedTopicCode = input?.p_topic_code ?? selectedTopicCode;
     if (rpc === 'save_my_learning_assessment_answer') selectedOption = input?.p_selected_option as 'A' | 'B' | 'C' | 'D';
@@ -158,9 +159,11 @@ async function useScenario(page: Page, scenario: Scenario) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(answers[rpc] ?? null) });
   });
   await page.route('**/functions/v1/evaluate-learning-attempt', async (route) => {
-    practiceComplete = true;
+    const input = route.request().postDataJSON() as { p_response?: { answer?: string } };
+    const correct = input.p_response?.answer === '4';
+    practiceComplete = correct;
     await route.fulfill({
-      status: 200, contentType: 'application/json', body: JSON.stringify({ attempt_id: 'attempt-1', attempt_status: 'submitted', evaluation: { status: 'correct', marksAwarded: 1, marksAvailable: 1, misconceptionMatches: [] } }),
+      status: 200, contentType: 'application/json', body: JSON.stringify({ attempt_id: 'attempt-1', attempt_status: 'submitted', evaluation: correct ? { status: 'correct', marksAwarded: 1, marksAvailable: 1, misconceptionMatches: [] } : { status: 'incorrect', marksAwarded: 0, marksAvailable: 1, misconceptionMatches: [], distractorExplanation: 'Adding 10 to −6 moves 10 steps towards positive numbers, giving 4. Try again.' } }),
     });
   });
 }
@@ -191,8 +194,8 @@ test('visual QA — selected topic makes its baseline the clear next step', asyn
   await expect(page.getByText('Understand your starting point', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: /Integers/ }).first().click();
   await expect(page.getByRole('button', { name: 'This is my current topic' })).toBeVisible();
-  await expect(page.getByText('Interactive skill map')).toBeVisible();
-  const mapHeading = page.getByRole('heading', { name: /Learn at your own pace through Integers/ });
+  await expect(page.getByText('Your pathway')).toBeVisible();
+  const mapHeading = page.getByRole('heading', { name: /One skill at a time/ });
   await capture(page, testInfo, 'integers-topic-map', 1440, mapHeading);
   await capture(page, testInfo, 'integers-topic-map', 390, mapHeading);
   await capture(page, testInfo, 'integers-topic-map', 360, mapHeading);
@@ -207,14 +210,52 @@ test('visual QA — learner can start a baseline on mobile', async ({ page }, te
   await page.getByRole('button', { name: 'Start assessment' }).click();
   await expect(page.getByText('Evaluate: −8 + 13.')).toBeVisible();
   await expect(page.getByRole('radio', { name: /A\s+5/ })).toBeVisible();
+  await capture(page, testInfo, 'baseline-question', 390);
+  await page.getByRole('radio', { name: /A\s+5/ }).click();
+  await expect(page.getByText('Answer saved')).toBeVisible();
+  const submitAssessment = page.getByRole('button', { name: 'Submit assessment' });
+  await submitAssessment.scrollIntoViewIfNeeded();
+  await submitAssessment.click();
+  await page.getByRole('button', { name: 'Submit now' }).click();
+  await expect(page.getByText('Assessment submitted')).toBeVisible();
+  await capture(page, testInfo, 'baseline-result', 390);
+});
+
+test('visual QA — a focused lesson keeps one explanation and worked example together', async ({ page }, testInfo) => {
+  await useScenario(page, 'practice');
+  await page.goto(`/dashboard/student/learning/topic/${integers}/lesson/G9-INT-SIGNED-OPERATIONS`);
+  await expect(page.getByRole('heading', { name: 'Integer signs' })).toBeVisible();
+  await expect(page.getByText('Understand')).toBeVisible();
+  await expect(page.getByText('See an example')).toBeVisible();
+  await capture(page, testInfo, 'focused-lesson', 1440);
+  await capture(page, testInfo, 'focused-lesson', 390);
+});
+
+test('visual QA — incorrect practice feedback is contextual and retry stays on the question', async ({ page }, testInfo) => {
+  await useScenario(page, 'practice');
+  await page.goto(`/dashboard/student/learning/activity/${activityCode}`);
+  await page.getByRole('radio', { name: '−4', exact: true }).check();
+  await page.getByRole('button', { name: 'Check answer' }).click();
+  await expect(page.getByText(/Adding 10 to −6 moves 10 steps/)).toBeVisible();
+  await capture(page, testInfo, 'practice-incorrect-feedback', 390);
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByRole('heading', { name: 'Calculate: −6 + 10.' })).toBeVisible();
+});
+
+test('visual QA — Grade 8 support is a focused bridge with a return path', async ({ page }, testInfo) => {
+  await useScenario(page, 'weak-prerequisite');
+  await page.goto(`/dashboard/student/learning/bridge/G8-INT-OPERATIONS?returnTopic=${integers}`);
+  await expect(page.getByRole('link', { name: /Return to your Grade 9 topic/ })).toBeVisible();
+  await expect(page.getByText('See an example')).toBeVisible();
+  await capture(page, testInfo, 'grade8-bridge-lesson', 390);
 });
 
 test('visual QA — weak prerequisite evidence is supportive rather than punitive', async ({ page }, testInfo) => {
   await openLearning(page, 'weak-prerequisite', testInfo);
-  await expect(page.getByText('A useful foundation before your next step')).toBeVisible();
+  await expect(page.getByText('Grade 8 support can make this easier')).toBeVisible();
   await page.goto(`/dashboard/student/learning/topic/${integers}`);
-  await expect(page.getByText('Helpful Grade 8 detour')).toBeVisible();
-  await capture(page, testInfo, 'grade8-prerequisite-branch', 390, page.getByText('Helpful Grade 8 detour'));
+  await expect(page.getByText('Optional Grade 8 support')).toBeVisible();
+  await capture(page, testInfo, 'grade8-prerequisite-branch', 390, page.getByText('Optional Grade 8 support'));
 });
 
 test('visual QA — strong baseline learner sees a mastery challenge', async ({ page }, testInfo) => {
@@ -229,9 +270,9 @@ test('visual QA — successful mastery result is legible and the map uses formal
   await capture(page, testInfo, 'mastery-result', 1440);
   await capture(page, testInfo, 'mastery-result', 390);
   await page.goto(`/dashboard/student/learning/topic/${wholeNumbers}`);
-  await expect(page.getByText('Interactive skill map')).toBeVisible();
-  await expect(page.getByText('Formal evidence has recorded mastery.')).toBeVisible();
-  const mapHeading = page.getByRole('heading', { name: /Learn at your own pace through Whole Numbers/ });
+  await expect(page.getByText('Your pathway')).toBeVisible();
+  await expect(page.getByText('You have mastered this topic with formal evidence.')).toBeVisible();
+  const mapHeading = page.getByRole('heading', { name: /One skill at a time/ });
   await capture(page, testInfo, 'whole-numbers-topic-map', 1440, mapHeading);
   await capture(page, testInfo, 'whole-numbers-topic-map', 390, mapHeading);
 });
@@ -248,8 +289,8 @@ test('visual QA — guided practice gives feedback and a clear completion state'
   await page.getByRole('radio', { name: '4', exact: true }).check();
   await page.getByText('Very sure', { exact: true }).click();
   await page.getByRole('button', { name: 'Check answer' }).click();
-  await expect(page.getByRole('button', { name: /Continue to next step/ })).toBeVisible();
-  await page.getByRole('button', { name: /Continue to next step/ }).click();
+  await expect(page.getByRole('button', { name: /Next question/ })).toBeVisible();
+  await page.getByRole('button', { name: /Next question/ }).click();
   await expect(page.getByRole('heading', { name: 'Activity complete' })).toBeVisible();
   await capture(page, testInfo, 'guided-practice-complete', 1440);
   await capture(page, testInfo, 'guided-practice-complete', 390);
@@ -258,10 +299,10 @@ test('visual QA — guided practice gives feedback and a clear completion state'
 test('visual QA — unavailable content gives an explanation without a self-referential action', async ({ page }, testInfo) => {
   await useScenario(page, 'unavailable');
   await page.goto(`/dashboard/student/learning/topic/${patterns}`);
-  await expect(page.getByText('Learning content is being reviewed')).toBeVisible();
+  await expect(page.getByText('Lessons are being reviewed')).toBeVisible();
   await capture(page, testInfo, 'unavailable', 1440);
   await capture(page, testInfo, 'unavailable', 390);
-  const unavailable = page.getByText('Learning content is being reviewed').locator('..').locator('..');
+  const unavailable = page.getByText('Lessons are being reviewed').locator('..');
   if (capturePhase === 'before') await expect(unavailable.getByRole('link', { name: 'Back to Learning' })).toBeVisible();
   else await expect(unavailable.getByRole('link', { name: 'Back to Learning' })).toHaveCount(0);
 });
