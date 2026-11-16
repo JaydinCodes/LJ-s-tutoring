@@ -1,37 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowRight, Lightbulb, RotateCcw } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import {
-  AlertCircle,
-  ArrowRight,
-  BookOpen,
-  CheckCircle2,
-  Lightbulb,
-  RotateCcw,
-  Sparkles,
-  Trophy,
-} from 'lucide-react';
-import {
-  AnimatedProgressBar,
-  EmptyState,
-  ErrorState,
-  PageShell,
-  PremiumButton,
-  SkeletonCard,
-} from '../../components/dashboard/DashboardDesignSystem';
-import {
-  useActivityProgress,
-  useCompleteLearningActivityMutation,
-  useLearnerActivity,
-  useLearnerQuestion,
-  useSubmitLearningAttemptMutation,
-} from './studentLearningQueries';
-import { type LearnerConfidence } from './studentLearningRepository';
-import {
-  getConfidenceFeedback,
-  getMisconceptionExplanation,
-  type MisconceptionDetail,
-} from './misconceptionExplanations';
+
+import { EmptyState, ErrorState, PageShell, SkeletonCard } from '../../components/dashboard/DashboardDesignSystem';
+import { PracticeFeedback, PracticeQuestionFrame } from './LearningExperienceDesignSystem';
+import { getConfidenceFeedback, getMisconceptionExplanation, type MisconceptionDetail } from './misconceptionExplanations';
 import { QuestionResponseInput } from './QuestionResponseInput';
+import { type LearnerConfidence } from './studentLearningRepository';
+import { useActivityProgress, useCompleteLearningActivityMutation, useLearnerActivity, useLearnerQuestion, useSubmitLearningAttemptMutation } from './studentLearningQueries';
 
 interface QuestionFeedbackState {
   questionId: string;
@@ -41,7 +17,6 @@ interface QuestionFeedbackState {
   marksAwarded: number | null;
   marksAvailable: number;
   misconception?: MisconceptionDetail | null;
-  explanationCode?: string;
   distractorExplanation?: string | null;
 }
 
@@ -49,7 +24,6 @@ export function StudentActivityRoute() {
   const activityCode = useParams().activityCode ?? '';
   const [searchParams] = useSearchParams();
   const retentionCheckId = searchParams.get('retentionCheck');
-
   const activityQuery = useLearnerActivity(activityCode);
   const progressQuery = useActivityProgress(activityCode);
   const progress = useMemo(() => progressQuery.data ?? [], [progressQuery.data]);
@@ -64,474 +38,78 @@ export function StudentActivityRoute() {
   const [hintIds, setHintIds] = useState<string[]>([]);
   const [submissionKey, setSubmissionKey] = useState<string | null>(null);
   const [activeFeedback, setActiveFeedback] = useState<QuestionFeedbackState | null>(null);
-  const [sessionResults, setSessionResults] = useState<QuestionFeedbackState[]>([]);
   const [submissionMessage, setSubmissionMessage] = useState<string | null>(null);
   const startedAt = useRef(Date.now());
 
   useEffect(() => {
-    setAnswer('');
-    setConfidence(null);
-    setHintIds([]);
-    setSubmissionKey(null);
-    setActiveFeedback(null);
-    setSubmissionMessage(null);
-    startedAt.current = Date.now();
+    setAnswer(''); setConfidence(null); setHintIds([]); setSubmissionKey(null); setActiveFeedback(null); setSubmissionMessage(null); startedAt.current = Date.now();
   }, [current?.questionVersionId]);
 
   useEffect(() => {
-    if (activityQuery.isSuccess && progressQuery.isSuccess && activityCode && progress.length > 0
-      && progress.every((item) => item.attemptId) && !completionPending
-      && (completionContext?.activityCode !== activityCode || completionContext.retentionCheckId !== retentionCheckId)) {
+    if (activityQuery.isSuccess && progressQuery.isSuccess && activityCode && progress.length > 0 && progress.every((item) => item.attemptId) && !completionPending && (completionContext?.activityCode !== activityCode || completionContext.retentionCheckId !== retentionCheckId)) {
       complete({ activityCode, retentionCheckId });
     }
   }, [activityCode, activityQuery.isSuccess, progressQuery.isSuccess, progress, retentionCheckId, complete, completionContext, completionPending]);
 
-  if (activityQuery.isPending || progressQuery.isPending) {
-    return (
-      <PageShell title="Practice" subtitle="Preparing your next step." section="student">
-        <SkeletonCard className="min-h-80" />
-      </PageShell>
-    );
-  }
-
-  if (activityQuery.isError || progressQuery.isError) {
-    return (
-      <PageShell title="Practice" subtitle="Your next learning step." section="student">
-        <ErrorState
-          title="Activity could not be loaded"
-          description="Check your connection and try again."
-          onRetry={() => {
-            void activityQuery.refetch();
-            void progressQuery.refetch();
-          }}
-        />
-      </PageShell>
-    );
-  }
-
+  if (activityQuery.isPending || progressQuery.isPending) return <PageShell title="Practice" subtitle="Preparing your next question." section="student"><SkeletonCard className="min-h-80" /></PageShell>;
+  if (activityQuery.isError || progressQuery.isError) return <PageShell title="Practice" subtitle="Your next learning step." section="student"><ErrorState title="Practice could not be loaded" description="Check your connection and try again." onRetry={() => { void activityQuery.refetch(); void progressQuery.refetch(); }} /></PageShell>;
   const activity = activityQuery.data;
-  if (!activity) {
-    return (
-      <PageShell title="Practice" subtitle="Your next learning step." section="student">
-        <EmptyState
-          title="Activity unavailable"
-          description="This activity may still be under review."
-        />
-      </PageShell>
-    );
-  }
+  if (!activity) return <PageShell title="Practice" subtitle="Your next learning step." section="student"><EmptyState title="Practice is unavailable" description="This activity may still be under review." /></PageShell>;
 
-  // Activity Completion View
   if (!current) {
-    if (progress.length === 0) {
-      return (
-        <PageShell title="Practice unavailable" subtitle={activity.name} section="student">
-          <EmptyState title="No reviewed questions available" description="Return to Learning for another available step." />
-          <Link to="/dashboard/student/learning">Return to Learning</Link>
-        </PageShell>
-      );
-    }
-    if (completionContext?.activityCode !== activityCode || completionContext.retentionCheckId !== retentionCheckId || !completion.isSuccess) {
-      return (
-        <PageShell title="Saving activity progress" subtitle={activity.name} section="student">
-          {completion.isError ? (
-            <ErrorState title="Activity completion could not be saved" description="Your answers are saved. Retry recording completion before continuing."
-              onRetry={() => complete({ activityCode, retentionCheckId })} />
-          ) : <div role="status">Recording your completed activity...</div>}
-        </PageShell>
-      );
-    }
-    const totalQuestions = progress.length;
-    const correctCount = sessionResults.filter((r) => r.status === 'correct').length;
-    const reviewedMisconceptions = sessionResults.flatMap((r) => (r.misconception ? [r.misconception] : []));
-
-    return (
-      <PageShell title="Activity complete" subtitle={activity.name} section="student">
-        <div className="space-y-6" data-testid="activity-state" data-state="complete" data-activity-code={activityCode}>
-          <section className="relative overflow-hidden rounded-[2rem] border border-brand-gold/30 bg-brand-navy p-8 text-brand-parchment shadow-xl sm:p-10">
-            <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-brand-gold/10 blur-3xl" aria-hidden="true" />
-            <div className="relative">
-              <span className="inline-flex items-center gap-2 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-brand-gold">
-                <Trophy className="h-4 w-4" aria-hidden="true" /> Practice session recorded
-              </span>
-              <h2 className="mt-4 font-display text-3xl font-semibold text-white sm:text-4xl">
-                Great effort on {activity.name}
-              </h2>
-              <p className="mt-3 max-w-2xl text-base leading-relaxed text-brand-marble">
-                Your answers and confidence evidence have been saved. Your progress and recommended next actions are updated.
-              </p>
-
-              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
-                  <p className="text-2xl font-bold text-white">{totalQuestions}</p>
-                  <p className="mt-1 text-xs text-brand-marble">Questions completed</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
-                  <p className="text-2xl font-bold text-emerald-400">
-                    Completed
-                  </p>
-                  <p className="mt-1 text-xs text-brand-marble">Activity status</p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {reviewedMisconceptions.length > 0 ? (
-            <section aria-labelledby="reinforced-heading" className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-900 sm:p-8">
-              <h3 id="reinforced-heading" className="flex items-center gap-2 text-lg font-semibold text-brand-navy dark:text-brand-parchment">
-                <Sparkles className="h-5 w-5 text-brand-aegean dark:text-brand-gold" />
-                Concepts addressed in this session
-              </h3>
-              <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">
-                Reviewing these patterns now prevents small misconceptions from compounding in later topics.
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {reviewedMisconceptions.map((misconception, idx) => (
-                  <div key={`${misconception.code}-${idx}`} className="rounded-2xl border border-amber-200/60 bg-amber-50/50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
-                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{misconception.title}</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-slate-300">{misconception.guidance}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          <section className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-            <div>
-              <h3 className="text-lg font-semibold text-brand-navy dark:text-brand-parchment">What would you like to do next?</h3>
-              <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Check how your skill mastery levels shifted or return to your today dashboard.</p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Link className="academy-btn-primary inline-flex min-h-12 items-center gap-2 rounded-full px-6" to="/dashboard/student/progress">
-                View updated progress <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-              <Link className="inline-flex min-h-12 items-center justify-center rounded-full border border-slate-300 px-6 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:text-brand-marble dark:hover:bg-slate-800" to="/dashboard/student">
-                Back to dashboard
-              </Link>
-            </div>
-          </section>
-        </div>
-      </PageShell>
-    );
+    if (!progress.length) return <PageShell title="Practice unavailable" subtitle={activity.name} section="student"><EmptyState title="No reviewed questions are available" description="Return to Learning for another available step." actionLabel="Back to Learning" actionHref="/dashboard/student/learning" /></PageShell>;
+    if (completionContext?.activityCode !== activityCode || completionContext.retentionCheckId !== retentionCheckId || !completion.isSuccess) return <PageShell title="Saving your practice" subtitle={activity.name} section="student">{completion.isError ? <ErrorState title="Practice completion could not be saved" description="Your answers are saved. Retry recording the completed activity before continuing." onRetry={() => complete({ activityCode, retentionCheckId })} /> : <p className="mx-auto max-w-3xl" role="status">Saving your completed practice…</p>}</PageShell>;
+    return <PageShell title="Activity complete" subtitle={activity.name} section="student"><main className="mx-auto max-w-3xl" data-testid="activity-state" data-state="complete" data-activity-code={activityCode}><section className="rounded-[1.75rem] border border-brand-gold/30 bg-brand-navy p-6 text-brand-parchment sm:p-8"><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-gold">Practice complete</p><h2 className="mt-3 font-display text-3xl font-semibold text-white">You completed {progress.length} question{progress.length === 1 ? '' : 's'}.</h2><p className="mt-2 max-w-xl leading-7 text-brand-marble">Your answers and confidence information are saved. Your next recommended learning step is ready.</p><Link className="academy-btn-primary mt-6 inline-flex min-h-12 items-center gap-2 rounded-full px-5" to="/dashboard/student/learning">Continue learning <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></section></main></PageShell>;
   }
 
   const question = questionQuery.data;
-  if (!question) {
-    return (
-      <PageShell title={activity.name} subtitle={current.stageInstruction} section="student">
-        <SkeletonCard className="min-h-80" />
-      </PageShell>
-    );
-  }
-
-  const availableHint = question.hints.find((hint) => !hintIds.includes(hint.id));
+  if (!question) return <PageShell title={activity.name} subtitle={current.stageInstruction} section="student"><SkeletonCard className="min-h-80" /></PageShell>;
+  // Keep a narrowed, question-local reference through the async submission.
+  const currentQuestion = question;
   const completed = progress.filter((item) => item.attemptId).length;
-  const progressPercent = progress.length > 0 ? (completed / progress.length) * 100 : 0;
+  const availableHint = question.hints.find((hint) => !hintIds.includes(hint.id));
 
   async function submitAnswer() {
-    if (!question || !answer.trim() || submit.isPending) return;
+    if (!answer.trim() || submit.isPending) return;
     const key = submissionKey ?? crypto.randomUUID();
-    setSubmissionKey(key);
-    setSubmissionMessage(null);
-
+    setSubmissionKey(key); setSubmissionMessage(null);
     try {
-      const result = await submit.mutateAsync({
-        activityCode,
-        questionVersionId: question.id,
-        answer,
-        confidence,
-        timeSpentSeconds: Math.max(0, Math.round((Date.now() - startedAt.current) / 1000)),
-        idempotencyKey: key,
-        hintIds,
-      });
-
-      const evalData = result.evaluation;
-      const status = evalData?.status ?? 'correct';
-      const marksAwarded = evalData?.marksAwarded ?? (status === 'correct' ? question.marks : 0);
-      const marksAvailable = evalData?.marksAvailable ?? question.marks;
-      const topMatch = evalData?.misconceptionMatches?.[0];
-      const misconceptionDetail = topMatch?.code ? getMisconceptionExplanation(topMatch.code) : null;
-
-      const feedbackItem: QuestionFeedbackState = {
-        questionId: question.id,
-        learnerAnswer: answer,
-        confidence,
-        status,
-        marksAwarded,
-        marksAvailable,
-        misconception: misconceptionDetail,
-        explanationCode: evalData?.explanationCode,
-        distractorExplanation: evalData?.distractorExplanation ?? null,
-      };
-
-      setActiveFeedback(feedbackItem);
-      setSessionResults((prev) => [...prev, feedbackItem]);
+      const result = await submit.mutateAsync({ activityCode, questionVersionId: currentQuestion.id, answer, confidence, timeSpentSeconds: Math.max(0, Math.round((Date.now() - startedAt.current) / 1000)), idempotencyKey: key, hintIds });
+      const evaluation = result.evaluation;
+      const status = evaluation?.status ?? 'correct';
+      const match = evaluation?.misconceptionMatches?.[0];
+      setActiveFeedback({ questionId: currentQuestion.id, learnerAnswer: answer, confidence, status, marksAwarded: evaluation?.marksAwarded ?? (status === 'correct' ? currentQuestion.marks : 0), marksAvailable: evaluation?.marksAvailable ?? currentQuestion.marks, misconception: match?.code ? getMisconceptionExplanation(match.code) : null, distractorExplanation: evaluation?.distractorExplanation ?? null });
       setSubmissionKey(null);
     } catch (error) {
-      // Keep the key: retrying an uncertain request is idempotent.
-      setSubmissionMessage(error instanceof Error ? error.message : 'We could not check your answer. Please retry the same answer.');
+      // The key is intentionally retained, so an uncertain request can be retried safely.
+      setSubmissionMessage(error instanceof Error ? error.message : 'We could not check that answer. Please retry the same answer.');
     }
   }
 
-  function handleTryAgain() {
-    setActiveFeedback(null);
-    // Keep current answer in the textarea so learner can tweak it
-  }
-
-  async function handleContinue() {
-    // Clear question-local responses before loading the next question. Without
-    // this, the previous radio selection can briefly appear on the next prompt
-    // and an eager learner may submit that stale option.
-    setAnswer('');
-    setConfidence(null);
-    setHintIds([]);
-    setSubmissionKey(null);
-    setSubmissionMessage(null);
-    setActiveFeedback(null);
+  async function continueToNext() {
+    setAnswer(''); setConfidence(null); setHintIds([]); setSubmissionKey(null); setSubmissionMessage(null); setActiveFeedback(null);
     await progressQuery.refetch();
   }
 
-  return (
-    <PageShell title={activity.name} subtitle={current.stageInstruction} section="student">
-      <div className="space-y-6">
-        {/* Progress Bar Header */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
-          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-brand-aegean dark:text-brand-gold">
-            <span>{current.stageType.replaceAll('_', ' ')}</span>
-            <span>Question {completed + 1} of {progress.length}</span>
-          </div>
-          <div className="mt-2.5">
-            <AnimatedProgressBar value={progressPercent} />
-          </div>
-        </div>
+  const feedback = activeFeedback;
+  const confidenceFeedback = feedback ? getConfidenceFeedback(feedback.status === 'correct', feedback.confidence, Boolean(feedback.misconception)) : null;
+  const incorrectExplanation = feedback?.distractorExplanation || feedback?.misconception?.guidance || 'Not quite. Check the operation and the direction each number moves, then try again.';
 
-        {/* Main Question / Evaluation Card */}
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-900 sm:p-8"
-          data-testid="activity-state" data-state={activeFeedback ? 'feedback' : 'question'} data-question-id={question.id} data-activity-code={activityCode}>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-brand-aegean">
-                Step {completed + 1} · {question.marks} mark{question.marks === 1 ? '' : 's'}
-              </p>
-              <h2 className="mt-3 whitespace-pre-wrap font-display text-xl font-semibold leading-8 text-brand-navy dark:text-brand-parchment sm:text-2xl">
-                {question.prompt}
-              </h2>
-            </div>
-          </div>
-
-          {/* EVALUATION & FEEDBACK STATE */}
-          {activeFeedback ? (
-            <div className="mt-6 space-y-5" aria-live="polite">
-              {(() => {
-                const isCorrect = activeFeedback.status === 'correct';
-                const misconception = activeFeedback.misconception;
-                const confidenceInsight = getConfidenceFeedback(isCorrect, activeFeedback.confidence, !!misconception);
-
-                if (isCorrect) {
-                  return (
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-6 dark:border-emerald-800/40 dark:bg-emerald-950/30">
-                      <div className="flex items-start gap-4">
-                        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-emerald-600 text-white">
-                          <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <span className="inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
-                            {confidenceInsight.badge}
-                          </span>
-                          <h3 className="mt-2 font-display text-xl font-semibold text-emerald-900 dark:text-emerald-100">
-                            {confidenceInsight.title}
-                          </h3>
-                          <p className="mt-1 text-sm leading-6 text-emerald-800 dark:text-emerald-200">
-                            {confidenceInsight.message}
-                          </p>
-                          <p className="mt-3 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                            Marks awarded: {activeFeedback.marksAwarded ?? activeFeedback.marksAvailable} / {activeFeedback.marksAvailable}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-6 flex justify-end">
-                        <PremiumButton onClick={() => void handleContinue()}>
-                          Continue to next step <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-                        </PremiumButton>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Misconception or Incorrect state
-                return (
-                  <div className="rounded-2xl border border-amber-300 bg-amber-50/80 p-6 dark:border-amber-800/60 dark:bg-amber-950/30">
-                    <div className="flex items-start gap-4">
-                      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-amber-500 text-white dark:bg-amber-600">
-                        {misconception ? (
-                          <Sparkles className="h-6 w-6" aria-hidden="true" />
-                        ) : (
-                          <AlertCircle className="h-6 w-6" aria-hidden="true" />
-                        )}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <span className="inline-block rounded-full bg-amber-200/80 px-3 py-1 text-xs font-bold text-amber-900 dark:bg-amber-900/60 dark:text-amber-200">
-                          {confidenceInsight.badge}
-                        </span>
-                        <h3 className="mt-2 font-display text-xl font-semibold text-amber-950 dark:text-amber-100">
-                          {misconception ? misconception.title : confidenceInsight.title}
-                        </h3>
-                        <p className="mt-1 text-sm leading-6 text-amber-900 dark:text-amber-200">
-                          {confidenceInsight.message}
-                        </p>
-
-                        {activeFeedback.distractorExplanation ? (
-                          <div className="mt-4 rounded-xl border border-amber-200 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/80">
-                            <p className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
-                              Why this choice is not correct
-                            </p>
-                            <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                              {activeFeedback.distractorExplanation}
-                            </p>
-                          </div>
-                        ) : null}
-
-                        {misconception ? (
-                          <div className="mt-4 rounded-xl border border-amber-200 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/80">
-                            <p className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
-                              Why this happens:
-                            </p>
-                            <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                              {misconception.explanation}
-                            </p>
-                            <p className="mt-3 text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
-                              How to solve it:
-                            </p>
-                            <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                              {misconception.guidance}
-                            </p>
-                            {misconception.example ? (
-                              <div className="mt-3 rounded-lg bg-amber-100/50 p-2.5 font-mono text-xs font-semibold text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
-                                Example: {misconception.example}
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : null}
-
-                        <p className="mt-4 text-xs text-amber-800 dark:text-amber-300">
-                          Your submitted answer: <span className="font-mono font-bold">{activeFeedback.learnerAnswer}</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-amber-200/60 pt-4 dark:border-amber-900/40">
-                      <button
-                        type="button"
-                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-amber-300 bg-white px-5 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-50 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-200 dark:hover:bg-slate-800"
-                        onClick={handleTryAgain}
-                      >
-                        <RotateCcw className="h-4 w-4" aria-hidden="true" />
-                        Try again with this insight
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          ) : (
-            /* ANSWER INPUT STATE */
-            <div className="mt-7">
-              <label className="block text-sm font-semibold text-brand-navy dark:text-brand-parchment" htmlFor="activity-answer">
-                Your answer
-              </label>
-              <QuestionResponseInput
-                questionType={question.questionType}
-                options={question.options}
-                value={answer}
-                onChange={setAnswer}
-                disabled={submit.isPending}
-              />
-
-              {hintIds.map((id) => {
-                const hintObj = question.hints.find((hint) => hint.id === id);
-                return (
-                  <div className="mt-3 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200" key={id}>
-                    <Lightbulb className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
-                    <div>
-                      <p className="font-semibold">Hint {hintObj?.level ?? ''}</p>
-                      <p className="mt-0.5 leading-6">{hintObj?.prompt}</p>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {availableHint ? (
-                <button
-                  className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-brand-marble dark:hover:bg-slate-700"
-                  type="button"
-                  onClick={() => setHintIds((ids) => [...ids, availableHint.id])}
-                >
-                  <Lightbulb className="h-4 w-4 text-amber-500" />
-                  Show a hint
-                </button>
-              ) : null}
-
-              <fieldset className="mt-7 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-white/10 dark:bg-slate-950/50">
-                <legend className="px-1 text-sm font-semibold text-brand-navy dark:text-brand-parchment">
-                  How confident are you in this answer?
-                </legend>
-                <p className="mt-1 px-1 text-xs leading-5 text-slate-500 dark:text-brand-marble">
-                  This helps tailor feedback and helps your tutor understand how the question felt.
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {(
-                    [
-                      [1, 'Not sure'],
-                      [2, 'A little sure'],
-                      [3, 'Quite sure'],
-                      [4, 'Very sure'],
-                    ] as const
-                  ).map(([value, label]) => (
-                    <label
-                      key={value}
-                      className={`flex min-h-12 cursor-pointer items-center justify-center rounded-xl border px-3 py-2 text-center text-sm font-medium transition ${
-                        confidence === value
-                          ? 'border-brand-aegean bg-brand-aegean/10 font-semibold text-brand-navy shadow-sm dark:border-brand-gold dark:bg-brand-gold/15 dark:text-brand-parchment'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-brand-aegean/50 dark:border-white/10 dark:bg-slate-900 dark:text-brand-marble'
-                      }`}
-                    >
-                      <input
-                        className="sr-only"
-                        type="radio"
-                        name="activity-confidence"
-                        value={value}
-                        checked={confidence === value}
-                        onChange={() => setConfidence(value)}
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-
-              {submissionMessage || submit.isError ? (
-                <p className="mt-4 text-sm text-red-700" role="alert">
-                  {submissionMessage ?? 'Your answer could not be saved. Check your connection and retry.'}
-                </p>
-              ) : null}
-
-              <div className="mt-7 flex items-center justify-between">
-                <span className="text-xs text-slate-500 dark:text-brand-marble">
-                  Press Check answer to evaluate with instant diagnostic feedback
-                </span>
-                <PremiumButton
-                  disabled={!answer.trim() || submit.isPending}
-                  onClick={() => {
-                    void submitAnswer();
-                  }}
-                >
-                  {submit.isPending ? 'Checking answer…' : submissionMessage ? 'Retry same answer' : 'Check answer'}
-                </PremiumButton>
-              </div>
-            </div>
-          )}
-        </section>
-      </div>
-    </PageShell>
-  );
+  return <PageShell title="Practice" subtitle={activity.name} section="student"><PracticeQuestionFrame questionNumber={completed + 1} totalQuestions={progress.length} stageLabel={current.stageInstruction}>
+    <div data-testid="activity-state" data-state={feedback ? 'feedback' : 'question'} data-question-id={question.id} data-activity-code={activityCode}>
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-aegean">Question {completed + 1} · {question.marks} mark{question.marks === 1 ? '' : 's'}</p>
+      <h1 className="mt-3 whitespace-pre-wrap font-display text-2xl font-semibold leading-9 text-brand-navy dark:text-brand-parchment sm:text-3xl">{question.prompt}</h1>
+      {feedback ? <PracticeFeedback correct={feedback.status === 'correct'} title={feedback.status === 'correct' ? 'Correct.' : 'Not quite.'} action={feedback.status === 'correct' ? <button className="academy-btn-primary inline-flex min-h-11 items-center gap-2 rounded-full px-5" onClick={() => void continueToNext()} type="button">Next question <ArrowRight className="h-4 w-4" aria-hidden="true" /></button> : <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-amber-300 bg-white px-5 text-sm font-semibold text-amber-950 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-100" onClick={() => setActiveFeedback(null)} type="button"><RotateCcw className="h-4 w-4" aria-hidden="true" /> Try again</button>}>
+        {feedback.status === 'correct' ? <><p>{confidenceFeedback?.message}</p><p className="mt-2 text-xs font-semibold">{feedback.marksAwarded ?? feedback.marksAvailable} / {feedback.marksAvailable} mark{feedback.marksAvailable === 1 ? '' : 's'}</p></> : <><p>{incorrectExplanation}</p>{feedback.misconception?.explanation ? <p className="mt-3 border-l-2 border-amber-400 pl-3">{feedback.misconception.explanation}</p> : null}<p className="mt-3 text-xs">Your answer: <span className="font-mono font-semibold">{feedback.learnerAnswer}</span></p></>}
+      </PracticeFeedback> : <div className="mt-7">
+        <label className="block text-sm font-semibold text-brand-navy dark:text-brand-parchment" htmlFor="activity-answer">Your answer</label>
+        <QuestionResponseInput questionType={question.questionType} options={question.options} value={answer} onChange={setAnswer} disabled={submit.isPending} />
+        {hintIds.map((id) => { const hint = question.hints.find((item) => item.id === id); return <p className="mt-3 flex gap-2 border-l-2 border-brand-gold pl-3 text-sm leading-6 text-slate-700 dark:text-slate-200" key={id}><Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" aria-hidden="true" /><span><span className="font-semibold">Hint {hint?.level}: </span>{hint?.prompt}</span></p>; })}
+        {availableHint ? <button className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full px-2 text-sm font-semibold text-brand-aegean hover:bg-brand-aegean/10" onClick={() => setHintIds((ids) => [...ids, availableHint.id])} type="button"><Lightbulb className="h-4 w-4" aria-hidden="true" /> Show a hint</button> : null}
+        <fieldset className="mt-6"><legend className="text-sm font-semibold text-brand-navy dark:text-brand-parchment">How sure are you?</legend><p className="mt-1 text-xs text-slate-500 dark:text-brand-marble">This helps us give useful feedback.</p><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{([[1, 'Not sure'], [2, 'A little'], [3, 'Quite'], [4, 'Very']] as const).map(([value, label]) => <label className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-2 text-center text-sm font-medium ${confidence === value ? 'border-brand-aegean bg-brand-aegean/10 text-brand-navy dark:border-brand-gold dark:bg-brand-gold/10 dark:text-brand-parchment' : 'border-slate-200 text-slate-600 dark:border-white/10 dark:text-brand-marble'}`} key={value}><input checked={confidence === value} className="sr-only" name="activity-confidence" onChange={() => setConfidence(value)} type="radio" value={value} />{label}</label>)}</div></fieldset>
+        {submissionMessage || submit.isError ? <p className="mt-4 text-sm text-red-700 dark:text-red-200" role="alert">{submissionMessage ?? 'Your answer could not be saved. Check your connection and retry.'}</p> : null}
+        <div className="sticky bottom-3 mt-6 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 p-3 backdrop-blur dark:border-white/10 dark:bg-slate-900/95"><span className="text-xs text-slate-500 dark:text-brand-marble">Your work is saved when checked.</span><button className="academy-btn-primary inline-flex min-h-11 shrink-0 items-center rounded-full px-5 disabled:opacity-50" disabled={!answer.trim() || submit.isPending} onClick={() => void submitAnswer()} type="button">{submit.isPending ? 'Checking…' : submissionMessage ? 'Retry answer' : 'Check answer'}</button></div>
+      </div>}
+    </div>
+  </PracticeQuestionFrame></PageShell>;
 }

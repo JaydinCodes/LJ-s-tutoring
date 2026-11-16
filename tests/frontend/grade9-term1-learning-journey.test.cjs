@@ -81,19 +81,19 @@ test('the dashboard retains a single dominant continue action and renders the co
   const map = fs.readFileSync(path.join(root, 'src', 'features', 'learning', 'LearningMap.tsx'), 'utf8');
   const projection = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261115120000_sprint5_learning_map_projection.sql'), 'utf8');
   assert.match(route, /useGrade9Term1LearningJourney/);
-  assert.match(route, /Continue learning/);
+  assert.match(route, /PrimaryNextStep/);
   assert.match(route, /JourneyMap/);
-  assert.match(map, /My learning map/);
-  assert.match(map, /Content awaiting publication/);
-  assert.match(map, /Helpful Grade 8 detour/);
+  assert.match(map, /Your roadmap/);
+  assert.match(map, /Content is being prepared/);
+  assert.match(map, /Optional Grade 8 support/);
   assert.match(map, /Practice completed/);
-  assert.match(map, /Formal evidence has recorded topic mastery/);
-  assert.match(map, /usePrefersReducedMotion/);
+  assert.match(map, /Mastered with formal evidence/);
+  assert.match(map, /One skill at a time/);
   assert.doesNotMatch(topicRoute, /Understand your starting point/);
-  assert.match(topicRoute, /Make this my current topic/);
+  assert.match(topicRoute, /Make this my topic/);
   assert.match(topicRoute, /TopicLearningMap/);
-  assert.match(topicRoute, /Concept, example, practice, feedback/);
-  assert.match(topicRoute, /This is my current topic/);
+  assert.match(topicRoute, /Topic pathway/);
+  assert.match(topicRoute, /Current topic/);
   for (const fragment of [
     'create or replace function public.get_my_grade9_term1_topic_learning_map',
     'public.current_profile_role() <> \'student\'',
