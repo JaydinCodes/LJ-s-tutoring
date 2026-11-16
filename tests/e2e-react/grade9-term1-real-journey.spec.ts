@@ -57,9 +57,10 @@ function assessmentTitle(topic: string, kind: string) {
 
 async function startAssessment(page: Page, title: RegExp, introductionCapture?: { testInfo: TestInfo; name: string }) {
   await page.goto('/dashboard/student/learning');
-  const card = page.getByRole('article').filter({ hasText: title });
-  await expect(card).toBeVisible({ timeout: 20_000 });
-  await card.getByRole('link', { name: 'Read instructions' }).click();
+  const nextStep = page.locator('section[aria-labelledby="learning-next-step"]');
+  await expect(nextStep).toBeVisible({ timeout: 20_000 });
+  await nextStep.getByRole('link').click();
+  await expect(page.locator('h1').filter({ hasText: title })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Start assessment' })).toBeVisible();
   if (introductionCapture) {
     await capture(page, introductionCapture.testInfo, introductionCapture.name, 390, 844);
@@ -89,8 +90,10 @@ async function completeAssessment(page: Page, mode: 'correct' | 'incorrect') {
       await next.click();
       continue;
     }
-    page.once('dialog', (dialog) => void dialog.accept());
     await page.getByRole('button', { name: 'Submit assessment' }).click();
+    const confirmation = page.getByRole('alertdialog', { name: 'Submit assessment?' });
+    await expect(confirmation).toBeVisible();
+    await confirmation.getByRole('button', { name: 'Submit now' }).click();
     await expect(page.getByRole('heading', { name: 'Assessment submitted' })).toBeVisible({ timeout: 20_000 });
     return;
   }
@@ -127,10 +130,10 @@ async function completeActivity(page: Page, mode: 'correct' | 'incorrect', stopA
       await expect(page.getByText('Why this choice is not correct')).toBeVisible();
       return;
     }
-    await expect(page.getByText(/Marks awarded:/)).toBeVisible();
+    await expect(page.getByText(/1\s*\/\s*1 mark/)).toBeVisible();
     if (stopAfterFirst) return;
     const progressResponse = page.waitForResponse((response) => response.url().includes('/rest/v1/rpc/get_my_learning_activity_state') && response.ok());
-    await page.getByRole('button', { name: 'Continue to next step' }).click();
+    await page.getByRole('button', { name: 'Next question' }).click();
     const persisted = await (await progressResponse).json() as Array<{ question_version_id: string; attempt_id: string | null }>;
     expect(persisted.find((item) => item.question_version_id === questionId)?.attempt_id).toBeTruthy();
     const next = persisted.find((item) => !item.attempt_id);
@@ -176,20 +179,21 @@ test('B — a weak learner reads the recommended Integers lesson and receives sp
   await completeAssessment(page, 'incorrect');
   await page.goto('/dashboard/student/learning/topic/INTEGERS');
   await expect(page.getByText('Integer operations and order')).toBeVisible();
-  await expect(page.getByRole('article').filter({ hasText: 'Integer operations and order' }).getByRole('heading', { name: 'Worked example' })).toBeVisible();
+  await page.getByRole('link', { name: 'Open' }).first().click();
+  await expect(page.getByRole('heading', { name: 'See an example' })).toBeVisible();
   await capture(page, testInfo, 'integers-lesson-worked-example', 360, 844);
-  await page.getByRole('link', { name: 'Start short practice' }).first().click();
+  await page.getByRole('link', { name: 'Start practice' }).click();
   await expect(page.getByText('Calculate −8 + 13.')).toBeVisible();
   await completeActivity(page, 'incorrect', true);
   await expect(page.getByText('Why this choice is not correct')).toBeVisible();
   await expect(page.getByText(/−21 combines the magnitudes/)).toBeVisible();
   await capture(page, testInfo, 'practice-incorrect-feedback', 360, 844);
-  await page.getByRole('button', { name: 'Try again with this insight' }).click();
+  await page.getByRole('button', { name: 'Try again' }).click();
   await page.getByLabel('5', { exact: true }).check();
   await page.getByText('Quite sure', { exact: true }).click();
   await expect(page.locator('input[name="activity-confidence"][value="3"]')).toBeChecked();
   await page.getByRole('button', { name: 'Check answer', exact: true }).click();
-  await expect(page.getByText('Marks awarded: 1 / 1')).toBeVisible();
+  await expect(page.getByText('1 / 1 mark')).toBeVisible();
   await capture(page, testInfo, 'practice-correct-feedback', 390, 844);
   const progress = await activityState(emails.weak, 'A.G9.S4.INTEGER-OPS');
   expect(progress.some((item) => item.attempt_id && item.attempt_status === 'evaluated')).toBeTruthy();
@@ -217,9 +221,9 @@ test('C — Grade 8 bridge support preserves return context to the original Grad
   await page.goto('/dashboard/student/learning/activity/A.G9.S4.INTEGER-OPS');
   await completeActivity(page, 'incorrect', true);
   await page.goto('/dashboard/student/learning');
-  await expect(page.getByRole('link', { name: 'Open the bridge lesson' })).toBeVisible();
-  await page.getByRole('link', { name: 'Open the bridge lesson' }).click();
-  await expect(page.getByRole('heading', { name: 'Grade 8 foundation' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open support' })).toBeVisible();
+  await page.getByRole('link', { name: 'Open support' }).click();
+  await expect(page.getByRole('heading', { name: 'Grade 8 support' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Return to your Grade 9 topic' })).toHaveAttribute('href', '/dashboard/student/learning/topic/INTEGERS');
   await capture(page, testInfo, 'grade8-bridge', 390, 844);
   await page.getByRole('link', { name: 'Practise this foundation' }).click();
@@ -253,7 +257,7 @@ test('D — a strong baseline offers a mastery challenge; challenge evidence awa
   const { data, error } = await client.rpc('get_my_learning_assessment_session', { p_session_id: sessionId });
   expect(error).toBeNull();
   expect(JSON.stringify(data)).toContain('mastered');
-  await page.getByRole('link', { name: 'Return to Learning' }).click();
+  await page.getByRole('link', { name: 'Continue to next topic' }).click();
   await capture(page, testInfo, 'return-to-next-topic', 390, 844);
   writeEvidence(testInfo, 'D-strong-baseline', { authenticatedUser: emails.strong, persistedAssessmentSessionId: sessionId, observed: 'baseline alone did not end route; independent mastery challenge produced mastery' });
 });
@@ -278,7 +282,7 @@ test('E — normal learning followed by an endline awards mastery without a comp
   expect(map.skills.some((skill: { skillEvidenceState: string | null }) => skill.skillEvidenceState !== null)).toBeTruthy();
   await page.goto('/dashboard/student/learning/topic/INTEGERS');
   await expect(page.getByText('Practice completed', { exact: true })).toBeVisible();
-  await expect(page.getByText('Formal evidence has recorded mastery.', { exact: true })).toBeVisible();
+  await expect(page.getByText('You have mastered this topic with formal evidence.', { exact: true })).toBeVisible();
   await capture(page, testInfo, 'persisted-topic-mastery-map', 390, 844);
   writeEvidence(testInfo, 'E-normal-endline', { authenticatedUser: emails.endline, persistedAssessmentSessionId: endlineSession, observed: 'completed guided practice and eligible endline; endline itself awarded mastery' });
 });
@@ -316,7 +320,7 @@ test('G — guided-practice state survives refresh and a fresh authenticated ses
   await signIn(page, emails.persistence);
   await page.goto('/dashboard/student/learning/activity/A.G9.S4.INTEGER-OPS');
   await completeActivity(page, 'correct', true);
-  await page.getByRole('button', { name: 'Continue to next step' }).click();
+  await page.getByRole('button', { name: 'Next question' }).click();
   await expect(page.getByText('Calculate (−7) × 6.')).toBeVisible();
   await page.reload();
   await expect(page.getByText('Calculate (−7) × 6.')).toBeVisible();
@@ -369,9 +373,14 @@ test('Sprint 5 real Learning Map has ordered checkpoints, keyboard focus and res
   await page.goto('/dashboard/student/learning/activity/A.G9.S4.INTEGER-OPS');
   await completeActivity(page, 'correct', true);
   await page.goto('/dashboard/student/learning/topic/INTEGERS');
-  await page.getByRole('button', { name: /Make this my current topic|This is my current topic/ }).click();
+  const currentTopicButton = page.getByRole('button', { name: /Make this my current topic|This is my current topic/ });
+  if (await currentTopicButton.isEnabled()) {
+    const contextSaved = page.waitForResponse((response) => response.url().includes('/rest/v1/rpc/set_my_grade9_term1_learning_context') && response.ok());
+    await currentTopicButton.click();
+    await contextSaved;
+  }
   await page.goto('/dashboard/student/learning');
-  const map = page.getByRole('list', { name: 'Grade 9 Term 1 topic map' });
+  const map = page.getByRole('list', { name: 'Grade 9 Term 1 topics' });
   const links = map.getByRole('link');
   await expect(links).toHaveCount(4);
   const routes = await links.evaluateAll((elements) => elements.map((element) => element.getAttribute('href')));
@@ -392,11 +401,11 @@ test('Sprint 5 real Learning Map has ordered checkpoints, keyboard focus and res
   await expect(map.locator('.animate-pulse')).toHaveCount(0);
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL('/dashboard/student/learning/topic/INTEGERS');
-  await expect(page.getByRole('list', { name: 'Integers curriculum skills' })).toBeVisible();
-  await expect(page.getByText('Practice attempted', { exact: true })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Integers skills' })).toBeVisible();
+  await expect(page.getByText(/Practice (completed|in progress)/)).toBeVisible();
   for (const width of [360, 390, 1440]) {
     await capture(page, testInfo, 'sprint5-topic-skill-map', width, width === 1440 ? 1000 : 844,
-      page.getByRole('list', { name: 'Integers curriculum skills' }).locator('xpath=ancestor::section[1]'));
+      page.getByRole('list', { name: 'Integers skills' }).locator('xpath=ancestor::section[1]'));
   }
   const client = await authenticatedClient(emails.persistence);
   const { data: persisted, error } = await client.rpc('get_my_grade9_term1_topic_learning_map', { p_topic_code: 'INTEGERS' });

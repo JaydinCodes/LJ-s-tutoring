@@ -193,7 +193,7 @@ test('visual QA — selected topic makes its baseline the clear next step', asyn
   await openLearning(page, 'selected', testInfo);
   await expect(page.getByText('Understand your starting point', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: /Integers/ }).first().click();
-  await expect(page.getByRole('button', { name: 'Current topic' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'This is my current topic' })).toBeVisible();
   await expect(page.getByText('Your pathway')).toBeVisible();
   const mapHeading = page.getByRole('heading', { name: /One skill at a time/ });
   await capture(page, testInfo, 'integers-topic-map', 1440, mapHeading);
@@ -287,7 +287,7 @@ test('visual QA — guided practice gives feedback and a clear completion state'
   await page.goto(`/dashboard/student/learning/activity/${activityCode}`);
   await expect(page.getByRole('heading', { name: 'Calculate: −6 + 10.' })).toBeVisible();
   await page.getByRole('radio', { name: '4', exact: true }).check();
-  await page.getByText('Very', { exact: true }).click();
+  await page.getByText('Very sure', { exact: true }).click();
   await page.getByRole('button', { name: 'Check answer' }).click();
   await expect(page.getByRole('button', { name: /Next question/ })).toBeVisible();
   await page.getByRole('button', { name: /Next question/ }).click();

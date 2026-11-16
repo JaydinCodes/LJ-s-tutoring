@@ -79,11 +79,35 @@ export function WorkedExample({ children }: { children: ReactNode }) {
   );
 }
 
-export function PracticeQuestionFrame({ children, questionNumber, totalQuestions, stageLabel }: { children: ReactNode; questionNumber: number; totalQuestions: number; stageLabel: string }) {
+export function PracticeQuestionFrame({
+  children,
+  questionNumber,
+  totalQuestions,
+  stageLabel,
+  questionId,
+  activityCode,
+  state,
+}: {
+  children: ReactNode;
+  questionNumber: number;
+  totalQuestions: number;
+  stageLabel: string;
+  questionId: string;
+  activityCode: string;
+  state: 'question' | 'feedback';
+}) {
   return (
     <main className="mx-auto max-w-3xl" data-testid="practice-question-frame">
       <LearningProgressHeader eyebrow="Practice" label={stageLabel} current={questionNumber} total={totalQuestions} />
-      <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-900 sm:p-8">{children}</section>
+      <section
+        className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-900 sm:p-8"
+        data-activity-code={activityCode}
+        data-question-id={questionId}
+        data-state={state}
+        data-testid="activity-state"
+      >
+        {children}
+      </section>
     </main>
   );
 }

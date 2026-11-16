@@ -21,7 +21,7 @@ export function StudentLearningLessonRoute() {
   if (!topic || !skill?.content) return <PageShell title="Lesson" subtitle="Grade 9 Mathematics" section="student"><EmptyState icon={BookOpen} title="This lesson is not ready yet" description="Only reviewed lessons can be opened here." actionLabel="Return to topic" actionHref={returnTo} /></PageShell>;
 
   const videos = (videosQuery.data ?? []).filter((video) => video.skillCode === skillCode);
-  return <PageShell title={skill.skillName} subtitle={topic.topicName} section="student">
+  return <PageShell title="Lesson" subtitle={topic.topicName} section="student">
     <article className="mx-auto max-w-3xl space-y-5">
       <Link className="inline-flex min-h-11 items-center gap-2 rounded-full px-2 text-sm font-semibold text-slate-700 hover:text-brand-aegean dark:text-brand-marble" to={returnTo}><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to {topic.topicName}</Link>
       <header><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-aegean">Lesson</p><h1 className="mt-2 font-display text-3xl font-semibold text-brand-navy dark:text-brand-parchment sm:text-4xl">{skill.content.title}</h1>{skill.content.learningObjective ? <p className="mt-3 text-lg leading-7 text-slate-700 dark:text-slate-200">{skill.content.learningObjective}</p> : <p className="mt-3 leading-7 text-slate-600 dark:text-brand-marble">{skill.skillDescription}</p>}</header>

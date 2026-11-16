@@ -90,10 +90,10 @@ test('the dashboard retains a single dominant continue action and renders the co
   assert.match(map, /Mastered with formal evidence/);
   assert.match(map, /One skill at a time/);
   assert.doesNotMatch(topicRoute, /Understand your starting point/);
-  assert.match(topicRoute, /Make this my topic/);
+  assert.match(topicRoute, /Make this my current topic/);
   assert.match(topicRoute, /TopicLearningMap/);
   assert.match(topicRoute, /Topic pathway/);
-  assert.match(topicRoute, /Current topic/);
+  assert.match(topicRoute, /current topic/);
   for (const fragment of [
     'create or replace function public.get_my_grade9_term1_topic_learning_map',
     'public.current_profile_role() <> \'student\'',

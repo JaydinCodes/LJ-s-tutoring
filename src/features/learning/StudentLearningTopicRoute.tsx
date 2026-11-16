@@ -32,20 +32,21 @@ export function StudentLearningTopicRoute() {
   const journeyQuery = useGrade9Term1LearningJourney();
   const setContext = useSetGrade9Term1LearningContextMutation();
 
-  if (topicQuery.isPending || mapQuery.isPending || journeyQuery.isPending) return <PageShell title="Learning topic" subtitle="Preparing your pathway." section="student"><SkeletonCard className="min-h-80" /></PageShell>;
-  if (topicQuery.isError || mapQuery.isError || journeyQuery.isError) return <PageShell title="Learning topic" subtitle="Grade 9 Mathematics" section="student"><ErrorState title="Topic could not be loaded" description="Check your connection and try again." onRetry={() => { void topicQuery.refetch(); void mapQuery.refetch(); void journeyQuery.refetch(); }} /></PageShell>;
-
   const topic = topicQuery.data;
   const map = mapQuery.data;
   const journey = journeyQuery.data;
   const journeyTopic = journey?.topics.find((item) => item.topicCode === topicCode);
+  if (topicQuery.isPending || journeyQuery.isPending || (topic && mapQuery.isPending)) return <PageShell title="Learning topic" subtitle="Preparing your pathway." section="student"><SkeletonCard className="min-h-80" /></PageShell>;
+  if (!topic && topicQuery.isSuccess) return <PageShell title="Learning topic" subtitle="Grade 9 Mathematics" section="student"><EmptyState icon={BookOpen} title="This topic is not ready yet" description="Only reviewed Grade 9 Term 1 topics can be opened from your learning roadmap." actionLabel="Back to Learning" actionHref="/dashboard/student/learning" /></PageShell>;
+  if (topicQuery.isError || mapQuery.isError || journeyQuery.isError) return <PageShell title="Learning topic" subtitle="Grade 9 Mathematics" section="student"><ErrorState title="Topic could not be loaded" description="Check your connection and try again." onRetry={() => { void topicQuery.refetch(); void mapQuery.refetch(); void journeyQuery.refetch(); }} /></PageShell>;
+
   if (!topic || !map || !journeyTopic) return <PageShell title="Learning topic" subtitle="Grade 9 Mathematics" section="student"><EmptyState icon={BookOpen} title="This topic is not ready yet" description="Only reviewed Grade 9 Term 1 topics can be opened from your learning roadmap." actionLabel="Back to Learning" actionHref="/dashboard/student/learning" /></PageShell>;
 
   const recommendedForTopic = journey?.primary.topicCode === topicCode && journey.primary.action !== 'explore_topic' ? journey.primary : null;
   const isCurrent = journey?.context.selectedTopicCode === topicCode;
   const hasPublishedContent = topic.skills.some((skill) => skill.content);
 
-  return <PageShell title={map.topicName} subtitle="Grade 9 Mathematics · Term 1" section="student">
+  return <PageShell title="Learning topic" subtitle="Grade 9 Mathematics · Term 1" section="student">
     <div className="mx-auto max-w-5xl space-y-5">
       <Link className="inline-flex min-h-11 items-center gap-2 rounded-full px-2 text-sm font-semibold text-slate-700 hover:text-brand-aegean dark:text-brand-marble" to="/dashboard/student/learning"><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to Learning</Link>
 
@@ -55,7 +56,7 @@ export function StudentLearningTopicRoute() {
         {topic.topicDescription ? <p className="mt-3 max-w-3xl leading-7 text-brand-marble">{topic.topicDescription}</p> : null}
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm text-white"><CheckCircle2 className="h-4 w-4 text-brand-gold" aria-hidden="true" /> {statusCopy(journeyTopic.status)}</span>
-          <button className="min-h-10 rounded-full border border-white/25 px-4 text-sm font-semibold text-white disabled:opacity-60" disabled={setContext.isPending || isCurrent} onClick={() => void setContext.mutateAsync({ topicCode })} type="button">{setContext.isPending ? 'Saving…' : isCurrent ? 'Current topic' : 'Make this my topic'}</button>
+          <button className="min-h-10 rounded-full border border-white/25 px-4 text-sm font-semibold text-white disabled:opacity-60" disabled={setContext.isPending || isCurrent} onClick={() => void setContext.mutateAsync({ topicCode })} type="button">{setContext.isPending ? 'Saving…' : isCurrent ? 'This is my current topic' : 'Make this my current topic'}</button>
         </div>
       </header>
 
