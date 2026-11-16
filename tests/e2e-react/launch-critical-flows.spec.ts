@@ -42,6 +42,50 @@ async function loginAs(page: Page, role: SmokeRole) {
 
 test.use({ viewport: { width: 390, height: 900 } });
 
+for (const width of [390, 1440]) {
+  test(`admin batch release previews and gates reviewed content at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 960 });
+    await page.addInitScript(() => window.localStorage.setItem('project-odysseus:e2e-auth', JSON.stringify({ role: 'admin', email: 'admin.e2e@projectodysseus.test' })));
+    const applied: Record<string, unknown>[] = [];
+    await page.route('**/rest/v1/rpc/**', async (route) => {
+      const name = route.request().url().split('/').at(-1);
+      let payload: unknown = [];
+      if (name === 'get_learning_content_catalog') payload = { items: [], skills: [], misconceptions: [] };
+      if (name === 'get_learning_activity_content_catalog') payload = { activities: [] };
+      if (name === 'release_grade9_term1_content') {
+        const request = route.request().postDataJSON() as Record<string, unknown>;
+        if (request.p_apply) applied.push(request);
+        payload = { applied: request.p_apply, fingerprint: request.p_include_formal ? 'formal-pack' : 'practice-pack', lessons: 19, practice_questions: 76, activities: 19, formal_questions: request.p_include_formal ? 258 : 0, formal_forms: request.p_include_formal ? 17 : 0, forms_published: 0 };
+      }
+      await route.fulfill({ json: payload });
+    });
+    await page.goto('/dashboard/admin/learning-content');
+    const section = page.getByRole('region', { name: 'Grade 9 Term 1 publication' });
+    const publish = section.getByRole('button', { name: 'Publish reviewed pack', exact: true });
+    await expect(publish).toBeDisabled();
+    await section.getByLabel('Instructional academic review reference').fill('Reviewed instructional pack fixture');
+    await section.getByRole('button', { name: 'Preview release', exact: true }).click();
+    await expect(section.getByLabel('Publication preview')).toContainText('76');
+    await expect(publish).toBeEnabled();
+    await page.screenshot({ path: testInfo.outputPath(`batch-release-${width}.png`) });
+    const bounds = await section.evaluate((element) => ({ width: element.clientWidth, scroll: element.scrollWidth }));
+    expect(bounds.scroll).toBeLessThanOrEqual(bounds.width);
+    page.once('dialog', (dialog) => void dialog.accept());
+    await publish.click();
+    await expect(section.getByRole('status')).toContainText('Published 19 lessons, 76 practice questions and 19 activities');
+    expect(applied).toHaveLength(1);
+    expect(applied[0]).toMatchObject({ p_include_formal: false, p_expected_fingerprint: 'practice-pack' });
+    await section.getByLabel('Include formal assessments').check();
+    await section.getByRole('button', { name: 'Preview release', exact: true }).click();
+    await expect(section.getByLabel('Publication preview')).toContainText('258');
+    await expect(publish).toBeDisabled();
+    await section.getByLabel('Comprehensive formal academic sign-off reference').fill('Independent formal review fixture');
+    await expect(publish).toBeDisabled();
+    await section.getByRole('button', { name: 'Preview release', exact: true }).click();
+    await expect(publish).toBeEnabled();
+  });
+}
+
 test('public homepage loads', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('link', { name: /Project Odysseus/i })).toBeVisible();

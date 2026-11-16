@@ -1,10 +1,12 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { DashboardShell } from '../../components/dashboard/DashboardShell';
+import { Eye, Upload } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { ErrorState, LoadingState } from '../../components/ui/State';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { createRevision, dryRunImport, loadGrade9Term1LearningJourneyReadiness, loadLearningActivityContentCatalog, loadLearningContentCatalog, loadLearningSkillContentCatalog, loadLearningVideoResourceCatalog, loadReviewBundle, reviewLearningActivity, reviewLearningSkillContent, reviewLearningVideoResource, reviewQuestion, saveQuestionDraft, updateLearningVideoResourceMetadata, type LearningActivityContent, type QuestionDraft } from './learningContentRepository';
 import type { Json } from '../../../supabase/types/public.generated';
+import { releaseGrade9Term1Content, type Grade9ContentRelease } from './learningContentRepository';
 
 const types = ['numeric','fraction','multiple_choice','coordinate','linear_equation_solution','algebraic_expression','factorised_expression'];
 const blank = (): QuestionDraft => ({ itemCode:'',primarySkillId:'',supportingSkillIds:[],misconceptionIds:[],prompt:'',questionType:'factorised_expression',expected:'',optionsText:'A: \nB: \nC: \nD: ',distractorExplanationsText:'',tolerance:'',correctOption:'',requiredForm:'factorised',marks:'1',difficulty:'2',reasoningClassification:'procedural',activityType:'independent_practice',cognitiveLevel:'routine',representation:'symbolic',calculatorPolicy:'not_allowed',solution:'',sourceTier:'Odysseus_authored',sourceNotes:'',hints:[''] });
@@ -18,23 +20,66 @@ export function AdminLearningContentRoute() {
  const [search,setSearch]=useState(''); const [status,setStatus]=useState(''); const [page,setPage]=useState(1); const resource=useAsyncResource(() => loadLearningContentCatalog(search,status,page),[search,status,page]);
  const [selected,setSelected]=useState<string|null>(null); const [bundle,setBundle]=useState<Record<string,unknown>|null>(null); const [message,setMessage]=useState<string|null>(null);
  const [reviewError,setReviewError]=useState<string|null>(null);
+ const [releaseVersion,setReleaseVersion]=useState(0);
  async function open(id:string){ setSelected(id);setBundle(null);setReviewError(null);try{setBundle(await loadReviewBundle(id));}catch(error){setReviewError(reviewFailureMessage(error));} }
  async function action(id:string, name:'submit_for_review'|'approve'|'reject'|'return_for_revision'|'retire'){ const notes= name==='approve'||name==='submit_for_review' ? undefined : window.prompt('Review note (required):') || undefined; if((name==='reject'||name==='return_for_revision'||name==='retire')&&!notes)return;setReviewError(null);setMessage(null);try{await reviewQuestion(id,name,notes);setMessage(`Question ${name.replaceAll('_',' ')}.`);await resource.reload();if(selected===id)await open(id);}catch(error){setReviewError(reviewFailureMessage(error));} }
  return <DashboardShell title="Learning content" subtitle="Create drafts, validate deterministic marking, and review approved Grade 9 learning content." section="admin">
+  <Grade9BatchRelease onReleased={async()=>{setReleaseVersion(value=>value+1);await resource.reload();}} />
   <QuestionAuthor skills={resource.data?.skills ?? []} misconceptions={resource.data?.misconceptions ?? []} onSaved={async()=>{setMessage('Draft saved.');await resource.reload();}} />
-  <JourneyReadiness />
+  <JourneyReadiness key={`readiness-${releaseVersion}`} />
   <Card><div className="flex flex-wrap gap-3"><input aria-label="Search questions" className="rounded-xl border p-3" placeholder="Search item code, prompt, skill" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/><select aria-label="Review status" className="rounded-xl border p-3" value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}}><option value="">All statuses</option>{['draft','in_review','approved','rejected','retired'].map(value=><option key={value}>{value}</option>)}</select></div>
   {reviewError?<p className="mt-3 text-sm text-red-700" role="alert">{reviewError}</p>:null}{message?<p className="mt-3 text-sm text-emerald-700">{message}</p>:null}{resource.loading?<LoadingState title="Loading content" description="Fetching a page of the item bank..."/>:null}{resource.error?<ErrorState title="Content unavailable" description={resource.error} onRetry={()=>void resource.reload()} dashboardHref="/dashboard/admin"/>:null}
    {resource.data?<><div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th>Code</th><th>Prompt</th><th>Skill</th><th>Status</th><th /></tr></thead><tbody>{resource.data.items.map(item=><tr className="border-t" key={item.id}><td className="py-3 font-medium">{item.item_code} v{item.version_number}</td><td className="max-w-xl py-3">{item.prompt}</td><td>{item.primary_skill_code}</td><td>{item.review_status}</td><td><button className="rounded-lg border px-3 py-2" onClick={()=>void open(item.id)}>Review</button></td></tr>)}</tbody></table></div><div className="mt-4 flex gap-3"><button disabled={page===1} onClick={()=>setPage(page-1)}>Previous</button><span>Page {page}</span><button disabled={resource.data.items.length<25} onClick={()=>setPage(page+1)}>Next</button></div></>:null}
   </Card>{bundle&&selected?<ReviewPanel bundle={bundle} onAction={(name)=>void action(selected,name)} onRevision={async()=>{setReviewError(null);setMessage(null);try{const revisionId=await createRevision(selected);setMessage('A new immutable revision draft was created.');await resource.reload();if(revisionId)await open(revisionId);}catch(error){setReviewError(reviewFailureMessage(error));}}} onClose={()=>{setBundle(null);setSelected(null);}}/>:null}
   <ImportPanel onDryRun={dryRunImport}/>
-  <ActivityCatalog />
-  <SkillContentCatalog />
+  <ActivityCatalog key={`activities-${releaseVersion}`} />
+  <SkillContentCatalog key={`lessons-${releaseVersion}`} />
   <VideoResourceCatalog />
  </DashboardShell>;
 }
 
 function readinessBlockerMessage(blocker:string) { return blocker==='NO_APPROVED_LESSON_OR_ACTIVITY' ? 'No approved lesson or practice activity is available to learners.' : blocker==='NO_PUBLISHED_ASSESSMENT_FORM' ? 'No approved, immutable assessment form is available. Formal assessment publication remains separately gated.' : blocker.replaceAll('_',' ').toLowerCase(); }
+
+function Grade9BatchRelease({ onReleased }: { onReleased: () => Promise<void> }) {
+ const [reference,setReference]=useState('');
+ const [includeFormal,setIncludeFormal]=useState(false);
+ const [formalReference,setFormalReference]=useState('');
+ const [preview,setPreview]=useState<Grade9ContentRelease|null>(null);
+ const [busy,setBusy]=useState(false);
+ const [error,setError]=useState<string|null>(null);
+ const [result,setResult]=useState<string|null>(null);
+ async function release(apply:boolean) {
+  if(apply&&!window.confirm(`Publish 19 lessons, 76 practice questions and 19 activities${includeFormal?' plus 17 formal assessment forms':''} to students?`))return;
+  setBusy(true);setError(null);setResult(null);
+  try {
+   const response=await releaseGrade9Term1Content({apply,fingerprint:preview?.fingerprint,reviewReference:reference.trim(),includeFormal,formalReviewReference:formalReference.trim()||undefined});
+   if(apply){setPreview(null);setResult(`Published ${response.lessons} lessons, ${response.practice_questions} practice questions and ${response.activities} activities. ${response.forms_published??0} new formal forms.`);await onReleased();}
+   else setPreview(response);
+  } catch(cause){setError(reviewFailureMessage(cause));setPreview(null);}
+  finally{setBusy(false);}
+ }
+ return <section aria-labelledby="batch-release-heading" className="space-y-4 border-b pb-6">
+  <h2 id="batch-release-heading" className="text-xl font-semibold">Grade 9 Term 1 publication</h2>
+  <div className="grid gap-4 md:grid-cols-2">
+   <Field label="Instructional academic review reference"><input className="min-w-0 rounded-lg border p-3" value={reference} disabled={busy} onChange={event=>{setReference(event.target.value);setPreview(null);}} /></Field>
+   <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={includeFormal} disabled={busy} onChange={event=>{setIncludeFormal(event.target.checked);setPreview(null);}} />Include formal assessments</label>
+   {includeFormal?<Field label="Comprehensive formal academic sign-off reference"><input className="min-w-0 rounded-lg border p-3" value={formalReference} disabled={busy} onChange={event=>{setFormalReference(event.target.value);setPreview(null);}} /></Field>:null}
+  </div>
+  {preview?<dl className="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="Publication preview">
+   <div><dt>Lessons</dt><dd className="font-semibold">{preview.lessons}</dd></div>
+   <div><dt>Practice questions</dt><dd className="font-semibold">{preview.practice_questions}</dd></div>
+   <div><dt>Activities</dt><dd className="font-semibold">{preview.activities}</dd></div>
+   <div><dt>Formal questions</dt><dd className="font-semibold">{preview.formal_questions??0}</dd></div>
+   <div><dt>Formal forms</dt><dd className="font-semibold">{preview.formal_forms??0}</dd></div>
+  </dl>:null}
+  <div className="flex flex-wrap gap-3">
+   <button type="button" className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50" disabled={busy} onClick={()=>void release(false)}><Eye size={16} aria-hidden="true" />Preview release</button>
+   <button type="button" className="inline-flex items-center gap-2 rounded-lg bg-brand-aegean px-4 py-2 text-sm font-medium text-white disabled:opacity-50" disabled={busy||!preview||!reference.trim()||(includeFormal&&!formalReference.trim())} onClick={()=>void release(true)}><Upload size={16} aria-hidden="true" />{busy?'Processing...':'Publish reviewed pack'}</button>
+  </div>
+  {error?<p role="alert" className="text-sm text-red-700">{error}</p>:null}
+  {result?<p role="status" className="text-sm text-emerald-700">{result}</p>:null}
+ </section>;
+}
 
 function JourneyReadiness() {
  const resource = useAsyncResource(loadGrade9Term1LearningJourneyReadiness, []);

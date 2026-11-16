@@ -226,6 +226,76 @@ values
 );
 
 -- Profile trigger should have created both identity mappings.
+create function pg_temp.seed_learning_privacy_graph(p_student_id uuid, p_age interval)
+returns void language plpgsql as $$
+declare
+  v_definition public.learning_assessment_definitions;
+  v_form uuid;
+  v_session uuid;
+  v_question uuid;
+  v_result uuid;
+  v_evaluation uuid;
+  v_question_version uuid;
+  v_skill uuid;
+begin
+  select * into strict v_definition from public.learning_assessment_definitions
+    where topic_mastery_policy_id is not null order by code limit 1;
+  select link.question_version_id, skill.skill_id into strict v_question_version, v_skill
+    from public.learning_assessment_definition_questions link
+    join public.question_version_skill_links skill on skill.question_version_id = link.question_version_id and skill.relationship_type = 'primary'
+    where link.learning_assessment_definition_id = v_definition.id order by link.display_order limit 1;
+  select id into v_form from public.learning_assessment_form_versions
+    where learning_assessment_definition_id = v_definition.id order by form_version desc limit 1;
+  if v_form is null then
+    insert into public.learning_assessment_form_versions(learning_assessment_definition_id, form_version, duration_minutes, question_order_mode, solution_release_policy)
+      values(v_definition.id, 1, 30, 'fixed', 'after_submission') returning id into v_form;
+  end if;
+  insert into public.learning_assessment_sessions(student_id, learning_assessment_definition_id, learning_assessment_form_version_id,
+    curriculum_version_id, curriculum_topic_id, topic_mastery_policy_id, assessment_type, start_idempotency_key, started_at, expires_at, original_expires_at, created_at)
+    values(p_student_id, v_definition.id, v_form, v_definition.curriculum_version_id, v_definition.curriculum_topic_id,
+      v_definition.topic_mastery_policy_id, v_definition.assessment_type, gen_random_uuid(), now() - p_age, now() - p_age + interval '30 minutes', now() - p_age + interval '30 minutes', now() - p_age)
+    returning id into v_session;
+  insert into public.learning_assessment_session_questions(learning_assessment_session_id, question_version_id, primary_skill_id, sequence_number, prompt_snapshot, options_snapshot, marks_snapshot, reasoning_classification)
+    values(v_session, v_question_version, v_skill, 1, 'Privacy fixture response', '{"A":"1","B":"2","C":"3","D":"4"}', 1, 'procedural') returning id into v_question;
+  insert into public.learning_assessment_session_answers(learning_assessment_session_question_id, selected_option, last_event_id, updated_at)
+    values(v_question, 'B', gen_random_uuid(), now() - p_age);
+  insert into public.learning_assessment_session_answer_events(learning_assessment_session_id, learning_assessment_session_question_id, selected_option, idempotency_key, created_at)
+    values(v_session, v_question, 'B', gen_random_uuid(), now() - p_age);
+  insert into public.learning_assessment_session_question_results(learning_assessment_session_id, learning_assessment_session_question_id, skill_id, reasoning_classification, selected_option, is_correct, marks_awarded, marks_available, created_at)
+    values(v_session, v_question, v_skill, 'procedural', 'B', true, 1, 1, now() - p_age) returning id into v_result;
+  insert into public.topic_mastery_evaluations(student_id, curriculum_topic_id, curriculum_version_id, topic_mastery_policy_id, policy_version, assessment_session_id, assessment_type, status, determined_at, created_at)
+    values(p_student_id, v_definition.curriculum_topic_id, v_definition.curriculum_version_id, v_definition.topic_mastery_policy_id, 1, v_session, 'endline', 'not_yet_mastered', now() - p_age, now() - p_age) returning id into v_evaluation;
+  insert into public.topic_mastery_evaluation_evidence(topic_mastery_evaluation_id, learning_assessment_session_question_result_id, created_at)
+    values(v_evaluation, v_result, now() - p_age);
+  insert into public.topic_mastery_evaluation_skill_evidence(topic_mastery_evaluation_id, skill_id, is_critical, formal_question_count, formal_correct_count, total_independent_evidence_count, achievement, evidence_state)
+    values(v_evaluation, v_skill, true, 1, 1, 1, 100, 'insufficient');
+  insert into public.learning_assessment_session_extensions(learning_assessment_session_id, previous_expires_at, extended_expires_at, added_minutes, reason, authorised_by, authorised_at)
+    values(v_session, now() - p_age + interval '30 minutes', now() - p_age + interval '45 minutes', 15, 'Privacy fixture', 'fb020000-0000-4000-8000-000000000002', now() - p_age);
+  insert into public.learning_assessment_reassessment_authorizations(student_id, prior_session_id, reassessment_definition_id, reason, authorised_by, authorised_at)
+    values(p_student_id, v_session, v_definition.id, 'Privacy fixture', 'fb020000-0000-4000-8000-000000000002', now() - p_age);
+end;
+$$;
+
+select pg_temp.seed_learning_privacy_graph('fb030000-0000-4000-8000-000000000001', interval '1 day');
+
+insert into public.profiles(id, full_name, email, role)
+  values('fb020000-0000-4000-8000-000000000003', 'Expired learning fixture', 'privacy-expired@example.test', 'student');
+insert into public.students(id, profile_id, grade, status, organization_id)
+  values('fb030000-0000-4000-8000-000000000003', 'fb020000-0000-4000-8000-000000000003', 'Grade 9', 'active', 'fb050000-0000-4000-8000-000000000001');
+select pg_temp.seed_learning_privacy_graph('fb030000-0000-4000-8000-000000000003', interval '4 years');
+
+select ok(
+  (private.execute_retention_cleanup(false) #>> '{eligible,learning_students}')::integer >= 1,
+  'retention dry-run counts expired learning graphs'
+);
+select is((select count(*) from public.learning_assessment_sessions where student_id = 'fb030000-0000-4000-8000-000000000003'), 1::bigint,
+  'retention dry-run preserves expired answers and sessions');
+select lives_ok($$select private.execute_retention_cleanup(true)$$, 'retention apply removes an expired evidence graph in FK order');
+select is((select count(*) from public.learning_assessment_sessions where student_id = 'fb030000-0000-4000-8000-000000000003'), 0::bigint,
+  'retention apply removes expired formal sessions');
+select is((select count(*) from public.learning_assessment_sessions where student_id = 'fb030000-0000-4000-8000-000000000001'), 1::bigint,
+  'retention preserves another learner recent formal session');
+
 select is(
   (
     select count(*)
@@ -244,6 +314,11 @@ select pg_temp.authenticate_as(
   'aal2'
 );
 set local role authenticated;
+
+select is(jsonb_array_length(public.export_student_data('fb030000-0000-4000-8000-000000000001') #> '{learning_records,learning_assessment_session_answers}'), 1,
+  'admin export includes only the subject answers');
+select is(jsonb_array_length(public.export_student_data('fb030000-0000-4000-8000-000000000001') #> '{learning_records,topic_mastery_evaluation_evidence}'), 1,
+  'admin export includes formal mastery evidence');
 
 select throws_ok(
   $$select public.process_privacy_request('fb060000-0000-4000-8000-000000000001'::uuid)$$,
@@ -395,6 +470,11 @@ select lives_ok(
 );
 
 reset role;
+
+select is(jsonb_array_length(private.export_student_learning_data('fb030000-0000-4000-8000-000000000001')->'learning_assessment_sessions'), 0,
+  'trusted deletion removes formal sessions after dependent evidence');
+select is((select result #>> '{db_erasure_counts,topic_mastery_evaluation_evidence_deleted}' from public.privacy_requests where id = 'fb060000-0000-4000-8000-000000000001'), '1',
+  'trusted deletion records mastery evidence counts in the compliance receipt payload');
 
 select is(
   (
@@ -661,7 +741,7 @@ select is(
     from public.privacy_deletion_receipts
     where request_id = 'fb060000-0000-4000-8000-000000000001'
   ),
-  'PRIV-01-v1',
+  'PRIV-02-learning-v1',
   'receipt records erasure manifest version'
 );
 
