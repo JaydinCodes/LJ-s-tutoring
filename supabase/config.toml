@@ -78,6 +78,11 @@ enabled = true
 verify_jwt = true
 entrypoint = "./functions/evaluate-learning-attempt/index.ts"
 
+[functions.materialize-learning-retention]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/materialize-learning-retention/index.ts"
+
 [functions.cleanup-submission-assets]
 enabled = true
 verify_jwt = true

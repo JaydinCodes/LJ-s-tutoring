@@ -27,6 +27,7 @@ person-linked operational data. **Low** is reference/content data.
 | Teaching operations | `tutors`, `classes`, `class_enrollments`, `tutor_student_allocations`, `sessions`, `session_history` | Tutor profile, enrolment, attendance, notes, allocations | High; role/allocation/org-scoped RLS and secured RPCs |
 | Assignments | `assignments`, `assignment_submissions`, `student_progress`; private `assignment-files`, `assignment-submissions`, and legacy `assignment-memos` buckets | Instructions, learner work, marks, feedback, files, legacy private tutor memos, AI draft outputs | High for learner records; ownership/marker/admin policies and RPC-controlled mutations |
 | Reports and outcomes | `weekly_reports`, `student_notifications`, score/career snapshots, assessments, goals, exam events | Progress payloads, notices, risk and career signals | High; owning learner, permitted guardian/tutor/admin policies as applicable |
+| Learning and formal assessment evidence | `learning_assessment_sessions` and session children, reassessment authorisations, `topic_mastery_evaluations` and evidence, qualifying assignment evidence, practice attempts, skill mastery, misconceptions, interventions, activity progress and delayed reviews | Selected answers, answer revisions, results, recommendations, support notes and academic evidence | High; admin-only access export and service-only privacy erasure, with learner-scoped delivery RPCs |
 | Careers | `student_career_profiles` | Interests, target careers, APS context | High; owning learner/admin boundary |
 | Tutor onboarding | `tutor_applications`, `tutor_documents`, `tutor_availability_slots`; private `tutor-documents` bucket | Qualifications, application details, evidence files, availability | High; self/admin and private Storage policies |
 | Finance | `payments`, `tutor_payments`, `pay_periods`, `adjustments`, `invoices`, `invoice_lines` | Billing and payout records | High; tightly scoped role/RPC access |
@@ -75,7 +76,7 @@ contacts, and cross-border transfer bases outside this technical map.
 ## Retention controls implemented today
 
 `run_retention_cleanup(p_apply boolean default false)` is admin-only, requires
-the authoritative platform-admin check (including AAL2), and defaults to a dry
+the authoritative platform-admin check, and defaults to a dry
 run. Scheduled apply runs use `run_retention_cleanup_scheduled()`, which is
 granted only to `service_role` and validates the signed JWT role claim. The
 shared destructive worker is private and has no API-role `EXECUTE` grants. With
@@ -85,6 +86,7 @@ shared destructive worker is private and has no API-role `EXECUTE` grants. With
 |---|---|---|
 | Assignment submissions and corresponding private files | 3 years | Delete eligible rows; Storage privilege failure is reported for service-role follow-up |
 | Student progress | 3 years | Delete eligible rows |
+| Formal/practice learning evidence graph | 3 years since its latest activity | Delete subject-owned sessions, answer/event/result rows, mastery/evidence, support, activity progress and delayed reviews in FK order; hold linked source submissions until the graph expires |
 | Audit log | 5 years | Delete eligible rows |
 | Settled student/tutor payments | 7 years | Delete rows with old non-null `paid_at`; pending records are retained |
 
@@ -99,22 +101,24 @@ alone is a complete retention programme.
 Admin-gated RPCs implement the current workflow:
 
 - `export_student_data(student_id)` returns the core learner/profile/guardian,
-  careers, submission, progress, enrolment, allocation, and payment records.
-- `anonymize_student(student_id)` removes major academic/career/reporting rows,
-  clears session free text, detaches guardian links, removes/anonymizes identity,
-  and preserves financial/audit history where required.
-- `process_privacy_request(request_id)` records and dispatches access/deletion
-  requests; corrections use reviewed admin updates.
+  careers, submission, progress, enrolment, allocation, payment and subject-scoped
+  `learning_records` including formal responses, result details and mastery evidence.
+- `process-privacy-deletion` coordinates Auth lock/ban, Storage API removal,
+  service-only database erasure, Auth deletion and an immutable completion receipt.
+  Learning evidence is erased before source submissions. Legacy
+  `anonymize_student(student_id)` remains revoked from all API roles.
+- `process_privacy_request(request_id)` handles access/correction and rejects
+  browser deletion; deletion must use the trusted worker.
 
 Important completion work remains:
 
 1. Extend and regression-test the access export whenever the schema gains a new
    learner-linked table; the current export does not automatically discover new
    domains.
-2. If SQL cannot remove Storage objects, complete the reported follow-up with a
-   service-role Storage client.
-3. Delete/disable the corresponding `auth.users` identity with the Supabase Admin
-   Auth API after the approved retention/identity decision.
+2. Monitor/retry trusted-worker Storage API failures rather than manually
+  deleting `storage.objects` rows.
+3. Verify the trusted worker completes Auth deletion and emits the
+  `PRIV-02-learning-v1` receipt; incomplete requests remain pending.
 4. Define handling for financial/session/audit records that are retained after
    anonymisation and document the lawful basis.
 5. Keep evidence of requester/guardian authority, approval, execution, and any

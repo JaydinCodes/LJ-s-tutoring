@@ -8,6 +8,51 @@ const migration = fs.readFileSync(path.join(root, 'supabase/migrations/202609232
 const learningPage = fs.readFileSync(path.join(root, 'src/features/learning/StudentLearningRoute.tsx'), 'utf8');
 const edge = fs.readFileSync(path.join(root, 'supabase/functions/evaluate-learning-attempt/index.ts'), 'utf8');
 
+test('scheduled retention worker is configured, deployed, verified and type-checked', () => {
+  const workerName = 'materialize-learning-retention';
+  const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+  assert.match(read('supabase/config.toml'), /\[functions\.materialize-learning-retention\]\s+enabled = true\s+verify_jwt = true/);
+  assert.match(read('.github/workflows/deploy-production.yml'), /for function_name in [^\n]*materialize-learning-retention/);
+  for (const workflow of ['release-gates', 'security-stack']) {
+    assert.ok(read(`.github/workflows/${workflow}.yml`).includes(`supabase/functions/${workerName}/index.ts`));
+  }
+  assert.ok(read('scripts/verify-edge-function-policy.cjs').includes(`'${workerName}'`));
+  assert.match(read(`supabase/functions/${workerName}/index.ts`), /global: \{ headers: \{ Authorization: authorization \} \}/);
+});
+
+test('retention worker authenticates the incoming bearer at the service-only database RPC', async () => {
+  const vm = require('node:vm');
+  const ts = require('typescript');
+  const source = fs.readFileSync(path.join(root, 'supabase/functions/materialize-learning-retention/index.ts'), 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+  let handler;
+  let rpcResult = { data: 2, error: null };
+  let forwarded;
+  vm.runInNewContext(compiled, {
+    exports: {}, Response,
+    require: () => ({ createClient: (_url, key, options) => {
+      assert.equal(key, 'public-project-key');
+      forwarded = options.global.headers.Authorization;
+      return { rpc: async (name) => { assert.equal(name, 'materialize_learning_retention_checks'); return rpcResult; } };
+    } }),
+    Deno: {
+      env: { get: (name) => ({ SUPABASE_ANON_KEY: 'public-project-key', SUPABASE_URL: 'https://example.test' })[name] },
+      serve: (callback) => { handler = callback; },
+    },
+  });
+  const invoke = (token) => handler(new Request('https://example.test', { headers: token ? { Authorization: token } : {} }));
+  assert.equal((await invoke()).status, 401);
+  assert.equal((await invoke('not-a-bearer')).status, 401);
+  const success = await invoke('Bearer scheduler-token');
+  assert.equal(success.status, 200);
+  assert.equal(forwarded, 'Bearer scheduler-token');
+  assert.deepEqual(await success.json(), { created: 2 });
+  rpcResult = { data: null, error: { code: '42501', message: 'not_authorized' } };
+  assert.equal((await invoke('Bearer ordinary-student-token')).status, 401);
+  rpcResult = { data: null, error: { code: 'PGRST301', message: 'JWT invalid' } };
+  assert.equal((await invoke('Bearer invalid-token')).status, 401);
+});
+
 test('Sprint 5 retention uses an idempotent, sequential 7/21/60 day server schedule', () => {
   assert.match(migration, /short_delay_days integer not null/);
   assert.match(migration, /values \('grade9_default', 1, 7, 21, 60, true\)/);

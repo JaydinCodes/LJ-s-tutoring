@@ -9059,6 +9059,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      release_grade9_term1_content: {
+        Args: {
+          p_apply?: boolean
+          p_expected_fingerprint?: string
+          p_formal_review_reference?: string
+          p_include_formal?: boolean
+          p_review_reference?: string
+        }
+        Returns: Json
+      }
       release_learning_assessment_form_solutions: {
         Args: {
           p_learning_assessment_form_version_id: string

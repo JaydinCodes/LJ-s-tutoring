@@ -121,6 +121,38 @@ export async function reviewQuestion(questionVersionId: string, action: 'submit_
   if (error) throw error;
 }
 
+export type Grade9ContentRelease = {
+  applied: boolean;
+  fingerprint: string;
+  lessons: number;
+  practice_questions: number;
+  activities: number;
+  formal_questions?: number;
+  formal_forms?: number;
+  forms_published?: number;
+};
+
+export async function releaseGrade9Term1Content(input: {
+  apply?: boolean;
+  fingerprint?: string;
+  reviewReference?: string;
+  includeFormal?: boolean;
+  formalReviewReference?: string;
+}): Promise<Grade9ContentRelease> {
+  const client = requireSupabase() as unknown as {
+    rpc: (name: 'release_grade9_term1_content', args: Record<string, unknown>) => Promise<{ data: unknown; error: Error | null }>;
+  };
+  const { data, error } = await client.rpc('release_grade9_term1_content', {
+    p_apply: input.apply ?? false,
+    p_expected_fingerprint: input.fingerprint,
+    p_review_reference: input.reviewReference,
+    p_include_formal: input.includeFormal ?? false,
+    p_formal_review_reference: input.formalReviewReference,
+  });
+  if (error) throw error;
+  return data as Grade9ContentRelease;
+}
+
 export async function createRevision(questionVersionId:string) {
   const { data, error } = await requireSupabase().rpc('create_learning_question_revision', { p_question_version_id: questionVersionId, p_material_change_note: 'Created from content workspace.' });
   if (error) throw error;

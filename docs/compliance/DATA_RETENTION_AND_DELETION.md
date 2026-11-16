@@ -9,7 +9,8 @@ processors, and open compliance actions.
 
 `public.run_retention_cleanup(p_apply boolean default false)` is an
 admin-only `SECURITY DEFINER` RPC protected by the authoritative platform-admin
-check (including AAL2) and defaults to a non-destructive dry run. Scheduled
+check and defaults to a non-destructive dry run. The current platform-admin
+helper does not require AAL2; this remains a separate security decision. Scheduled
 apply runs use `public.run_retention_cleanup_scheduled()`, which is executable
 only by `service_role` and also validates the signed JWT role claim. The shared
 destructive worker lives in the non-exposed `private` schema and has no API-role
@@ -17,11 +18,21 @@ destructive worker lives in the non-exposed `private` schema and has no API-role
 
 - assignment submissions and associated private files after 3 years;
 - student progress after 3 years;
+- formal assessment sessions, answers/events/results, extensions, reassessment
+  authorisations, topic mastery/evidence, practice attempts, skill mastery,
+  misconceptions, interventions, activity progress and delayed-review records
+  after 3 years without activity anywhere in the learner's learning-evidence graph;
 - audit events after 5 years; and
 - settled student/tutor payments after 7 years.
 
 Pending payments are not purged. A Storage permission failure returns a follow-up
 signal rather than pretending the corresponding object was removed.
+An assignment submission referenced by live qualifying mastery evidence is held
+until that learning graph expires. Published questions, policies and immutable
+assessment forms are shared reference content and are not learner erasure targets.
+Dry-run results include per-table `eligible.learning_records` counts. Learning
+records use the shared ordered `private.student_learning_privacy_manifest` for
+export, erasure and retention; extend it and its regression tests for new tables.
 
 There is no committed production scheduler evidence for this RPC. Sessions,
 history, reports, notifications, invoices/pay periods, onboarding documents,
@@ -32,15 +43,20 @@ rollback/incident owner, and retain the execution evidence.
 
 ## Privacy requests
 
-- `export_student_data` provides the implemented access-export dataset.
-- `anonymize_student` removes major academic/reporting data, clears session free
-  text, detaches guardian links, and anonymizes profile/student identity while
-  preserving required financial/audit history.
-- `process_privacy_request` tracks and dispatches approved access/deletion work.
+- `export_student_data` includes `learning_records`, with subject-scoped formal
+  answers, results, mastery evidence and practice history in addition to the
+  legacy learner dataset. Its authorization remains platform-admin-only.
+- `process-privacy-deletion` is the trusted resumable Auth/Storage/database saga.
+  The service-only `erase_student_privacy_data` removes learning evidence before
+  source submissions, clears session text and identity, and preserves required
+  financial/audit history. `anonymize_student` remains revoked from all API roles.
+- `process_privacy_request` handles access/correction but refuses browser deletion.
+- The immutable completion receipt records `PRIV-02-learning-v1` and per-table
+  deletion counts only after Auth hard deletion completes.
 - Corrections use reviewed admin updates and must be recorded in the request.
 
-The service-role completion procedure must handle any Storage object the SQL role
-could not delete and disable/delete the corresponding Supabase Auth identity.
+The trusted worker uses the Storage and Auth APIs, preserves its lease across
+retries, and does not report completion before the external stages finish.
 Every new learner-linked table must be added deliberately to export, erasure, and
 retention tests; the functions do not discover schema additions automatically.
 

@@ -1,6 +1,6 @@
 begin;
 
-select plan(22);
+select no_plan();
 
 select has_table('public', 'topic_mastery_policies', 'topic mastery policies are persisted in the existing public learning schema');
 select has_table('public', 'topic_mastery_policy_skills', 'topic policy skill requirements are persisted separately from skill evidence');
@@ -88,6 +88,56 @@ select ok(
   not has_function_privilege('anon', 'public.qualify_assignment_mastery_evidence(uuid,uuid,uuid,numeric,boolean,text,smallint,text,jsonb)', 'execute'),
   'anon cannot execute the assignment-evidence RPC'
 );
+
+create temp table release_initial_form_count as
+  select count(*) as form_count from public.learning_assessment_form_versions where review_status = 'approved';
+
+insert into auth.users(id, aud, role, email, created_at, updated_at)
+  values('fa160000-0000-4000-8000-000000000001', 'authenticated', 'authenticated', 'batch-release-admin@example.test', now(), now());
+insert into public.profiles(id, auth_user_id, full_name, email, role)
+  values('fa160000-0000-4000-8000-000000000002', 'fa160000-0000-4000-8000-000000000001', 'Batch release admin fixture', 'batch-release-admin@example.test', 'admin');
+
+select set_config('request.jwt.claim.sub', 'fa160000-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claims', '{"sub":"fa160000-0000-4000-8000-000000000001","role":"authenticated","aal":"aal2"}', true);
+set local role authenticated;
+
+select is((public.release_grade9_term1_content()->>'practice_questions')::integer, 76,
+  'batch preview scopes the exact reviewed v3 practice pack');
+select is((public.release_grade9_term1_content()->>'formal_questions')::integer, 0,
+  'batch publication excludes formal content by default');
+select throws_ok($$select public.release_grade9_term1_content(true, 'stale', 'Fixture review')$$,
+  '40001', 'grade9_release_preview_stale', 'batch publication rejects a changed or unpreviewed pack');
+select throws_ok($$select public.release_grade9_term1_content(true, public.release_grade9_term1_content()->>'fingerprint')$$,
+  '23514', 'academic_review_reference_required', 'batch publication requires an academic review reference');
+select throws_ok($$select public.release_grade9_term1_content(true, public.release_grade9_term1_content(p_include_formal => true)->>'fingerprint', 'Fixture review', true)$$,
+  '23514', 'formal_academic_signoff_reference_required', 'formal publication requires its separate academic sign-off');
+select lives_ok($$select public.release_grade9_term1_content(true, public.release_grade9_term1_content()->>'fingerprint', 'Disposable instructional review fixture')$$,
+  'one atomic admin operation approves reviewed questions, lessons and activities');
+select lives_ok($$select public.release_grade9_term1_content(true, public.release_grade9_term1_content()->>'fingerprint', 'Disposable instructional review fixture')$$,
+  'repeat instructional publication is safe');
+reset role;
+
+select is((select count(*) from public.learning_activity_templates where code ~ '^A\.G[89]\.S4\.' and review_status = 'approved'), 19::bigint,
+  'the whole reviewed practice pack becomes learner-visible');
+select is((select count(*) from public.learning_assessment_form_versions where review_status = 'approved'), (select form_count from release_initial_form_count),
+  'practice publication does not silently publish unreviewed formal forms');
+
+set local role authenticated;
+select lives_ok($$select public.release_grade9_term1_content(true, public.release_grade9_term1_content(p_include_formal => true)->>'fingerprint', 'Disposable instructional review fixture', true, 'Disposable formal review fixture')$$,
+  'the separately signed-off formal pack uses existing publication validators');
+select is((public.release_grade9_term1_content(true, public.release_grade9_term1_content(p_include_formal => true)->>'fingerprint', 'Disposable instructional review fixture', true, 'Disposable formal review fixture')->>'forms_published')::integer, 0,
+  'repeat formal publication creates no duplicate immutable forms');
+reset role;
+
+select is((select count(*) from public.learning_assessment_form_versions where review_status = 'approved'), 17::bigint,
+  'the reviewed formal pack publishes exactly 17 immutable forms');
+
+select set_config('request.jwt.claim.sub', 'fa160000-0000-4000-8000-000000000099', true);
+select set_config('request.jwt.claims', '{"sub":"fa160000-0000-4000-8000-000000000099","role":"authenticated","aal":"aal1"}', true);
+set local role authenticated;
+select throws_ok($$select public.release_grade9_term1_content()$$,
+  '42501', null, 'a non-admin cannot preview or publish the answer-key-bearing release pack');
+reset role;
 
 select * from finish();
 rollback;

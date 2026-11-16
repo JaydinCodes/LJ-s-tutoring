@@ -1,5 +1,7 @@
 # Project Odysseus — Engineering & Security Audit
 
+> **Current audit:** [Project Audit — 2026-11-15](docs/audits/PROJECT_AUDIT_2026-11-15.md). The historical report below covers a retired Fastify implementation and is retained for audit history only.
+
 > **Historical audit snapshot — superseded.** This file describes a repository
 > that still contained Fastify/Prisma and OpenRouter; those claims are not the
 > current implementation. Do not use it as an architecture, security, or release
