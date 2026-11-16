@@ -44,7 +44,7 @@ test('Golden Demo learner completes the real DOTS journey', async ({ page }, tes
   await capturePitchScreen(page, testInfo, 'question-1440');
 
   await answer(page, '(x - 4)(x + 4)', 'A little sure');
-  await expect(page.getByText(/1\s*\/\s*1 mark/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Correct.' })).toBeVisible();
   await capturePitchScreen(page, testInfo, 'correct-feedback-1440');
   await page.getByRole('button', { name: 'Next question' }).click();
 
