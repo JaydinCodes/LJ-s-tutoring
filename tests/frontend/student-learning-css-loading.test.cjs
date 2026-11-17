@@ -27,7 +27,7 @@ test('library build defers student CSS and explicitly loads it before learning r
     'StudentLearningBridgeRoute',
     'StudentAssessmentRoutes',
   ]) {
-    assert.ok(routeImports.some((code) => code.includes(name)), \`\${name} is missing learner CSS loading\`);
+    assert.ok(routeImports.some((code) => code.includes(name)), 'Missing learner CSS loading: ' + name);
   }
 });
 
