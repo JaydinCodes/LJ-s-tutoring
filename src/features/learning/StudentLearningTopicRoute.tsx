@@ -1,49 +1,128 @@
-import { ArrowLeft, ArrowRight, BookOpen, ExternalLink, Lightbulb, PlayCircle } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, ChevronDown, ExternalLink } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 
-import { EmptyState, ErrorState, PageShell, SkeletonCard } from '../../components/dashboard/DashboardDesignSystem';
-import { TopicLearningMap } from './LearningMap';
+import { EmptyState, ErrorState, PageShell } from '../../components/dashboard/DashboardDesignSystem';
+import { LessonSteps, TopicLearningMap } from './LearningMap';
 import { useApprovedLearningVideos, useGrade9LearningTopic, useGrade9Term1LearningJourney, useGrade9Term1TopicLearningMap, useSetGrade9Term1LearningContextMutation } from './studentLearningQueries';
-
-function RecommendedAction({ topicCode, journey }: { topicCode: string; journey: ReturnType<typeof useGrade9Term1LearningJourney>['data'] }) {
-  if (!journey || journey.primary.topicCode !== topicCode || journey.primary.action === 'explore_topic') return null;
-  const label = journey.primary.action === 'resume_assessment' ? 'Resume assessment' : journey.primary.action === 'start_baseline' ? 'Start your baseline' : journey.primary.action === 'start_endline' ? 'Start your endline' : journey.primary.action === 'start_mastery_challenge' ? 'Open mastery challenge' : 'Continue learning';
-  return <section className="rounded-2xl border border-brand-gold/30 bg-brand-gold/10 p-4" aria-label="Recommended next action"><p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-900 dark:text-brand-gold">Recommended next action</p><p className="mt-1 font-semibold text-brand-navy dark:text-brand-parchment">{journey.primary.title}</p><p className="mt-1 text-sm leading-6 text-slate-700 dark:text-brand-marble">{journey.primary.description}</p><Link to={journey.primary.route} className="academy-btn-primary mt-3 inline-flex px-4">{label} <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></section>;
-}
+import './student-learning.css';
 
 export function StudentLearningTopicRoute() {
   const topicCode = useParams().topicCode ?? '';
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const topicQuery = useGrade9LearningTopic(topicCode);
   const mapQuery = useGrade9Term1TopicLearningMap(topicCode);
   const videosQuery = useApprovedLearningVideos();
   const journeyQuery = useGrade9Term1LearningJourney();
   const setContext = useSetGrade9Term1LearningContextMutation();
+  const lessonHeading = useRef<HTMLHeadingElement>(null);
+  const lessonCode = searchParams.get('lesson');
+  const lesson = topicQuery.data?.skills.find((skill) => lessonCode
+    ? skill.skillCode === lessonCode
+    : location.hash === `#skill-${encodeURIComponent(skill.skillCode)}`);
+  const step = searchParams.get('step') === 'example' ? 'example' : 'concept';
+  const lessonReady = topicQuery.isSuccess && mapQuery.isSuccess && journeyQuery.isSuccess;
 
-  if (topicQuery.isPending || mapQuery.isPending || journeyQuery.isPending) return <PageShell title="Learning topic" subtitle="Preparing your evidence-based learning map." section="student"><SkeletonCard className="min-h-80" /></PageShell>;
-  if (topicQuery.data === null) return <PageShell title="Learning topic" subtitle="Grade 9 Mathematics" section="student"><EmptyState icon={BookOpen} title="This topic is not ready yet" description="Only Grade 9 Term 1 topics can be opened from this learning map." actionLabel="Back to Learning" actionHref="/dashboard/student/learning" /></PageShell>;
-  if (topicQuery.isError || mapQuery.isError || journeyQuery.isError) return <PageShell title="Learning topic" subtitle="Grade 9 Mathematics" section="student"><ErrorState title="Topic could not be loaded" description="Check your connection and try again." onRetry={() => { void topicQuery.refetch(); void mapQuery.refetch(); void journeyQuery.refetch(); }} /></PageShell>;
+  useEffect(() => {
+    if (!lessonReady) return;
+    window.scrollTo(0, 0);
+    if (lesson?.skillCode) lessonHeading.current?.focus({ preventScroll: true });
+  }, [topicCode, lesson?.skillCode, step, lessonReady]);
+
+  const subtitle = 'Grade 9 Mathematics · Term 1';
+  if (topicQuery.isPending || mapQuery.isPending || journeyQuery.isPending) {
+    return <PageShell title="Learning topic" subtitle={subtitle} section="student"><div className="learning-overview" role="status" aria-busy="true"><span className="sr-only">Loading your topic...</span><div className="learning-placeholder" aria-hidden="true" /></div></PageShell>;
+  }
+  if (topicQuery.isError || mapQuery.isError || journeyQuery.isError) {
+    return <PageShell title="Learning topic" subtitle={subtitle} section="student"><ErrorState title="Topic could not be loaded" description="Check your connection and try again." onRetry={() => { void topicQuery.refetch(); void mapQuery.refetch(); void journeyQuery.refetch(); }} /></PageShell>;
+  }
 
   const topic = topicQuery.data;
   const map = mapQuery.data;
   const journey = journeyQuery.data;
   const journeyTopic = journey?.topics.find((item) => item.topicCode === topicCode);
-  const videos = videosQuery.data ?? [];
+  if (!topic || !journeyTopic || !map) {
+    return <PageShell title="Learning topic" subtitle={subtitle} section="student"><div className="learning-overview"><EmptyState title="This topic is not ready yet" description="Reviewed content for this topic is not available." actionLabel="Back to Learning" actionHref="/dashboard/student/learning" /></div></PageShell>;
+  }
 
-  if (!journeyTopic || !map) return <PageShell title="Learning topic" subtitle="Grade 9 Mathematics" section="student"><EmptyState icon={BookOpen} title="This topic is not ready yet" description="Only Grade 9 Term 1 topics can be opened from this learning map." actionLabel="Back to Learning" actionHref="/dashboard/student/learning" /></PageShell>;
+  const topicRoute = `/dashboard/student/learning/topic/${encodeURIComponent(topicCode)}`;
+  const nextSkill = map.skills.find((skill) => skill.practiceStatus !== 'completed' && topic.skills.some((item) => item.skillCode === skill.skillCode && item.content))
+    ?? map.skills.find((skill) => topic.skills.some((item) => item.skillCode === skill.skillCode && item.content));
+  const recommended = journey?.primary.topicCode === topicCode && journey.primary.action !== 'explore_topic' ? journey.primary : null;
+  const completedSkills = map.skills.filter((skill) => skill.practiceStatus === 'completed').length;
+  const selectedTopic = journey?.context.selectedTopicCode === topicCode;
 
-  const hasPublishedContent = Boolean(topic?.skills.length);
-  return <PageShell title={map.topicName} subtitle="Grade 9 Mathematics · Term 1" section="student">
-    <div className="space-y-6">
-      <Link className="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-300 px-4 text-sm font-semibold text-slate-700 dark:border-white/15 dark:text-brand-marble" to="/dashboard/student/learning"><ArrowLeft className="h-4 w-4" aria-hidden="true" /> All learning topics</Link>
-      <section className="rounded-[2rem] border border-brand-gold/30 bg-brand-navy p-6 text-brand-parchment sm:p-8"><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-gold">CAPS-aligned topic</p><h2 className="mt-2 font-display text-3xl font-semibold">{map.topicName}</h2>{topic?.topicDescription ? <p className="mt-3 max-w-3xl leading-7 text-brand-marble">{topic.topicDescription}</p> : null}<button className="mt-5 min-h-11 rounded-full border border-white/25 px-4 text-sm font-semibold text-white disabled:opacity-60" disabled={setContext.isPending || journey?.context.selectedTopicCode === topicCode} onClick={() => void setContext.mutateAsync({ topicCode })} type="button">{setContext.isPending ? 'Saving focus…' : journey?.context.selectedTopicCode === topicCode ? 'This is my current topic' : 'Make this my current topic'}</button></section>
+  if (lessonCode && !lesson) {
+    return <PageShell title={map.topicName} subtitle={subtitle} section="student"><div className="learning-overview"><EmptyState title="This lesson is not available" description="Return to the topic to choose a published lesson." actionLabel="Return to topic" actionHref={topicRoute} /></div></PageShell>;
+  }
 
-      <RecommendedAction topicCode={topicCode} journey={journey} />
+  if (lesson) {
+    const lessonIndex = topic.skills.findIndex((skill) => skill.skillCode === lesson.skillCode);
+    const skillVideos = (videosQuery.data ?? []).filter((video) => video.skillCode === lesson.skillCode);
+    const exampleSteps = lesson.content?.workedExample
+      ? Array.from(new Intl.Segmenter('en', { granularity: 'sentence' }).segment(lesson.content.workedExample), ({ segment }) => segment.trim()).filter(Boolean)
+      : [];
+    const lessonParams = new URLSearchParams({ lesson: lesson.skillCode });
+    const retentionCheck = searchParams.get('retentionCheck');
+    if (retentionCheck) lessonParams.set('retentionCheck', retentionCheck);
+    const practiceQuestion = searchParams.get('question');
+    if (practiceQuestion) lessonParams.set('question', practiceQuestion);
+    const conceptRoute = `${topicRoute}?${lessonParams}`;
+    const exampleRoute = `${conceptRoute}&step=example`;
+    const practiceParams = new URLSearchParams({ topic: topicCode, skill: lesson.skillCode });
+    if (retentionCheck) practiceParams.set('retentionCheck', retentionCheck);
+    if (practiceQuestion) practiceParams.set('question', practiceQuestion);
+    const practiceRoute = lesson.activityCode ? `/dashboard/student/learning/activity/${encodeURIComponent(lesson.activityCode)}?${practiceParams}` : undefined;
+
+    return <PageShell title={lesson.skillName} subtitle={`${map.topicName} · Lesson ${lessonIndex + 1} of ${topic.skills.length}`} section="student">
+      <div className="learning-overview learning-lesson">
+        <Link className="learning-text-link" to={topicRoute}><ArrowLeft size={16} aria-hidden="true" /> {map.topicName}</Link>
+        <LessonSteps stage={step} conceptRoute={conceptRoute} exampleRoute={exampleRoute} practiceRoute={practiceRoute} />
+        {lesson.content ? <>
+          <section className="learning-reading" aria-labelledby="lesson-content-heading">
+            <p className="learning-eyebrow">{step === 'concept' ? 'Understand the idea' : 'Follow the reasoning'}</p>
+            <h2 id="lesson-content-heading" ref={lessonHeading} tabIndex={-1}>{step === 'concept' ? lesson.content.title : 'Worked example'}</h2>
+            {step === 'concept' ? <>
+              {lesson.content.learningObjective ? <p className="learning-lesson-objective">{lesson.content.learningObjective}</p> : null}
+              <p className="learning-lesson-copy">{lesson.content.explanation}</p>
+            </> : <>
+              <div className="learning-worked-example"><ol className="learning-example-steps" aria-label="Worked example reasoning">{exampleSteps.map((text, index) => <li key={`${lesson.skillCode}-${index}`}><span aria-hidden="true">{index + 1}</span><p>{text}</p></li>)}</ol></div>
+              {lesson.content.commonMisconception ? <aside className="learning-useful-check"><h3>A useful check</h3><p>{lesson.content.commonMisconception}</p></aside> : null}
+            </>}
+          </section>
+          <details className="learning-lesson-resources">
+            <summary>Videos & resources <ChevronDown size={16} aria-hidden="true" /></summary>
+            <div className="learning-resource-list">
+              {lesson.content.videoUrl ? <a className="learning-text-link" href={lesson.content.videoUrl} target="_blank" rel="noreferrer">Watch the reviewed lesson <ExternalLink size={16} aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span></a> : null}
+              {skillVideos.map((video) => <div key={video.resourceCode}><a className="learning-text-link" href={video.youtubeUrl} target="_blank" rel="noreferrer">{video.title}<ExternalLink size={16} aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span></a><p className="learning-muted">{video.channelName}</p></div>)}
+              {videosQuery.isPending ? <p role="status">Loading videos...</p> : videosQuery.isError ? <p className="learning-muted">Optional videos could not be loaded. <button className="learning-text-link" type="button" onClick={() => { void videosQuery.refetch(); }}>Try again</button></p> : !lesson.content.videoUrl && !skillVideos.length ? <p className="learning-muted">No additional videos for this lesson.</p> : null}
+              {lesson.content.worksheetUrl ? <div><a className="learning-text-link" href={lesson.content.worksheetUrl} target="_blank" rel="noreferrer">Open permitted worksheet <ExternalLink size={16} aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span></a><p className="learning-muted">{lesson.content.worksheetPermissionNote}</p></div> : null}
+            </div>
+          </details>
+          <nav className="learning-lesson-footer" aria-label="Lesson navigation">
+            <Link className="learning-text-link" to={step === 'example' ? conceptRoute : topicRoute}><ArrowLeft size={16} aria-hidden="true" />{step === 'example' ? 'Back to the idea' : 'Topic overview'}</Link>
+            {step === 'concept' ? <Link className="learning-primary" to={exampleRoute}>See worked example <ArrowRight size={16} aria-hidden="true" /></Link>
+              : practiceRoute ? <Link className="learning-primary" to={practiceRoute}>Try it yourself <ArrowRight size={16} aria-hidden="true" /></Link>
+                : <div><p className="learning-muted">Practice is awaiting publication.</p><Link className="learning-text-link" to={topicRoute}>Return to topic <ArrowRight size={16} aria-hidden="true" /></Link></div>}
+          </nav>
+        </> : <div><h2 ref={lessonHeading} tabIndex={-1}>This lesson is being reviewed</h2><p className="learning-muted learning-notice">The explanation will appear when it has been approved.</p>{practiceRoute ? <Link className="learning-primary" to={practiceRoute}>Open available practice <ArrowRight size={16} aria-hidden="true" /></Link> : null}</div>}
+      </div>
+    </PageShell>;
+  }
+
+  return <PageShell title={map.topicName} subtitle={subtitle} section="student">
+    <div className="learning-overview">
+      <Link className="learning-text-link" to="/dashboard/student/learning"><ArrowLeft size={16} aria-hidden="true" /> All learning topics</Link>
+      <section className="learning-topic-intro" aria-labelledby="topic-overview-heading">
+        <div><h2 id="topic-overview-heading">About this topic</h2>{topic.topicDescription ? <p className="learning-description">{topic.topicDescription}</p> : null}<p className="learning-muted learning-notice">{completedSkills} of {map.skills.length} skills practised{journeyTopic.status === 'mastered' ? ' · Topic mastered through formal assessment' : ''}</p></div>
+        <button className="learning-secondary" type="button" disabled={setContext.isPending || selectedTopic} onClick={() => setContext.mutate({ topicCode })}>{setContext.isPending ? 'Saving focus...' : selectedTopic ? 'This is my current topic' : 'Make this my current topic'}</button>
+        {setContext.isError ? <p className="learning-error" role="alert">Your current topic could not be saved. Please try again.</p> : null}
+      </section>
+      {recommended ? <section className="learning-topic-next" aria-label="Recommended next action"><p className="learning-eyebrow">Next step</p><h2>{recommended.title}</h2><p className="learning-muted">{recommended.description}</p><Link className="learning-primary" to={recommended.route}>{recommended.action === 'resume_assessment' ? 'Resume assessment' : recommended.action === 'start_baseline' ? 'Start your baseline' : recommended.action === 'start_endline' ? 'Start your endline' : recommended.action === 'start_mastery_challenge' ? 'Open mastery challenge' : 'Continue learning'}<ArrowRight size={16} aria-hidden="true" /></Link></section>
+        : nextSkill ? <section className="learning-topic-next" aria-label="Next lesson"><p className="learning-eyebrow">{completedSkills === map.skills.length ? 'Revisit a lesson' : 'Next lesson'}</p><h2>{nextSkill.skillName}</h2><Link className="learning-primary" to={`${topicRoute}?${new URLSearchParams({ lesson: nextSkill.skillCode })}`}>{completedSkills === map.skills.length ? 'Review lesson' : 'Start lesson'}<ArrowRight size={16} aria-hidden="true" /></Link></section> : null}
       <TopicLearningMap map={map} journey={journey} topic={journeyTopic} />
-
-      {hasPublishedContent ? <section aria-labelledby="learning-material-heading" className="space-y-4"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-aegean">Learning material</p><h2 id="learning-material-heading" className="mt-1 text-xl font-semibold">Concept, example, practice, feedback</h2><p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Work through one skill at a time. Your saved practice is kept when you return to the map.</p></div>{topic?.skills.map((skill) => {
-        const skillVideos = videos.filter((video) => video.skillCode === skill.skillCode);
-        return <article id={`skill-${encodeURIComponent(skill.skillCode)}`} key={skill.skillCode} className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-900 sm:p-7"><p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-aegean">Skill</p><h3 className="mt-2 text-2xl font-semibold text-brand-navy dark:text-brand-parchment">{skill.skillName}</h3><p className="mt-2 max-w-3xl leading-7 text-slate-600 dark:text-brand-marble">{skill.skillDescription}</p>{skill.content ? <div className="mt-6 space-y-5"><section aria-labelledby={`${skill.skillCode}-concept`}><p className="text-xs font-bold uppercase tracking-wide text-brand-aegean">Concept</p>{skill.content.learningObjective ? <p className="mt-2 rounded-2xl border border-brand-aegean/20 bg-brand-aegean/5 p-4 leading-6 text-slate-700 dark:text-slate-200">{skill.content.learningObjective}</p> : null}<h4 id={`${skill.skillCode}-concept`} className="mt-4 flex items-center gap-2 text-lg font-semibold"><BookOpen className="h-5 w-5 text-brand-aegean" aria-hidden="true" /> {skill.content.title}</h4><p className="mt-2 whitespace-pre-line leading-7 text-slate-700 dark:text-slate-200">{skill.content.explanation}</p></section><section className="rounded-2xl border border-brand-gold/30 bg-brand-gold/10 p-5" aria-labelledby={`${skill.skillCode}-example`}><p className="text-xs font-bold uppercase tracking-wide text-amber-900 dark:text-brand-gold">Worked example</p><h4 id={`${skill.skillCode}-example`} className="mt-2 flex items-center gap-2 font-semibold text-brand-navy dark:text-brand-parchment"><Lightbulb className="h-5 w-5 text-brand-gold" aria-hidden="true" /> Worked example</h4><p className="mt-2 whitespace-pre-line font-mono text-sm leading-7 text-slate-800 dark:text-brand-parchment">{skill.content.workedExample}</p></section>{skill.content.commonMisconception ? <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-800/50 dark:bg-amber-950/20"><h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200">A useful check</h4><p className="mt-1 leading-6 text-amber-900 dark:text-amber-100">{skill.content.commonMisconception}</p></section> : null}{skill.content.videoUrl ? <a className="inline-flex min-h-11 items-center gap-2 rounded-full border border-red-200 px-5 text-sm font-semibold text-red-800 dark:border-red-900/60 dark:text-red-200" href={skill.content.videoUrl} target="_blank" rel="noreferrer"><PlayCircle className="h-4 w-4" aria-hidden="true" /> Watch the optional reviewed lesson <ExternalLink className="h-4 w-4" aria-hidden="true" /></a> : null}{skill.content.worksheetUrl ? <div><a className="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-300 px-5 text-sm font-semibold text-slate-700 dark:border-white/15 dark:text-brand-marble" href={skill.content.worksheetUrl} target="_blank" rel="noreferrer">Open permitted worksheet <ExternalLink className="h-4 w-4" aria-hidden="true" /></a><p className="mt-2 text-xs text-slate-500 dark:text-brand-marble">{skill.content.worksheetPermissionNote}</p></div> : null}</div> : null}{skillVideos.length ? <section className="mt-6" aria-label={`${skill.skillName} video lessons`}><h4 className="text-base font-semibold">Optional reviewed lessons</h4><div className="mt-3 grid gap-3">{skillVideos.map((video) => <a key={video.resourceCode} className="rounded-2xl border border-red-200 p-4 text-left transition hover:bg-red-50 dark:border-red-900/60 dark:hover:bg-red-950/20" href={video.youtubeUrl} target="_blank" rel="noreferrer"><span className="flex items-center gap-2 font-semibold text-red-800 dark:text-red-200"><PlayCircle className="h-5 w-5" aria-hidden="true" /> {video.title} <ExternalLink className="h-4 w-4" aria-hidden="true" /></span><span className="mt-1 block text-sm text-slate-600 dark:text-brand-marble">{video.channelName} · Watch on YouTube</span></a>)}</div></section> : videosQuery.isError ? <p className="mt-6 text-sm text-slate-500 dark:text-brand-marble">Optional video lessons are unavailable right now. You can still read the lesson and practise.</p> : null}<section className="mt-6 rounded-2xl bg-slate-50 p-4 dark:bg-slate-950/50"><p className="text-xs font-bold uppercase tracking-wide text-brand-aegean">Try it yourself</p>{skill.activityCode ? <><p className="mt-1 text-sm leading-6 text-slate-600 dark:text-brand-marble">Answer one manageable question at a time. Hints and feedback are saved with your attempt.</p><Link className="academy-btn-primary mt-3 inline-flex min-h-11 items-center gap-2 rounded-full px-5" to={`/dashboard/student/learning/activity/${encodeURIComponent(skill.activityCode)}`}>Start short practice <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></> : <p className="mt-1 text-sm text-slate-600 dark:text-brand-marble">Practice will appear once an approved activity is available.</p>}</section></article>;
-      })}</section> : <EmptyState icon={BookOpen} title="Learning content is being reviewed" description="This map stays visible so you can see the curriculum skills and what must be published before a lesson, practice, or assessment opens." />}
+      {!topic.skills.length ? <div className="learning-empty"><h2>Learning content is being reviewed</h2><p className="learning-muted learning-notice">Lessons and practice will appear when approved content is published.</p></div> : null}
     </div>
   </PageShell>;
 }

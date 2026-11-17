@@ -60,3 +60,10 @@ supabase/.temp/
 
 # Lighthouse CI local reports
 .lighthouseci/
+source/
+web/.next/
+**/bin/
+**/obj/
+node_modules/
+.env
+.env.local

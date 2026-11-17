@@ -9,6 +9,7 @@ const protectedFunctions = [
   'complete-temporary-password',
   'cleanup-submission-assets',
   'grade-submission',
+  'materialize-learning-retention',
   'odie-careers-chat-stream',
   'refresh-stale-weekly-reports',
 ];

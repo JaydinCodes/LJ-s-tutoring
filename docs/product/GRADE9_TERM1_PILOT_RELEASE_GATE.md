@@ -56,6 +56,20 @@ The Sprint 4 v3 instructional-content handover records academic approval, but th
 
 ## Controlled pilot activation — authorised administrator only
 
+Admin Learning Content now has a **Grade 9 Term 1 publication** batch control.
+Supply the instructional academic review reference, preview the exact pack,
+then publish all 19 lessons, 76 v3 practice questions and 19 activities in one
+transaction. The authenticated administrator owns the normal review/audit
+records. A changed preview fails closed, rejected/retired content is not
+silently reapproved, and repeat publication does not create duplicate forms.
+No migration automatically publishes content.
+
+Formal assessment inclusion is off by default. Enable it only with the separate
+comprehensive academic sign-off reference for the 258 questions; the same
+operation approves the four policies and 17 definitions through their existing
+validators and publishes immutable forms. Automation does not constitute that
+academic sign-off. The learner eligibility and answer-release rules are unchanged.
+
 After formal-assessment academic sign-off and release-owner screenshot review:
 
 1. Sign in with the existing authorised administrator account; do not alter roles or use raw SQL.
@@ -67,4 +81,42 @@ After formal-assessment academic sign-off and release-owner screenshot review:
 
 ## Current release verdict
 
-**Technically passed, but not pilot-ready.** The release gate has observed real-data evidence, but production remains deliberately unpublished. The remaining release conditions are independent academic sign-off for the formal assessment bank, authorised administrator approval/publication in the target environment, and human review of the attached real-data screenshots.
+### 2026-11-16 technical deployment
+
+- Production database migrations are current through `20261116130000`, including
+	learning privacy export/erasure/retention and the admin-only batch-release RPC.
+- `materialize-learning-retention` is deployed with gateway JWT verification;
+	its active schedule is `5 2 * * *` (UTC). A real Vault-backed invocation
+	returned HTTP 200 with `{"created":0}`; missing and anonymous tokens returned 401.
+	The worker forwards the caller JWT to the service-only database RPC rather
+	than comparing it with an injected secret.
+- Validation passed: 509 unit/source-contract tests, 66 privacy SQL assertions,
+	35 foundation/batch-release SQL assertions, and two responsive browser tests.
+	SQL tests used rollback-only fixtures. Full generated types match the local
+	metadata generator with one-to-one relationship detection enabled.
+- The new administrator UI is a workspace change, not a deployed static-site
+	release. Local browser-to-Supabase host ports are unavailable, so responsive
+	UI checks used the existing mocked-auth harness; database behavior was tested
+	directly inside the local Postgres container.
+- After the initial technical deployment, the owner explicitly instructed bulk
+	approval and publication of the complete pack. The delegated management-API
+	operation used the existing business administrator's approval context and
+	recorded the owner's instruction and execution channel in the audit log.
+	This is an owner-directed release waiver, not independent academic sign-off.
+	The existing approval, assessment validation, immutable-form publication,
+	learner eligibility and answer-release controls were retained.
+- The committed production release approved 19 lessons, 76 v3 practice questions,
+	19 activities, 258 formal questions and 17 assessment definitions, and published
+	all 17 immutable forms. The exact preview fingerprint was
+	`0f1693bc303998b7a02bfa522e74f021`. The original approved practice question was
+	preserved; no roles or Auth accounts were changed.
+- Post-release production readiness reports all four Term 1 topics as
+	`learnerContentReady: true`, `assessmentReady: true`, with empty blocker lists
+	and zero draft assessment definitions. The one-time execution record is
+	[the owner-authorized release script](../../scripts/publish-grade9-term1-owner-authorized.sql).
+
+**Owner-authorized content release is live.** Production publication and topic
+readiness are verified. Independent comprehensive academic sign-off for the formal
+bank remains outstanding and was explicitly not fabricated; publication proceeded
+under the owner's recorded direction. This release does not certify academic,
+legal or safeguarding sign-off beyond the checks documented above.

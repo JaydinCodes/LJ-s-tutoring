@@ -52,6 +52,7 @@ jobs:
             supabase/functions/complete-temporary-password/index.ts \
             supabase/functions/dispatch-notification-outbox/index.ts \
             supabase/functions/grade-submission/index.ts \
+            supabase/functions/materialize-learning-retention/index.ts \
             supabase/functions/odie-careers-chat-stream/index.ts \
             supabase/functions/process-privacy-deletion/index.ts \
             supabase/functions/process-tutor-deletion/index.ts \

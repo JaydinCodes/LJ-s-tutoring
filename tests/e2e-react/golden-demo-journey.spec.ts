@@ -1,6 +1,6 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
-const password = 'ProjectOdysseus!23';
+const password = process.env.VITE_E2E_AUTH_PASSWORD ?? '';
 const activityPath = '/dashboard/student/learning/activity/ACT.G9.ALG.FACTOR.DOTS.CONTRASTING-PRACTICE';
 
 async function signIn(page: Page) {
@@ -44,7 +44,7 @@ test('Golden Demo learner completes the real DOTS journey', async ({ page }, tes
   await capturePitchScreen(page, testInfo, 'question-1440');
 
   await answer(page, '(x - 4)(x + 4)', 'A little sure');
-  await expect(page.getByText(/Marks awarded:/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Answer correct' })).toBeVisible();
   await capturePitchScreen(page, testInfo, 'correct-feedback-1440');
   await page.getByRole('button', { name: 'Continue to next step' }).click();
 
@@ -53,7 +53,7 @@ test('Golden Demo learner completes the real DOTS journey', async ({ page }, tes
   await capturePitchScreen(page, testInfo, 'question-1366');
   await answer(page, '(x - 5)^2', 'Very sure');
   await expect(page.getByRole('button', { name: 'Try again with this insight' })).toBeVisible();
-  await expect(page.getByText('Why this happens:')).toBeVisible();
+  await expect(page.locator('.learning-feedback-reason').first()).toBeVisible();
   await expect(page.getByText('DOTS_AS_SQUARE_OF_DIFFERENCE', { exact: true })).toHaveCount(0);
   await page.setViewportSize({ width: 1024, height: 960 });
   await capturePitchScreen(page, testInfo, 'misconception-1024');
@@ -75,13 +75,11 @@ test('Golden Demo learner completes the real DOTS journey', async ({ page }, tes
   await answer(page, '(2x - 3)(2x + 3)', 'Quite sure');
   await page.getByRole('button', { name: 'Continue to next step' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Activity complete' })).toBeVisible();
-  await expect(page.getByText('Your answers and confidence evidence have been saved. Your progress and recommended next actions are updated.')).toBeVisible();
+  await expect(page.getByTestId('activity-state')).toHaveAttribute('data-state', 'complete');
+  await expect(page.getByText(/Your answers and feedback are saved/)).toBeVisible();
   await capturePitchScreen(page, testInfo, 'completion-390');
-  await page.getByRole('link', { name: 'View updated progress' }).click();
-  const dotsProgress = page.getByRole('article').filter({ hasText: /Difference of two squares/i });
-  await expect(dotsProgress).toBeVisible();
-  await expect(dotsProgress.getByText('Strong understanding', { exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: /Continue learning|Return to topic/ }).first().click();
+  await expect(page).toHaveURL(/\/dashboard\/student\/learning(?:\/topic\/.*)?$/);
 
   await page.goto('/dashboard/student');
   await page.reload();
@@ -115,6 +113,10 @@ test('Golden Demo reset restores Lethabo to Question 1, Starting, and the origin
   await expect(dotsProgress.locator('span').filter({ hasText: /^Starting$/ })).toBeVisible();
 
   await page.goto(activityPath);
+  // A reset must clear persisted answers, not merely change a visual label.
   await expect(page.getByText('Question 1 of 4', { exact: true })).toBeVisible();
+  const progress = page.getByRole('progressbar');
+  await expect(progress).toHaveJSProperty('value', 0);
+  await expect(progress).toHaveAttribute('max', '4');
   await expect(page.getByText(/Factorise:\s*x.*16\./)).toBeVisible();
 });

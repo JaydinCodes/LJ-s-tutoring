@@ -47,7 +47,10 @@ export default defineConfig(({ command, mode }) => {
   build: {
     outDir: path.resolve(rootDir, 'react-app-dist'),
     emptyOutDir: true,
-    cssCodeSplit: false,
+    // Keep the site-wide Tailwind sheet in the entry, but load the new
+    // Student Learning styles only when a learner opens those lazy routes.
+    // This avoids charging public pages for the entire learning flow.
+    cssCodeSplit: true,
     lib: {
       entry: path.resolve(rootDir, 'src/app/main.tsx'),
       formats: ['es'],
@@ -83,7 +86,7 @@ export default defineConfig(({ command, mode }) => {
         entryFileNames: 'react-app-[hash].js',
         chunkFileNames: 'chunks/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'style.css') {
+          if (assetInfo.name === 'style.css' || assetInfo.name === 'main.css') {
             return 'react-app-[hash].css';
           }
           return '[name][extname]';

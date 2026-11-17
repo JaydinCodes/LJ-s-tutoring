@@ -144,6 +144,17 @@ assertGzipSizeIfBuiltPath(reactEntry, 'react-app-dist/react-app-<hash>.js', 320_
 assertGeneratedJsBudget('react-app-dist', 3_000_000, 150_000);
 assertSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 155_000);
 assertGzipSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 55_000);
+// The learner-only stylesheet now travels with its lazy route. Preserve the
+// existing entry CSS cap and separately constrain *all* deferred CSS, rather
+// than hiding additional style payload behind CSS code splitting.
+const deferredCss = collectFiles(reactAppDistDir, (filePath) => filePath.endsWith('.css'))
+  .filter((filePath) => filePath !== reactCss);
+const deferredCssRaw = deferredCss.reduce((total, filePath) => total + fs.statSync(filePath).size, 0);
+const deferredCssGzip = deferredCss.reduce((total, filePath) =>
+  total + require('node:zlib').gzipSync(fs.readFileSync(filePath), { level: 9 }).length, 0);
+assert(deferredCssRaw <= 25_000, `deferred CSS is ${deferredCssRaw} bytes, above budget 25000`);
+assert(deferredCssGzip <= 6_000, `deferred CSS gzip is ${deferredCssGzip} bytes, above budget 6000`);
+console.log(`[perf-budget] deferred CSS: ${deferredCssRaw}/25000 bytes, ${deferredCssGzip}/6000 gzip bytes`);
 assertSizeIfBuilt('images/odysseus-hero-fallback.webp', 150_000);
 assertSizeIfBuilt('images/bg_video-optimized.mp4', 1_000_000);
 assertCombinedSize([
