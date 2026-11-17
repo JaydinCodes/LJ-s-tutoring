@@ -32,7 +32,6 @@ export function AdminLearningContentRoute() {
    {resource.data?<><div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th>Code</th><th>Prompt</th><th>Skill</th><th>Status</th><th /></tr></thead><tbody>{resource.data.items.map(item=><tr className="border-t" key={item.id}><td className="py-3 font-medium">{item.item_code} v{item.version_number}</td><td className="max-w-xl py-3">{item.prompt}</td><td>{item.primary_skill_code}</td><td>{item.review_status}</td><td><button className="rounded-lg border px-3 py-2" onClick={()=>void open(item.id)}>Review</button></td></tr>)}</tbody></table></div><div className="mt-4 flex gap-3"><button disabled={page===1} onClick={()=>setPage(page-1)}>Previous</button><span>Page {page}</span><button disabled={resource.data.items.length<25} onClick={()=>setPage(page+1)}>Next</button></div></>:null}
   </Card>{bundle&&selected?<ReviewPanel bundle={bundle} onAction={(name)=>void action(selected,name)} onRevision={async()=>{setReviewError(null);setMessage(null);try{const revisionId=await createRevision(selected);setMessage('A new immutable revision draft was created.');await resource.reload();if(revisionId)await open(revisionId);}catch(error){setReviewError(reviewFailureMessage(error));}}} onClose={()=>{setBundle(null);setSelected(null);}}/>:null}
   <ImportPanel onDryRun={dryRunImport}/>
-  <ActivityCatalog />
   <ActivityCatalog key={`activities-${releaseVersion}`} />
   <SkillContentCatalog key={`lessons-${releaseVersion}`} />
   <VideoResourceCatalog />
