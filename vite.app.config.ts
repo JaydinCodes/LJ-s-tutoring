@@ -86,7 +86,7 @@ export default defineConfig(({ command, mode }) => {
         entryFileNames: 'react-app-[hash].js',
         chunkFileNames: 'chunks/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'style.css') {
+          if (assetInfo.name === 'style.css' || assetInfo.name === 'main.css') {
             return 'react-app-[hash].css';
           }
           return '[name][extname]';
