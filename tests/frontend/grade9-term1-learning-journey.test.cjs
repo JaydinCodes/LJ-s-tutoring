@@ -75,7 +75,7 @@ test('the server-owned journey contract derives from existing assessment, activi
   assert.match(migration, /grant execute on function public\.get_my_grade9_term1_learning_journey\(\) to authenticated/);
 });
 
-test('the dashboard retains a single dominant continue action and renders the connected evidence-based learning map', () => {
+test('the dashboard retains a single dominant continue action and an evidence-based learning journey', () => {
   const route = fs.readFileSync(path.join(root, 'src', 'features', 'learning', 'StudentLearningRoute.tsx'), 'utf8');
   const topicRoute = fs.readFileSync(path.join(root, 'src', 'features', 'learning', 'StudentLearningTopicRoute.tsx'), 'utf8');
   const map = fs.readFileSync(path.join(root, 'src', 'features', 'learning', 'LearningMap.tsx'), 'utf8');
@@ -83,16 +83,20 @@ test('the dashboard retains a single dominant continue action and renders the co
   assert.match(route, /useGrade9Term1LearningJourney/);
   assert.match(route, /Continue learning/);
   assert.match(route, /JourneyMap/);
-  assert.match(map, /My learning map/);
-  assert.match(map, /Content awaiting publication/);
+  assert.match(map, /Learning journey/);
+  assert.match(map, /Not yet available/);
   assert.match(map, /Helpful Grade 8 detour/);
   assert.match(map, /Practice completed/);
-  assert.match(map, /Formal evidence has recorded topic mastery/);
-  assert.match(map, /usePrefersReducedMotion/);
+  assert.match(map, /Formal evidence has recorded mastery/);
+  assert.doesNotMatch(map, /animate-pulse|usePrefersReducedMotion/);
+  assert.match(route, /className="learning-primary"/);
+  assert.doesNotMatch(route, /rounded-3xl|shadow-xl|Nothing ready yet/);
   assert.doesNotMatch(topicRoute, /Understand your starting point/);
   assert.match(topicRoute, /Make this my current topic/);
   assert.match(topicRoute, /TopicLearningMap/);
-  assert.match(topicRoute, /Concept, example, practice, feedback/);
+  assert.match(topicRoute, /LessonSteps/);
+  assert.match(topicRoute, /See worked example/);
+  assert.match(topicRoute, /Try it yourself/);
   assert.match(topicRoute, /This is my current topic/);
   for (const fragment of [
     'create or replace function public.get_my_grade9_term1_topic_learning_map',

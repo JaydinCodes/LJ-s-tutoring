@@ -175,10 +175,12 @@ test('B — a weak learner reads the recommended Integers lesson and receives sp
   await startAssessment(page, assessmentTitle('Integers', 'topic baseline'));
   await completeAssessment(page, 'incorrect');
   await page.goto('/dashboard/student/learning/topic/INTEGERS');
-  await expect(page.getByText('Integer operations and order')).toBeVisible();
-  await expect(page.getByRole('article').filter({ hasText: 'Integer operations and order' }).getByRole('heading', { name: 'Worked example' })).toBeVisible();
+  await page.getByRole('link', { name: 'Start lesson', exact: true }).first().click();
+  await expect(page.locator('.learning-reading').getByRole('heading', { name: 'Integer operations and order' })).toBeVisible();
+  await page.getByRole('link', { name: 'See worked example', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Worked example', exact: true })).toBeVisible();
   await capture(page, testInfo, 'integers-lesson-worked-example', 360, 844);
-  await page.getByRole('link', { name: 'Start short practice' }).first().click();
+  await page.getByRole('link', { name: 'Try it yourself', exact: true }).click();
   await expect(page.getByText('Calculate −8 + 13.')).toBeVisible();
   await completeActivity(page, 'incorrect', true);
   await expect(page.getByText('Why this choice is not correct')).toBeVisible();
