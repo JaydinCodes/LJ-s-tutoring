@@ -47,9 +47,9 @@ export default defineConfig(({ command, mode }) => {
   build: {
     outDir: path.resolve(rootDir, 'react-app-dist'),
     emptyOutDir: true,
-    // Keep the site-wide Tailwind sheet in the entry, but load the new
-    // Student Learning styles only when a learner opens those lazy routes.
-    // This avoids charging public pages for the entire learning flow.
+    // Keep entry CSS within its verified budget. Learning-only styles ship as
+    // a deferred stylesheet that App.tsx explicitly loads before rendering a
+    // learning route (library mode does not inject lazy CSS automatically).
     cssCodeSplit: true,
     lib: {
       entry: path.resolve(rootDir, 'src/app/main.tsx'),
