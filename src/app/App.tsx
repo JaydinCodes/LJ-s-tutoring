@@ -55,24 +55,55 @@ const ProgramsRoute = lazy(() => import('./routes/PublicRoutes').then((module) =
 const PublicHomeRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.PublicHomeRoute })));
 const TermsRoute = lazy(() => import('./routes/PublicRoutes').then((module) => ({ default: module.TermsRoute })));
 const NotFoundRoute = lazy(() => import('./routes/NotFoundRoute').then((module) => ({ default: module.NotFoundRoute })));
+// Vite library builds emit this CSS separately but do not automatically
+// attach a <link> for CSS imported by lazy route chunks. Load it before any
+// learning page renders; other pages do not pay for this stylesheet.
+// In Vite dev, native CSS imports/HMR already load it.
+let studentLearningCssPromise: Promise<void> | null = null;
+function ensureStudentLearningCss(): Promise<void> {
+  if (import.meta.env.DEV) return Promise.resolve();
+  if (!studentLearningCssPromise) {
+    studentLearningCssPromise = new Promise<void>((resolve, reject) => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/react-app-dist/student-learning.css';
+      link.dataset.odysseusLearningStyles = 'true';
+      link.onload = () => resolve();
+      link.onerror = () => {
+        studentLearningCssPromise = null;
+        link.remove();
+        reject(new Error('Student learning stylesheet could not be loaded'));
+      };
+      document.head.appendChild(link);
+    });
+  }
+  return studentLearningCssPromise;
+}
+
+function loadWithStudentLearningCss<T>(importer: () => Promise<T>): Promise<T> {
+  // Download CSS and the route module together, but wait for both before
+  // rendering so navigating from the dashboard never flashes unstyled lessons.
+  return Promise.all([ensureStudentLearningCss(), importer()]).then(([, route]) => route);
+}
+
 const StudentLearningRoute = lazy(() =>
-  import('../features/learning/StudentLearningRoute')
+  loadWithStudentLearningCss(() => import('../features/learning/StudentLearningRoute'))
     .then((module) => ({
       default: module.StudentLearningRoute,
     }))
 );
 const StudentDiagnosticRoute = lazy(() =>
-  import('../features/learning/StudentDiagnosticRoute')
+  loadWithStudentLearningCss(() => import('../features/learning/StudentDiagnosticRoute'))
     .then((module) => ({
       default: module.StudentDiagnosticRoute,
     }))
 );
-const StudentActivityRoute = lazy(() => import('../features/learning/StudentActivityRoute').then((module) => ({ default: module.StudentActivityRoute })));
-const StudentLearningTopicRoute = lazy(() => import('../features/learning/StudentLearningTopicRoute').then((module) => ({ default: module.StudentLearningTopicRoute })));
-const StudentLearningLessonRoute = lazy(() => import('../features/learning/StudentLearningLessonRoute').then((module) => ({ default: module.StudentLearningLessonRoute })));
-const StudentLearningBridgeRoute = lazy(() => import('../features/learning/StudentLearningBridgeRoute').then((module) => ({ default: module.StudentLearningBridgeRoute })));
-const StudentAssessmentIntroductionRoute = lazy(() => import('../features/learning/StudentAssessmentRoutes').then((module) => ({ default: module.StudentAssessmentIntroductionRoute })));
-const StudentAssessmentSessionRoute = lazy(() => import('../features/learning/StudentAssessmentRoutes').then((module) => ({ default: module.StudentAssessmentSessionRoute })));
+const StudentActivityRoute = lazy(() => loadWithStudentLearningCss(() => import('../features/learning/StudentActivityRoute')).then((module) => ({ default: module.StudentActivityRoute })));
+const StudentLearningTopicRoute = lazy(() => loadWithStudentLearningCss(() => import('../features/learning/StudentLearningTopicRoute')).then((module) => ({ default: module.StudentLearningTopicRoute })));
+const StudentLearningLessonRoute = lazy(() => loadWithStudentLearningCss(() => import('../features/learning/StudentLearningLessonRoute')).then((module) => ({ default: module.StudentLearningLessonRoute })));
+const StudentLearningBridgeRoute = lazy(() => loadWithStudentLearningCss(() => import('../features/learning/StudentLearningBridgeRoute')).then((module) => ({ default: module.StudentLearningBridgeRoute })));
+const StudentAssessmentIntroductionRoute = lazy(() => loadWithStudentLearningCss(() => import('../features/learning/StudentAssessmentRoutes')).then((module) => ({ default: module.StudentAssessmentIntroductionRoute })));
+const StudentAssessmentSessionRoute = lazy(() => loadWithStudentLearningCss(() => import('../features/learning/StudentAssessmentRoutes')).then((module) => ({ default: module.StudentAssessmentSessionRoute })));
 function RouteLoadingFallback() {
   return (
     <main className="min-h-screen bg-brand-parchment px-4 py-5 text-brand-obsidian dark:bg-slate-950 dark:text-brand-parchment" aria-busy="true">
