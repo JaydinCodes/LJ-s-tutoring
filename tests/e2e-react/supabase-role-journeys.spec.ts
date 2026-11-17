@@ -105,7 +105,10 @@ test('student career profile persists through authenticated Supabase RLS after r
   await saveButton.click();
   await expect(savedButton).toBeVisible();
   const saveStatus = page.getByTestId('career-profile-save-status');
-  await expect(saveStatus).toHaveText('Saving Careers changes…');
+  // A local transaction can finish before the browser observes its transient
+  // “Saving” announcement. The durable saved state below is what proves the
+  // authenticated RLS write, and is also checked after a reload.
+  await expect(saveStatus).toHaveText(/Saving Careers changes…|Careers changes saved\./);
   await expect(saveStatus).toHaveText('Careers changes saved.', { timeout: 15_000 });
 
   await page.reload();
