@@ -60,8 +60,12 @@ test('the activity runner has a bounded, idempotent evaluation retry state', () 
   const repository = fs.readFileSync(path.join(root, 'src/features/learning/studentLearningRepository.ts'), 'utf8');
   const route = fs.readFileSync(path.join(root, 'src/features/learning/StudentActivityRoute.tsx'), 'utf8');
   assert.match(repository, /15_000/);
-  assert.match(route, /Retry answer/);
-  assert.match(route, /The key is intentionally retained/);
+  assert.match(route, /Retry same answer/);
+  assert.match(route, /setSubmissionKey\(key\)/);
+  assert.match(route, /idempotencyKey: key/);
+  const submitHandler = route.slice(route.indexOf('async function submitAnswer'), route.indexOf('function handleTryAgain'));
+  const errorHandler = submitHandler.slice(submitHandler.indexOf('} catch (error) {'));
+  assert.doesNotMatch(errorHandler, /setSubmissionKey\(null\)/);
 });
 
 test('topic experience treats video as optional and never embeds autoplay', () => {
