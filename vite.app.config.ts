@@ -47,10 +47,8 @@ export default defineConfig(({ command, mode }) => {
   build: {
     outDir: path.resolve(rootDir, 'react-app-dist'),
     emptyOutDir: true,
-    // Keep the site-wide Tailwind sheet in the entry, but load the new
-    // Student Learning styles only when a learner opens those lazy routes.
-    // This avoids charging public pages for the entire learning flow.
-    cssCodeSplit: true,
+    // Lib mode never links split CSS from lazy chunks, so it must stay in one sheet.
+    cssCodeSplit: false,
     lib: {
       entry: path.resolve(rootDir, 'src/app/main.tsx'),
       formats: ['es'],
