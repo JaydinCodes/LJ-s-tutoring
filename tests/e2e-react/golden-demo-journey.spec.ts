@@ -44,42 +44,42 @@ test('Golden Demo learner completes the real DOTS journey', async ({ page }, tes
   await capturePitchScreen(page, testInfo, 'question-1440');
 
   await answer(page, '(x - 4)(x + 4)', 'A little sure');
-  await expect(page.getByRole('heading', { name: 'Correct.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Answer correct' })).toBeVisible();
   await capturePitchScreen(page, testInfo, 'correct-feedback-1440');
-  await page.getByRole('button', { name: 'Next question' }).click();
+  await page.getByRole('button', { name: 'Continue to next step' }).click();
 
   await page.setViewportSize({ width: 1366, height: 960 });
   await expect(page.getByText(/Factorise:\s*x.*25\./)).toBeVisible();
   await capturePitchScreen(page, testInfo, 'question-1366');
   await answer(page, '(x - 5)^2', 'Very sure');
-  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
-  await expect(page.getByText('Why this happens:')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Try again with this insight' })).toBeVisible();
+  await expect(page.locator('.learning-feedback-reason').first()).toBeVisible();
   await expect(page.getByText('DOTS_AS_SQUARE_OF_DIFFERENCE', { exact: true })).toHaveCount(0);
   await page.setViewportSize({ width: 1024, height: 960 });
   await capturePitchScreen(page, testInfo, 'misconception-1024');
 
-  await page.getByRole('button', { name: 'Try again' }).click();
+  await page.getByRole('button', { name: 'Try again with this insight' }).click();
   await page.setViewportSize({ width: 768, height: 960 });
   await capturePitchScreen(page, testInfo, 'retry-768');
   await answer(page, '(x - 5)(x + 5)', 'Very sure');
-  await expect(page.getByRole('button', { name: 'Next question' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue to next step' })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 960 });
   await capturePitchScreen(page, testInfo, 'correct-feedback-390');
-  await page.getByRole('button', { name: 'Next question' }).click();
+  await page.getByRole('button', { name: 'Continue to next step' }).click();
 
   await expect(page.getByText(/Factorise:\s*y.*49\./)).toBeVisible();
   await answer(page, '(y - 7)(y + 7)', 'Quite sure');
-  await page.getByRole('button', { name: 'Next question' }).click();
+  await page.getByRole('button', { name: 'Continue to next step' }).click();
 
   await expect(page.getByText(/Factorise:\s*4x.*9\./)).toBeVisible();
   await answer(page, '(2x - 3)(2x + 3)', 'Quite sure');
-  await page.getByRole('button', { name: 'Next question' }).click();
+  await page.getByRole('button', { name: 'Continue to next step' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Activity complete' })).toBeVisible();
-  await expect(page.getByText('Your answers and confidence information are saved. Your next recommended learning step is ready.')).toBeVisible();
+  await expect(page.getByTestId('activity-state')).toHaveAttribute('data-state', 'complete');
+  await expect(page.getByText(/Your answers and feedback are saved/)).toBeVisible();
   await capturePitchScreen(page, testInfo, 'completion-390');
-  await page.getByRole('link', { name: 'Continue learning' }).click();
-  await expect(page.getByRole('heading', { name: 'Learning', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: /Continue learning|Return to topic/ }).first().click();
+  await expect(page).toHaveURL(/\/dashboard\/student\/learning(?:\/topic\/.*)?$/);
 
   await page.goto('/dashboard/student');
   await page.reload();
@@ -113,10 +113,10 @@ test('Golden Demo reset restores Lethabo to Question 1, Starting, and the origin
   await expect(dotsProgress.locator('span').filter({ hasText: /^Starting$/ })).toBeVisible();
 
   await page.goto(activityPath);
-  // The redesigned question player exposes semantic progress rather than
-  // the former visible "Question 1 of 4" label.
+  // A reset must clear persisted answers, not merely change a visual label.
+  await expect(page.getByText('Question 1 of 4', { exact: true })).toBeVisible();
   const progress = page.getByRole('progressbar');
-  await expect(progress).toHaveAttribute('aria-valuenow', '1');
-  await expect(progress).toHaveAttribute('aria-valuemax', '4');
+  await expect(progress).toHaveJSProperty('value', 0);
+  await expect(progress).toHaveAttribute('max', '4');
   await expect(page.getByText(/Factorise:\s*x.*16\./)).toBeVisible();
 });

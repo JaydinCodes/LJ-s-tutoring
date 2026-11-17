@@ -56,14 +56,13 @@ function assessmentTitle(topic: string, kind: string) {
 }
 
 async function startAssessment(page: Page, email: string, title: RegExp, introductionCapture?: { testInfo: TestInfo; name: string }) {
-  // The focused home exposes one recommendation, not every formal form.
-  // Select the intended eligible assessment using the student's real RPC,
-  // never silently starting a different type of assessment.
+  // Only the intended eligible form can be started. The learner home now
+  // displays these as secondary actions, not an article card per assessment.
   const client = await authenticatedClient(email);
   const { data, error } = await client.rpc('get_my_available_learning_assessments');
   expect(error).toBeNull();
   const available = data as Array<{ definitionId: string; name: string }>;
-  const selected = available.find((assessment) => title.test(assessment.name));
+  const selected = available.find((item) => title.test(item.name));
   expect(selected, `Expected eligible assessment ${title}; available: ${available.map((item) => item.name).join(', ')}`).toBeTruthy();
   await page.goto(`/dashboard/student/learning/assessment/${encodeURIComponent(selected!.definitionId)}`);
   await expect(page.getByRole('button', { name: 'Start assessment' })).toBeVisible({ timeout: 20_000 });
@@ -135,17 +134,18 @@ async function completeActivity(page: Page, mode: 'correct' | 'incorrect', stopA
       await expect(page.getByText('Why this choice is not correct')).toBeVisible();
       return;
     }
-    await expect(page.getByRole('heading', { name: 'Correct.' })).toBeVisible();
+    await expect(page.getByText(/Marks awarded:/)).toBeVisible();
     if (stopAfterFirst) return;
     const progressResponse = page.waitForResponse((response) => response.url().includes('/rest/v1/rpc/get_my_learning_activity_state') && response.ok());
-    await page.getByRole('button', { name: 'Next question' }).click();
+    await page.getByRole('button', { name: 'Continue to next step' }).click();
     const persisted = await (await progressResponse).json() as Array<{ question_version_id: string; attempt_id: string | null }>;
     expect(persisted.find((item) => item.question_version_id === questionId)?.attempt_id).toBeTruthy();
     const next = persisted.find((item) => !item.attempt_id);
     const state = page.getByTestId('activity-state');
     await expect(state).toHaveAttribute('data-state', next ? 'question' : 'complete');
     if (!next) {
-      await expect(page.getByRole('heading', { name: 'Activity complete', exact: true })).toBeVisible();
+      await expect(page.getByTestId('activity-state')).toHaveAttribute('data-state', 'complete');
+      await expect(page.getByText('Practice recorded')).toBeVisible();
       return;
     }
     await expect(state).toHaveAttribute('data-question-id', next.question_version_id);
@@ -183,24 +183,23 @@ test('B — a weak learner reads the recommended Integers lesson and receives sp
   await startAssessment(page, emails.weak, assessmentTitle('Integers', 'topic baseline'));
   await completeAssessment(page, 'incorrect');
   await page.goto('/dashboard/student/learning/topic/INTEGERS');
-  // The pathway shows skill names; the lesson title is in its focused route.
-  const integerSkill = page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: 'Operate with signed integers' }) });
-  await integerSkill.getByRole('link', { name: 'Open' }).click();
-  await expect(page.getByRole('heading', { name: 'Integer operations and order' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'See an example' })).toBeVisible();
+  await page.getByRole('link', { name: 'Start lesson', exact: true }).first().click();
+  await expect(page.locator('.learning-reading').getByRole('heading', { name: 'Integer operations and order' })).toBeVisible();
+  await page.getByRole('link', { name: 'See worked example', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Worked example', exact: true })).toBeVisible();
   await capture(page, testInfo, 'integers-lesson-worked-example', 360, 844);
-  await page.getByRole('link', { name: 'Start practice' }).click();
+  await page.getByRole('link', { name: 'Try it yourself', exact: true }).click();
   await expect(page.getByText('Calculate −8 + 13.')).toBeVisible();
   await completeActivity(page, 'incorrect', true);
   await expect(page.getByText('Why this choice is not correct')).toBeVisible();
   await expect(page.getByText(/−21 combines the magnitudes/)).toBeVisible();
   await capture(page, testInfo, 'practice-incorrect-feedback', 360, 844);
-  await page.getByRole('button', { name: 'Try again' }).click();
+  await page.getByRole('button', { name: 'Try again with this insight' }).click();
   await page.getByLabel('5', { exact: true }).check();
   await page.getByText('Quite sure', { exact: true }).click();
   await expect(page.locator('input[name="activity-confidence"][value="3"]')).toBeChecked();
   await page.getByRole('button', { name: 'Check answer', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Correct.' })).toBeVisible();
+  await expect(page.getByText('Marks awarded: 1 / 1')).toBeVisible();
   await capture(page, testInfo, 'practice-correct-feedback', 390, 844);
   const progress = await activityState(emails.weak, 'A.G9.S4.INTEGER-OPS');
   expect(progress.some((item) => item.attempt_id && item.attempt_status === 'evaluated')).toBeTruthy();
@@ -228,9 +227,9 @@ test('C — Grade 8 bridge support preserves return context to the original Grad
   await page.goto('/dashboard/student/learning/activity/A.G9.S4.INTEGER-OPS');
   await completeActivity(page, 'incorrect', true);
   await page.goto('/dashboard/student/learning');
-  await expect(page.getByRole('link', { name: 'Open support' })).toBeVisible();
-  await page.getByRole('link', { name: 'Open support' }).click();
-  await expect(page.getByRole('heading', { name: 'Grade 8 support' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open the bridge lesson' })).toBeVisible();
+  await page.getByRole('link', { name: 'Open the bridge lesson' }).click();
+  await expect(page.getByRole('heading', { name: /Grade 8 (support|foundation)/ })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Return to your Grade 9 topic' })).toHaveAttribute('href', '/dashboard/student/learning/topic/INTEGERS');
   await capture(page, testInfo, 'grade8-bridge', 390, 844);
   await page.getByRole('link', { name: 'Practise this foundation' }).click();
@@ -289,7 +288,7 @@ test('E — normal learning followed by an endline awards mastery without a comp
   expect(map.skills.some((skill: { skillEvidenceState: string | null }) => skill.skillEvidenceState !== null)).toBeTruthy();
   await page.goto('/dashboard/student/learning/topic/INTEGERS');
   await expect(page.getByText('Practice completed', { exact: true })).toBeVisible();
-  await expect(page.getByText('You have mastered this topic with formal evidence.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Formal evidence has recorded mastery.', { exact: true })).toBeVisible();
   await capture(page, testInfo, 'persisted-topic-mastery-map', 390, 844);
   writeEvidence(testInfo, 'E-normal-endline', { authenticatedUser: emails.endline, persistedAssessmentSessionId: endlineSession, observed: 'completed guided practice and eligible endline; endline itself awarded mastery' });
 });
@@ -327,7 +326,7 @@ test('G — guided-practice state survives refresh and a fresh authenticated ses
   await signIn(page, emails.persistence);
   await page.goto('/dashboard/student/learning/activity/A.G9.S4.INTEGER-OPS');
   await completeActivity(page, 'correct', true);
-  await page.getByRole('button', { name: 'Next question' }).click();
+  await page.getByRole('button', { name: 'Continue to next step' }).click();
   await expect(page.getByText('Calculate (−7) × 6.')).toBeVisible();
   await page.reload();
   await expect(page.getByText('Calculate (−7) × 6.')).toBeVisible();
@@ -367,10 +366,12 @@ test('H — RLS, answer release, draft isolation, and publication permissions ho
 test('real no-content and error states remain learner-safe against the disposable database', async ({ page }, testInfo) => {
   await signIn(page, emails.security);
   await page.goto('/dashboard/student/learning/topic/NOT-A-GRADE9-TOPIC');
-  await expect(page.getByText('This topic is not ready yet')).toBeVisible();
+  // An unknown topic may be rejected by the RPC (error) or return no
+  // published record (empty); both must render a bounded learner-safe state.
+  await expect(page.getByText(/This topic is not ready yet|Topic could not be loaded/)).toBeVisible();
   await capture(page, testInfo, 'no-content-state', 390, 844);
   await page.goto('/dashboard/student/learning/activity/NOT-AN-APPROVED-ACTIVITY');
-  await expect(page.getByText(/Practice is unavailable|Practice could not be loaded/)).toBeVisible();
+  await expect(page.getByText('Activity could not be loaded')).toBeVisible();
   await capture(page, testInfo, 'activity-error-state', 390, 844);
   writeEvidence(testInfo, 'visual-no-content-and-error', { authenticatedUser: emails.security, observed: 'actual unavailable topic and activity routes showed bounded learner-safe states without mocked RPC responses' });
 });
@@ -380,14 +381,9 @@ test('Sprint 5 real Learning Map has ordered checkpoints, keyboard focus and res
   await page.goto('/dashboard/student/learning/activity/A.G9.S4.INTEGER-OPS');
   await completeActivity(page, 'correct', true);
   await page.goto('/dashboard/student/learning/topic/INTEGERS');
-  const currentTopicButton = page.getByRole('button', { name: /Make this my current topic|This is my current topic/ });
-  if (await currentTopicButton.isEnabled()) {
-    const contextSaved = page.waitForResponse((response) => response.url().includes('/rest/v1/rpc/set_my_grade9_term1_learning_context') && response.ok());
-    await currentTopicButton.click();
-    await contextSaved;
-  }
+  await page.getByRole('button', { name: /Make this my current topic|This is my current topic/ }).click();
   await page.goto('/dashboard/student/learning');
-  const map = page.getByRole('list', { name: 'Grade 9 Term 1 topics' });
+  const map = page.getByRole('list', { name: 'Grade 9 Term 1 topic map' });
   const links = map.getByRole('link');
   await expect(links).toHaveCount(4);
   const routes = await links.evaluateAll((elements) => elements.map((element) => element.getAttribute('href')));
@@ -408,11 +404,13 @@ test('Sprint 5 real Learning Map has ordered checkpoints, keyboard focus and res
   await expect(map.locator('.animate-pulse')).toHaveCount(0);
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL('/dashboard/student/learning/topic/INTEGERS');
-  await expect(page.getByRole('list', { name: 'Integers skills' })).toBeVisible();
-  await expect(page.getByText(/Practice (completed|in progress)/)).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Integers curriculum skills' })).toBeVisible();
+  // A partially completed activity legitimately reports "in progress", not
+  // just "attempted". Persisted attempt evidence is asserted below via RPC.
+  await expect(page.getByText(/Practice in progress|Practice attempted|Practice completed/).first()).toBeVisible();
   for (const width of [360, 390, 1440]) {
     await capture(page, testInfo, 'sprint5-topic-skill-map', width, width === 1440 ? 1000 : 844,
-      page.getByRole('list', { name: 'Integers skills' }).locator('xpath=ancestor::section[1]'));
+      page.getByRole('list', { name: 'Integers curriculum skills' }).locator('xpath=ancestor::section[1]'));
   }
   const client = await authenticatedClient(emails.persistence);
   const { data: persisted, error } = await client.rpc('get_my_grade9_term1_topic_learning_map', { p_topic_code: 'INTEGERS' });

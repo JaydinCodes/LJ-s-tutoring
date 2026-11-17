@@ -1,79 +1,68 @@
-import { ArrowRight, Check, CircleDot, Flag, LockKeyhole, Play, Route, Sparkles, Trophy } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import type { LearningJourney, LearningJourneyTopic, LearningJourneyTopicStatus, TopicLearningMap } from './studentLearningRepository';
 
-const TOPIC_STATUS: Record<LearningJourneyTopicStatus, { label: string; icon: typeof CircleDot }> = {
-  not_started: { label: 'Ready', icon: Play },
-  baseline_available: { label: 'Baseline ready', icon: Flag },
-  assessment_in_progress: { label: 'Assessment in progress', icon: Play },
-  learning_in_progress: { label: 'In progress', icon: Route },
-  ready_for_endline: { label: 'Endline ready', icon: Flag },
-  mastery_challenge_available: { label: 'Challenge ready', icon: Sparkles },
-  mastered: { label: 'Mastered', icon: Trophy },
-  content_unavailable: { label: 'Coming soon', icon: LockKeyhole },
+const TOPIC_STATUS: Record<LearningJourneyTopicStatus, string> = {
+  not_started: 'Upcoming',
+  baseline_available: 'Assessment available',
+  assessment_in_progress: 'Assessment in progress',
+  learning_in_progress: 'Learning in progress',
+  ready_for_endline: 'Assessment available',
+  mastery_challenge_available: 'Mastery challenge available',
+  mastered: 'Mastered',
+  content_unavailable: 'Not yet available',
 };
 
-function topicStatusCopy(status: LearningJourneyTopicStatus) {
-  if (status === 'mastered') return 'Mastered with formal evidence';
-  if (status === 'baseline_available') return 'Start with a short baseline';
-  if (status === 'assessment_in_progress') return 'Return to your saved assessment';
-  if (status === 'learning_in_progress') return 'Continue your learning pathway';
-  if (status === 'ready_for_endline') return 'Ready for an endline';
-  if (status === 'mastery_challenge_available') return 'Ready for a mastery challenge';
-  if (status === 'content_unavailable') return 'Content is being prepared';
-  return 'Ready when you are';
-}
-
-/** The only topic picker on the learning home: four concise, linked stops. */
 export function JourneyMap({ journey }: { journey: LearningJourney }) {
   const currentCode = journey.currentTopic?.topicCode ?? journey.primary.topicCode ?? journey.context.selectedTopicCode;
+
   return (
-    <section aria-labelledby="learning-roadmap-heading" className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-900 sm:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-aegean">Your roadmap</p><h2 id="learning-roadmap-heading" className="mt-1 text-xl font-semibold text-brand-navy dark:text-brand-parchment">Grade 9 Mathematics · Term 1</h2></div>
-        <p className="max-w-md text-sm leading-6 text-slate-600 dark:text-brand-marble">Four topics, one connected route. Your next step is always shown above.</p>
-      </div>
-      <ol className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4" aria-label="Grade 9 Term 1 topics">
+    <section aria-labelledby="learning-map-heading" className="learning-section">
+      <div className="learning-section-heading"><h2 id="learning-map-heading">Learning journey</h2><span className="learning-muted">Term 1</span></div>
+      <ol className="learning-journey" aria-label="Grade 9 Term 1 topic map">
         {journey.topics.map((topic, index) => {
-          const meta = TOPIC_STATUS[topic.status];
-          const Icon = meta.icon;
           const isCurrent = topic.topicCode === currentCode;
+          const label = isCurrent && topic.status !== 'mastered' && topic.status !== 'content_unavailable' ? 'Current' : TOPIC_STATUS[topic.status];
           return <li key={topic.topicCode}>
-            <Link to={`/dashboard/student/learning/topic/${encodeURIComponent(topic.topicCode)}`} aria-current={isCurrent ? 'step' : undefined} className={`flex min-h-28 items-start gap-3 rounded-2xl border p-4 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-aegean ${isCurrent ? 'border-brand-gold bg-brand-navy text-white' : 'border-slate-200 bg-slate-50 hover:border-brand-aegean hover:bg-white dark:border-white/10 dark:bg-slate-950/50 dark:hover:bg-slate-900'}`}>
-              <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-bold ${isCurrent ? 'bg-brand-gold text-brand-navy' : 'bg-brand-aegean/10 text-brand-aegean dark:bg-brand-gold/10 dark:text-brand-gold'}`}>{isCurrent ? <CircleDot className="h-4 w-4" aria-hidden="true" /> : index + 1}</span>
-              <span className="min-w-0"><span className={`text-xs font-bold uppercase tracking-wide ${isCurrent ? 'text-brand-gold' : 'text-brand-aegean dark:text-brand-gold'}`}>{isCurrent ? 'Current topic' : meta.label}</span><span className="mt-1 block font-semibold">{topic.topicName}</span><span className={`mt-1 block text-xs ${isCurrent ? 'text-brand-marble' : 'text-slate-500 dark:text-brand-marble'}`}>{topicStatusCopy(topic.status)}</span></span>
+            <Link
+              to={`/dashboard/student/learning/topic/${encodeURIComponent(topic.topicCode)}`}
+              aria-current={isCurrent ? 'step' : undefined}
+              className={`learning-journey-link${isCurrent ? ' is-current' : ''}${topic.status === 'mastered' ? ' is-complete' : ''}${topic.status === 'content_unavailable' ? ' is-unavailable' : ''}`}
+            >
+              <span className="learning-step-number" aria-hidden="true">{topic.status === 'mastered' ? <Check size={16} /> : index + 1}</span>
+              <span className="learning-step-copy"><span className="learning-step-name">{topic.topicName}</span><span className="learning-step-state">{label}</span></span>
             </Link>
           </li>;
         })}
       </ol>
+      {!journey.topics.length ? <p className="learning-muted learning-empty">Your learning journey will appear when topics are published.</p> : null}
     </section>
   );
 }
 
-type Checkpoint = { label: string; status: 'available' | 'in_progress' | 'completed' | 'unavailable'; route?: string; copy: string };
+type AssessmentNode = { label: string; status: 'available' | 'in_progress' | 'completed' | 'unavailable'; route?: string; explanation: string };
 
-function AssessmentCheckpoint({ node }: { node: Checkpoint }) {
-  const Icon = node.status === 'completed' ? Check : node.status === 'available' ? Flag : node.status === 'in_progress' ? Play : LockKeyhole;
-  const content = <><span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${node.status === 'completed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : node.status === 'available' ? 'bg-brand-gold/20 text-amber-900 dark:text-brand-gold' : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-brand-marble'}`}><Icon className="h-4 w-4" aria-hidden="true" /></span><span><span className="font-semibold text-brand-navy dark:text-brand-parchment">{node.label}</span><span className="mt-0.5 block text-sm text-slate-600 dark:text-brand-marble">{node.copy}</span></span></>;
+function AssessmentCheckpoint({ node }: { node: AssessmentNode }) {
+  const body = <>
+    <span className="learning-topic-milestone-title">{node.status === 'completed' ? <Check size={16} aria-hidden="true" /> : null}{node.label}</span>
+    <span className="learning-muted">{node.explanation}</span>
+  </>;
   return node.route && (node.status === 'available' || node.status === 'in_progress')
-    ? <Link className="flex min-h-16 items-center justify-between gap-3 rounded-2xl border border-brand-aegean/30 bg-brand-aegean/5 p-3 transition hover:bg-brand-aegean/10" to={node.route}>{content}<ArrowRight className="h-4 w-4 shrink-0 text-brand-aegean" aria-hidden="true" /></Link>
-    : <div className="flex min-h-16 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-slate-950/50">{content}</div>;
+    ? <Link to={node.route} className="learning-topic-milestone">{body}<ArrowRight size={16} aria-hidden="true" /></Link>
+    : <div className="learning-topic-milestone">{body}</div>;
 }
 
 function firstAssessmentRoute(journey: LearningJourney | undefined, topicCode: string, assessmentType: string) {
-  if (journey?.primary.topicCode === topicCode && journey.primary.route && ((assessmentType === 'topic_baseline' && journey.primary.action === 'start_baseline') || (assessmentType === 'endline' && journey.primary.action === 'start_endline') || (assessmentType === 'mastery_challenge' && journey.primary.action === 'start_mastery_challenge') || journey.primary.action === 'resume_assessment')) return journey.primary.route;
+  if (journey?.primary.topicCode === topicCode && journey.primary.route && (
+    (assessmentType === 'topic_baseline' && journey.primary.action === 'start_baseline')
+    || (assessmentType === 'endline' && journey.primary.action === 'start_endline')
+    || (assessmentType === 'mastery_challenge' && journey.primary.action === 'start_mastery_challenge')
+    || journey.primary.action === 'resume_assessment'
+  )) return journey.primary.route;
   return journey?.alternatives.find((item) => item.topicCode === topicCode && item.assessmentType === assessmentType)?.route;
 }
 
-function skillStatus(skill: TopicLearningMap['skills'][number]) {
-  if (skill.practiceStatus === 'completed') return 'Practice completed';
-  if (skill.practiceStatus === 'in_progress') return 'Practice in progress';
-  if (skill.activityCode) return 'Lesson and practice ready';
-  return skill.lessonAvailable ? 'Lesson ready' : 'Being prepared';
-}
-
-/** Compact topic pathway. Full teaching lives in a focused lesson route. */
 export function TopicLearningMap({ map, journey, topic }: { map: TopicLearningMap; journey?: LearningJourney; topic?: LearningJourneyTopic | null }) {
   const prerequisite = journey?.prerequisiteRecommendation;
   const returnTopic = prerequisite?.originTopicCode || topic?.topicCode || map.topicCode;
@@ -82,19 +71,35 @@ export function TopicLearningMap({ map, journey, topic }: { map: TopicLearningMa
   const challengeRoute = firstAssessmentRoute(journey, map.topicCode, 'mastery_challenge');
   const challengeAvailable = topic?.status === 'mastery_challenge_available';
 
-  return <section aria-labelledby="topic-pathway-heading" className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-900 sm:p-6">
-    <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-aegean">Your pathway</p><h2 id="topic-pathway-heading" className="mt-1 text-xl font-semibold text-brand-navy dark:text-brand-parchment">One skill at a time</h2><p className="mt-1 text-sm leading-6 text-slate-600 dark:text-brand-marble">Open a lesson, see one worked example, then move into its linked practice.</p></div>
-    <div className="mt-5 space-y-3">
-      <AssessmentCheckpoint node={{ label: 'Baseline', status: map.baseline.status, route: baselineRoute, copy: map.baseline.status === 'available' ? 'A short independent starting check is ready.' : map.baseline.status === 'completed' ? 'Your starting evidence is saved.' : map.baseline.status === 'in_progress' ? 'Your answers are saved. Resume when ready.' : 'This opens when it is the right next step.' }} />
-      <ol className="space-y-2" aria-label={`${map.topicName} skills`}>
-        {map.skills.map((skill, index) => <li key={skill.skillCode} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 dark:border-white/10">
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-aegean/10 text-xs font-bold text-brand-aegean dark:bg-brand-gold/10 dark:text-brand-gold">{index + 1}</span>
-          <div className="min-w-0 flex-1"><h3 className="font-semibold text-brand-navy dark:text-brand-parchment">{skill.skillName}</h3><p className="mt-0.5 text-sm text-slate-600 dark:text-brand-marble">{skillStatus(skill)}</p></div>
-          {skill.lessonAvailable ? <Link className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-semibold text-brand-aegean hover:bg-brand-aegean/10" to={`/dashboard/student/learning/topic/${encodeURIComponent(map.topicCode)}/lesson/${encodeURIComponent(skill.skillCode)}`}>Open <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link> : null}
-        </li>)}
-      </ol>
-      {prerequisite ? <Link to={`/dashboard/student/learning/bridge/${encodeURIComponent(prerequisite.skillCode)}?returnTopic=${encodeURIComponent(returnTopic)}`} className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-3 text-amber-950 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-100"><span><span className="font-semibold">Optional Grade 8 support</span><span className="mt-0.5 block text-sm">Use this bridge, then return here.</span></span><ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" /></Link> : null}
-      <AssessmentCheckpoint node={{ label: challengeAvailable ? 'Mastery challenge' : 'Endline', status: challengeAvailable ? 'available' : map.endline.status, route: challengeAvailable ? challengeRoute : endlineRoute, copy: challengeAvailable ? 'Your independent challenge is ready.' : map.endline.status === 'available' ? 'You are ready for an independent endline.' : map.endline.status === 'completed' ? 'Your endline evidence is saved.' : 'Your next assessment will appear when eligible.' }} />
-    </div>
+  const topicRoute = `/dashboard/student/learning/topic/${encodeURIComponent(map.topicCode)}`;
+  const currentSkill = map.skills.find((skill) => skill.practiceStatus !== 'completed' && (skill.lessonAvailable || skill.activityCode));
+
+  return <section aria-labelledby="topic-roadmap-heading" className="learning-section">
+    <div className="learning-section-heading"><h2 id="topic-roadmap-heading">Topic journey</h2><span className="learning-muted">{map.skills.length} skills</span></div>
+    <AssessmentCheckpoint node={{ label: 'Baseline assessment', status: map.baseline.status, route: baselineRoute, explanation: map.baseline.status === 'available' ? 'Find your starting point.' : map.baseline.status === 'completed' ? 'Your starting evidence is saved.' : map.baseline.status === 'in_progress' ? 'Resume your saved assessment.' : 'Not available yet.' }} />
+    {prerequisite ? <Link to={`/dashboard/student/learning/bridge/${encodeURIComponent(prerequisite.skillCode)}?returnTopic=${encodeURIComponent(returnTopic)}`} className="learning-topic-foundation"><span className="learning-text-link">Helpful Grade 8 detour <ArrowRight size={16} aria-hidden="true" /></span><span className="learning-muted">Review this foundation, then return to {map.topicName}.</span></Link> : null}
+    <ol className="learning-topic-journey" aria-label={`${map.topicName} curriculum skills`}>
+        {map.skills.map((skill, index) => {
+          const practiceLabel = skill.practiceStatus === 'completed' ? 'Practice completed' : skill.practiceStatus === 'in_progress' ? 'Practice in progress' : skill.practiceAttempted ? 'Practice attempted' : 'Not started';
+          return <li key={skill.skillCode} aria-current={skill.skillCode === currentSkill?.skillCode ? 'step' : undefined}>
+            <span className="learning-topic-step" aria-hidden="true">{skill.practiceStatus === 'completed' ? <Check size={16} /> : index + 1}</span>
+            <div className="learning-topic-skill"><h3>{skill.skillName}</h3><p className="learning-muted">{skill.skillDescription}</p><p className="learning-topic-status">{practiceLabel}</p></div>
+            <div className="learning-topic-skill-action">{skill.lessonAvailable ? <Link className="learning-text-link" to={`${topicRoute}?${new URLSearchParams({ lesson: skill.skillCode })}`}>{skill.practiceStatus === 'completed' ? 'Review lesson' : 'Start lesson'}<ArrowRight size={16} aria-hidden="true" /></Link> : skill.activityCode ? <Link className="learning-text-link" to={`/dashboard/student/learning/activity/${encodeURIComponent(skill.activityCode)}?${new URLSearchParams({ topic: map.topicCode, skill: skill.skillCode })}`}>Open practice <ArrowRight size={16} aria-hidden="true" /></Link> : <span className="learning-muted">Awaiting content</span>}</div>
+          </li>;
+        })}
+    </ol>
+    <AssessmentCheckpoint node={{ label: challengeAvailable ? 'Mastery challenge' : 'Mastery milestone', status: challengeAvailable ? 'available' : topic?.status === 'mastered' ? 'completed' : 'unavailable', route: challengeRoute, explanation: challengeAvailable ? 'Your independent challenge is ready.' : topic?.status === 'mastered' ? 'Formal evidence has recorded mastery.' : 'Available when your assessment evidence makes it eligible.' }} />
+    <AssessmentCheckpoint node={{ label: 'Endline assessment', status: map.endline.status, route: endlineRoute, explanation: map.endline.status === 'available' ? 'Your independent endline is ready.' : map.endline.status === 'completed' ? 'Your endline evidence is saved.' : map.endline.status === 'in_progress' ? 'Resume your saved endline.' : 'Available when you are eligible.' }} />
+    <p className="learning-muted learning-notice">Practice builds skills. Only formal assessments record topic mastery.</p>
   </section>;
+}
+
+export function LessonSteps({ stage, conceptRoute, exampleRoute, practiceRoute }: { stage: 'concept' | 'example' | 'practice' | 'feedback'; conceptRoute?: string; exampleRoute?: string; practiceRoute?: string }) {
+  const steps = [
+    { id: 'concept', label: 'The idea', route: conceptRoute },
+    { id: 'example', label: 'Worked example', route: exampleRoute },
+    { id: 'practice', label: 'Your turn', route: practiceRoute },
+    { id: 'feedback', label: 'Feedback' },
+  ];
+  return <nav aria-label="Lesson steps"><ol className="learning-lesson-steps">{steps.map((step, index) => <li key={step.id} aria-current={stage === step.id ? 'step' : undefined}>{step.route ? <Link to={step.route}><span aria-hidden="true">{index + 1}</span>{step.label}</Link> : <span><span aria-hidden="true">{index + 1}</span>{step.label}</span>}</li>)}</ol></nav>;
 }

@@ -91,8 +91,9 @@ test('Sprint 4 mathematics corrections retain v1 history and protect confirmed d
 });
 
 test('no-content primary action never links the learner back to the current dashboard', () => {
-  assert.match(learningDashboard, /journey\.primary\.action === 'explore_topic' && journey\.primary\.route === '\/dashboard\/student\/learning'/);
-  assert.match(learningDashboard, /No reviewed learning action is available yet/);
+  assert.match(learningDashboard, /primary\.action === 'explore_topic' && primary\.route === '\/dashboard\/student\/learning'/);
+  assert.match(learningDashboard, /No learning action is available yet/);
+  assert.match(learningDashboard, /href=\{catalogue.length \? '#course-content' : '#learning-map-heading'\}/);
 });
 
 test('bridge delivery exposes only approved Grade 8 lessons and preserves a return path', () => {
