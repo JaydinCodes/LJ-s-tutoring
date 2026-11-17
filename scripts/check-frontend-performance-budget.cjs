@@ -147,6 +147,14 @@ assertGzipSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 55_00
 // The learner-only stylesheet now travels with its lazy route. Preserve the
 // existing entry CSS cap and separately constrain *all* deferred CSS, rather
 // than hiding additional style payload behind CSS code splitting.
+// The library build does not automatically inject route CSS. App.tsx
+// explicitly fetches this asset, so fail the release if it is ever renamed,
+// dropped or accidentally folded back into the entry stylesheet.
+const learnerCss = path.join(reactAppDistDir, 'student-learning.css');
+if (fs.existsSync(reactAppDistDir)) {
+  assert(fs.existsSync(learnerCss), 'student-learning.css is missing from the production build');
+  assert(fs.statSync(learnerCss).size > 0, 'student-learning.css must contain real stylesheet rules');
+}
 const deferredCss = collectFiles(reactAppDistDir, (filePath) => filePath.endsWith('.css'))
   .filter((filePath) => filePath !== reactCss);
 const deferredCssRaw = deferredCss.reduce((total, filePath) => total + fs.statSync(filePath).size, 0);
