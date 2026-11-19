@@ -161,9 +161,22 @@ export function PublicHomeRoute() {
     <PublicLayout>
       <StructuredData data={[localBusinessSchema, faqPageSchema]} />
       <section className="relative isolate overflow-hidden bg-brand-navy py-14 text-white sm:py-20 lg:py-24">
-        {/* This photograph is decorative. Only desktop layouts reveal it:
-            requesting it on mobile delays first paint beneath an 85% navy overlay. */}
-        <div aria-hidden="true" className="absolute inset-0 hidden bg-cover bg-center md:block md:[background-image:url('/images/tutoring-study-pexels-6503156.jpg')]" />
+        {/* A media-gated source stops mobile from requesting the large
+            decorative photograph beneath its almost-opaque navy overlay.
+            Keep URLs out of CSS: Vite library mode embeds url() image assets. */}
+        <picture aria-hidden="true" className="absolute inset-0 hidden md:block">
+          <source media="(min-width: 768px)" srcSet="/images/tutoring-study-pexels-6503156.jpg" />
+          <img
+            className="h-full w-full object-cover object-center"
+            src="/images/og-image-placeholder.svg"
+            alt=""
+            width={1600}
+            height={900}
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+          />
+        </picture>
         <div className="absolute inset-0 bg-brand-navy/85 md:bg-transparent md:bg-gradient-to-r md:from-brand-navy md:via-brand-navy/90 md:to-brand-navy/20" />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
           <div>
