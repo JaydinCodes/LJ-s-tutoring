@@ -47,8 +47,10 @@ export default defineConfig(({ command, mode }) => {
   build: {
     outDir: path.resolve(rootDir, 'react-app-dist'),
     emptyOutDir: true,
-    // Lib mode never links split CSS from lazy chunks, so it must stay in one sheet.
-    cssCodeSplit: false,
+    // Keep entry CSS within its verified budget. Learning-only styles ship as
+    // a deferred stylesheet that App.tsx explicitly loads before rendering a
+    // learning route (library mode does not inject lazy CSS automatically).
+    cssCodeSplit: true,
     lib: {
       entry: path.resolve(rootDir, 'src/app/main.tsx'),
       formats: ['es'],
