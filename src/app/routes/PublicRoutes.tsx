@@ -164,7 +164,7 @@ export function PublicHomeRoute() {
         {/* A media-gated source stops mobile from requesting the large
             decorative photograph beneath its almost-opaque navy overlay.
             Keep URLs out of CSS: Vite library mode embeds url() image assets. */}
-        <picture aria-hidden="true" className="absolute inset-0 hidden md:block">
+        <picture className="absolute inset-0 hidden md:block">
           <source media="(min-width: 768px)" srcSet="/images/tutoring-study-pexels-6503156.jpg" />
           <img
             className="h-full w-full object-cover object-center"
