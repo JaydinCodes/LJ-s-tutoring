@@ -59,7 +59,7 @@ test('public tutor bios have an explicit touch and keyboard control', () => {
 
 test('decorative public hero photograph has a desktop-only source without CSS inlining', () => {
   const publicRoutes = read('src', 'app', 'routes', 'PublicRoutes.tsx');
-  assert.match(publicRoutes, /<picture aria-hidden="true" className="absolute inset-0 hidden md:block">/);
+  assert.match(publicRoutes, /<picture className="absolute inset-0 hidden md:block">/);
   assert.match(publicRoutes, /<source media="\(min-width: 768px\)" srcSet="\/images\/tutoring-study-pexels-6503156\.jpg"/);
   assert.match(publicRoutes, /src="\/images\/og-image-placeholder\.svg"/);
   assert.match(publicRoutes, /fetchPriority="low"/);
