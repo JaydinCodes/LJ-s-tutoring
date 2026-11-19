@@ -54,7 +54,16 @@ test('public tutor bios have an explicit touch and keyboard control', () => {
   assert.match(publicRoutes, /aria-controls=\{bioId\}/);
   assert.match(publicRoutes, /aria-expanded=\{isBioVisible\}/);
   assert.match(publicRoutes, /Read tutor bio/);
-  assert.match(publicRoutes, /group-focus-within:pointer-events-auto/);
+  assert.match(publicRoutes, /id=\{bioId\} hidden=\{!isBioVisible\}/);
+});
+
+test('decorative public hero photograph has a desktop-only source without CSS inlining', () => {
+  const publicRoutes = read('src', 'app', 'routes', 'PublicRoutes.tsx');
+  assert.match(publicRoutes, /<picture className="absolute inset-0 hidden md:block">/);
+  assert.match(publicRoutes, /<source media="\(min-width: 768px\)" srcSet="\/images\/tutoring-study-pexels-6503156\.jpg"/);
+  assert.match(publicRoutes, /src="\/images\/og-image-placeholder\.svg"/);
+  assert.match(publicRoutes, /fetchPriority="low"/);
+  assert.doesNotMatch(publicRoutes, /background-image:url\([^)]*tutoring-study-pexels-6503156/);
 });
 
 test('route lazy loading uses the branded shell skeleton instead of raw loading copy', () => {
