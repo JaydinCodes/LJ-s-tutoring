@@ -57,6 +57,13 @@ test('public tutor bios have an explicit touch and keyboard control', () => {
   assert.match(publicRoutes, /id=\{bioId\} hidden=\{!isBioVisible\}/);
 });
 
+test('decorative public hero photograph is desktop-only to protect mobile loading', () => {
+  const publicRoutes = read('src', 'app', 'routes', 'PublicRoutes.tsx');
+  assert.match(publicRoutes, /hidden bg-cover bg-center md:block md:\[background-image:url\('/);
+  assert.match(publicRoutes, /tutoring-study-pexels-6503156\.jpg/);
+  assert.doesNotMatch(publicRoutes, /<img[^>]*tutoring-study-pexels-6503156\.jpg/);
+});
+
 test('route lazy loading uses the branded shell skeleton instead of raw loading copy', () => {
   const app = read('src', 'app', 'App.tsx');
   assert.doesNotMatch(app, />Loading page\.\.\.</);
