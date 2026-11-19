@@ -56,6 +56,8 @@ releases/            Release evidence and rollback templates
 
 Root-level config files are intentionally kept at the top level because the related tools expect them there. Deeper project notes live in `docs/README.md`.
 
+The public homepage hero photograph is by [Thirdman on Pexels](https://www.pexels.com/photo/teacher-pointing-using-a-pencil-6503156/) and is used under the [Pexels license](https://www.pexels.com/license/).
+
 ## React LMS migration
 
 The production build now serves the unified React app for public, student,

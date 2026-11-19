@@ -27,6 +27,8 @@ test('static build prerenders crawlable public content without exposing dashboar
   assert.match(home, /<section id="enquiry">/);
   assert.match(about, /<main data-prerendered-page="about">/);
   assert.match(programs, /<main data-prerendered-page="programs">/);
+  assert.match(programs, /In-person tutoring in Cape Town/);
+  assert.match(programs, /Contact us for current pricing and package options/);
   assert.equal(fs.existsSync(path.join(root, 'dist', 'guides')), false, 'retired guide shells must not be rebuilt');
   assert.doesNotMatch(dashboard, /data-prerendered-page=/);
   assert.match(dashboard, /<div id="root" class="app-booting"><\/div>/);

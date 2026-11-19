@@ -208,6 +208,12 @@ function publicPrerender(route) {
         <p>Build confidence with functions, trigonometry, analytical geometry, and exam-style application.</p>
         <h2>Grade 12 exam preparation</h2>
         <p>Target weak topics, sharpen exam technique, and practise under realistic time pressure.</p>
+        <h2>Where</h2>
+        <p>In-person tutoring in Cape Town, usually at a home or study space.</p>
+        <h2>When</h2>
+        <p>Monday to Thursday, 5pm to 8pm, with limited weekend slots.</p>
+        <h2>Fees and packages</h2>
+        <p>Contact us for current pricing and package options.</p>
       </main>`,
     privacy: `
       <main data-prerendered-page="privacy">

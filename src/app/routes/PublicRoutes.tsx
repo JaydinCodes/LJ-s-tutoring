@@ -1,6 +1,6 @@
 import type { FormEvent, ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Reveal, StaggerReveal } from '../../components/animations/Reveal';
 import { StructuredData } from '../../components/seo/StructuredData';
 import { GreekDivider } from '../../components/ui/GreekDivider';
@@ -16,6 +16,7 @@ const tutors = [
     // Versioned filename prevents a visitor's existing media cache from serving
     // the retired portrait after deployment.
     image: '/images/jaydin-morrison-20260812.webp',
+    imagePosition: 'center 30%',
     imageWidth: 1200,
     imageHeight: 1600,
   },
@@ -25,6 +26,7 @@ const tutors = [
     role: 'Physical Sciences Tutor',
     bio: 'Nicholas makes Physics feel less abstract by connecting the theory to clear examples, structured calculations, and the reasoning behind every formula.',
     image: '/images/nicholas-dreyer.webp',
+    imagePosition: 'center top',
     imageWidth: 792,
     imageHeight: 798,
   },
@@ -34,6 +36,7 @@ const tutors = [
     role: 'Co-Founder',
     bio: 'Liam focuses on problem-solving habits and calculus foundations, helping learners turn difficult questions into manageable steps and build momentum.',
     image: '/images/liam-newton.webp',
+    imagePosition: 'center center',
     imageWidth: 1200,
     imageHeight: 900,
   },
@@ -43,6 +46,7 @@ const tutors = [
     role: 'Mathematical Literacy Tutor',
     bio: 'Logan makes Mathematical Literacy practical and approachable, helping learners apply data handling, finance, and measurement skills with confidence.',
     image: '/images/logan-petrus.webp',
+    imagePosition: 'center 20%',
     imageWidth: 960,
     imageHeight: 1280,
   },
@@ -52,6 +56,7 @@ const tutors = [
     role: 'Mathematical Literacy Tutor',
     bio: 'Aaliyah helps learners see the logic behind everyday Mathematics, using relatable examples, guided practice, and supportive explanations to build accuracy and independence.',
     image: '/images/aaliyah.jpeg',
+    imagePosition: 'center center',
     imageWidth: 960,
     imageHeight: 1280,
   },
@@ -156,7 +161,8 @@ export function PublicHomeRoute() {
     <PublicLayout>
       <StructuredData data={[localBusinessSchema, faqPageSchema]} />
       <section className="relative isolate overflow-hidden bg-brand-navy py-14 text-white sm:py-20 lg:py-24">
-        <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_15%_15%,rgba(244,197,24,.35),transparent_20rem),radial-gradient(circle_at_85%_70%,rgba(31,111,139,.6),transparent_24rem)]" />
+        <img className="absolute inset-0 h-full w-full object-cover object-center" src="/images/tutoring-study-pexels-6503156.jpg" alt="" />
+        <div className="absolute inset-0 bg-brand-navy/85 md:bg-transparent md:bg-gradient-to-r md:from-brand-navy md:via-brand-navy/90 md:to-brand-navy/20" />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-brand-gold sm:text-sm">Grade 8-12 CAPS tutoring + learning intelligence</p>
@@ -251,6 +257,11 @@ export function ProgramsRoute() {
                 <p className="mt-3 text-sm leading-7 text-slate-600">{description}</p>
               </article>
             ))}
+          </div>
+          <div className="mt-10 grid gap-6 border-t border-brand-marble pt-8 text-sm leading-7 text-slate-600 sm:grid-cols-3">
+            <div><h2 className="font-semibold text-brand-obsidian">Where</h2><p>In-person tutoring in Cape Town, usually at a home or study space.</p></div>
+            <div><h2 className="font-semibold text-brand-obsidian">When</h2><p>Monday to Thursday, 5pm to 8pm, with limited weekend slots.</p></div>
+            <div><h2 className="font-semibold text-brand-obsidian">Fees and packages</h2><p>Contact us for current pricing and package options.</p></div>
           </div>
           <a className="mt-8 inline-flex rounded-full bg-brand-navy px-5 py-3 text-sm font-semibold text-white" href="/#enquiry">
             Ask about the right programme
@@ -449,6 +460,8 @@ export function TermsRoute() {
 
 function PublicLayout({ children }: { children: ReactNode }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isContactObscured, setIsContactObscured] = useState(false);
+  const { pathname } = useLocation();
   const closeMenu = () => setIsMenuOpen(false);
 
   useEffect(() => {
@@ -461,6 +474,23 @@ function PublicLayout({ children }: { children: ReactNode }) {
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [isMenuOpen]);
+
+  useEffect(() => {
+    setIsContactObscured(false);
+    const sections = ['tutors', 'enquiry'].map((id) => document.getElementById(id)).filter((section): section is HTMLElement => section !== null);
+    if (!sections.length) return;
+
+    const visibleSections = new Set<Element>();
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) visibleSections.add(entry.target);
+        else visibleSections.delete(entry.target);
+      });
+      setIsContactObscured(visibleSections.size > 0);
+    });
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, [pathname]);
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24 text-slate-950 md:pb-0">
@@ -505,18 +535,19 @@ function PublicLayout({ children }: { children: ReactNode }) {
         </nav>
       </header>
       {children}
-      <a
-        className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 flex min-h-14 items-center justify-center gap-3 rounded-2xl border border-emerald-300/70 bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-2xl shadow-emerald-950/30 transition hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 md:hidden"
+      {!isContactObscured && <a
+        className="fixed right-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-700 text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 md:hidden"
         href={whatsappEnquiryHref}
         target="_blank"
         rel="noreferrer"
         aria-label="Ask about tutoring support on WhatsApp"
+        title="WhatsApp us about tutoring"
       >
-        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M12.04 2a9.84 9.84 0 0 0-8.52 14.76L2 22l5.38-1.42A9.98 9.98 0 0 0 12.04 22 10 10 0 0 0 12.04 2Zm0 18.18a8.18 8.18 0 0 1-4.17-1.14l-.3-.18-3.2.84.86-3.1-.2-.32a8.02 8.02 0 0 1-1.25-4.32 8.22 8.22 0 1 1 8.26 8.22Zm4.5-6.16c-.25-.12-1.46-.72-1.69-.8-.22-.08-.39-.12-.55.13-.16.24-.63.8-.77.96-.14.16-.29.18-.53.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.23-1.46-1.37-1.7-.14-.25-.02-.38.1-.5.12-.1.25-.28.37-.42.13-.14.17-.24.25-.4.08-.16.04-.3-.02-.42-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.3-.23.25-.86.84-.86 2.05s.88 2.38 1 2.54c.12.16 1.73 2.64 4.19 3.7.59.25 1.04.4 1.4.52.59.19 1.12.16 1.54.1.47-.07 1.46-.6 1.67-1.17.2-.58.2-1.07.14-1.17-.06-.1-.22-.16-.47-.28Z" />
         </svg>
-        WhatsApp us about tutoring
-      </a>
+        <span className="sr-only">WhatsApp us about tutoring</span>
+      </a>}
       <footer className="border-t border-slate-200 bg-white px-6 py-8">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 text-sm text-slate-600">
           <p>Project Odysseus - CAPS tutoring and learning intelligence</p>
@@ -535,33 +566,8 @@ function PublicLayout({ children }: { children: ReactNode }) {
 
 function TutorSection() {
   const mobileCarouselRef = useRef<HTMLDivElement>(null);
-
   const [activeTutor, setActiveTutor] = useState(0);
-  const [isInteracting, setIsInteracting] = useState(false);
-
-  useEffect(() => {
-    if (isInteracting) return;
-
-    const interval = window.setInterval(() => {
-      setActiveTutor((current) => {
-        const nextIndex = (current + 1) % tutors.length;
-
-        const container = mobileCarouselRef.current;
-        const card = container?.children[nextIndex] as HTMLElement | undefined;
-
-        if (card) {
-          container?.scrollTo({
-            left: card.offsetLeft,
-            behavior: "smooth",
-          });
-        }
-
-        return nextIndex;
-      });
-    }, 3500);
-
-    return () => window.clearInterval(interval);
-  }, [isInteracting]);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     const container = mobileCarouselRef.current;
@@ -569,22 +575,21 @@ function TutorSection() {
     if (!container) return;
 
     let scrollTimeout: number;
-    let resumeTimeout: number;
-
     const handleScroll = () => {
       window.clearTimeout(scrollTimeout);
 
       scrollTimeout = window.setTimeout(() => {
         const cards = Array.from(container.children) as HTMLElement[];
 
-        const containerCenter =
-          container.scrollLeft + container.clientWidth / 2;
+        const containerBounds = container.getBoundingClientRect();
+        const containerCenter = containerBounds.left + containerBounds.width / 2;
 
         let closestIndex = 0;
         let closestDistance = Infinity;
 
         cards.forEach((card, index) => {
-          const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+          const cardBounds = card.getBoundingClientRect();
+          const cardCenter = cardBounds.left + cardBounds.width / 2;
           const distance = Math.abs(containerCenter - cardCenter);
 
           if (distance < closestDistance) {
@@ -596,12 +601,6 @@ function TutorSection() {
         setActiveTutor(closestIndex);
       }, 100);
 
-      setIsInteracting(true);
-
-      window.clearTimeout(resumeTimeout);
-      resumeTimeout = window.setTimeout(() => {
-        setIsInteracting(false);
-      }, 4000);
     };
 
     container.addEventListener("scroll", handleScroll, {
@@ -611,7 +610,6 @@ function TutorSection() {
     return () => {
       container.removeEventListener("scroll", handleScroll);
       window.clearTimeout(scrollTimeout);
-      window.clearTimeout(resumeTimeout);
     };
   }, []);
 
@@ -627,7 +625,7 @@ function TutorSection() {
         <div
           ref={mobileCarouselRef}
           className="
-            mt-10 flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4
+            mt-10 flex items-start gap-4 overflow-x-auto snap-x snap-mandatory pb-4
             [-ms-overflow-style:none]
             [scrollbar-width:none]
             [&::-webkit-scrollbar]:hidden
@@ -645,12 +643,13 @@ function TutorSection() {
         </div>
 
         {/* Mobile carousel indicators */}
-        <div className="mt-4 flex justify-center gap-1.5 sm:hidden">
+        <div className="mt-2 flex justify-center sm:hidden">
           {tutors.map((tutor, index) => (
             <button
               key={tutor.name}
               type="button"
               aria-label={`Show ${tutor.name}`}
+              aria-pressed={index === activeTutor}
               onClick={() => {
                 const container = mobileCarouselRef.current;
                 const card = container?.children[index] as HTMLElement | undefined;
@@ -658,23 +657,16 @@ function TutorSection() {
                 if (!card) return;
 
                 container?.scrollTo({
-                  left: card.offsetLeft,
-                  behavior: "smooth",
+                  left: card.getBoundingClientRect().left - container.getBoundingClientRect().left + container.scrollLeft - (container.clientWidth - card.clientWidth) / 2,
+                  behavior: prefersReducedMotion ? 'instant' : 'smooth',
                 });
 
                 setActiveTutor(index);
-                setIsInteracting(true);
-
-                window.setTimeout(() => {
-                  setIsInteracting(false);
-                }, 4000);
               }}
-              className={`h-1.5 rounded-full transition-all ${
-                index === activeTutor
-                  ? "w-6 bg-brand-blue"
-                  : "w-1.5 bg-slate-300"
-              }`}
-            />
+              className="grid h-11 w-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-aegean"
+            >
+              <span className={`h-2 rounded-full transition-all motion-reduce:transition-none ${index === activeTutor ? 'w-6 bg-brand-deepBlue' : 'w-2 bg-slate-400'}`} />
+            </button>
           ))}
         </div>
 
@@ -692,7 +684,7 @@ function TutorSection() {
 function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
   const [isBioVisible, setIsBioVisible] = useState(false);
   const prefersReducedMotion = usePrefersReducedMotion();
-  const bioId = `tutor-bio-${tutor.name.toLowerCase().replace(/\s+/g, '-')}`;
+  const bioId = useId();
   const transitionClass = prefersReducedMotion ? '' : 'transition duration-300 ease-out';
 
   return (
@@ -704,23 +696,13 @@ function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
         <img
           className={`aspect-[4/3] w-full object-cover ${transitionClass} ${prefersReducedMotion ? '' : 'group-hover:scale-[1.03]'}`}
           src={tutor.image}
+          style={{ objectPosition: tutor.imagePosition }}
           alt={`${tutor.name}, ${tutor.role} for ${tutor.subject}`}
           decoding="async"
           height={tutor.imageHeight}
           loading="lazy"
           width={tutor.imageWidth}
         />
-        <div
-          aria-hidden={!isBioVisible}
-          id={bioId}
-          className={`absolute inset-0 z-20 flex flex-col justify-end bg-brand-navy/90 p-5 text-white ${
-            isBioVisible ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-          } ${transitionClass} group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100`}
-        >
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold">Tutor bio</p>
-          <p className="mt-3 text-sm leading-6 text-brand-parchment">{tutor.bio}</p>
-         
-        </div>
       </div>
       <div className="p-5">
         <h3 className="text-xl font-semibold text-brand-obsidian">{tutor.name}</h3>
@@ -735,6 +717,9 @@ function TutorCard({ tutor }: { tutor: (typeof tutors)[number] }) {
         >
           {isBioVisible ? 'Hide tutor bio' : 'Read tutor bio'}
         </button>
+        <div id={bioId} hidden={!isBioVisible} className="mt-4 text-sm leading-6 text-slate-600">
+          {tutor.bio}
+        </div>
       </div>
     </article>
   );
@@ -915,7 +900,7 @@ function EnquirySection() {
             We tutor Monday to Thursday between 5pm and 8pm, with limited weekend slots. Tell us what support the learner needs and we will reply with the next practical step.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a className="rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-400" href={buildWhatsappHref(form)} target="_blank" rel="noreferrer">
+            <a className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800" href={buildWhatsappHref(form)} target="_blank" rel="noreferrer">
               WhatsApp us
             </a>
             <a className="rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10" href={`mailto:${contactEmail}`}>

@@ -93,6 +93,46 @@ test('public homepage loads', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Ask about tutoring/i }).first()).toBeVisible();
 });
 
+test('public tutor bios fit on small screens and the carousel stays put', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.clock.install();
+  await page.goto('/');
+
+  const selector = page.getByRole('button', { name: 'Show Aaliyah Parker' });
+  await selector.click();
+  await expect(page.getByRole('link', { name: 'Ask about tutoring support on WhatsApp' })).toHaveCount(0);
+  const card = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Aaliyah Parker' }) });
+  const toggle = card.getByRole('button', { name: 'Read tutor bio' });
+  await toggle.click();
+  const bio = card.getByText(/Aaliyah helps learners see the logic/);
+  await expect(bio).toBeVisible();
+  const bounds = await bio.evaluate((element) => {
+    const text = element.getBoundingClientRect();
+    const cardBounds = element.closest('article')!.getBoundingClientRect();
+    return { top: text.top, bottom: text.bottom, cardTop: cardBounds.top, cardBottom: cardBounds.bottom };
+  });
+  expect(bounds.top).toBeGreaterThanOrEqual(bounds.cardTop);
+  expect(bounds.bottom).toBeLessThanOrEqual(bounds.cardBottom);
+  await page.clock.fastForward(10_000);
+  await expect(selector).toHaveAttribute('aria-pressed', 'true');
+  await expect(bio).toBeVisible();
+  await page.getByRole('button', { name: 'Show Jaydin Morrison' }).click();
+  await expect(page.getByRole('button', { name: 'Show Jaydin Morrison' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('public mobile contact button clears the enquiry form', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const floatingContact = page.getByRole('link', { name: 'Ask about tutoring support on WhatsApp' });
+  await expect(floatingContact).toBeVisible();
+  await page.locator('#enquiry').scrollIntoViewIfNeeded();
+  await expect(floatingContact).toHaveCount(0);
+  await expect(page.getByLabel('Your name')).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(floatingContact).toBeVisible();
+});
+
 for (const role of Object.keys(users) as SmokeRole[]) {
   test(`${role} can log in and access the correct dashboard`, async ({ page }) => {
     await loginAs(page, role);

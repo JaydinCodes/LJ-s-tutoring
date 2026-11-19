@@ -54,7 +54,7 @@ test('public tutor bios have an explicit touch and keyboard control', () => {
   assert.match(publicRoutes, /aria-controls=\{bioId\}/);
   assert.match(publicRoutes, /aria-expanded=\{isBioVisible\}/);
   assert.match(publicRoutes, /Read tutor bio/);
-  assert.match(publicRoutes, /group-focus-within:pointer-events-auto/);
+  assert.match(publicRoutes, /id=\{bioId\} hidden=\{!isBioVisible\}/);
 });
 
 test('route lazy loading uses the branded shell skeleton instead of raw loading copy', () => {
