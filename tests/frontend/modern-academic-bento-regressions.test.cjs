@@ -57,11 +57,13 @@ test('public tutor bios have an explicit touch and keyboard control', () => {
   assert.match(publicRoutes, /id=\{bioId\} hidden=\{!isBioVisible\}/);
 });
 
-test('decorative public hero photograph is desktop-only to protect mobile loading', () => {
+test('decorative public hero photograph has a desktop-only source without CSS inlining', () => {
   const publicRoutes = read('src', 'app', 'routes', 'PublicRoutes.tsx');
-  assert.match(publicRoutes, /hidden bg-cover bg-center md:block md:\[background-image:url\('/);
-  assert.match(publicRoutes, /tutoring-study-pexels-6503156\.jpg/);
-  assert.doesNotMatch(publicRoutes, /<img[^>]*tutoring-study-pexels-6503156\.jpg/);
+  assert.match(publicRoutes, /<picture aria-hidden="true" className="absolute inset-0 hidden md:block">/);
+  assert.match(publicRoutes, /<source media="\(min-width: 768px\)" srcSet="\/images\/tutoring-study-pexels-6503156\.jpg"/);
+  assert.match(publicRoutes, /src="\/images\/og-image-placeholder\.svg"/);
+  assert.match(publicRoutes, /fetchPriority="low"/);
+  assert.doesNotMatch(publicRoutes, /background-image:url\([^)]*tutoring-study-pexels-6503156/);
 });
 
 test('route lazy loading uses the branded shell skeleton instead of raw loading copy', () => {
