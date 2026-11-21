@@ -192,7 +192,7 @@ test('visual QA — selected topic makes its baseline the clear next step', asyn
   await expect(page.getByText('Understand your starting point', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: /Integers/ }).first().click();
   await expect(page.getByRole('button', { name: 'This is my current topic' })).toBeVisible();
-  const mapHeading = page.getByRole('heading', { name: 'Topic journey', exact: true });
+  const mapHeading = page.getByRole('heading', { name: 'Your learning path', exact: true });
   await expect(mapHeading).toBeVisible();
   await capture(page, testInfo, 'integers-topic-map', 1440, mapHeading);
   await capture(page, testInfo, 'integers-topic-map', 390, mapHeading);
@@ -230,9 +230,9 @@ test('visual QA — successful mastery result is legible and the map uses formal
   await capture(page, testInfo, 'mastery-result', 1440);
   await capture(page, testInfo, 'mastery-result', 390);
   await page.goto(`/dashboard/student/learning/topic/${wholeNumbers}`);
-  await expect(page.getByRole('heading', { name: 'Topic journey', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your learning path', exact: true })).toBeVisible();
   await expect(page.getByText('Formal evidence has recorded mastery.')).toBeVisible();
-  const mapHeading = page.getByRole('heading', { name: 'Topic journey', exact: true });
+  const mapHeading = page.getByRole('heading', { name: 'Your learning path', exact: true });
   await capture(page, testInfo, 'whole-numbers-topic-map', 1440, mapHeading);
   await capture(page, testInfo, 'whole-numbers-topic-map', 390, mapHeading);
 });
@@ -381,11 +381,11 @@ test('learning overview has accessible contrast and controls across themes and v
 test('topic lesson loop connects the idea, worked example, practice and saved journey', async ({ page }, testInfo) => {
   await useScenario(page, 'practice');
   await page.goto(`/dashboard/student/learning/topic/${integers}`);
-  await expect(page.getByRole('heading', { name: 'Topic journey', exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Start lesson', exact: true }).first().click();
+  await expect(page.getByRole('heading', { name: 'Your learning path', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Continue lesson', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Integer signs', exact: true })).toBeVisible();
   await expect(page.getByText('Use a number line to check the direction of each move.')).toBeVisible();
-  await page.getByRole('link', { name: 'See worked example', exact: true }).click();
+  await page.getByRole('link', { name: 'See examples', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Worked example', exact: true })).toBeVisible();
   await expect(page.getByText('−8 + 13 = 5 because 13 moves right from −8.')).toBeVisible();
   await page.getByRole('link', { name: 'Try it yourself', exact: true }).click();
@@ -398,26 +398,26 @@ test('topic lesson loop connects the idea, worked example, practice and saved jo
   await page.getByRole('button', { name: /Continue to next step/ }).click();
   await expect(page.getByRole('heading', { name: 'Activity complete', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Return to topic', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Topic journey', exact: true })).toBeVisible();
-  await expect(page.getByText('Practice completed', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your learning path', exact: true })).toBeVisible();
+  await expect(page.getByText('Completed', { exact: true })).toBeVisible();
 });
 
-test('worked example reasoning separates authored steps without splitting decimal values', async ({ page }) => {
+test('a legacy worked example keeps authored text intact instead of inventing a second numbering system', async ({ page }) => {
   await useScenario(page, 'practice', {
     get_my_grade9_learning_topic: { topicCode: integers, topicName: 'Integers', skills: [{ skillCode: 'G9-INT-SIGNED-OPERATIONS', skillName: 'Signed integer operations', activityCode, content: { title: 'Decimal calculations', explanation: 'Multiply the unit cost by the quantity.', workedExample: 'A notebook costs R24.50. Find the cost of 3 notebooks. R24.50 × 3 = R73.50.' } }] },
   });
   await page.goto(`/dashboard/student/learning/topic/${integers}?lesson=G9-INT-SIGNED-OPERATIONS&step=example`);
-  const reasoning = page.getByRole('list', { name: 'Worked example reasoning', exact: true });
-  await expect(reasoning.getByRole('listitem')).toHaveCount(3);
-  await expect(reasoning.getByText('A notebook costs R24.50.', { exact: true })).toBeVisible();
-  await expect(reasoning.getByText('R24.50 × 3 = R73.50.', { exact: true })).toBeVisible();
+  const example = page.locator('.learning-worked-example');
+  await expect(example).toContainText('A notebook costs R24.50. Find the cost of 3 notebooks.');
+  await expect(page.getByRole('list', { name: 'Worked example reasoning', exact: true })).toHaveCount(0);
+  await expect(example).toContainText('R73.50.');
 });
 
 test('lesson steps survive refresh, browser back and existing skill bookmarks', async ({ page }) => {
   await useScenario(page, 'practice');
   await page.goto(`/dashboard/student/learning/topic/${integers}#skill-G9-INT-SIGNED-OPERATIONS`);
   await expect(page.getByRole('heading', { name: 'Integer signs', exact: true })).toBeFocused();
-  await page.getByRole('link', { name: 'See worked example', exact: true }).click();
+  await page.getByRole('link', { name: 'See examples', exact: true }).click();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Worked example', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Back to the idea', exact: true }).click();
@@ -433,7 +433,7 @@ test('incorrect practice can revisit the example and retry the same saved questi
   await page.getByRole('button', { name: 'Check answer', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Not quite yet' })).toBeFocused();
   await expect(page.getByText('Check the direction of your move on the number line.')).toBeVisible();
-  await page.getByRole('link', { name: 'Review worked example', exact: true }).click();
+  await page.getByRole('link', { name: 'Review examples', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Worked example', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Try it yourself', exact: true }).click();
   await expect(page).toHaveURL(/retentionCheck=review-test/);
@@ -533,7 +533,7 @@ for (const dark of [false, true]) {
   test(`topic lesson and practice accessibility across viewports — ${dark ? 'dark' : 'light'}`, async ({ page }, testInfo) => {
     await useScenario(page, 'practice');
     await page.goto(`/dashboard/student/learning/topic/${integers}`);
-    await expect(page.getByRole('heading', { name: 'Topic journey', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your learning path', exact: true })).toBeVisible();
     await page.evaluate((enabled) => document.documentElement.classList.toggle('dark', enabled), dark);
     await page.addScriptTag({ path: require.resolve('axe-core/axe.min.js') });
     async function checkSurface(surface: string) {
@@ -549,10 +549,10 @@ for (const dark of [false, true]) {
       }
     }
     await checkSurface('topic');
-    await page.getByRole('link', { name: 'Start lesson', exact: true }).first().click();
+    await page.getByRole('link', { name: 'Continue lesson', exact: true }).first().click();
     await expect(page.getByRole('heading', { name: 'Integer signs', exact: true })).toBeVisible();
     await checkSurface('idea');
-    await page.getByRole('link', { name: 'See worked example', exact: true }).click();
+    await page.getByRole('link', { name: 'See examples', exact: true }).click();
     await checkSurface('example');
     await page.getByRole('link', { name: 'Try it yourself', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Calculate: −6 + 10.' })).toBeVisible();

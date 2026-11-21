@@ -23,7 +23,7 @@ test('all role shells use a five-destination mobile nav with an accessible More 
   assert.match(shell, /admin: \['Today', 'Learners & guardians', 'Learning quality', 'Finance'\]/);
   assert.match(shell, /aria-haspopup="dialog"/);
   assert.match(shell, /aria-expanded=\{open\}/);
-  assert.match(shell, /useModalDialog\(\{ dialogRef, onClose: \(\) => setOpen\(false\), open \}\)/);
+  assert.match(shell, /useModalDialog\(\{ dialogRef, onClose: \(\) => onOpenChange\(false\), open \}\)/);
   assert.match(shell, /env\(safe-area-inset-bottom\)/);
 });
 

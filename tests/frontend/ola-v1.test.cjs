@@ -69,9 +69,9 @@ test('the activity runner has a bounded, idempotent evaluation retry state', () 
 });
 
 test('topic experience treats video as optional and never embeds autoplay', () => {
-  const route = fs.readFileSync(path.join(root, 'src/features/learning/StudentLearningLessonRoute.tsx'), 'utf8');
-  assert.match(route, /skill\.content\.videoUrl \?/);
-  assert.match(route, /Optional video lesson/);
+  const route = fs.readFileSync(path.join(root, 'src/features/learning/StudentLearningTopicRoute.tsx'), 'utf8');
+  assert.match(route, /lesson\.content\.videoUrl \?/);
+  assert.match(route, /Videos & resources/);
   assert.doesNotMatch(route, /autoplay/i);
 });
 
@@ -100,7 +100,8 @@ test('curated video candidates are review-gated, learner-safe, and rechecked aft
 });
 
 test('student video links are data-light and unavailable video data does not block the lesson', () => {
-  const route = fs.readFileSync(path.join(root, 'src/features/learning/StudentLearningLessonRoute.tsx'), 'utf8');
+  const route = fs.readFileSync(path.join(root, 'src/features/learning/StudentLearningTopicRoute.tsx'), 'utf8');
   assert.match(route, /target="_blank"/);
+  assert.match(route, /Optional videos could not be loaded/);
   assert.doesNotMatch(route, /<iframe|autoplay/i);
 });
