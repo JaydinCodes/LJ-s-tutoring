@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, PageShell } from '../../components/dashboard/Da
 import { LessonSteps } from './LearningMap';
 import { getConfidenceFeedback, getMisconceptionExplanation, type MisconceptionDetail } from './misconceptionExplanations';
 import { QuestionResponseInput } from './QuestionResponseInput';
+import { formatLearnerMath } from './studentLearningPresentation';
 import { type LearnerConfidence } from './studentLearningRepository';
 import { useActivityProgress, useCompleteLearningActivityMutation, useGrade9LearningTopic, useGrade9Term1LearningJourney, useGrade9Term1TopicLearningMap, useLearnerActivity, useLearnerQuestion, useSubmitLearningAttemptMutation } from './studentLearningQueries';
 import './student-learning.css';
@@ -198,28 +199,28 @@ export function StudentActivityRoute() {
       <div className="learning-question-progress"><span>{current.stageType.replaceAll('_', ' ')}</span><span>Question {questionNumber} of {progress.length}</span><progress max={progress.length} value={completed} aria-label={`${completed} of ${progress.length} questions completed`} /></div>
       <section className="learning-question" aria-labelledby="activity-question-heading" data-testid="activity-state" data-state={activeFeedback ? 'feedback' : 'question'} data-question-id={question.id} data-activity-code={activityCode}>
         <p className="learning-eyebrow">{activeFeedback ? 'Your answer & feedback' : 'Your turn'} · {question.marks} {question.marks === 1 ? 'mark' : 'marks'}</p>
-        <h2 id="activity-question-heading" ref={questionHeading} tabIndex={-1}>{question.prompt}</h2>
+        <h2 id="activity-question-heading" ref={questionHeading} tabIndex={-1}>{formatLearnerMath(question.prompt)}</h2>
         {activeFeedback ? <div className="learning-feedback" data-result={activeFeedback.status}>
           <p className="learning-submitted-answer"><span className="learning-muted">Your answer</span><strong>{activeFeedback.learnerAnswer}</strong></p>
           <h3 ref={feedbackHeading} tabIndex={-1}>{activeFeedback.status === 'correct' ? <><Check size={20} aria-hidden="true" /> Answer correct</> : activeFeedback.status === 'needs_review' ? 'Saved for review' : 'Not quite yet'}</h3>
           {activeFeedback.status === 'needs_review' ? <p className="learning-muted">Your answer is saved and needs a tutor to review it. It has not been marked correct or incorrect.</p>
             : <>
               <p>{feedbackInsight?.message}</p>
-              {activeFeedback.distractorExplanation ? <div className="learning-feedback-reason"><h4>Why this choice is not correct</h4><p>{activeFeedback.distractorExplanation}</p></div> : null}
+              {activeFeedback.distractorExplanation ? <div className="learning-feedback-reason"><h4>Why this choice is not correct</h4><p>{formatLearnerMath(activeFeedback.distractorExplanation)}</p></div> : null}
               {activeFeedback.misconception ? <div className="learning-feedback-reason"><h4>{activeFeedback.misconception.title}</h4><p>{activeFeedback.misconception.explanation}</p><p>{activeFeedback.misconception.guidance}</p>{activeFeedback.misconception.example ? <p className="learning-feedback-example">{activeFeedback.misconception.example}</p> : null}</div> : null}
               {activeFeedback.status === 'correct' && activeFeedback.marksAwarded !== null ? <p className="learning-muted">Marks awarded: {activeFeedback.marksAwarded} / {activeFeedback.marksAvailable}</p> : null}
             </>}
           <div className="learning-feedback-actions">{activeFeedback.status === 'incorrect' ? <>
             <button type="button" className="learning-primary" onClick={handleTryAgain}><RotateCcw size={16} aria-hidden="true" />Try again with this insight</button>
-            {exampleRoute ? <Link className="learning-text-link" to={exampleRoute}>Review worked example <ArrowRight size={16} aria-hidden="true" /></Link> : null}
+            {exampleRoute ? <Link className="learning-text-link" to={exampleRoute}>Review examples <ArrowRight size={16} aria-hidden="true" /></Link> : null}
           </> : <button type="button" className="learning-primary" disabled={advancing} onClick={() => { void handleContinue(); }}>{advancing ? 'Loading next step...' : 'Continue to next step'}<ArrowRight size={16} aria-hidden="true" /></button>}</div>
         </div> : <form className="learning-answer-form" onSubmit={(event) => { event.preventDefault(); void submitAnswer(); }} aria-busy={submit.isPending}>
           <fieldset className="learning-answer-fieldset" disabled={submit.isPending}><legend>Your answer</legend>{question.questionType !== 'multiple_choice' ? <label className="sr-only" htmlFor="activity-answer">Your answer</label> : null}<QuestionResponseInput questionType={question.questionType} options={question.options} value={answer} onChange={setAnswer} disabled={submit.isPending} /></fieldset>
-          {hintIds.map((id) => { const hint = question.hints.find((item) => item.id === id); return <aside key={id} className="learning-hint"><h3>Hint {hint?.level}</h3><p>{hint?.prompt}</p></aside>; })}
+          {hintIds.map((id) => { const hint = question.hints.find((item) => item.id === id); return <aside key={id} className="learning-hint"><h3>Hint {hint?.level}</h3><p>{hint ? formatLearnerMath(hint.prompt) : null}</p></aside>; })}
           {availableHint ? <button className="learning-text-link" type="button" disabled={submit.isPending} onClick={() => setHintIds((previous) => [...previous, availableHint.id])}><Lightbulb size={16} aria-hidden="true" />{hintIds.length ? 'Show another hint' : 'Show a hint'}</button> : null}
           <fieldset className="learning-confidence" disabled={submit.isPending}><legend>How confident are you? <span className="learning-muted">(optional)</span></legend><div>{([[1, 'Not sure'], [2, 'A little sure'], [3, 'Quite sure'], [4, 'Very sure']] as const).map(([value, label]) => <label key={value}><input type="radio" name="activity-confidence" value={value} checked={confidence === value} onChange={() => setConfidence(value)} disabled={submit.isPending} /><span>{label}</span></label>)}</div></fieldset>
           {submissionMessage || submit.isError ? <p className="learning-error" role="alert">{submissionMessage ?? 'Your answer could not be saved. Check your connection and retry.'}</p> : null}
-          <div className="learning-feedback-actions"><button type="submit" className="learning-primary" disabled={!answer.trim() || submit.isPending}>{submit.isPending ? 'Checking answer...' : submissionMessage ? 'Retry same answer' : 'Check answer'}<ArrowRight size={16} aria-hidden="true" /></button>{exampleRoute ? <Link className="learning-text-link" to={exampleRoute}>Review worked example</Link> : null}</div>
+          <div className="learning-feedback-actions"><button type="submit" className="learning-primary" disabled={!answer.trim() || submit.isPending}>{submit.isPending ? 'Checking answer...' : submissionMessage ? 'Retry same answer' : 'Check answer'}<ArrowRight size={16} aria-hidden="true" /></button>{exampleRoute ? <Link className="learning-text-link" to={exampleRoute}>Review examples</Link> : null}</div>
         </form>}
       </section>
     </div>

@@ -33,6 +33,19 @@ test('student app header allows long page titles to wrap on phone screens', () =
   assert.equal(shell.includes('mt-1 truncate text-2xl'), false, 'student top heading must not clip long titles');
 });
 
+test('student navigation can collapse on desktop and opens as a mobile drawer', () => {
+  const shell = read('src', 'components', 'dashboard', 'DashboardShell.tsx');
+
+  assert.ok(shell.includes("sessionStorage.getItem('odysseus-student-sidebar-collapsed')"), 'student sidebar preference should persist for the browser session');
+  assert.ok(shell.includes("sessionStorage.setItem('odysseus-student-sidebar-collapsed'"), 'student sidebar preference should update when toggled');
+  assert.match(shell, /Collapse navigation/);
+  assert.match(shell, /Expand navigation/);
+  assert.match(shell, /transition-\[grid-template-columns\] duration-200/);
+  assert.match(shell, /aria-hidden=\{collapsed \|\| undefined\}/);
+  assert.match(shell, /fixed inset-y-0 left-0/);
+  assert.match(shell, /aria-label="Open navigation"/);
+});
+
 test('career Odie surfaces expose dialog semantics only on the careers route', () => {
   const careers = read('src', 'features', 'students', 'StudentCareersRoute.tsx');
   const dialog = read('src', 'features', 'students', 'OdieCareerDialog.tsx');

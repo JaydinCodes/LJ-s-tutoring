@@ -183,12 +183,12 @@ test('B — a weak learner reads the recommended Integers lesson and receives sp
   await startAssessment(page, emails.weak, assessmentTitle('Integers', 'topic baseline'));
   await completeAssessment(page, 'incorrect');
   await page.goto('/dashboard/student/learning/topic/INTEGERS');
-  await page.getByRole('link', { name: 'Start lesson', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Continue lesson', exact: true }).first().click();
   await expect(page.locator('.learning-reading').getByRole('heading', { name: 'Integer operations and order' })).toBeVisible();
-  await page.getByRole('link', { name: 'See worked example', exact: true }).click();
+  await page.getByRole('link', { name: 'See examples', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Worked example', exact: true })).toBeVisible();
   await capture(page, testInfo, 'integers-lesson-worked-example', 360, 844);
-  await page.getByRole('link', { name: 'Try it yourself', exact: true }).click();
+  await page.getByRole('link', { name: 'Move up a level', exact: true }).click();
   await expect(page.getByText('Calculate −8 + 13.')).toBeVisible();
   await completeActivity(page, 'incorrect', true);
   await expect(page.getByText('Why this choice is not correct')).toBeVisible();
@@ -287,7 +287,7 @@ test('E — normal learning followed by an endline awards mastery without a comp
   expect(map.skills.find((skill: { activityCode: string }) => skill.activityCode === 'A.G9.S4.INTEGER-OPS').practiceStatus).toBe('completed');
   expect(map.skills.some((skill: { skillEvidenceState: string | null }) => skill.skillEvidenceState !== null)).toBeTruthy();
   await page.goto('/dashboard/student/learning/topic/INTEGERS');
-  await expect(page.getByText('Practice completed', { exact: true })).toBeVisible();
+  await expect(page.getByText('Completed', { exact: true })).toBeVisible();
   await expect(page.getByText('Formal evidence has recorded mastery.', { exact: true })).toBeVisible();
   await capture(page, testInfo, 'persisted-topic-mastery-map', 390, 844);
   writeEvidence(testInfo, 'E-normal-endline', { authenticatedUser: emails.endline, persistedAssessmentSessionId: endlineSession, observed: 'completed guided practice and eligible endline; endline itself awarded mastery' });
@@ -405,9 +405,9 @@ test('Sprint 5 real Learning Map has ordered checkpoints, keyboard focus and res
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL('/dashboard/student/learning/topic/INTEGERS');
   await expect(page.getByRole('list', { name: 'Integers curriculum skills' })).toBeVisible();
-  // A partially completed activity legitimately reports "in progress", not
-  // just "attempted". Persisted attempt evidence is asserted below via RPC.
-  await expect(page.getByText(/Practice in progress|Practice attempted|Practice completed/).first()).toBeVisible();
+  // The learning path derives the learner-facing state from persisted activity
+  // evidence. The raw evidence is asserted below through the RPC.
+  await expect(page.getByText(/In progress|Completed|Not started/).first()).toBeVisible();
   for (const width of [360, 390, 1440]) {
     await capture(page, testInfo, 'sprint5-topic-skill-map', width, width === 1440 ? 1000 : 844,
       page.getByRole('list', { name: 'Integers curriculum skills' }).locator('xpath=ancestor::section[1]'));

@@ -83,10 +83,12 @@ test('the dashboard retains a single dominant continue action and an evidence-ba
   assert.match(route, /useGrade9Term1LearningJourney/);
   assert.match(route, /Continue learning/);
   assert.match(route, /JourneyMap/);
-  assert.match(map, /Learning journey/);
+  assert.match(map, /Your learning path/);
+  assert.match(map, /You're here/);
+  assert.match(map, /Locked/);
   assert.match(map, /Not yet available/);
   assert.match(map, /Helpful Grade 8 detour/);
-  assert.match(map, /Practice completed/);
+  assert.match(map, /practiceStatus === 'completed'/);
   assert.match(map, /Formal evidence has recorded mastery/);
   assert.doesNotMatch(map, /animate-pulse|usePrefersReducedMotion/);
   assert.match(route, /className="learning-primary"/);
@@ -95,9 +97,19 @@ test('the dashboard retains a single dominant continue action and an evidence-ba
   assert.match(topicRoute, /Make this my current topic/);
   assert.match(topicRoute, /TopicLearningMap/);
   assert.match(topicRoute, /LessonSteps/);
-  assert.match(topicRoute, /See worked example/);
-  assert.match(topicRoute, /Try it yourself/);
+  assert.match(topicRoute, /See examples/);
+  assert.match(topicRoute, /Move up a level/);
   assert.match(topicRoute, /This is my current topic/);
+  assert.match(topicRoute, /skills completed/);
+  assert.match(topicRoute, /Assessments confirm mastery/);
+  assert.match(topicRoute, /WorkedExamples/);
+  assert.match(topicRoute, /ConceptSteps/);
+  assert.match(topicRoute, /Next example/);
+  assert.doesNotMatch(topicRoute, /Intl\.Segmenter/);
+  const presentation = fs.readFileSync(path.join(root, 'src', 'features', 'learning', 'studentLearningPresentation.ts'), 'utf8');
+  assert.match(presentation, /Know your numbers/);
+  assert.match(presentation, /Numbers are weirder than they look/);
+  assert.match(presentation, /Example 3/);
   for (const fragment of [
     'create or replace function public.get_my_grade9_term1_topic_learning_map',
     'public.current_profile_role() <> \'student\'',
