@@ -11,9 +11,11 @@ test('Odysseus home keeps one learner action and makes roadmap exploration secon
   assert.match(home, /const primary = journey\?\.primary/);
   assert.match(home, /className="learning-primary" to=\{primary\.route\}/);
   assert.match(home, /Current focus/);
-  assert.match(home, /topics mastered/);
-  assert.match(home, /Course content/);
-  assert.match(home, /Upcoming actions/);
+  assert.match(home, /topics completed/);
+  assert.match(home, /Your progress/);
+  assert.match(home, /Up next/);
+  assert.match(home, /View all upcoming items/);
+  assert.doesNotMatch(home, /Course content/);
   assert.match(home, /No learning action is available yet/);
   assert.doesNotMatch(home, /Available assessments/);
   assert.doesNotMatch(home, /Published topic catalogue/);
@@ -28,13 +30,13 @@ test('topic overview routes individual skills to a focused learner lesson', () =
   assert.match(map, /lesson: skill\.skillCode/);
   assert.match(topic, /searchParams\.get\('lesson'\)/);
   assert.match(app, /learning\/topic\/:topicCode\/lesson\/:skillCode/);
-  assert.match(map, /Topic journey/);
+  assert.match(map, /Your learning path/);
   assert.match(topic, /LessonSteps/);
-  assert.match(lesson, /Understand/);
-  assert.match(lesson, /WorkedExample/);
+  assert.match(lesson, /Navigate/);
+  assert.match(lesson, /topic\/\$\{encodeURIComponent\(topicCode\)\}/);
+  assert.match(topic, /WorkedExamples/);
+  assert.match(topic, /Move up a level/);
   assert.match(design, /See an example/);
-  assert.match(lesson, /Try it yourself/);
-  assert.match(lesson, /Back to/);
 });
 
 test('practice preserves evidence inputs while presenting one readable question and contextual feedback', () => {

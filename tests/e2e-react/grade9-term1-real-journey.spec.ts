@@ -183,9 +183,9 @@ test('B — a weak learner reads the recommended Integers lesson and receives sp
   await startAssessment(page, emails.weak, assessmentTitle('Integers', 'topic baseline'));
   await completeAssessment(page, 'incorrect');
   await page.goto('/dashboard/student/learning/topic/INTEGERS');
-  await page.getByRole('link', { name: 'Start lesson', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Continue lesson', exact: true }).first().click();
   await expect(page.locator('.learning-reading').getByRole('heading', { name: 'Integer operations and order' })).toBeVisible();
-  await page.getByRole('link', { name: 'See worked example', exact: true }).click();
+  await page.getByRole('link', { name: 'See examples', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Worked example', exact: true })).toBeVisible();
   await capture(page, testInfo, 'integers-lesson-worked-example', 360, 844);
   await page.getByRole('link', { name: 'Try it yourself', exact: true }).click();

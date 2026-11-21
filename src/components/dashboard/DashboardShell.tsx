@@ -17,6 +17,8 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
   Sparkles,
   Target,
   TrendingUp,
@@ -227,11 +229,31 @@ export function DashboardShell({ title, subtitle, section, children, identity }:
     ? `${dayGreeting()}, ${auth.profile?.full_name?.split(' ')[0] || (section === 'admin' ? 'Admin' : section === 'tutor' ? 'Tutor' : 'Student')}`
     : title;
   const { handleSignOut, isSigningOut, signOutError } = useDashboardSignOut(auth.refresh);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return section === 'student' && window.sessionStorage.getItem('odysseus-student-sidebar-collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((collapsed) => {
+      const nextCollapsed = !collapsed;
+      try {
+        window.sessionStorage.setItem('odysseus-student-sidebar-collapsed', String(nextCollapsed));
+      } catch {
+        // Navigation remains usable when browser storage is unavailable.
+      }
+      return nextCollapsed;
+    });
+  };
 
   return (
     <div className={`academy-app-bg overflow-x-clip ${section === 'student' ? 'student-parchment-bg' : ''}`}>
-      <div className={`mx-auto grid min-h-screen w-full max-w-[1720px] grid-cols-1 ${section === 'student' ? 'lg:grid-cols-[13.5rem_minmax(0,1fr)]' : 'lg:grid-cols-[16.5rem_minmax(0,1fr)]'}`} data-modal-background>
-        <DesktopSidebar groups={groups} homeHref={homeHref} role={section} onSignOut={() => void handleSignOut()} signingOut={isSigningOut} />
+      <div className={`mx-auto grid min-h-screen w-full max-w-[1720px] grid-cols-1 transition-[grid-template-columns] duration-200 motion-reduce:transition-none ${section === 'student' ? (sidebarCollapsed ? 'lg:grid-cols-[0px_minmax(0,1fr)]' : 'lg:grid-cols-[13.5rem_minmax(0,1fr)]') : 'lg:grid-cols-[16.5rem_minmax(0,1fr)]'}`} data-modal-background>
+        <DesktopSidebar collapsed={section === 'student' && sidebarCollapsed} groups={groups} homeHref={homeHref} role={section} onSignOut={() => void handleSignOut()} signingOut={isSigningOut} />
         <main className={`min-w-0 px-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 lg:pb-8 lg:pt-5 ${section === 'student' ? 'lg:px-9 xl:px-12' : 'lg:px-7 xl:px-9'}`}>
           <DashboardHeader
             title={displayTitle}
@@ -240,6 +262,10 @@ export function DashboardShell({ title, subtitle, section, children, identity }:
             role={identity?.meta || auth.profile?.role}
             section={section}
             notificationControl={section === 'student' ? <StudentNotificationControl /> : undefined}
+            mobileNavigationOpen={mobileNavigationOpen}
+            sidebarCollapsed={sidebarCollapsed}
+            onOpenMobileNavigation={() => setMobileNavigationOpen(true)}
+            onToggleSidebar={section === 'student' ? toggleSidebar : undefined}
           />
           {signOutError ? (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-400/30 dark:bg-red-950/40 dark:text-red-100" role="alert">
@@ -256,6 +282,8 @@ export function DashboardShell({ title, subtitle, section, children, identity }:
         onSignOut={() => void handleSignOut()}
         signingOut={isSigningOut}
         section={section}
+        open={mobileNavigationOpen}
+        onOpenChange={setMobileNavigationOpen}
       />
     </div>
   );
@@ -268,6 +296,10 @@ function DashboardHeader({
   role,
   section,
   notificationControl,
+  mobileNavigationOpen,
+  sidebarCollapsed,
+  onOpenMobileNavigation,
+  onToggleSidebar,
 }: {
   title: string;
   subtitle: string;
@@ -275,13 +307,27 @@ function DashboardHeader({
   role?: string;
   section: DashboardSection;
   notificationControl?: ReactNode;
+  mobileNavigationOpen: boolean;
+  sidebarCollapsed: boolean;
+  onOpenMobileNavigation: () => void;
+  onToggleSidebar?: () => void;
 }) {
   return (
     <header className="flex min-w-0 items-start justify-between gap-4 border-b border-slate-200/80 pb-4 dark:border-white/10">
-      <div className="min-w-0">
+      <div className="flex min-w-0 items-start gap-2 sm:gap-3">
+        {section === 'student' ? <>
+          <button aria-controls="student-more-navigation" aria-expanded={mobileNavigationOpen} aria-haspopup="dialog" aria-label="Open navigation" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-[#ded5c6] bg-[#fffbf2] text-academy-navy shadow-sm lg:hidden dark:border-white/10 dark:bg-slate-900 dark:text-white" onClick={onOpenMobileNavigation} type="button">
+            <PanelLeftOpen className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <button aria-controls="student-desktop-navigation" aria-expanded={!sidebarCollapsed} aria-label={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'} className="hidden h-11 w-11 shrink-0 place-items-center rounded-xl border border-[#ded5c6] bg-[#fffbf2] text-academy-navy shadow-sm transition-colors hover:border-academy-gold lg:grid dark:border-white/10 dark:bg-slate-900 dark:text-white" onClick={onToggleSidebar} type="button">
+            {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" aria-hidden="true" /> : <PanelLeftClose className="h-5 w-5" aria-hidden="true" />}
+          </button>
+        </> : null}
+        <div className="min-w-0">
         <p className={`text-[0.7rem] font-bold uppercase tracking-[0.2em] text-academy-aegean dark:text-academy-gold ${section === 'student' ? 'lg:hidden' : ''}`}>Project Odysseus</p>
         <h1 className={`mt-1 break-words font-display font-semibold leading-tight text-academy-navy dark:text-academy-parchment ${section === 'student' ? 'text-[clamp(1.8rem,4vw,3.3rem)]' : 'text-[clamp(1.8rem,3vw,2.65rem)]'}`}>{title}</h1>
         <p className={`mt-2 text-sm leading-6 text-academy-muted ${section === 'student' ? 'max-w-5xl line-clamp-3 sm:line-clamp-2 lg:line-clamp-1' : 'max-w-3xl'}`}>{subtitle}</p>
+        </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {notificationControl}
@@ -331,12 +377,14 @@ function StudentNotificationControl() {
 }
 
 function DesktopSidebar({
+  collapsed,
   groups,
   homeHref,
   role,
   onSignOut,
   signingOut,
 }: {
+  collapsed: boolean;
   groups: DashboardNavGroup[];
   homeHref: string;
   role: DashboardSection;
@@ -344,15 +392,15 @@ function DesktopSidebar({
   signingOut: boolean;
 }) {
   return (
-    <aside className="sticky top-0 hidden h-screen min-h-0 bg-academy-navy text-white lg:flex lg:flex-col" data-testid={`${role}-desktop-sidebar`}>
-      <NavLink className={`shrink-0 border-b border-white/10 ${role === 'student' ? 'flex flex-col items-center gap-2 px-4 py-6 text-center' : 'flex items-center gap-3 px-5 py-5'}`} to={homeHref}>
+    <aside aria-hidden={collapsed || undefined} className={`sticky top-0 hidden h-screen min-h-0 min-w-0 overflow-hidden bg-academy-navy text-white transition-opacity duration-200 motion-reduce:transition-none lg:flex lg:flex-col ${collapsed ? 'pointer-events-none opacity-0' : 'opacity-100'}`} data-testid={`${role}-desktop-sidebar`}>
+      <NavLink className={`shrink-0 border-b border-white/10 ${role === 'student' ? 'flex flex-col items-center gap-2 px-4 py-6 text-center' : 'flex items-center gap-3 px-5 py-5'}`} tabIndex={collapsed ? -1 : undefined} to={homeHref}>
         <img className={role === 'student' ? 'h-28 w-32 scale-110 object-contain' : 'h-12 w-12 object-contain'} src="/images/project-odysseus-logo-transparent.png" alt="" />
         <span className="min-w-0">
           {role === 'student' ? null : <span className="block font-display text-xl font-semibold text-white">Odysseus</span>}
           <span className={`block font-semibold uppercase text-academy-gold ${role === 'student' ? 'rounded-lg border border-academy-gold/70 px-4 py-1 text-[0.62rem] tracking-[0.18em]' : 'text-[0.65rem] tracking-[0.16em]'}`}>{role} portal</span>
         </span>
       </NavLink>
-      <nav aria-label={`${role} dashboard`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 [scrollbar-gutter:stable]" data-testid={`${role}-desktop-navigation`}>
+      <nav aria-label={`${role} dashboard`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 [scrollbar-gutter:stable]" data-testid={`${role}-desktop-navigation`} id={`${role}-desktop-navigation`}>
         {groups.map((group) => (
           <div className="mb-5 last:mb-0" key={group.label}>
             <p className="mb-1 px-3 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-slate-400">{group.label}</p>
@@ -364,6 +412,7 @@ function DesktopSidebar({
                     key={item.to}
                     className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors ${isActive ? 'bg-white/[0.12] text-white ring-1 ring-white/10' : 'text-slate-300 hover:bg-white/[0.07] hover:text-white'}`}
                     end={item.to === homeHref}
+                    tabIndex={collapsed ? -1 : undefined}
                     to={item.to}
                   >
                     {({ isActive }) => <>
@@ -379,7 +428,7 @@ function DesktopSidebar({
         ))}
       </nav>
       <div className="shrink-0 border-t border-white/10 p-3">
-        <button className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-slate-300 hover:bg-white/[0.07] hover:text-white" disabled={signingOut} onClick={onSignOut} type="button">
+        <button className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-slate-300 hover:bg-white/[0.07] hover:text-white" disabled={signingOut} onClick={onSignOut} tabIndex={collapsed ? -1 : undefined} type="button">
           <LogOut className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />
           {signingOut ? 'Signing out...' : 'Sign out'}
         </button>
@@ -394,15 +443,18 @@ function MobileRoleNavigation({
   onSignOut,
   signingOut,
   section,
+  open,
+  onOpenChange,
 }: {
   homeHref: string;
   navItems: DashboardNavItem[];
   onSignOut: () => void;
   signingOut: boolean;
   section: DashboardSection;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
   const location = useLocation();
-  const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const requestedLabels = mobilePrimaryLabels[section];
   const primaryItems = requestedLabels
@@ -415,16 +467,16 @@ function MobileRoleNavigation({
   const activeOverflow = overflowItems.some((item) => isCurrentPath(location.pathname, item));
   const dialogId = `${section}-more-navigation`;
   const dialogTitleId = `${dialogId}-title`;
-  useModalDialog({ dialogRef, onClose: () => setOpen(false), open });
+  useModalDialog({ dialogRef, onClose: () => onOpenChange(false), open });
 
   return (
     <>
       {open ? (
-        <div className="fixed inset-0 z-50 bg-slate-950/45 px-3 lg:hidden" onMouseDown={(event) => { if (event.currentTarget === event.target) setOpen(false); }}>
+        <div className="fixed inset-0 z-50 bg-slate-950/45 lg:hidden" onMouseDown={(event) => { if (event.currentTarget === event.target) onOpenChange(false); }}>
           <div
             aria-labelledby={dialogTitleId}
             aria-modal="true"
-            className="fixed inset-x-3 bottom-[calc(5.9rem+env(safe-area-inset-bottom))] max-h-[min(34rem,calc(100vh-7rem))] overflow-y-auto rounded-3xl border border-slate-200 bg-academy-parchment p-4 shadow-2xl dark:border-white/10 dark:bg-slate-950"
+            className="fixed inset-y-0 left-0 w-[min(20rem,calc(100vw-2.5rem))] overflow-y-auto border-r border-slate-200 bg-academy-parchment p-4 shadow-2xl dark:border-white/10 dark:bg-slate-950"
             id={dialogId}
             ref={dialogRef}
             role="dialog"
@@ -433,14 +485,14 @@ function MobileRoleNavigation({
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3 dark:border-white/10">
               <div>
                 <p className="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-academy-aegean dark:text-academy-gold">Project Odysseus</p>
-                <h2 className="mt-1 font-display text-2xl font-semibold text-academy-navy dark:text-white" id={dialogTitleId}>More</h2>
+                <h2 className="mt-1 font-display text-2xl font-semibold text-academy-navy dark:text-white" id={dialogTitleId}>Navigation</h2>
               </div>
-              <button aria-label="Close More navigation" className="grid h-11 w-11 place-items-center rounded-2xl border border-slate-200 bg-white text-academy-navy dark:border-white/10 dark:bg-slate-900 dark:text-white" data-modal-initial-focus onClick={() => setOpen(false)} type="button">
+              <button aria-label="Close navigation" className="grid h-11 w-11 place-items-center rounded-2xl border border-slate-200 bg-white text-academy-navy dark:border-white/10 dark:bg-slate-900 dark:text-white" data-modal-initial-focus onClick={() => onOpenChange(false)} type="button">
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
-            <nav aria-label={`${section} secondary navigation`} className="mt-3 grid gap-2 sm:grid-cols-2">
-              {overflowItems.map((item) => {
+            <nav aria-label={`${section} navigation`} className="mt-3 grid gap-2">
+              {navItems.map((item) => {
                 const Icon = item.icon;
                 const active = isCurrentPath(location.pathname, item);
                 return (
@@ -448,7 +500,7 @@ function MobileRoleNavigation({
                     key={item.to}
                     className="flex min-h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-academy-navy data-[active=true]:border-academy-aegean data-[active=true]:bg-academy-navy data-[active=true]:text-white dark:border-white/10 dark:bg-slate-900 dark:text-white dark:data-[active=true]:bg-academy-aegean"
                     data-active={active}
-                    onClick={() => setOpen(false)}
+                    onClick={() => onOpenChange(false)}
                     to={item.to}
                   >
                     <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -464,7 +516,7 @@ function MobileRoleNavigation({
           </div>
         </div>
       ) : null}
-      <nav aria-label={`${section} dashboard`} className="academy-bottom-nav lg:hidden" data-modal-background data-testid={`${section}-mobile-navigation`}>
+      <nav aria-label={`${section} dashboard`} className="academy-bottom-nav lg:hidden" data-modal-background data-testid={`${section}-mobile-navigation`} id={`${section}-mobile-navigation`}>
         <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${visibleItems.length + (showMore ? 1 : 0)}, minmax(0, 1fr))` }}>
           {visibleItems.map((item) => {
             const Icon = item.icon;
@@ -477,7 +529,7 @@ function MobileRoleNavigation({
             );
           })}
           {showMore ? (
-            <button aria-controls={dialogId} aria-expanded={open} aria-haspopup="dialog" className="academy-nav-item" data-active={activeOverflow} onClick={() => setOpen(true)} type="button">
+            <button aria-controls={dialogId} aria-expanded={open} aria-haspopup="dialog" className="academy-nav-item" data-active={activeOverflow} onClick={() => onOpenChange(true)} type="button">
               <Ellipsis className="mx-auto mb-1 h-[1.15rem] w-[1.15rem] text-current" aria-hidden="true" />
               <span className="block truncate">More</span>
             </button>
