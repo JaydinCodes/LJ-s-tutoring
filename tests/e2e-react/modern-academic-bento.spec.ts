@@ -39,9 +39,9 @@ for (const viewport of [
       if (users[role].primaryTestId) await expect(page.getByTestId(users[role].primaryTestId!)).toBeVisible();
       await expectNoHorizontalPageOverflow(page);
       await mobileNav.getByRole('button', { name: 'More' }).click();
-      const dialog = page.getByRole('dialog', { name: 'More' });
+      const dialog = page.getByRole('dialog', { name: 'Navigation' });
       await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole('button', { name: 'Close More navigation' })).toBeFocused();
+      await expect(dialog.getByRole('button', { name: 'Close navigation' })).toBeFocused();
       await page.keyboard.press('Escape');
       await expect(dialog).toBeHidden();
     });
