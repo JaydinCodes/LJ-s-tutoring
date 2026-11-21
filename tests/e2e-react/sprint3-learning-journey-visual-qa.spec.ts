@@ -189,7 +189,7 @@ test('visual QA — new learner sees a calm topic-choice starting point', async 
 
 test('visual QA — selected topic makes its baseline the clear next step', async ({ page }, testInfo) => {
   await openLearning(page, 'selected', testInfo);
-  await expect(page.getByText('Understand your starting point', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Start assessment', exact: true }).first()).toHaveAttribute('href', `/dashboard/student/learning/assessment/${baselineDefinition}`);
   await page.getByRole('link', { name: /Integers/ }).first().click();
   await expect(page.getByRole('button', { name: 'This is my current topic' })).toBeVisible();
   const mapHeading = page.getByRole('heading', { name: 'Your learning path', exact: true });
@@ -212,7 +212,7 @@ test('visual QA — learner can start a baseline on mobile', async ({ page }, te
 
 test('visual QA — weak prerequisite evidence is supportive rather than punitive', async ({ page }, testInfo) => {
   await openLearning(page, 'weak-prerequisite', testInfo);
-  await expect(page.getByText('A useful foundation before your next step')).toBeVisible();
+  await expect(page.getByText('Review this before your next step')).toBeVisible();
   await page.goto(`/dashboard/student/learning/topic/${integers}`);
   await expect(page.getByText('Helpful Grade 8 detour')).toBeVisible();
   await capture(page, testInfo, 'grade8-prerequisite-branch', 390, page.getByText('Helpful Grade 8 detour'));
@@ -220,7 +220,7 @@ test('visual QA — weak prerequisite evidence is supportive rather than punitiv
 
 test('visual QA — strong baseline learner sees a mastery challenge', async ({ page }, testInfo) => {
   await openLearning(page, 'challenge', testInfo);
-  await expect(page.getByText('Your mastery challenge is ready', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Start assessment', exact: true }).first()).toHaveAttribute('href', `/dashboard/student/learning/assessment/${challengeDefinition}`);
 });
 
 test('visual QA — successful mastery result is legible and the map uses formal evidence', async ({ page }, testInfo) => {
@@ -239,33 +239,21 @@ test('visual QA — successful mastery result is legible and the map uses formal
 
 test('visual QA — returning learner resumes unfinished guided work', async ({ page }, testInfo) => {
   await openLearning(page, 'unfinished', testInfo);
-  await expect(page.getByText('Continue your activity', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Integers', exact: true })).toBeVisible();
 });
 
-test('learning overview prioritises continuing work and discloses course detail', async ({ page }, testInfo) => {
+test('learning overview prioritises continuing work and exposes the learning path', async ({ page }, testInfo) => {
   await useScenario(page, 'unfinished');
   await page.goto('/dashboard/student/learning');
-  const nextStep = page.getByRole('region', { name: 'Continue learning', exact: true });
-  await expect(nextStep.getByRole('heading', { name: 'Continue your activity' })).toBeVisible();
+  const nextStep = page.getByRole('region', { name: 'Integers', exact: true });
+  await expect(nextStep.getByRole('heading', { name: 'Integers' })).toBeVisible();
   await expect(nextStep.getByRole('link', { name: 'Continue learning', exact: true })).toHaveAttribute('href', `/dashboard/student/learning/activity/${activityCode}`);
-  await expect(page.getByRole('heading', { name: 'Learning journey', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Course content', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Upcoming actions', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your learning path', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your progress', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Up next', exact: true })).toBeVisible();
   await expect(page.getByText('Nothing ready yet', { exact: true })).toHaveCount(0);
   await expect(page.locator('[aria-current="step"]')).toHaveCount(1);
-  await expect(nextStep.getByRole('link', { name: 'Also available: 2 assessments' })).toBeVisible();
-  await page.getByRole('link', { name: 'View progress' }).click();
-  await expect(page.locator('.learning-progress-details')).toHaveAttribute('open', '');
-  await expect(page.getByText('Your skill progress will appear after you complete learning activities.')).toBeVisible();
-  await nextStep.scrollIntoViewIfNeeded();
-
-  const content = page.getByRole('region', { name: 'Course content', exact: true });
-  const disclosure = content.locator('summary').filter({ hasText: 'Integers' });
-  await expect(content.getByText('Signed integer operations', { exact: true })).toBeHidden();
-  await disclosure.focus();
-  await page.keyboard.press('Enter');
-  await expect(content.getByText('Signed integer operations', { exact: true })).toBeVisible();
-  await expect(content.getByRole('link', { name: 'Open topic' })).toHaveAttribute('href', `/dashboard/student/learning/topic/${integers}`);
+  await expect(page.getByRole('link', { name: 'View detailed progress' })).toHaveAttribute('href', '/dashboard/student/progress');
 
   for (const width of [1440, 768, 390, 360]) {
     await capture(page, testInfo, 'learning-overview', width);
@@ -289,7 +277,7 @@ test('learning overview announces loading until the journey is ready', async ({ 
   } finally {
     releaseJourney();
   }
-  await expect(page.getByRole('heading', { name: 'Continue your activity' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Integers', exact: true })).toBeVisible();
 });
 
 test('learning overview gives an honest empty state without a dead-end action', async ({ page }, testInfo) => {
@@ -304,8 +292,8 @@ test('learning overview gives an honest empty state without a dead-end action', 
   await page.goto('/dashboard/student/learning');
   await expect(page.getByText('No learning action is available yet.')).toBeVisible();
   await expect(page.locator('.learning-primary')).toHaveCount(0);
-  await expect(page.getByText('No additional actions right now.')).toBeVisible();
-  await expect(page.getByText('No reviewed topics have been published yet.')).toBeVisible();
+  await expect(page.getByText('Nothing else is ready right now. Continue with your learning path when you are ready.')).toBeVisible();
+  await expect(page.getByText('Your learning path will appear when topics are published.')).toBeVisible();
   await capture(page, testInfo, 'learning-empty', 390);
 });
 
@@ -321,7 +309,7 @@ test('learning overview recovers from a core loading error', async ({ page }, te
   await capture(page, testInfo, 'learning-error', 390);
   unavailable = false;
   await page.getByRole('button', { name: /retry|try again/i }).click();
-  await expect(page.getByRole('heading', { name: 'Continue your activity' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Integers', exact: true })).toBeVisible();
 });
 
 test('learning overview keeps the next step usable when secondary data fails', async ({ page }) => {
@@ -332,15 +320,15 @@ test('learning overview keeps the next step usable when secondary data fails', a
     await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ message: 'Test-only unavailable assessments' }) });
   });
   await page.goto('/dashboard/student/learning');
-  const nextStep = page.getByRole('region', { name: 'Continue learning', exact: true });
+  const nextStep = page.getByRole('region', { name: 'Integers', exact: true });
   await expect(nextStep.getByRole('link', { name: 'Continue learning', exact: true })).toBeVisible();
-  const actions = page.getByRole('region', { name: 'Upcoming actions', exact: true });
+  const actions = page.getByRole('region', { name: 'Up next', exact: true });
   await expect(actions.getByRole('alert')).toBeVisible();
   await expect(nextStep.getByRole('link', { name: 'Continue learning', exact: true })).toBeVisible();
   unavailable = false;
   await actions.getByRole('button', { name: 'Try again' }).click();
   await expect(actions.getByRole('alert')).toHaveCount(0);
-  await expect(actions.getByRole('link', { name: /Read instructions/ })).toHaveCount(2);
+  await expect(actions.getByRole('link', { name: /Start assessment for/ })).toHaveCount(2);
 });
 
 test('learning overview preserves completed diagnostics, optional review and formal progress', async ({ page }) => {
@@ -351,18 +339,18 @@ test('learning overview preserves completed diagnostics, optional review and for
   });
   await page.goto('/dashboard/student/learning');
   await expect(page.getByRole('progressbar')).toHaveAttribute('value', '1');
-  await expect(page.getByRole('link', { name: /Whole Numbers Mastered/ })).toBeVisible();
-  await expect(page.getByText('Completed', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Whole Numbers Completed/ })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Up next', exact: true }).getByText('Completed', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Review completion/ })).toHaveAttribute('href', '/dashboard/student/learning/diagnostic/DONE');
+  await page.getByRole('button', { name: 'View all upcoming items' }).click();
   await expect(page.getByRole('link', { name: 'Start quick review' })).toHaveAttribute('href', `/dashboard/student/learning/activity/${activityCode}?retentionCheck=review-test`);
-  await page.getByRole('link', { name: 'View progress' }).click();
-  await expect(page.getByText('secure', { exact: true })).toBeVisible();
+  await expect(page.getByText('Skills demonstrated', { exact: true })).toBeVisible();
 });
 
 test('learning overview has accessible contrast and controls across themes and viewports', async ({ page }, testInfo) => {
   await useScenario(page, 'unfinished');
   await page.goto('/dashboard/student/learning');
-  await expect(page.getByRole('heading', { name: 'Continue your activity' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Integers', exact: true })).toBeVisible();
   await page.addScriptTag({ path: require.resolve('axe-core/axe.min.js') });
   for (const dark of [false, true]) {
     await page.evaluate((enabled) => document.documentElement.classList.toggle('dark', enabled), dark);
@@ -382,13 +370,13 @@ test('topic lesson loop connects the idea, worked example, practice and saved jo
   await useScenario(page, 'practice');
   await page.goto(`/dashboard/student/learning/topic/${integers}`);
   await expect(page.getByRole('heading', { name: 'Your learning path', exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Continue lesson', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Signed integer operations', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Integer signs', exact: true })).toBeVisible();
   await expect(page.getByText('Use a number line to check the direction of each move.')).toBeVisible();
   await page.getByRole('link', { name: 'See examples', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Worked example', exact: true })).toBeVisible();
   await expect(page.getByText('−8 + 13 = 5 because 13 moves right from −8.')).toBeVisible();
-  await page.getByRole('link', { name: 'Try it yourself', exact: true }).click();
+  await page.getByRole('link', { name: 'Move up a level', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`activity/${activityCode}.*topic=${integers}`));
   await expect(page.getByRole('heading', { name: 'Calculate: −6 + 10.' })).toBeVisible();
   await capture(page, testInfo, 'lesson-practice', 390);
@@ -435,7 +423,7 @@ test('incorrect practice can revisit the example and retry the same saved questi
   await expect(page.getByText('Check the direction of your move on the number line.')).toBeVisible();
   await page.getByRole('link', { name: 'Review examples', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Worked example', exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Try it yourself', exact: true }).click();
+  await page.getByRole('link', { name: 'Move up a level', exact: true }).click();
   await expect(page).toHaveURL(/retentionCheck=review-test/);
   await expect(page.getByText('Question 1 of 1', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Calculate: −6 + 10.' })).toBeVisible();
@@ -549,12 +537,12 @@ for (const dark of [false, true]) {
       }
     }
     await checkSurface('topic');
-    await page.getByRole('link', { name: 'Continue lesson', exact: true }).first().click();
+    await page.getByRole('link', { name: 'Signed integer operations', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Integer signs', exact: true })).toBeVisible();
     await checkSurface('idea');
     await page.getByRole('link', { name: 'See examples', exact: true }).click();
     await checkSurface('example');
-    await page.getByRole('link', { name: 'Try it yourself', exact: true }).click();
+    await page.getByRole('link', { name: 'Move up a level', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Calculate: −6 + 10.' })).toBeVisible();
     await checkSurface('practice');
     await page.getByRole('radio', { name: '4', exact: true }).check();
