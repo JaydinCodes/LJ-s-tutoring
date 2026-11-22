@@ -1,3 +1,6 @@
+.learning-reading-studio { max-width: none; padding: 0; }
+.learning-reading-studio > .learning-eyebrow { display: none; }
+
 /* Whole Numbers Learning Studio — instructional visuals intentionally occupy
    the stage; these are not generic dashboard cards. */
 .learning-studio { --studio-navy: #071d34; --studio-deep: #05233c; --studio-teal: #76e6d2; --studio-teal-dark: #2aa996; --studio-gold: #f6c84d; --studio-paper: #fffaf0; background: radial-gradient(circle at 88% 8%, rgba(30, 166, 167, .32), transparent 29rem), linear-gradient(135deg, var(--studio-navy), var(--studio-deep)); border: 1px solid rgba(126, 226, 211, .24); border-radius: 24px; box-shadow: 0 24px 60px rgba(4, 24, 41, .2); color: #eff8f6; overflow: hidden; }
