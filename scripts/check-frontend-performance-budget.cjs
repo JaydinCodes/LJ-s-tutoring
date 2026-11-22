@@ -145,22 +145,22 @@ assertGeneratedJsBudget('react-app-dist', 3_000_000, 150_000);
 assertSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 155_000);
 assertGzipSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 55_000);
 // Learner pages load student-learning.css on demand. Only the Whole Numbers
-// concept studio additionally loads whole-numbers-studio.css, so ordinary
+// concept studio additionally loads WholeNumbersStudio.css, so ordinary
 // practice, diagnostic and assessment pages do not pay for the studio styles.
 // Keep strict per-asset caps AND an aggregate deferred cap so splitting CSS
 // cannot silently hide unlimited stylesheet growth.
 const learnerCss = path.join(reactAppDistDir, 'student-learning.css');
-const studioCss = path.join(reactAppDistDir, 'whole-numbers-studio.css');
+const studioCss = path.join(reactAppDistDir, 'WholeNumbersStudio.css');
 if (fs.existsSync(reactAppDistDir)) {
-  for (const [file, name] of [[learnerCss, 'student-learning.css'], [studioCss, 'whole-numbers-studio.css']]) {
+  for (const [file, name] of [[learnerCss, 'student-learning.css'], [studioCss, 'WholeNumbersStudio.css']]) {
     assert(fs.existsSync(file), `${name} is missing from the production build`);
     assert(fs.statSync(file).size > 0, `${name} must contain real stylesheet rules`);
   }
 }
 assertSizeIfBuiltPath(learnerCss, 'student-learning.css', 25_000);
 assertGzipSizeIfBuiltPath(learnerCss, 'student-learning.css', 6_000);
-assertSizeIfBuiltPath(studioCss, 'whole-numbers-studio.css', 15_000);
-assertGzipSizeIfBuiltPath(studioCss, 'whole-numbers-studio.css', 5_000);
+assertSizeIfBuiltPath(studioCss, 'WholeNumbersStudio.css', 15_000);
+assertGzipSizeIfBuiltPath(studioCss, 'WholeNumbersStudio.css', 5_000);
 const deferredCss = collectFiles(reactAppDistDir, (filePath) => filePath.endsWith('.css'))
   .filter((filePath) => filePath !== reactCss);
 const expectedDeferredCss = new Set([learnerCss, studioCss]);
