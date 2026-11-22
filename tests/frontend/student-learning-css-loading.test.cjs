@@ -40,3 +40,20 @@ test('production export retains the copied CSS bundle and the deferred styleshee
   assert.match(budget, /155_000/);
   assert.match(budget, /55_000/);
 });
+
+test('Whole Numbers Studio CSS is isolated from general learning routes and budgeted', () => {
+  const route = read('src/features/learning/StudentLearningTopicRoute.tsx');
+  const studio = read('src/features/learning/WholeNumbersStudio.tsx');
+  const learnerCss = read('src/features/learning/student-learning.css');
+  const studioCss = read('src/features/learning/whole-numbers-studio.css');
+  const budget = read('scripts/check-frontend-performance-budget.cjs');
+  assert.match(route, /lazy\(\(\) => import\('\.\/WholeNumbersStudio'\)/);
+  assert.doesNotMatch(route, /from '\.\/WholeNumbersStudio'/);
+  assert.match(studio, /import '\.\/whole-numbers-studio\.css'/);
+  assert.match(studio, /link\.href = '\/react-app-dist\/whole-numbers-studio\.css'/);
+  assert.match(studio, /link\.onerror = \(\) =>/);
+  assert.doesNotMatch(learnerCss, /\.learning-studio\s*\{/);
+  assert.match(studioCss, /\.learning-studio\s*\{/);
+  assert.match(budget, /whole-numbers-studio\.css/);
+  assert.match(budget, /deferred CSS/);
+});
