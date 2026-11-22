@@ -6,7 +6,8 @@ import { NumberFamiliesExplorer } from './NumberFamiliesVisuals';
 import { factorPairs, highestCommonFactor, lowestCommonMultiple, primeFactorNotation } from './wholeNumbersStudioMath';
 import './whole-numbers-studio.css';
 
-// Vite's library-mode output does not automatically attach stylesheets for
+// Vite emits the studio module stylesheet as WholeNumbersStudio.css.
+// Library-mode output does not automatically attach stylesheets for
 // lazy chunks. Keep one promise and one stylesheet link across lesson visits.
 let studioCssPromise: Promise<void> | null = null;
 function ensureStudioCss(): Promise<void> {
@@ -15,7 +16,7 @@ function ensureStudioCss(): Promise<void> {
     studioCssPromise = new Promise<void>((resolve, reject) => {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = '/react-app-dist/whole-numbers-studio.css';
+      link.href = '/react-app-dist/WholeNumbersStudio.css';
       link.dataset.odysseusStudioStyles = 'true';
       link.onload = () => resolve();
       link.onerror = () => {
