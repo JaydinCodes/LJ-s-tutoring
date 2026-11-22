@@ -50,10 +50,10 @@ test('Whole Numbers Studio CSS is isolated from general learning routes and budg
   assert.match(route, /lazy\(\(\) => import\('\.\/WholeNumbersStudio'\)/);
   assert.doesNotMatch(route, /from '\.\/WholeNumbersStudio'/);
   assert.match(studio, /import '\.\/whole-numbers-studio\.css'/);
-  assert.match(studio, /link\.href = '\/react-app-dist\/whole-numbers-studio\.css'/);
+  assert.match(studio, /link\.href = '\/react-app-dist\/WholeNumbersStudio\.css'/);
   assert.match(studio, /link\.onerror = \(\) =>/);
   assert.doesNotMatch(learnerCss, /\.learning-studio\s*\{/);
   assert.match(studioCss, /\.learning-studio\s*\{/);
-  assert.match(budget, /whole-numbers-studio\.css/);
+  assert.match(budget, /WholeNumbersStudio\.css/);
   assert.match(budget, /deferred CSS/);
 });
