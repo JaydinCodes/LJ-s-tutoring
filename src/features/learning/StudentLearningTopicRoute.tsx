@@ -7,6 +7,7 @@ import { LessonSteps, TopicLearningMap } from './LearningMap';
 import { NumberFamiliesExplorer, WorkedExampleVisual } from './NumberFamiliesVisuals';
 import { formatLearnerMath, learnerSkillPresentation, learnerTopicDescription, lessonPresentation, type ConceptStep, type WorkedExample } from './studentLearningPresentation';
 import { useApprovedLearningVideos, useGrade9LearningTopic, useGrade9Term1LearningJourney, useGrade9Term1TopicLearningMap, useSetGrade9Term1LearningContextMutation } from './studentLearningQueries';
+import { isWholeNumbersStudioLesson, WholeNumbersStudio } from './WholeNumbersStudio';
 import './student-learning.css';
 
 function WorkedExamples({ examples, skillCode, activeIndex, exampleRoute }: { examples: WorkedExample[]; skillCode: string; activeIndex: number; exampleRoute: string }) {
@@ -126,16 +127,18 @@ export function StudentLearningTopicRoute() {
     if (retentionCheck) practiceParams.set('retentionCheck', retentionCheck);
     if (practiceQuestion) practiceParams.set('question', practiceQuestion);
     const practiceRoute = lesson.activityCode ? `/dashboard/student/learning/activity/${encodeURIComponent(lesson.activityCode)}?${practiceParams}` : undefined;
+    const studioLesson = isWholeNumbersStudioLesson(lesson.skillCode);
+    const discovery = searchParams.get('discovery');
 
     return <PageShell title={presentation?.learnerTitle ?? lesson.skillName} subtitle={`${map.topicName} · Lesson ${lessonIndex + 1} of ${topic.skills.length}`} section="student">
       <div className="learning-overview learning-lesson">
         <Link className="learning-text-link" to={topicRoute}><ArrowLeft size={16} aria-hidden="true" /> {map.topicName}</Link>
         <LessonSteps stage={step} conceptRoute={conceptRoute} exampleRoute={exampleRoute} practiceRoute={practiceRoute} />
         {lesson.content ? <>
-          <section className="learning-reading" aria-labelledby="lesson-content-heading">
+          <section className={`learning-reading${step === 'concept' && studioLesson ? ' learning-reading-studio' : ''}`} aria-labelledby="lesson-content-heading">
             <p className="learning-eyebrow">{step === 'concept' ? 'The idea' : 'See it'}</p>
-            <h2 id="lesson-content-heading" ref={lessonHeading} tabIndex={-1}>{step === 'concept' ? presentation?.learnerTitle ?? lesson.content.title : presentation?.examples?.length ? 'Worked examples' : 'Worked example'}</h2>
-            {step === 'concept' ? <>
+            <h2 id="lesson-content-heading" className={step === 'concept' && studioLesson ? 'sr-only' : undefined} ref={lessonHeading} tabIndex={-1}>{step === 'concept' ? presentation?.learnerTitle ?? lesson.content.title : presentation?.examples?.length ? 'Worked examples' : 'Worked example'}</h2>
+            {step === 'concept' && studioLesson ? <WholeNumbersStudio skillCode={lesson.skillCode} discovery={discovery} lessonRoute={conceptRoute} practiceRoute={practiceRoute} /> : step === 'concept' ? <>
               {presentation?.learnerSummary ? <p className="learning-lesson-objective">{presentation.learnerSummary}</p> : lesson.content.learningObjective ? <p className="learning-lesson-objective">{lesson.content.learningObjective}</p> : null}
               {presentation?.hook ? <aside className="learning-lesson-hook"><h3>{presentation.hook.title}</h3><p>{presentation.hook.body}</p></aside> : null}
               {presentation?.idea ? <><h3 className="learning-idea-heading">{presentation.idea.title}</h3><p className="learning-lesson-copy">{presentation.idea.body}</p><ConceptSteps items={presentation.conceptSteps} />{lesson.skillCode === 'G9-NUM-REAL-IRRATIONAL' ? <NumberFamiliesExplorer /> : <NumberSetHierarchy items={presentation.numberHierarchy} />}</> : <p className="learning-lesson-copy">{formatLearnerMath(lesson.content.explanation)}</p>}
