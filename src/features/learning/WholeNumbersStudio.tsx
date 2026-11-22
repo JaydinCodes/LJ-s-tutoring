@@ -1,9 +1,33 @@
 import { ArrowRight, Lightbulb } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { NumberFamiliesExplorer } from './NumberFamiliesVisuals';
 import { factorPairs, highestCommonFactor, lowestCommonMultiple, primeFactorNotation } from './wholeNumbersStudioMath';
+import './whole-numbers-studio.css';
+
+// Vite's library-mode output does not automatically attach stylesheets for
+// lazy chunks. Keep one promise and one stylesheet link across lesson visits.
+let studioCssPromise: Promise<void> | null = null;
+function ensureStudioCss(): Promise<void> {
+  if (import.meta.env.DEV) return Promise.resolve();
+  if (!studioCssPromise) {
+    studioCssPromise = new Promise<void>((resolve, reject) => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/react-app-dist/whole-numbers-studio.css';
+      link.dataset.odysseusStudioStyles = 'true';
+      link.onload = () => resolve();
+      link.onerror = () => {
+        studioCssPromise = null;
+        link.remove();
+        reject(new Error('Whole Numbers Studio stylesheet could not be loaded'));
+      };
+      document.head.appendChild(link);
+    });
+  }
+  return studioCssPromise;
+}
 
 type StudioLesson = 'number-families' | 'factors' | 'prime-factorisation' | 'common-factors' | 'proportion' | 'financial';
 
@@ -87,8 +111,23 @@ export function WholeNumbersStudio({ skillCode, discovery, lessonRoute, practice
   lessonRoute: string;
   practiceRoute?: string;
 }) {
+  const [cssState, setCssState] = useState<'loading' | 'ready' | 'error'>(import.meta.env.DEV ? 'ready' : 'loading');
+  useEffect(() => {
+    let mounted = true;
+    void ensureStudioCss().then(() => {
+      if (mounted) setCssState('ready');
+    }).catch(() => {
+      if (mounted) setCssState('error');
+    });
+    return () => { mounted = false; };
+  }, []);
   const lesson = studioLessonFor(skillCode, discovery);
   if (!lesson) return null;
+  if (cssState === 'loading') return <p role="status">Preparing the interactive maths visuals…</p>;
+  if (cssState === 'error') return <div role="alert">The interactive lesson styles could not be loaded. <button type="button" onClick={() => {
+    setCssState('loading');
+    void ensureStudioCss().then(() => setCssState('ready')).catch(() => setCssState('error'));
+  }}>Retry loading the lesson</button></div>;
   const definition = definitions[lesson];
   const chapterLinks = skillCode === 'G9-NUM-WHOLE-HCF-LCM'
     ? [{ id: 'factors', label: 'Factors' }, { id: 'prime-factorisation', label: 'Prime factors' }, { id: 'common', label: 'HCF & LCM' }]
