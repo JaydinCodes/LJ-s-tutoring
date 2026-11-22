@@ -228,8 +228,6 @@ a.learning-topic-milestone:hover { background: var(--learning-subtle); }
 .learning-resource-list { display: grid; gap: 16px; padding: 16px 0; }
 .learning-lesson-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; border-top: 1px solid var(--learning-line); padding-top: 24px; }
 .learning-lesson-footer .learning-primary { margin: 0; }
-.learning-reading-studio { max-width: none; padding: 0; }
-.learning-reading-studio > .learning-eyebrow { display: none; }
 
 @media (max-width: 600px) {
   .learning-topic-next { padding: 20px; }
