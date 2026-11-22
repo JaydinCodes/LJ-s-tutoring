@@ -390,6 +390,35 @@ test('topic lesson loop connects the idea, worked example, practice and saved jo
   await expect(page.getByText('Completed', { exact: true })).toBeVisible();
 });
 
+test('Number Families lesson explorer is usable by keyboard and remains readable on desktop and mobile', async ({ page }, testInfo) => {
+  const numberFamiliesSkill = {
+    skillCode: 'G9-NUM-REAL-IRRATIONAL', skillName: 'Real numbers: rational or irrational',
+    skillDescription: 'Classify real numbers as rational or irrational.', activityCode,
+    content: { title: 'Real numbers: rational or irrational', learningObjective: 'Classify number families.', explanation: 'Reviewed test content.', workedExample: 'Reviewed test example.' },
+  };
+  await useScenario(page, 'practice', {
+    get_my_grade9_learning_topic: { topicCode: wholeNumbers, topicName: 'Whole Numbers', topicDescription: 'Approved Number Families content.', areaName: 'Numbers', skills: [numberFamiliesSkill] },
+    get_my_grade9_term1_topic_learning_map: { topicCode: wholeNumbers, topicName: 'Whole Numbers', skills: [{ ...numberFamiliesSkill, lessonAvailable: true, practiceStatus: 'not_started', practiceAttempted: false, skillEvidenceState: null, skillEvidenceAt: null }], baseline: { status: 'unavailable' }, endline: { status: 'unavailable' } },
+  });
+  await page.goto(`/dashboard/student/learning/topic/${wholeNumbers}?lesson=G9-NUM-REAL-IRRATIONAL`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Understanding number families' })).toBeVisible();
+  const explorer = page.getByRole('region', { name: /Number Explorer/ });
+  await expect(explorer.getByText('3 belongs to:', { exact: false })).toBeVisible();
+  await explorer.getByRole('button').nth(4).focus();
+  await page.keyboard.press('Enter');
+  await expect(explorer.getByText('Irrational numbers, Real numbers.', { exact: false })).toBeVisible();
+  await expect(explorer.getByText('Natural numbers sit inside whole numbers', { exact: false })).toBeVisible();
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`number-families-${width}.png`), fullPage: false });
+  }
+  await page.getByRole('link', { name: 'See examples', exact: true }).click();
+  await expect(page.getByText('Why is −7 an integer?')).toBeVisible();
+  await page.getByRole('button', { name: 'Reveal the next reasoning step' }).click();
+  await expect(page.getByText('Name the first family that fits')).toBeVisible();
+});
+
 test('a legacy worked example keeps authored text intact instead of inventing a second numbering system', async ({ page }) => {
   await useScenario(page, 'practice', {
     get_my_grade9_learning_topic: { topicCode: integers, topicName: 'Integers', skills: [{ skillCode: 'G9-INT-SIGNED-OPERATIONS', skillName: 'Signed integer operations', activityCode, content: { title: 'Decimal calculations', explanation: 'Multiply the unit cost by the quantity.', workedExample: 'A notebook costs R24.50. Find the cost of 3 notebooks. R24.50 × 3 = R73.50.' } }] },
