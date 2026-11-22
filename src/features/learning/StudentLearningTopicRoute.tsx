@@ -1,15 +1,18 @@
 import { ArrowLeft, ArrowRight, ChevronDown, ExternalLink } from 'lucide-react';
-import { type CSSProperties, useEffect, useRef } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 
 import { EmptyState, ErrorState, PageShell } from '../../components/dashboard/DashboardDesignSystem';
 import { LessonSteps, TopicLearningMap } from './LearningMap';
+import { NumberFamiliesExplorer, WorkedExampleVisual } from './NumberFamiliesVisuals';
 import { formatLearnerMath, learnerSkillPresentation, learnerTopicDescription, lessonPresentation, type ConceptStep, type WorkedExample } from './studentLearningPresentation';
 import { useApprovedLearningVideos, useGrade9LearningTopic, useGrade9Term1LearningJourney, useGrade9Term1TopicLearningMap, useSetGrade9Term1LearningContextMutation } from './studentLearningQueries';
 import './student-learning.css';
 
 function WorkedExamples({ examples, skillCode, activeIndex, exampleRoute }: { examples: WorkedExample[]; skillCode: string; activeIndex: number; exampleRoute: string }) {
   const example = examples[activeIndex];
+  const [visibleStepCount, setVisibleStepCount] = useState(1);
+  useEffect(() => setVisibleStepCount(1), [example.title]);
   const previousRoute = activeIndex > 0 ? `${exampleRoute}&example=${activeIndex - 1}` : null;
   const nextRoute = activeIndex < examples.length - 1 ? `${exampleRoute}&example=${activeIndex + 1}` : null;
 
@@ -22,11 +25,11 @@ function WorkedExamples({ examples, skillCode, activeIndex, exampleRoute }: { ex
       <p className="learning-eyebrow">{example.title} <span aria-hidden="true">·</span> {example.subtitle}</p>
       <h3>{example.prompt}</h3>
       {example.setup ? <p className="learning-example-setup">{example.setup}</p> : null}
+      <WorkedExampleVisual example={example} />
       <ol className="learning-example-steps" aria-label={`${example.title} reasoning`}>
-        {example.steps.map((item, index) => <li key={`${example.title}-${item.title}`}><span aria-hidden="true">{index + 1}</span><div><h4>{item.title}</h4><p>{item.body}</p></div></li>)}
+        {example.steps.slice(0, visibleStepCount).map((item, index) => <li key={`${example.title}-${item.title}`}><span aria-hidden="true">{index + 1}</span><div><h4>{item.title}</h4><p>{item.body}</p></div></li>)}
       </ol>
-      <p className="learning-example-answer"><strong>Answer</strong>{example.answer}</p>
-      {example.keyIdea ? <p className="learning-example-key-idea"><strong>Key idea</strong>{example.keyIdea}</p> : null}
+      {visibleStepCount < example.steps.length ? <button className="learning-secondary" type="button" onClick={() => setVisibleStepCount((count) => Math.min(count + 1, example.steps.length))}>Reveal the next reasoning step</button> : <><p className="learning-example-answer"><strong>Answer</strong>{example.answer}</p>{example.keyIdea ? <p className="learning-example-key-idea"><strong>Key idea</strong>{example.keyIdea}</p> : null}</>}
       <nav className="learning-example-navigation" aria-label="Worked example navigation">
         {previousRoute ? <Link className="learning-text-link" to={previousRoute}><ArrowLeft size={16} aria-hidden="true" /> Previous example</Link> : <span />}
         {nextRoute ? <Link className="learning-primary" to={nextRoute}>Next example <ArrowRight size={16} aria-hidden="true" /></Link> : <p className="learning-example-ready">You have seen the full pattern. Ready to try it?</p>}
@@ -135,7 +138,7 @@ export function StudentLearningTopicRoute() {
             {step === 'concept' ? <>
               {presentation?.learnerSummary ? <p className="learning-lesson-objective">{presentation.learnerSummary}</p> : lesson.content.learningObjective ? <p className="learning-lesson-objective">{lesson.content.learningObjective}</p> : null}
               {presentation?.hook ? <aside className="learning-lesson-hook"><h3>{presentation.hook.title}</h3><p>{presentation.hook.body}</p></aside> : null}
-              {presentation?.idea ? <><h3 className="learning-idea-heading">{presentation.idea.title}</h3><p className="learning-lesson-copy">{presentation.idea.body}</p><ConceptSteps items={presentation.conceptSteps} /><NumberSetHierarchy items={presentation.numberHierarchy} /></> : <p className="learning-lesson-copy">{formatLearnerMath(lesson.content.explanation)}</p>}
+              {presentation?.idea ? <><h3 className="learning-idea-heading">{presentation.idea.title}</h3><p className="learning-lesson-copy">{presentation.idea.body}</p><ConceptSteps items={presentation.conceptSteps} />{lesson.skillCode === 'G9-NUM-REAL-IRRATIONAL' ? <NumberFamiliesExplorer /> : <NumberSetHierarchy items={presentation.numberHierarchy} />}</> : <p className="learning-lesson-copy">{formatLearnerMath(lesson.content.explanation)}</p>}
             </> : <>
               {presentation?.examples?.length ? <WorkedExamples activeIndex={activeExampleIndex} exampleRoute={exampleRoute} examples={presentation.examples} skillCode={lesson.skillCode} /> : <div className="learning-worked-example"><p>{formatLearnerMath(lesson.content.workedExample)}</p></div>}
               {lesson.content.commonMisconception ? <aside className="learning-useful-check"><h3>A useful check</h3><p>{lesson.content.commonMisconception}</p></aside> : null}

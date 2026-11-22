@@ -11,6 +11,7 @@ export type WorkedExample = {
   steps: Array<{ title: string; body: string }>;
   answer: string;
   keyIdea?: string;
+  visual?: 'number-line' | 'perfect-square' | 'between-squares';
 };
 
 export type ConceptStep = {
@@ -67,8 +68,8 @@ const topicPresentations: Record<string, TopicPresentation> = {
 
 const lessonPresentations: Record<string, LessonPresentation> = {
   'G9-NUM-REAL-IRRATIONAL': {
-    learnerTitle: 'Know your numbers',
-    learnerSummary: 'Learn where different numbers belong.',
+    learnerTitle: 'Understanding number families',
+    learnerSummary: 'Understand why number families exist, how they fit together, and how to classify a number by reasoning.',
     hook: {
       title: 'Numbers are weirder than they look',
       body: 'Your age might be 14. A temperature could be −3 °C. Your phone battery might be at 62.5%. They are all numbers, but they are not the same kind of number. Let’s sort them out.',
@@ -80,7 +81,7 @@ const lessonPresentations: Record<string, LessonPresentation> = {
     conceptSteps: [
       {
         title: 'Start by counting',
-        body: 'Natural numbers are the counting numbers: 1, 2, 3, and so on. They work when you can count whole things.',
+        body: 'Natural numbers are the counting numbers: 1, 2, 3, and so on. We use the convention that they begin at 1; some books include 0, so always check the convention being used.',
         example: 'You have 3 PlayStation games. The number 3 is natural.',
         depth: 4,
       },
@@ -160,6 +161,42 @@ const lessonPresentations: Record<string, LessonPresentation> = {
   },
 };
 
+const numberFamiliesWorkedExamples: WorkedExample[] = [
+  {
+    title: 'Example A', subtitle: 'Use a number line', prompt: 'Why is −7 an integer?',
+    setup: 'First place −7 on the number line. Then decide which family first includes negative whole values.', visual: 'number-line',
+    steps: [
+      { title: 'Locate the number', body: '−7 is seven steps to the left of 0. It is not a counting number and it is not whole.' },
+      { title: 'Name the first family that fits', body: 'Integers include negative whole values, 0 and positive whole values.' },
+      { title: 'Follow the nesting', body: 'Every integer is rational because −7 = −7/1. Every rational number is real.' },
+    ],
+    answer: '−7 is an integer, rational and real — but not whole or natural.',
+    keyIdea: 'Negative does not mean “not real”. It tells you the number cannot be whole or natural.',
+  },
+  {
+    title: 'Example B', subtitle: 'Check before classifying', prompt: 'Is √81 irrational?',
+    setup: 'Do not classify a square root symbol before finding its value.', visual: 'perfect-square',
+    steps: [
+      { title: 'Look for a perfect square', body: '81 = 9 × 9, so 81 is a perfect square.' },
+      { title: 'Evaluate first', body: '√81 = 9.' },
+      { title: 'Classify the value', body: '9 is natural, whole and an integer. Therefore it is rational and real.' },
+    ],
+    answer: 'No. √81 = 9, so it is rational.',
+    keyIdea: 'A square root is not automatically irrational: calculate or simplify it first.',
+  },
+  {
+    title: 'Example C', subtitle: 'A number that does not simplify fully', prompt: 'Why is √20 irrational?',
+    setup: 'Compare 20 with nearby perfect squares, then simplify the part that you can.', visual: 'between-squares',
+    steps: [
+      { title: 'Check the perfect squares around 20', body: '4² = 16 and 5² = 25. Since 20 is not a perfect square, √20 is not an integer.' },
+      { title: 'Simplify what is possible', body: '√20 = √(4 × 5) = 2√5.' },
+      { title: 'Reason about the remaining root', body: '√5 is irrational because 5 is not a perfect square. Multiplying it by 2 does not make it rational.' },
+    ],
+    answer: '√20 = 2√5, which is irrational (and real).',
+    keyIdea: 'Simplifying a root can make the reasoning clearer, even when the result stays irrational.',
+  },
+];
+
 /**
  * Do not mutate the answer sent to the evaluator. This is display copy only.
  */
@@ -178,5 +215,18 @@ export function learnerSkillPresentation(topicCode: string, skillCode: string, f
 }
 
 export function lessonPresentation(skillCode: string) {
-  return lessonPresentations[skillCode];
+  const presentation = lessonPresentations[skillCode];
+  if (skillCode !== 'G9-NUM-REAL-IRRATIONAL' || !presentation) return presentation;
+  return {
+    ...presentation,
+    hook: {
+      title: 'Are all numbers the same kind of number?',
+      body: 'Think about 3 PlayStation games, 0 unread messages, a negative bank balance, half a pizza and the square root of 2. They are all real numbers, but they do different jobs. Number families help us describe those differences clearly.',
+    },
+    idea: {
+      title: 'The idea',
+      body: 'Number families are not labels to memorise. Each new family solves a problem that the earlier one cannot. Start with counting. Add zero when you have none. Add negatives when you owe money or the temperature drops below zero. Add fractions when you share something. Finally, some real numbers cannot be written as one exact fraction at all. Those are irrational.',
+    },
+    examples: numberFamiliesWorkedExamples,
+  };
 }
