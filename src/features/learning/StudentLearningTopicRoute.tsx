@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, ChevronDown, ExternalLink } from 'lucide-react';
-import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 
 import { EmptyState, ErrorState, PageShell } from '../../components/dashboard/DashboardDesignSystem';
@@ -8,6 +8,19 @@ import { NumberFamiliesExplorer, WorkedExampleVisual } from './NumberFamiliesVis
 import { formatLearnerMath, learnerSkillPresentation, learnerTopicDescription, lessonPresentation, type ConceptStep, type WorkedExample } from './studentLearningPresentation';
 import { useApprovedLearningVideos, useGrade9LearningTopic, useGrade9Term1LearningJourney, useGrade9Term1TopicLearningMap, useSetGrade9Term1LearningContextMutation } from './studentLearningQueries';
 import './student-learning.css';
+
+// The six interactive studio scenes load only when a matching lesson is opened.
+// Keeping them in their own async module also keeps their stylesheet out of
+// the base learning CSS bundle used by other lessons and assessments.
+const WholeNumbersStudio = lazy(() => import('./WholeNumbersStudio').then((module) => ({ default: module.WholeNumbersStudio })));
+const studioSkillCodes = new Set([
+  'G9-NUM-REAL-IRRATIONAL',
+  'G9-NUM-WHOLE-HCF-LCM',
+  'G9-NUM-RATIO-RATE',
+  'G9-NUM-DIRECT-INVERSE-PROPORTION',
+  'G9-NUM-FINANCIAL-APPLICATIONS',
+]);
+const isWholeNumbersStudioLesson = (skillCode: string) => studioSkillCodes.has(skillCode);
 
 function WorkedExamples({ examples, skillCode, activeIndex, exampleRoute }: { examples: WorkedExample[]; skillCode: string; activeIndex: number; exampleRoute: string }) {
   const example = examples[activeIndex];
@@ -126,16 +139,18 @@ export function StudentLearningTopicRoute() {
     if (retentionCheck) practiceParams.set('retentionCheck', retentionCheck);
     if (practiceQuestion) practiceParams.set('question', practiceQuestion);
     const practiceRoute = lesson.activityCode ? `/dashboard/student/learning/activity/${encodeURIComponent(lesson.activityCode)}?${practiceParams}` : undefined;
+    const studioLesson = isWholeNumbersStudioLesson(lesson.skillCode);
+    const discovery = searchParams.get('discovery');
 
     return <PageShell title={presentation?.learnerTitle ?? lesson.skillName} subtitle={`${map.topicName} · Lesson ${lessonIndex + 1} of ${topic.skills.length}`} section="student">
       <div className="learning-overview learning-lesson">
         <Link className="learning-text-link" to={topicRoute}><ArrowLeft size={16} aria-hidden="true" /> {map.topicName}</Link>
         <LessonSteps stage={step} conceptRoute={conceptRoute} exampleRoute={exampleRoute} practiceRoute={practiceRoute} />
         {lesson.content ? <>
-          <section className="learning-reading" aria-labelledby="lesson-content-heading">
+          <section className={`learning-reading${step === 'concept' && studioLesson ? ' learning-reading-studio' : ''}`} aria-labelledby="lesson-content-heading">
             <p className="learning-eyebrow">{step === 'concept' ? 'The idea' : 'See it'}</p>
-            <h2 id="lesson-content-heading" ref={lessonHeading} tabIndex={-1}>{step === 'concept' ? presentation?.learnerTitle ?? lesson.content.title : presentation?.examples?.length ? 'Worked examples' : 'Worked example'}</h2>
-            {step === 'concept' ? <>
+            <h2 id="lesson-content-heading" className={step === 'concept' && studioLesson ? 'sr-only' : undefined} ref={lessonHeading} tabIndex={-1}>{step === 'concept' ? presentation?.learnerTitle ?? lesson.content.title : presentation?.examples?.length ? 'Worked examples' : 'Worked example'}</h2>
+            {step === 'concept' && studioLesson ? <Suspense fallback={<p role="status">Preparing your interactive maths studio…</p>}><WholeNumbersStudio skillCode={lesson.skillCode} discovery={discovery} lessonRoute={conceptRoute} practiceRoute={practiceRoute} /></Suspense> : step === 'concept' ? <>
               {presentation?.learnerSummary ? <p className="learning-lesson-objective">{presentation.learnerSummary}</p> : lesson.content.learningObjective ? <p className="learning-lesson-objective">{lesson.content.learningObjective}</p> : null}
               {presentation?.hook ? <aside className="learning-lesson-hook"><h3>{presentation.hook.title}</h3><p>{presentation.hook.body}</p></aside> : null}
               {presentation?.idea ? <><h3 className="learning-idea-heading">{presentation.idea.title}</h3><p className="learning-lesson-copy">{presentation.idea.body}</p><ConceptSteps items={presentation.conceptSteps} />{lesson.skillCode === 'G9-NUM-REAL-IRRATIONAL' ? <NumberFamiliesExplorer /> : <NumberSetHierarchy items={presentation.numberHierarchy} />}</> : <p className="learning-lesson-copy">{formatLearnerMath(lesson.content.explanation)}</p>}

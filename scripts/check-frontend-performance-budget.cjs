@@ -144,25 +144,34 @@ assertGzipSizeIfBuiltPath(reactEntry, 'react-app-dist/react-app-<hash>.js', 320_
 assertGeneratedJsBudget('react-app-dist', 3_000_000, 150_000);
 assertSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 155_000);
 assertGzipSizeIfBuiltPath(reactCss, 'react-app-dist/react-app-<hash>.css', 55_000);
-// The learner-only stylesheet now travels with its lazy route. Preserve the
-// existing entry CSS cap and separately constrain *all* deferred CSS, rather
-// than hiding additional style payload behind CSS code splitting.
-// The library build does not automatically inject route CSS. App.tsx
-// explicitly fetches this asset, so fail the release if it is ever renamed,
-// dropped or accidentally folded back into the entry stylesheet.
+// Learner pages load student-learning.css on demand. Only the Whole Numbers
+// concept studio additionally loads WholeNumbersStudio.css, so ordinary
+// practice, diagnostic and assessment pages do not pay for the studio styles.
+// Keep strict per-asset caps AND an aggregate deferred cap so splitting CSS
+// cannot silently hide unlimited stylesheet growth.
 const learnerCss = path.join(reactAppDistDir, 'student-learning.css');
+const studioCss = path.join(reactAppDistDir, 'WholeNumbersStudio.css');
 if (fs.existsSync(reactAppDistDir)) {
-  assert(fs.existsSync(learnerCss), 'student-learning.css is missing from the production build');
-  assert(fs.statSync(learnerCss).size > 0, 'student-learning.css must contain real stylesheet rules');
+  for (const [file, name] of [[learnerCss, 'student-learning.css'], [studioCss, 'WholeNumbersStudio.css']]) {
+    assert(fs.existsSync(file), `${name} is missing from the production build`);
+    assert(fs.statSync(file).size > 0, `${name} must contain real stylesheet rules`);
+  }
 }
+assertSizeIfBuiltPath(learnerCss, 'student-learning.css', 25_000);
+assertGzipSizeIfBuiltPath(learnerCss, 'student-learning.css', 6_000);
+assertSizeIfBuiltPath(studioCss, 'WholeNumbersStudio.css', 15_000);
+assertGzipSizeIfBuiltPath(studioCss, 'WholeNumbersStudio.css', 5_000);
 const deferredCss = collectFiles(reactAppDistDir, (filePath) => filePath.endsWith('.css'))
   .filter((filePath) => filePath !== reactCss);
+const expectedDeferredCss = new Set([learnerCss, studioCss]);
+assert(deferredCss.every((file) => expectedDeferredCss.has(file)),
+  'unexpected deferred CSS asset: ' + deferredCss.filter((file) => !expectedDeferredCss.has(file)).join(', '));
 const deferredCssRaw = deferredCss.reduce((total, filePath) => total + fs.statSync(filePath).size, 0);
 const deferredCssGzip = deferredCss.reduce((total, filePath) =>
   total + require('node:zlib').gzipSync(fs.readFileSync(filePath), { level: 9 }).length, 0);
-assert(deferredCssRaw <= 25_000, `deferred CSS is ${deferredCssRaw} bytes, above budget 25000`);
-assert(deferredCssGzip <= 6_000, `deferred CSS gzip is ${deferredCssGzip} bytes, above budget 6000`);
-console.log(`[perf-budget] deferred CSS: ${deferredCssRaw}/25000 bytes, ${deferredCssGzip}/6000 gzip bytes`);
+assert(deferredCssRaw <= 40_000, `deferred CSS is ${deferredCssRaw} bytes, above budget 40000`);
+assert(deferredCssGzip <= 12_000, `deferred CSS gzip is ${deferredCssGzip} bytes, above budget 12000`);
+console.log(`[perf-budget] deferred CSS: ${deferredCssRaw}/40000 bytes, ${deferredCssGzip}/12000 gzip bytes`);
 assertSizeIfBuilt('images/odysseus-hero-fallback.webp', 150_000);
 assertSizeIfBuilt('images/bg_video-optimized.mp4', 1_000_000);
 assertCombinedSize([
